@@ -1,0 +1,23 @@
+{
+  "name": "edupath-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EduPath AI - competency assessment and personalized learning roadmap",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "setup:demo-env": "node scripts/import-demo-env.mjs",
+    "dev": "concurrently --names API,WEB --prefix-colors cyan,magenta \"npm run dev --workspace @edupath/api\" \"npm run dev --workspace @edupath/web\"",
+    "start": "npm run start --workspace @edupath/api",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  },
+  "engines": {
+    "node": ">=22 <23"
+  }
+}

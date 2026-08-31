@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: edupath-ai-mochikawaiii
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.21.0
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SESSION_MAX_AGE_MS
+        value: "28800000"
+      - key: ENTRA_CLIENT_ID
+        sync: false
+      - key: ENTRA_CLIENT_SECRET
+        sync: false
+      - key: ENTRA_TENANT_ID
+        sync: false
+      - key: ENTRA_AUTHORITY
+        value: https://login.microsoftonline.com/organizations
+      - key: ENTRA_ALLOW_ANY_TENANT
+        value: "false"
+      # Microsoft Entra tenant chính thức của vlu.edu.vn (không phải secret).
+      - key: ENTRA_ALLOWED_TENANT_IDS
+        value: 3011a54b-0a5d-4929-bf02-a00787877c6a
+      - key: AUTH_DEFAULT_ROLE
+        value: student
