@@ -10,6 +10,21 @@ const errorMessages: Record<string, string> = {
     "Không thể hoàn tất đăng nhập. Hãy kiểm tra quyền tài khoản và thử lại."
 };
 
+const loginLinks = [
+  { targetId: "gioi-thieu", label: "Giới thiệu" },
+  { targetId: "tinh-nang", label: "Tính năng" },
+  { targetId: "huong-dan", label: "Hướng dẫn" }
+];
+
+function scrollToLoginSection(targetId: string): void {
+  document.getElementById(targetId)?.scrollIntoView({
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth",
+    block: "center"
+  });
+}
+
 function getAuthError(): string | null {
   const code = new URLSearchParams(window.location.search).get("authError");
   return code ? (errorMessages[code] ?? "Đăng nhập không thành công.") : null;
@@ -91,57 +106,46 @@ function AcademicCapIcon() {
   );
 }
 
-function HelpIcon() {
+function LocationIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path
-        d="M9.4 9a2.8 2.8 0 1 1 4.6 2.1c-1.1.9-2 1.5-2 3M12 18h.01"
+        d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"
         fill="none"
         stroke="currentColor"
         strokeLinecap="round"
+        strokeLinejoin="round"
         strokeWidth="2"
       />
-    </svg>
-  );
-}
-
-function DecorativeWaves() {
-  return (
-    <svg
-      className="decorative-waves"
-      viewBox="0 0 1600 250"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M0 149C173 93 337 225 541 205c205-20 310-123 493-77 182 46 314 65 566-29v151H0V149Z"
-        fill="rgba(16, 71, 164, .80)"
-      />
-      <path
-        d="M964 250c87-126 183-180 286-167 103 13 207 71 350 17v150H964Z"
-        fill="#073985"
-      />
-      <path
-        d="M0 142c178-50 344 73 539 53 199-21 319-121 502-75 184 46 313 66 559-29"
-        fill="none"
-        stroke="#e4ac45"
-        strokeWidth="3"
-      />
-      <path
-        d="M1142 207c99-36 220-42 458-11"
-        fill="none"
-        stroke="rgba(255,255,255,.25)"
-        strokeWidth="1.5"
-      />
+      <circle cx="12" cy="10" r="2.5" fill="currentColor" />
     </svg>
   );
 }
 
 function LoginPage({ error }: { error: string | null }) {
+  useEffect(() => {
+    const isTemporaryLoginHash = loginLinks.some(
+      ({ targetId }) => window.location.hash === `#${targetId}`
+    );
+
+    if (isTemporaryLoginHash) {
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${window.location.search}`
+      );
+    }
+  }, []);
+
   return (
-    <main className="auth-shell">
+    <div className="auth-shell">
       <header className="login-header">
-        <a className="login-brand" href="/" aria-label="EduPath AI - Trang đăng nhập">
+        <button
+          className="login-brand"
+          type="button"
+          aria-label="EduPath AI - Đi đến khu vực đăng nhập"
+          onClick={() => scrollToLoginSection("dang-nhap")}
+        >
           <EduPathLogo />
           <span className="brand-wordmark">
             <strong>
@@ -149,42 +153,48 @@ function LoginPage({ error }: { error: string | null }) {
             </strong>
             <small>AI đồng hành · Học tập bứt phá</small>
           </span>
-        </a>
+        </button>
 
         <nav className="login-navigation" aria-label="Điều hướng trang đăng nhập">
-          <a href="#login-title">Giới thiệu</a>
-          <a href="#login-description">Tính năng</a>
-          <a href="#login-help">Hỗ trợ</a>
-          <a
-            className="help-link"
-            href="#login-help"
-            aria-label="Trợ giúp đăng nhập"
-            title="Trợ giúp đăng nhập"
-          >
-            <HelpIcon />
-          </a>
+          {loginLinks.map((link) => (
+            <button
+              type="button"
+              key={link.targetId}
+              onClick={() => scrollToLoginSection(link.targetId)}
+            >
+              {link.label}
+            </button>
+          ))}
         </nav>
+
+        <div className="header-vlu-logo">
+          <img src="/vlu-logo-horizontal.png" alt="Trường Đại học Văn Lang" />
+        </div>
       </header>
 
-      <section className="auth-content" aria-labelledby="login-title">
-        <div className="login-card" id="login-card">
+      <main className="auth-content" id="dang-nhap">
+        <section
+          className="login-card"
+          id="gioi-thieu"
+          aria-labelledby="login-title"
+        >
           <img
             className="vlu-logo"
             src="/vlu-logo.png"
             alt="Logo Trường Đại học Văn Lang"
           />
 
-          <h1 id="login-title">Chào mừng trở lại</h1>
-          <p id="login-description" className="login-description">
-            Đăng nhập để xem năng lực, lộ trình học tập
-            <br className="desktop-break" /> và gợi ý nghề nghiệp của bạn
-          </p>
-
-          <div className="gold-divider" aria-hidden="true">
-            <span />
-            <i>✦</i>
-            <span />
-          </div>
+          <p className="login-eyebrow">Cổng học tập thông minh</p>
+          <h1 id="login-title">Chào mừng đến với EduPath AI!</h1>
+          <section id="tinh-nang" aria-labelledby="feature-title">
+            <h2 id="feature-title" className="sr-only">
+              Tính năng
+            </h2>
+            <p className="login-description">
+              Đăng nhập để đánh giá năng lực, xây dựng lộ trình học tập
+              <br className="desktop-break" /> và khám phá định hướng nghề nghiệp phù hợp.
+            </p>
+          </section>
 
           {error ? (
             <div className="error-banner" role="alert">
@@ -202,9 +212,14 @@ function LoginPage({ error }: { error: string | null }) {
             <span>Đăng nhập bằng Microsoft</span>
           </button>
 
-          <p id="login-help" className="login-help">
-            Hỗ trợ đăng nhập bằng tài khoản Microsoft của VLU
-          </p>
+          <section id="huong-dan" aria-labelledby="guide-title">
+            <h2 id="guide-title" className="sr-only">
+              Hướng dẫn đăng nhập
+            </h2>
+            <p id="login-help" className="login-help">
+              Sử dụng tài khoản Microsoft do Trường Đại học Văn Lang cấp
+            </p>
+          </section>
           <p id="login-security" className="sr-only">
             EduPath AI không nhận hoặc lưu mật khẩu Microsoft của bạn.
           </p>
@@ -215,11 +230,68 @@ function LoginPage({ error }: { error: string | null }) {
             </span>
             <strong>Dành cho sinh viên Văn Lang</strong>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      <DecorativeWaves />
-    </main>
+      <footer className="login-footer">
+        <div className="footer-grid">
+          <section className="footer-column footer-copyright" aria-labelledby="footer-project-title">
+            <h2 id="footer-project-title">EduPath AI</h2>
+            <p>
+              Hệ thống đánh giá năng lực và tư vấn lộ trình học tập dành cho sinh viên
+              Công nghệ Thông tin.
+            </p>
+            <small>© 2026 EduPath AI. All rights reserved.</small>
+          </section>
+
+          <nav className="footer-column footer-links" aria-label="Liên kết nhanh">
+            <h2>Liên kết</h2>
+            <ul>
+              {loginLinks.map((link) => (
+                <li key={link.targetId}>
+                  <button
+                    type="button"
+                    onClick={() => scrollToLoginSection(link.targetId)}
+                  >
+                    {link.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <section className="footer-column footer-addresses" aria-labelledby="footer-vlu-title">
+            <h2 id="footer-vlu-title">Trường Đại học Văn Lang</h2>
+            <address>
+              <span>
+                <LocationIcon />
+                <span>
+                  <b>Cơ sở 1:</b> 45 Nguyễn Khắc Nhu, P. Cầu Ông Lãnh, TP. HCM
+                </span>
+              </span>
+              <span>
+                <LocationIcon />
+                <span>
+                  <b>Cơ sở 2:</b> 233A Phan Văn Trị, P. Bình Lợi Trung, TP. HCM
+                </span>
+              </span>
+              <span>
+                <LocationIcon />
+                <span>
+                  <b>Cơ sở chính:</b> 69/68 Đặng Thùy Trâm, P. Bình Lợi Trung, TP. HCM
+                </span>
+              </span>
+              <span>
+                <LocationIcon />
+                <span>
+                  <b>Ký túc xá:</b> 160/63A-B Phan Huy Ích, P. An Hội Tây, TP. HCM
+                </span>
+              </span>
+            </address>
+          </section>
+        </div>
+      </footer>
+    </div>
   );
 }
 
