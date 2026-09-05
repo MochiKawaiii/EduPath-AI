@@ -1,6 +1,7 @@
 export type AppRole = "admin" | "student";
 
 export interface AuthenticatedUser {
+  userId: string;
   identityKey: string;
   tenantId: string;
   objectId: string;
@@ -14,4 +15,3 @@ export interface AuthenticatedUser {
 export type AuthResponse =
   | { authenticated: false }
   | { authenticated: true; user: AuthenticatedUser };
-

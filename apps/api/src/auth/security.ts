@@ -93,9 +93,12 @@ export function resolveAppRole(
 
 export function toAuthenticatedUser(
   identity: MicrosoftIdentity,
-  role: AppRole
+  role: AppRole,
+  userId: string,
+  signedInAt = new Date()
 ): AuthenticatedUser {
   return {
+    userId,
     identityKey: `${identity.tenantId}:${identity.objectId}`,
     tenantId: identity.tenantId,
     objectId: identity.objectId,
@@ -103,7 +106,6 @@ export function toAuthenticatedUser(
     email: identity.email,
     username: identity.username,
     role,
-    signedInAt: new Date().toISOString()
+    signedInAt: signedInAt.toISOString()
   };
 }
-

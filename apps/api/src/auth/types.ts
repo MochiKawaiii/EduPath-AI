@@ -24,6 +24,7 @@ export interface MicrosoftIdentity {
 }
 
 export interface AuthenticatedUser {
+  userId: string;
   identityKey: string;
   tenantId: string;
   objectId: string;

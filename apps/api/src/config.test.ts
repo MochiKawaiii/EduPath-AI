@@ -4,6 +4,7 @@ import { loadConfig } from "./config.js";
 const baseEnvironment: NodeJS.ProcessEnv = {
   NODE_ENV: "production",
   SESSION_SECRET: "a-secure-session-secret-with-at-least-32-characters",
+  DATABASE_URL: "postgresql://test:test@localhost:5432/edupath_test",
   ENTRA_CLIENT_ID: "11111111-1111-4111-8111-111111111111",
   ENTRA_CLIENT_SECRET: "test-client-secret",
   ENTRA_TENANT_ID: "22222222-2222-4222-8222-222222222222",
@@ -26,6 +27,8 @@ describe("loadConfig", () => {
       "https://edupath-ai-vlu.onrender.com/"
     );
     expect(config.session.secure).toBe(true);
+    expect(config.database.maxConnections).toBe(10);
+    expect(config.database.autoMigrate).toBe(true);
   });
 
   it("keeps explicitly configured URLs", () => {
@@ -54,5 +57,14 @@ describe("loadConfig", () => {
     ).toThrow(
       "Production cannot allow every tenant while assigning Student as the default role"
     );
+  });
+
+  it("rejects a non-PostgreSQL database URL", () => {
+    expect(() =>
+      loadConfig({
+        ...baseEnvironment,
+        DATABASE_URL: "https://database.example.com"
+      })
+    ).toThrow("DATABASE_URL must be a valid PostgreSQL connection URL");
   });
 });

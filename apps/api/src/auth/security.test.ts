@@ -24,6 +24,13 @@ function config(overrides: Partial<AppConfig["entra"]> = {}): AppConfig {
       secure: false
     },
     trustProxy: false,
+    database: {
+      url: "postgresql://test:test@localhost:5432/edupath_test",
+      maxConnections: 2,
+      connectionTimeoutMs: 1_000,
+      idleTimeoutMs: 1_000,
+      autoMigrate: false
+    },
     entra: {
       clientId,
       clientSecret: "test-secret",
@@ -109,9 +116,13 @@ describe("authentication security helpers", () => {
   });
 
   it("uses tenant and object IDs as the stable identity key", () => {
-    const user = toAuthenticatedUser(identity(), "student");
+    const user = toAuthenticatedUser(
+      identity(),
+      "student",
+      "55555555-5555-4555-8555-555555555555"
+    );
+    expect(user.userId).toBe("55555555-5555-4555-8555-555555555555");
     expect(user.identityKey).toBe(`${tenantId}:33333333-3333-4333-8333-333333333333`);
     expect(user.role).toBe("student");
   });
 });
-

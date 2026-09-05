@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { beginMicrosoftLogin, getCurrentUser, logout } from "./auth-api";
+import LandingPage from "./LandingPage";
+import { resolveAppRoute, safeReturnTo } from "./routing";
 import type { AuthResponse, AuthenticatedUser } from "./types";
 
 const errorMessages: Record<string, string> = {
@@ -16,26 +18,9 @@ const loginLinks = [
   { targetId: "huong-dan", label: "Hướng dẫn" }
 ];
 
-function scrollToLoginSection(targetId: string): void {
-  document.getElementById(targetId)?.scrollIntoView({
-    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? "auto"
-      : "smooth",
-    block: "center"
-  });
-}
-
 function getAuthError(): string | null {
   const code = new URLSearchParams(window.location.search).get("authError");
   return code ? (errorMessages[code] ?? "Đăng nhập không thành công.") : null;
-}
-
-function safeReturnTo(): string {
-  const value = new URLSearchParams(window.location.search).get("returnTo");
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/dashboard";
-  }
-  return value;
 }
 
 function EduPathLogo() {
@@ -123,28 +108,13 @@ function LocationIcon() {
 }
 
 function LoginPage({ error }: { error: string | null }) {
-  useEffect(() => {
-    const isTemporaryLoginHash = loginLinks.some(
-      ({ targetId }) => window.location.hash === `#${targetId}`
-    );
-
-    if (isTemporaryLoginHash) {
-      window.history.replaceState(
-        {},
-        "",
-        `${window.location.pathname}${window.location.search}`
-      );
-    }
-  }, []);
-
   return (
     <div className="auth-shell">
       <header className="login-header">
-        <button
+        <a
           className="login-brand"
-          type="button"
-          aria-label="EduPath AI - Đi đến khu vực đăng nhập"
-          onClick={() => scrollToLoginSection("dang-nhap")}
+          href="/"
+          aria-label="EduPath AI - Về trang tổng quan"
         >
           <EduPathLogo />
           <span className="brand-wordmark">
@@ -153,17 +123,16 @@ function LoginPage({ error }: { error: string | null }) {
             </strong>
             <small>AI đồng hành · Học tập bứt phá</small>
           </span>
-        </button>
+        </a>
 
         <nav className="login-navigation" aria-label="Điều hướng trang đăng nhập">
           {loginLinks.map((link) => (
-            <button
-              type="button"
+            <a
               key={link.targetId}
-              onClick={() => scrollToLoginSection(link.targetId)}
+              href={`/#${link.targetId}`}
             >
               {link.label}
-            </button>
+            </a>
           ))}
         </nav>
 
@@ -206,7 +175,7 @@ function LoginPage({ error }: { error: string | null }) {
             className="microsoft-button"
             type="button"
             aria-describedby="login-help login-security"
-            onClick={() => beginMicrosoftLogin("/dashboard")}
+            onClick={() => beginMicrosoftLogin(safeReturnTo(window.location.search))}
           >
             <MicrosoftIcon />
             <span>Đăng nhập bằng Microsoft</span>
@@ -249,12 +218,9 @@ function LoginPage({ error }: { error: string | null }) {
             <ul>
               {loginLinks.map((link) => (
                 <li key={link.targetId}>
-                  <button
-                    type="button"
-                    onClick={() => scrollToLoginSection(link.targetId)}
-                  >
+                  <a href={`/#${link.targetId}`}>
                     {link.label}
-                  </button>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -353,7 +319,7 @@ function Dashboard({
   );
 }
 
-export default function App() {
+function AuthenticatedApp({ isLoginRoute }: { isLoginRoute: boolean }) {
   const [auth, setAuth] = useState<AuthResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -372,20 +338,53 @@ export default function App() {
   }, [refreshAuth]);
 
   useEffect(() => {
-    if (auth?.authenticated && window.location.pathname === "/auth/callback") {
-      window.history.replaceState({}, "", safeReturnTo());
+    if (auth?.authenticated) {
+      document.title = "EduPath AI – Không gian học tập";
+      if (isLoginRoute || window.location.pathname.replace(/\/+$/, "") === "/auth/callback") {
+        window.history.replaceState({}, "", safeReturnTo(window.location.search));
+      }
+    } else {
+      document.title = "EduPath AI – Đăng nhập";
+      if (auth || isLoginRoute) {
+        const search = new URLSearchParams(window.location.search);
+        const loginSearch = new URLSearchParams();
+        if (search.has("authError")) {
+          loginSearch.set("authError", search.get("authError") ?? "callback_failed");
+        }
+        if (search.has("returnTo")) {
+          loginSearch.set("returnTo", safeReturnTo(window.location.search));
+        }
+        const query = loginSearch.toString();
+        window.history.replaceState({}, "", `/login${query ? `?${query}` : ""}`);
+      }
     }
-  }, [auth]);
+  }, [auth, isLoginRoute]);
 
   const authError = useMemo(() => getAuthError(), []);
 
-  if (!auth) {
+  if (!auth && !isLoginRoute) {
     return <main className="loading-screen">Đang kiểm tra phiên đăng nhập…</main>;
   }
 
-  if (!auth.authenticated) {
+  if (!auth?.authenticated) {
     return <LoginPage error={authError ?? loadError} />;
   }
 
   return <Dashboard user={auth.user} onLogout={() => void logout()} />;
+}
+
+export default function App() {
+  const route = resolveAppRoute(window.location.pathname, window.location.search);
+
+  useEffect(() => {
+    if (route === "landing") {
+      document.title = "EduPath AI – Hiểu năng lực, định hướng tương lai";
+    }
+  }, [route]);
+
+  // The overview is public and renders even when the API is unavailable.
+  // Authentication is requested only when entering login or the dashboard.
+  return route === "landing"
+    ? <LandingPage />
+    : <AuthenticatedApp isLoginRoute={route === "login"} />;
 }

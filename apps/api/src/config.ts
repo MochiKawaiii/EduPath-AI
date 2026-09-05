@@ -6,6 +6,14 @@ const booleanFromString = z.preprocess((value) => {
   return value.trim().toLowerCase() === "true";
 }, z.boolean());
 
+const postgresUrl = z.string().trim().min(1).refine((value) => {
+  try {
+    return ["postgres:", "postgresql:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}, "DATABASE_URL must be a valid PostgreSQL connection URL");
+
 const environmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
@@ -14,6 +22,19 @@ const environmentSchema = z.object({
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must contain at least 32 characters"),
   SESSION_MAX_AGE_MS: z.coerce.number().int().positive().default(28_800_000),
   TRUST_PROXY: booleanFromString.default(false),
+  DATABASE_URL: postgresUrl,
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
+  DATABASE_CONNECTION_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5_000),
+  DATABASE_IDLE_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(30_000),
+  DATABASE_AUTO_MIGRATE: booleanFromString.default(true),
   ENTRA_CLIENT_ID: z.uuid(),
   ENTRA_CLIENT_SECRET: z.string().min(1),
   ENTRA_TENANT_ID: z.uuid().optional(),
@@ -35,6 +56,13 @@ export interface AppConfig {
     secure: boolean;
   };
   trustProxy: boolean;
+  database: {
+    url: string;
+    maxConnections: number;
+    connectionTimeoutMs: number;
+    idleTimeoutMs: number;
+    autoMigrate: boolean;
+  };
   entra: {
     clientId: string;
     clientSecret: string;
@@ -97,6 +125,13 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
       secure: parsed.NODE_ENV === "production"
     },
     trustProxy: parsed.TRUST_PROXY,
+    database: {
+      url: parsed.DATABASE_URL,
+      maxConnections: parsed.DATABASE_POOL_MAX,
+      connectionTimeoutMs: parsed.DATABASE_CONNECTION_TIMEOUT_MS,
+      idleTimeoutMs: parsed.DATABASE_IDLE_TIMEOUT_MS,
+      autoMigrate: parsed.DATABASE_AUTO_MIGRATE
+    },
     entra: {
       clientId: parsed.ENTRA_CLIENT_ID,
       clientSecret: parsed.ENTRA_CLIENT_SECRET,

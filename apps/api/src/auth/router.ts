@@ -1,19 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import type { AppConfig } from "../config.js";
+import type { UserRepository } from "../users/user-repository.js";
 import type { AuthTransaction, MicrosoftAuthClient } from "./types.js";
 import {
   assertIdentityIsAllowed,
   createAuthTransaction,
   isAuthTransactionFresh,
   isSafeEqual,
-  resolveAppRole,
-  toAuthenticatedUser
+  resolveAppRole
 } from "./security.js";
 
 export interface AuthRouterDependencies {
   config: AppConfig;
   microsoftAuthClient: MicrosoftAuthClient;
+  userRepository: UserRepository;
 }
 
 function saveSession(request: Request): Promise<void> {
@@ -75,7 +76,8 @@ function takeAuthTransaction(request: Request, state: unknown): AuthTransaction 
 
 export function createAuthRouter({
   config,
-  microsoftAuthClient
+  microsoftAuthClient,
+  userRepository
 }: AuthRouterDependencies): Router {
   const router = Router();
 
@@ -123,7 +125,7 @@ export function createAuthRouter({
       );
       assertIdentityIsAllowed(identity, transaction, config);
       const role = resolveAppRole(identity.roles, config.authDefaultRole);
-      const user = toAuthenticatedUser(identity, role);
+      const user = await userRepository.upsertMicrosoftUser(identity, role);
 
       await regenerateSession(request);
       request.session.user = user;

@@ -5,10 +5,12 @@ import express, {
   type RequestHandler
 } from "express";
 import session from "express-session";
+import type { Store } from "express-session";
 import helmet from "helmet";
 import type { AppConfig } from "./config.js";
 import { createAuthRouter } from "./auth/router.js";
 import type { MicrosoftAuthClient } from "./auth/types.js";
+import type { UserRepository } from "./users/user-repository.js";
 import {
   requireAuthentication,
   requireRole
@@ -17,11 +19,18 @@ import {
 export interface CreateAppDependencies {
   config: AppConfig;
   microsoftAuthClient: MicrosoftAuthClient;
+  userRepository: UserRepository;
+  sessionStore?: Store;
 }
 
 const webDistPath = fileURLToPath(new URL("../../web/dist/", import.meta.url));
 
-export function createApp({ config, microsoftAuthClient }: CreateAppDependencies) {
+export function createApp({
+  config,
+  microsoftAuthClient,
+  userRepository,
+  sessionStore
+}: CreateAppDependencies) {
   const app = express();
 
   app.disable("x-powered-by");
@@ -45,6 +54,7 @@ export function createApp({ config, microsoftAuthClient }: CreateAppDependencies
 
   app.use(
     session({
+      ...(sessionStore ? { store: sessionStore } : {}),
       name: "edupath.sid",
       secret: config.session.secret,
       resave: false,
@@ -66,7 +76,7 @@ export function createApp({ config, microsoftAuthClient }: CreateAppDependencies
 
   app.use(
     "/api/auth",
-    createAuthRouter({ config, microsoftAuthClient })
+    createAuthRouter({ config, microsoftAuthClient, userRepository })
   );
 
   app.get(

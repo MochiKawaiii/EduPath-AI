@@ -17,6 +17,12 @@ services:
         generateValue: true
       - key: SESSION_MAX_AGE_MS
         value: "28800000"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_POOL_MAX
+        value: "5"
+      - key: DATABASE_AUTO_MIGRATE
+        value: "true"
       - key: ENTRA_CLIENT_ID
         sync: false
       - key: ENTRA_CLIENT_SECRET
