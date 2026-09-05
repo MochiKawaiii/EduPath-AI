@@ -8,6 +8,9 @@ export type DatabasePool = InstanceType<typeof Pool>;
 export function createDatabasePool(
   config: AppConfig["database"]
 ): DatabasePool {
+  if (!config.url) {
+    throw new Error("DATABASE_URL is required for PostgreSQL operations");
+  }
   const pool = new Pool({
     connectionString: config.url,
     max: config.maxConnections,

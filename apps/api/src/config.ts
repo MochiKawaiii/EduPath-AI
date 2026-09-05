@@ -22,7 +22,10 @@ const environmentSchema = z.object({
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must contain at least 32 characters"),
   SESSION_MAX_AGE_MS: z.coerce.number().int().positive().default(28_800_000),
   TRUST_PROXY: booleanFromString.default(false),
-  DATABASE_URL: postgresUrl,
+  DATABASE_URL: z.preprocess(
+    (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
+    postgresUrl.optional()
+  ),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
   DATABASE_CONNECTION_TIMEOUT_MS: z.coerce
     .number()
@@ -57,7 +60,7 @@ export interface AppConfig {
   };
   trustProxy: boolean;
   database: {
-    url: string;
+    url: string | undefined;
     maxConnections: number;
     connectionTimeoutMs: number;
     idleTimeoutMs: number;

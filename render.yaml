@@ -17,8 +17,7 @@ services:
         generateValue: true
       - key: SESSION_MAX_AGE_MS
         value: "28800000"
-      - key: DATABASE_URL
-        sync: false
+      # Optional: add DATABASE_URL later to enable PostgreSQL persistence.
       - key: DATABASE_POOL_MAX
         value: "5"
       - key: DATABASE_AUTO_MIGRATE

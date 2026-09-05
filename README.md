@@ -24,7 +24,23 @@ Microsoft vẫn cần backend và cấu hình môi trường đầy đủ. Các 
 lộ trình và nghề nghiệp trên trang tổng quan là minh họa mục tiêu phát triển,
 không phải kết quả AI hoặc dữ liệu sinh viên thực tế.
 
-## Kiến trúc đăng nhập
+## Chạy giao diện và đăng nhập trước, chưa cần database
+
+Để `DATABASE_URL` trống hoặc không khai báo. Server bỏ qua kết nối/migration
+PostgreSQL, lưu tạm người dùng và session trong bộ nhớ. Trang tổng quan và đăng
+nhập Microsoft vẫn hoạt động với cấu hình Entra hiện có; giới hạn tenant và phân
+quyền vẫn được kiểm tra. Chế độ này chỉ dành cho bản demo một instance: dữ liệu
+và phiên đăng nhập mất khi server khởi động lại, không đồng bộ sang PostgreSQL.
+
+Trên Render đã có Web Service, deploy commit mới; nếu trước đó đã điền URL mẫu
+hoặc URL local vào `DATABASE_URL`, xóa biến đó để chạy demo. `render.yaml` không
+yêu cầu tạo PostgreSQL. Các biến Entra và `SESSION_SECRET` vẫn cần thiết.
+
+Khi sẵn sàng dùng database, thêm `DATABASE_URL` hợp lệ rồi khởi động/deploy lại.
+Server sẽ chạy migration và chuyển sang lưu PostgreSQL. Nếu đã khai báo URL mà
+kết nối thất bại, server báo lỗi, không tự chuyển sang bộ nhớ tạm.
+
+## Kiến trúc đăng nhập (khi bật PostgreSQL)
 
 ```text
 React → Node.js BFF → Microsoft Entra ID
@@ -93,7 +109,8 @@ Yêu cầu Node.js 22 trở lên.
    npm run setup:demo-env
    ```
 
-3. Mở `apps/api/.env` và điền chuỗi kết nối PostgreSQL:
+3. Khi cần lưu dữ liệu lâu dài, mở `apps/api/.env` và điền chuỗi kết nối PostgreSQL
+   (bỏ qua bước này, để `DATABASE_URL` trống nếu chỉ demo giao diện/đăng nhập):
 
    ```dotenv
    DATABASE_URL=postgresql://edupath_codex:<MAT_KHAU>@localhost:5432/edupath_ai
@@ -110,7 +127,8 @@ Yêu cầu Node.js 22 trở lên.
 
    Đồng thời thay `SESSION_SECRET` bằng chuỗi ngẫu nhiên dài tối thiểu 32 ký tự.
 
-5. Migration được chạy tự động khi API khởi động. Có thể chạy riêng để kiểm tra:
+5. Khi đã cấu hình `DATABASE_URL`, migration được chạy tự động khi API khởi động.
+   Có thể chạy riêng để kiểm tra (không dùng lệnh này trong chế độ demo bộ nhớ):
 
    ```powershell
    npm run db:migrate --workspace @edupath/api
@@ -144,9 +162,9 @@ nhập vẫn là HttpOnly, SameSite=Lax.
 
 ### Cách khuyến nghị: Render Blueprint
 
-> `render.yaml` hiện chỉ tạo Web Service và khai báo biến `DATABASE_URL`; file
-> này **không tự tạo PostgreSQL**. Cần tạo database trên Render trước khi tạo
-> Blueprint.
+> `render.yaml` chỉ tạo Web Service. PostgreSQL là tùy chọn; bản demo giao diện
+> và đăng nhập không cần `DATABASE_URL`. Nếu muốn lưu lâu dài, thực hiện bước 1–2;
+> nếu chưa cần database, bắt đầu từ bước 3.
 
 1. Trong Render Dashboard, chọn **New > PostgreSQL**, chọn region phù hợp rồi
    tạo database. Nên đặt PostgreSQL và Web Service trong cùng region để dùng kết
@@ -164,7 +182,8 @@ nhập vẫn là HttpOnly, SameSite=Lax.
    | `ENTRA_CLIENT_ID` | **Application (client) ID** trong App Registration |
    | `ENTRA_CLIENT_SECRET` | Cột **Value** của Client Secret, không phải Secret ID |
    | `ENTRA_TENANT_ID` | **Directory (tenant) ID** của tenant đang sở hữu App Registration |
-   | `DATABASE_URL` | **Internal Database URL** của PostgreSQL trên Render |
+   Sau khi tạo dịch vụ, chỉ thêm `DATABASE_URL` trong Environment nếu muốn bật
+   PostgreSQL, với giá trị **Internal Database URL** từ bước 2.
 
    `SESSION_SECRET` được Render tự tạo. Tenant chính thức của
    `vlu.edu.vn` đã được khai báo trong allowlist bằng tenant ID công khai

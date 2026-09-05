@@ -13,6 +13,12 @@ const baseEnvironment: NodeJS.ProcessEnv = {
 };
 
 describe("loadConfig", () => {
+  it.each([undefined, "", "   "])("allows a preview without DATABASE_URL (%s)", (url) => {
+    const config = loadConfig({ ...baseEnvironment, DATABASE_URL: url });
+    expect(config.database.url).toBeUndefined();
+    expect(config.entra.allowAnyTenant).toBe(false);
+    expect(config.session.secure).toBe(true);
+  });
   it("derives production URLs from the Render hostname", () => {
     const config = loadConfig({
       ...baseEnvironment,

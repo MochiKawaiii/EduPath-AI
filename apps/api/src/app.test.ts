@@ -11,6 +11,7 @@ import type {
   MicrosoftIdentity
 } from "./auth/types.js";
 import type { UserRepository } from "./users/user-repository.js";
+import { MemoryUserRepository } from "./users/memory-user-repository.js";
 
 const clientId = "11111111-1111-4111-8111-111111111111";
 const tenantId = "22222222-2222-4222-8222-222222222222";
@@ -137,6 +138,24 @@ async function login(
 }
 
 describe("Microsoft authentication routes", () => {
+  it("supports login, repeated login and logout without PostgreSQL", async () => {
+    const authClient = new FakeMicrosoftAuthClient();
+    const agent = request.agent(createApp({
+      config: { ...config, database: { ...config.database, url: undefined } },
+      microsoftAuthClient: authClient,
+      userRepository: new MemoryUserRepository()
+    }));
+    await login(agent, authClient);
+    const first = await agent.get("/api/auth/me").expect(200);
+    expect(first.body.authenticated).toBe(true);
+    await agent.get("/api/admin/summary").expect(403);
+    await login(agent, authClient);
+    const second = await agent.get("/api/auth/me").expect(200);
+    expect(second.body.user.userId).toBe(first.body.user.userId);
+    await agent.post("/api/auth/logout").expect(200);
+    const signedOut = await agent.get("/api/auth/me").expect(200);
+    expect(signedOut.body.authenticated).toBe(false);
+  });
   it("creates PKCE state and a secure local session cookie before redirecting", async () => {
     const authClient = new FakeMicrosoftAuthClient();
     const agent = request.agent(createTestApp(authClient));

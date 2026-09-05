@@ -6,26 +6,30 @@ import { runDatabaseMigrations } from "./db/migrate.js";
 import { createDatabasePool } from "./db/pool.js";
 import { createPostgresSessionStore } from "./session/postgres-session-store.js";
 import { PostgresUserRepository } from "./users/postgres-user-repository.js";
+import { MemoryUserRepository } from "./users/memory-user-repository.js";
 
 async function startServer(): Promise<void> {
   const config = loadConfig();
-  const databasePool = createDatabasePool(config.database);
+  const databasePool = config.database.url ? createDatabasePool(config.database) : undefined;
 
   try {
-    if (config.database.autoMigrate) {
+    if (databasePool && config.database.autoMigrate) {
       await runDatabaseMigrations(databasePool);
-    } else {
+    } else if (databasePool) {
       await databasePool.query("SELECT 1");
+    } else {
+      console.log("[STORAGE] Preview mode: users and sessions are temporary (no DATABASE_URL)");
     }
 
     const microsoftAuthClient = new MsalMicrosoftAuthClient(config);
-    const userRepository = new PostgresUserRepository(databasePool);
-    const sessionStore = createPostgresSessionStore(databasePool);
+    const userRepository = databasePool
+      ? new PostgresUserRepository(databasePool)
+      : new MemoryUserRepository();
     const app = createApp({
       config,
       microsoftAuthClient,
       userRepository,
-      sessionStore
+      ...(databasePool ? { sessionStore: createPostgresSessionStore(databasePool) } : {})
     });
 
     const server = app.listen(config.port, () => {
@@ -35,14 +39,14 @@ async function startServer(): Promise<void> {
     const shutdown = (signal: string) => {
       console.log(`[SERVER] Received ${signal}; shutting down`);
       server.close(() => {
-        void databasePool.end().finally(() => process.exit(0));
+        void (databasePool?.end() ?? Promise.resolve()).finally(() => process.exit(0));
       });
     };
 
     process.once("SIGINT", () => shutdown("SIGINT"));
     process.once("SIGTERM", () => shutdown("SIGTERM"));
   } catch (error) {
-    await databasePool.end().catch(() => undefined);
+    await databasePool?.end().catch(() => undefined);
     throw error;
   }
 }
