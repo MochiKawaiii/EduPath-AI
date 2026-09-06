@@ -126,6 +126,7 @@ function LoginPage({ error }: { error: string | null }) {
         </a>
 
         <nav className="login-navigation" aria-label="Điều hướng trang đăng nhập">
+          <a href="/">Trang chủ</a>
           {loginLinks.map((link) => (
             <a
               key={link.targetId}

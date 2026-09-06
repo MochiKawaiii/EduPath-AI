@@ -303,6 +303,9 @@ export default function LandingPage() {
             id="landing-navigation"
             aria-label="Điều hướng trang tổng quan"
           >
+            <a href="/" aria-current="page" onClick={() => setMenuOpen(false)}>
+              Trang chủ
+            </a>
             {navigation.map((item) => (
               <a key={item.id} href={`#${item.id}`} onClick={() => setMenuOpen(false)}>
                 {item.label}
@@ -406,7 +409,7 @@ export default function LandingPage() {
                   </span>
                 </div>
               </div>
-              <span className="lp-visual-caption">Hình minh họa ý tưởng EduPath AI</span>
+              <span className="lp-visual-caption"></span>
             </div>
           </div>
         </section>
@@ -700,7 +703,7 @@ export default function LandingPage() {
             </nav>
             <div className="lp-footer-university">
               <h2>Trường Đại học Văn Lang</h2>
-              <p>Đồ án tốt nghiệp · Công nghệ Thông tin</p>
+              <p>Khoa Công nghệ Thông tin</p>
               <a href="https://www.vlu.edu.vn/" target="_blank" rel="noreferrer">
                 Website trường <span aria-hidden="true">↗</span>
                 <span className="sr-only"> (mở trong tab mới)</span>
