@@ -7,6 +7,10 @@ import type { UserRepository } from "./user-repository.js";
 export class MemoryUserRepository implements UserRepository {
   private readonly users = new Map<string, AuthenticatedUser>();
 
+  public async getRoleOverride(_identity: MicrosoftIdentity): Promise<AppRole | null> {
+    return null;
+  }
+
   public async upsertMicrosoftUser(identity: MicrosoftIdentity, role: AppRole) {
     const key = `${identity.tenantId}:${identity.objectId}`;
     const previous = this.users.get(key);

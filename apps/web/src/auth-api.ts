@@ -21,8 +21,8 @@ export function beginMicrosoftLogin(returnTo = "/dashboard"): void {
   window.location.assign(target.toString());
 }
 
-export async function logout(): Promise<void> {
-  const response = await fetch("/api/auth/logout", {
+export async function logout(portal?: "admin"): Promise<void> {
+  const response = await fetch(portal === "admin" ? "/api/auth/logout?portal=admin" : "/api/auth/logout", {
     method: "POST",
     credentials: "include",
     headers: { Accept: "application/json" }
@@ -30,4 +30,3 @@ export async function logout(): Promise<void> {
   const data = await parseJson<{ logoutUrl: string }>(response);
   window.location.assign(data.logoutUrl);
 }
-

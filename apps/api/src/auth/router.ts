@@ -3,6 +3,8 @@ import { Router, type Request, type Response } from "express";
 import type { AppConfig } from "../config.js";
 import type { UserRepository } from "../users/user-repository.js";
 import type { AuthTransaction, MicrosoftAuthClient } from "./types.js";
+import type { MicrosoftIdentity } from "./types.js";
+import type { AuthActivity } from "./activity.js";
 import {
   assertIdentityIsAllowed,
   createAuthTransaction,
@@ -12,6 +14,7 @@ import {
 } from "./security.js";
 
 export interface AuthRouterDependencies {
+  authActivity?: AuthActivity;
   config: AppConfig;
   microsoftAuthClient: MicrosoftAuthClient;
   userRepository: UserRepository;
@@ -39,8 +42,8 @@ function frontendUrl(config: AppConfig, path: string): string {
   return new URL(path, `${config.webOrigin}/`).toString();
 }
 
-function authErrorRedirect(config: AppConfig, code: string): string {
-  const url = new URL("/login", `${config.webOrigin}/`);
+function authErrorRedirect(config: AppConfig, code: string, returnTo?: string): string {
+  const url = new URL(returnTo === "/quantri" ? "/quantri" : "/login", `${config.webOrigin}/`);
   url.searchParams.set("authError", code);
   return url.toString();
 }
@@ -77,7 +80,8 @@ function takeAuthTransaction(request: Request, state: unknown): AuthTransaction 
 export function createAuthRouter({
   config,
   microsoftAuthClient,
-  userRepository
+  userRepository,
+  authActivity
 }: AuthRouterDependencies): Router {
   const router = Router();
 
@@ -96,7 +100,7 @@ export function createAuthRouter({
     const microsoftError = request.query.error;
     if (typeof microsoftError === "string") {
       await saveSession(request);
-      response.redirect(authErrorRedirect(config, "microsoft_denied"));
+      response.redirect(authErrorRedirect(config, "microsoft_denied", transaction?.returnTo));
       return;
     }
 
@@ -106,17 +110,19 @@ export function createAuthRouter({
       !isSafeEqual(request.query.state, transaction.state)
     ) {
       await saveSession(request);
-      response.redirect(authErrorRedirect(config, "invalid_state"));
+      response.redirect(authErrorRedirect(config, "invalid_state", transaction?.returnTo));
       return;
     }
 
     const code = request.query.code;
     if (typeof code !== "string" || code.length === 0) {
       await saveSession(request);
-      response.redirect(authErrorRedirect(config, "missing_code"));
+      response.redirect(authErrorRedirect(config, "missing_code", transaction.returnTo));
       return;
     }
 
+    let verifiedIdentity: MicrosoftIdentity | undefined;
+    const portal = transaction.returnTo === "/quantri" ? "admin" : "student";
     try {
       const identity = await microsoftAuthClient.exchangeAuthorizationCode(
         code,
@@ -124,18 +130,38 @@ export function createAuthRouter({
         transaction.nonce
       );
       assertIdentityIsAllowed(identity, transaction, config);
-      const role = resolveAppRole(identity.roles, config.authDefaultRole);
+      verifiedIdentity = identity;
+      const roleOverride = await userRepository.getRoleOverride(identity);
+      const role = roleOverride ?? resolveAppRole(identity.roles, config.authDefaultRole);
+      if (transaction.returnTo === "/quantri" && role !== "admin") {
+        await authActivity?.record(identity, "denied", "admin_required", portal);
+        await saveSession(request);
+        response.redirect(authErrorRedirect(config, "admin_required", transaction.returnTo));
+        return;
+      }
       const user = await userRepository.upsertMicrosoftUser(identity, role);
+      // Check the persisted role too, in case an override changed during sign-in.
+      if (transaction.returnTo === "/quantri" && user.role !== "admin") {
+        await authActivity?.record(identity, "denied", "admin_required", portal);
+        await saveSession(request);
+        response.redirect(authErrorRedirect(config, "admin_required", transaction.returnTo));
+        return;
+      }
 
       await regenerateSession(request);
       request.session.user = user;
       await saveSession(request);
 
-      response.redirect(callbackRedirect(config, transaction.returnTo));
+      await authActivity?.record(identity, "success", "signed_in", portal);
+      response.redirect(transaction.returnTo === "/quantri"
+        ? frontendUrl(config, "/quantri")
+        : callbackRedirect(config, transaction.returnTo));
     } catch (error) {
+      await destroySession(request);
+      if (verifiedIdentity) await authActivity?.record(verifiedIdentity, "denied", "callback_failed", portal).catch(() => undefined);
       const errorName = error instanceof Error ? error.name : "UnknownAuthError";
       console.error(`[AUTH:${correlationId}] Microsoft callback failed (${errorName})`);
-      response.redirect(authErrorRedirect(config, "callback_failed"));
+      response.redirect(authErrorRedirect(config, "callback_failed", transaction.returnTo));
     }
   });
 
@@ -158,7 +184,10 @@ export function createAuthRouter({
     }
 
     const tenantId = request.session.user?.tenantId;
-    const logoutUrl = microsoftAuthClient.getLogoutUrl(tenantId);
+    // Only fixed local destinations are accepted; this is not a role grant.
+    const returnPath = request.query.portal === "admin" || request.session.user?.role === "admin"
+      ? "/quantri" : "/login";
+    const logoutUrl = microsoftAuthClient.getLogoutUrl(tenantId, returnPath);
     await destroySession(request);
     response.clearCookie("edupath.sid", {
       httpOnly: true,

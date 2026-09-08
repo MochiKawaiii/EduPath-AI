@@ -24,6 +24,7 @@ export interface MicrosoftIdentity {
 }
 
 export interface AuthenticatedUser {
+  authVersion?: number;
   userId: string;
   identityKey: string;
   tenantId: string;
@@ -42,5 +43,5 @@ export interface MicrosoftAuthClient {
     codeVerifier: string,
     nonce: string
   ): Promise<MicrosoftIdentity>;
-  getLogoutUrl(tenantId?: string): string;
+  getLogoutUrl(tenantId?: string, returnPath?: "/login" | "/quantri"): string;
 }

@@ -4,6 +4,7 @@ import type { DatabasePool } from "../db/pool.js";
 import type { UserRepository } from "./user-repository.js";
 
 interface UserRow {
+  authVersion: number;
   id: string;
   tenantId: string;
   objectId: string;
@@ -16,6 +17,18 @@ interface UserRow {
 
 export class PostgresUserRepository implements UserRepository {
   public constructor(private readonly pool: DatabasePool) {}
+
+  public async getRoleOverride(identity: MicrosoftIdentity): Promise<AppRole | null> {
+    const result = await this.pool.query<{ roleOverride: AppRole | null; isActive: boolean }>(
+      `SELECT role_override AS "roleOverride", is_active AS "isActive"
+       FROM users
+       WHERE entra_tenant_id = $1 AND entra_object_id = $2`,
+      [identity.tenantId, identity.objectId]
+    );
+    const user = result.rows[0];
+    if (user && !user.isActive) throw new Error("The EduPath user account is inactive");
+    return user?.roleOverride ?? null;
+  }
 
   public async upsertMicrosoftUser(
     identity: MicrosoftIdentity,
@@ -43,12 +56,12 @@ export class PostgresUserRepository implements UserRepository {
           display_name = EXCLUDED.display_name,
           email = COALESCE(EXCLUDED.email, users.email),
           username = COALESCE(EXCLUDED.username, users.username),
-          role = EXCLUDED.role,
+          role = COALESCE(users.role_override, EXCLUDED.role),
           last_login_at = EXCLUDED.last_login_at,
           updated_at = EXCLUDED.last_login_at
         WHERE users.is_active = TRUE
         RETURNING
-          id,
+          id, auth_version AS "authVersion",
           entra_tenant_id AS "tenantId",
           entra_object_id AS "objectId",
           display_name AS "name",
@@ -76,6 +89,7 @@ export class PostgresUserRepository implements UserRepository {
     }
 
     return {
+      authVersion: user.authVersion,
       userId: user.id,
       identityKey: `${user.tenantId}:${user.objectId}`,
       tenantId: user.tenantId,

@@ -1,8 +1,25 @@
 # EduPath AI
 
 Nền tảng đánh giá năng lực và tư vấn lộ trình học tập cho sinh viên Công nghệ
-Thông tin. Phiên bản hiện tại triển khai chức năng `STU-AUTH-01` — đăng nhập bằng
-tài khoản Microsoft Entra ID.
+Thông tin. Phiên bản hiện tại gồm đăng nhập Microsoft Entra ID, quản lý tài khoản
+quản trị và quản lý hồ sơ sinh viên trên PostgreSQL (Sprint 2).
+
+## Bản đầy đủ trên Render — Sprint 2
+
+- Giữ `DATABASE_URL` của PostgreSQL đã kết nối trong Render Environment; không xóa
+  biến này để chạy bản đầy đủ. Blueprint khai báo biến bí mật với `sync: false`.
+- `DATABASE_AUTO_MIGRATE=true`: API áp dụng migration còn thiếu khi khởi động,
+  bao gồm `003_user_role_override.sql` và `004_account_activity.sql`.
+- `/quantri`: đăng nhập quản trị; `/quantri/tai-khoan`: quản lý tài khoản,
+  phân quyền, khóa/mở và lịch sử đăng nhập; `/quantri/sinh-vien`: danh sách,
+  chi tiết, tìm kiếm và lọc hồ sơ sinh viên.
+- GitHub chứa mã nguồn và migration, không chứa `.env`, mật khẩu hay dữ liệu
+  database. Đẩy mã nguồn không tự sao chép dữ liệu PostgreSQL local lên Render.
+- Chi tiết: [Quản trị](docs/SPRINT_2_ADMIN_AUTH.md) và
+  [Hồ sơ sinh viên](docs/SPRINT_2_STUDENT_PROFILES.md).
+
+Chế độ không database bên dưới chỉ dành cho xem thử giao diện/đăng nhập;
+các chức năng quản lý tài khoản và hồ sơ cần PostgreSQL.
 
 ## Trang tổng quan công khai
 
@@ -58,7 +75,7 @@ React → Node.js BFF → Microsoft Entra ID
   dùng trong PostgreSQL trước khi tạo phiên đăng nhập.
 - Session được lưu trong PostgreSQL để không bị mất khi tiến trình Node.js khởi
   động lại.
-- Role `Admin` chỉ đến từ App Role của Entra. Trong demo, tài khoản không có role
+- Role được ưu tiên từ `users.role_override`, sau đó App Role của Entra. Trong demo, tài khoản không có role
   được mặc định là `Student`; cấu hình này bị chặn khi chạy production mở cho mọi
   tenant.
 
@@ -150,6 +167,7 @@ Yêu cầu Node.js 22 trở lên.
 | `users` | Danh tính Microsoft, vai trò, trạng thái và lần đăng nhập |
 | `student_profiles` | Hồ sơ học tập mở rộng của sinh viên |
 | `user_sessions` | Phiên đăng nhập của `express-session` |
+| `login_events` | Lịch sử đăng nhập EduPath từ khi bật tính năng |
 
 `users` có ràng buộc duy nhất trên `(entra_tenant_id, entra_object_id)`. Email
 không phải khóa định danh vì claim email có thể thiếu hoặc thay đổi.
@@ -162,9 +180,9 @@ nhập vẫn là HttpOnly, SameSite=Lax.
 
 ### Cách khuyến nghị: Render Blueprint
 
-> `render.yaml` chỉ tạo Web Service. PostgreSQL là tùy chọn; bản demo giao diện
-> và đăng nhập không cần `DATABASE_URL`. Nếu muốn lưu lâu dài, thực hiện bước 1–2;
-> nếu chưa cần database, bắt đầu từ bước 3.
+> `render.yaml` cấu hình Web Service kết nối PostgreSQL qua `DATABASE_URL`.
+> Nếu đã có database và Web Service trên Render, giữ cấu hình hiện tại và deploy
+> commit mới; không cần tạo lại dịch vụ hoặc database. Các bước dưới dành cho cài mới.
 
 1. Trong Render Dashboard, chọn **New > PostgreSQL**, chọn region phù hợp rồi
    tạo database. Nên đặt PostgreSQL và Web Service trong cùng region để dùng kết
@@ -182,8 +200,7 @@ nhập vẫn là HttpOnly, SameSite=Lax.
    | `ENTRA_CLIENT_ID` | **Application (client) ID** trong App Registration |
    | `ENTRA_CLIENT_SECRET` | Cột **Value** của Client Secret, không phải Secret ID |
    | `ENTRA_TENANT_ID` | **Directory (tenant) ID** của tenant đang sở hữu App Registration |
-   Sau khi tạo dịch vụ, chỉ thêm `DATABASE_URL` trong Environment nếu muốn bật
-   PostgreSQL, với giá trị **Internal Database URL** từ bước 2.
+   | `DATABASE_URL` | **Internal Database URL** từ bước 2 |
 
    `SESSION_SECRET` được Render tự tạo. Tenant chính thức của
    `vlu.edu.vn` đã được khai báo trong allowlist bằng tenant ID công khai

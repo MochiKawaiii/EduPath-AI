@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { beginMicrosoftLogin, getCurrentUser, logout } from "./auth-api";
 import LandingPage from "./LandingPage";
+import EduPathBrand from "./EduPathBrand";
+import AdminPortal from "./AdminPortal";
 import { resolveAppRoute, safeReturnTo } from "./routing";
 import type { AuthResponse, AuthenticatedUser } from "./types";
 
@@ -23,40 +25,6 @@ function getAuthError(): string | null {
   return code ? (errorMessages[code] ?? "Đăng nhập không thành công.") : null;
 }
 
-function EduPathLogo() {
-  return (
-    <svg
-      className="edupath-symbol"
-      viewBox="0 0 64 64"
-      aria-hidden="true"
-    >
-      <path
-        d="M31.5 5 55 14.2v18.4c0 13.7-8.8 22.1-23.5 27.1C16.8 54.7 8 46.3 8 32.6V14.2L31.5 5Z"
-        fill="#0a397e"
-      />
-      <path
-        d="m31.5 12.2 16.3 6.2v13.3c0 9.5-5.5 15.5-16.3 20-10.8-4.5-16.3-10.5-16.3-20V18.4l16.3-6.2Z"
-        fill="#f7fbff"
-      />
-      <path
-        d="M22 25.5 31.5 30l9.5-4.5v10.7l-9.5 4.6-9.5-4.6V25.5Z"
-        fill="#2c68b4"
-      />
-      <path
-        d="m18.5 23.6 13-6.1 13 6.1-13 6.2-13-6.2Zm22.1 5.1v8.7"
-        fill="none"
-        stroke="#0a397e"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="3.4"
-      />
-      <path
-        d="m50.5 6.2 1.6 3.7 3.8 1.6-3.8 1.6-1.6 3.8-1.6-3.8-3.8-1.6 3.8-1.6 1.6-3.7ZM58 17.8l.9 2.2 2.2.9-2.2.9L58 24l-.9-2.2-2.2-.9 2.2-.9.9-2.2Z"
-        fill="#d5a44a"
-      />
-    </svg>
-  );
-}
 
 function MicrosoftIcon() {
   return (
@@ -116,13 +84,7 @@ function LoginPage({ error }: { error: string | null }) {
           href="/"
           aria-label="EduPath AI - Về trang tổng quan"
         >
-          <EduPathLogo />
-          <span className="brand-wordmark">
-            <strong>
-              EduPath <em>AI</em>
-            </strong>
-            <small>AI đồng hành · Học tập bứt phá</small>
-          </span>
+          <EduPathBrand />
         </a>
 
         <nav className="login-navigation" aria-label="Điều hướng trang đăng nhập">
@@ -154,7 +116,7 @@ function LoginPage({ error }: { error: string | null }) {
             alt="Logo Trường Đại học Văn Lang"
           />
 
-          <p className="login-eyebrow">Cổng học tập thông minh</p>
+          <p className="login-eyebrow"></p>
           <h1 id="login-title">Chào mừng đến với EduPath AI!</h1>
           <section id="tinh-nang" aria-labelledby="feature-title">
             <h2 id="feature-title" className="sr-only">
@@ -273,13 +235,7 @@ function Dashboard({
   return (
     <main className="dashboard-shell">
       <header className="dashboard-header">
-        <div className="dashboard-brand">
-          <EduPathLogo />
-          <div>
-            <strong>EduPath AI</strong>
-            <span>Learning intelligence</span>
-          </div>
-        </div>
+        <EduPathBrand />
         <button className="text-button" type="button" onClick={onLogout}>
           Đăng xuất
         </button>
@@ -340,6 +296,10 @@ function AuthenticatedApp({ isLoginRoute }: { isLoginRoute: boolean }) {
 
   useEffect(() => {
     if (auth?.authenticated) {
+      if (auth.user.role === "admin" || safeReturnTo(window.location.search) === "/quantri") {
+        window.location.replace("/quantri");
+        return;
+      }
       document.title = "EduPath AI – Không gian học tập";
       if (isLoginRoute || window.location.pathname.replace(/\/+$/, "") === "/auth/callback") {
         window.history.replaceState({}, "", safeReturnTo(window.location.search));
@@ -387,5 +347,6 @@ export default function App() {
   // Authentication is requested only when entering login or the dashboard.
   return route === "landing"
     ? <LandingPage />
-    : <AuthenticatedApp isLoginRoute={route === "login"} />;
+    : route === "admin" ? <AdminPortal />
+      : <AuthenticatedApp isLoginRoute={route === "login"} />;
 }

@@ -1,0 +1,12 @@
+.ep-brand { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; color: #123568; text-decoration: none; font-family: "Manrope", "Segoe UI", sans-serif; }
+.ep-brand > img { width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; }
+.ep-brand > .ep-brand-wordmark { font-size: 24px; font-weight: 800; letter-spacing: -.9px; line-height: 1.1; white-space: nowrap; }
+.ep-brand em { color: #bb8d3d; font-style: normal; }
+.ep-brand small { display: block; margin-top: 6px; color: #647084; font-size: 9px; font-weight: 600; letter-spacing: 0; line-height: 1.1; }
+.ep-brand:focus-visible { outline: 3px solid #bb8d3d; outline-offset: 5px; border-radius: 3px; }
+.ep-brand-light { color: #fff; }
+.ep-brand-light small { color: #b7aab2; }
+@media (max-width: 760px) {
+  .ep-brand > img { width: 34px; height: 34px; }
+  .ep-brand > .ep-brand-wordmark { font-size: 21px; }
+}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "./app.js";
 import type { AppConfig } from "./config.js";
@@ -80,8 +80,10 @@ class FakeMicrosoftAuthClient implements MicrosoftAuthClient {
     };
   }
 
-  public getLogoutUrl(id?: string): string {
-    return `https://login.microsoftonline.com/${id ?? "organizations"}/logout`;
+  public getLogoutUrl(id?: string, returnPath: "/login" | "/quantri" = "/login"): string {
+    const url = new URL(`https://login.microsoftonline.com/${id ?? "organizations"}/logout`);
+    url.searchParams.set("post_logout_redirect_uri", new URL(returnPath, config.webOrigin).toString());
+    return url.toString();
   }
 }
 
@@ -89,6 +91,11 @@ class FakeUserRepository implements UserRepository {
   public readonly users = new Map<string, AuthenticatedUser>();
   public upsertCount = 0;
   public shouldFail = false;
+  public roleOverride: AppRole | null = null;
+
+  public async getRoleOverride(_identity: MicrosoftIdentity): Promise<AppRole | null> {
+    return this.roleOverride;
+  }
 
   public async upsertMicrosoftUser(
     identity: MicrosoftIdentity,
@@ -122,11 +129,12 @@ function createTestApp(
 
 async function login(
   agent: ReturnType<typeof request.agent>,
-  authClient: FakeMicrosoftAuthClient
+  authClient: FakeMicrosoftAuthClient,
+  returnTo = "/dashboard"
 ) {
   const start = await agent
     .get("/api/auth/microsoft/start")
-    .query({ returnTo: "/dashboard" })
+    .query({ returnTo })
     .expect(302);
   const state = new URL(start.headers.location).searchParams.get("state");
   expect(state).toBeTruthy();
@@ -138,6 +146,120 @@ async function login(
 }
 
 describe("Microsoft authentication routes", () => {
+  it("records successful sign-in and rejects a subsequently revoked session", async () => {
+    const client = new FakeMicrosoftAuthClient(); client.nextRoles = ["Admin"];
+    const activity = { current: vi.fn().mockResolvedValue(true), record: vi.fn().mockResolvedValue(undefined) };
+    const agent = request.agent(createApp({ config, microsoftAuthClient: client, userRepository: new FakeUserRepository(), authActivity: activity }));
+    await login(agent, client, "/quantri");
+    expect(activity.record).toHaveBeenCalledWith(expect.objectContaining({ tenantId }), "success", "signed_in", "admin");
+    await agent.get("/api/admin/me").expect(200);
+    activity.current.mockResolvedValue(false);
+    await agent.get("/api/admin/summary").expect(401);
+    activity.current.mockResolvedValue(true);
+    await agent.get("/api/admin/me").expect(401);
+  });
+  it("records verified admin denial but never fabricates an identity for invalid state", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    const activity = { current: vi.fn().mockResolvedValue(true), record: vi.fn().mockResolvedValue(undefined) };
+    const agent = request.agent(createApp({ config, microsoftAuthClient: client, userRepository: new FakeUserRepository(), authActivity: activity }));
+    await login(agent, client, "/quantri");
+    expect(activity.record).toHaveBeenCalledWith(expect.objectContaining({ tenantId }), "denied", "admin_required", "admin");
+    activity.record.mockClear();
+    await agent.get("/api/auth/microsoft/callback?state=invalid&code=bad").expect(302);
+    expect(activity.record).not.toHaveBeenCalled();
+  });
+  it("does not leave a usable session if history persistence fails", async () => {
+    const client = new FakeMicrosoftAuthClient(); client.nextRoles = ["Admin"];
+    const activity = { current: vi.fn().mockResolvedValue(true), record: vi.fn().mockRejectedValue(new Error("storage unavailable")) };
+    const agent = request.agent(createApp({ config, microsoftAuthClient: client, userRepository: new FakeUserRepository(), authActivity: activity }));
+    expect((await login(agent, client, "/quantri")).headers.location).toContain("authError=callback_failed");
+    await agent.get("/api/admin/me").expect(401);
+  });
+  it("accepts a database-assigned Admin without a Microsoft Admin claim", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    const repository = new FakeUserRepository();
+    repository.roleOverride = "admin";
+    const agent = request.agent(createTestApp(client, repository));
+    const callback = await login(agent, client, "/quantri");
+    expect(callback.headers.location).toBe(`${config.webOrigin}/quantri`);
+    expect((await agent.get("/api/admin/me").expect(200)).body.user.role).toBe("admin");
+    await agent.post("/api/auth/logout").expect(200);
+    await login(agent, client, "/quantri");
+    await agent.get("/api/admin/me").expect(200);
+  });
+
+  it("honors an explicit Student override even with a Microsoft Admin claim", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    client.nextRoles = ["Admin"];
+    const repository = new FakeUserRepository();
+    repository.roleOverride = "student";
+    const agent = request.agent(createTestApp(client, repository));
+    const callback = await login(agent, client, "/quantri");
+    expect(callback.headers.location).toContain("authError=admin_required");
+    await agent.get("/api/admin/me").expect(401);
+    expect(repository.upsertCount).toBe(0);
+  });
+  it("admits an Admin via /quantri and ends access after logout", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    client.nextRoles = ["Admin"];
+    const agent = request.agent(createTestApp(client));
+    await agent.get("/api/admin/me").expect(401);
+    const callback = await login(agent, client, "/quantri");
+    expect(callback.headers.location).toBe(`${config.webOrigin}/quantri`);
+    const me = await agent.get("/api/admin/me").expect(200);
+    expect(me.body.user.role).toBe("admin");
+    expect(me.headers["cache-control"]).toBe("no-store");
+    const result = await agent.post("/api/auth/logout?portal=admin").expect(200);
+    expect(new URL(result.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/quantri`);
+    await agent.get("/api/admin/me").expect(401);
+    await agent.get("/api/admin/summary").expect(401);
+  });
+
+  it.each(["/quantri", "/quantri/", "/quantri?tab=users", "/quantri/users"])(
+    "refuses Student authentication into %s before saving a user", async (path) => {
+      const client = new FakeMicrosoftAuthClient();
+      const repository = new FakeUserRepository();
+      const agent = request.agent(createTestApp(client, repository));
+      const callback = await login(agent, client, path);
+      expect(callback.headers.location).toBe(`${config.webOrigin}/quantri?authError=admin_required`);
+      expect(repository.upsertCount).toBe(0);
+      await agent.get("/api/admin/me").expect(401);
+      expect((await agent.get("/api/auth/me")).body.authenticated).toBe(false);
+    }
+  );
+
+  it("keeps an existing Student out of admin and permits signing out to the admin login", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    const agent = request.agent(createTestApp(client));
+    await login(agent, client);
+    await agent.get("/api/admin/me").expect(403);
+    const result = await agent.post("/api/auth/logout?portal=admin").expect(200);
+    expect(new URL(result.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/quantri`);
+    await agent.get("/api/admin/me").expect(401);
+  });
+
+  it.each(["denied", "missing_code", "exchange_failure"])("returns admin callback failure %s to the admin login", async (failure) => {
+    const client = new FakeMicrosoftAuthClient();
+    const repository = new FakeUserRepository();
+    client.nextRoles = ["Admin"];
+    repository.shouldFail = failure === "exchange_failure";
+    const agent = request.agent(createTestApp(client, repository));
+    const start = await agent.get("/api/auth/microsoft/start?returnTo=%2Fquantri").expect(302);
+    const state = new URL(start.headers.location).searchParams.get("state");
+    const query = failure === "denied" ? { state, error: "access_denied" }
+      : failure === "missing_code" ? { state } : { state, code: "code" };
+    const callback = await agent.get("/api/auth/microsoft/callback").query(query).expect(302);
+    expect(callback.headers.location).toMatch(/\/quantri\?authError=/);
+    await agent.get("/api/admin/me").expect(401);
+  });
+
+  it("ignores external logout destinations for Student sessions", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    const agent = request.agent(createTestApp(client));
+    await login(agent, client);
+    const result = await agent.post("/api/auth/logout?portal=https://evil.example&returnTo=https://evil.example").expect(200);
+    expect(new URL(result.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/login`);
+  });
   it("supports login, repeated login and logout without PostgreSQL", async () => {
     const authClient = new FakeMicrosoftAuthClient();
     const agent = request.agent(createApp({

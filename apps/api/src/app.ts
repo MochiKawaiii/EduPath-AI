@@ -11,16 +11,22 @@ import type { AppConfig } from "./config.js";
 import { createAuthRouter } from "./auth/router.js";
 import type { MicrosoftAuthClient } from "./auth/types.js";
 import type { UserRepository } from "./users/user-repository.js";
+import type { AuthActivity } from "./auth/activity.js";
+import { createStudentProfilesRouter, type StudentProfileRepository } from "./admin/student-profiles.js";
+import { createAdminAccountsRouter, type AdminAccountRepository } from "./admin/accounts.js";
 import {
   requireAuthentication,
   requireRole
 } from "./middleware/authorization.js";
 
 export interface CreateAppDependencies {
+  studentProfileRepository?: StudentProfileRepository;
+  authActivity?: AuthActivity;
   config: AppConfig;
   microsoftAuthClient: MicrosoftAuthClient;
   userRepository: UserRepository;
   sessionStore?: Store;
+  adminAccountRepository?: AdminAccountRepository;
 }
 
 const webDistPath = fileURLToPath(new URL("../../web/dist/", import.meta.url));
@@ -29,7 +35,10 @@ export function createApp({
   config,
   microsoftAuthClient,
   userRepository,
-  sessionStore
+  sessionStore,
+  adminAccountRepository,
+  authActivity,
+  studentProfileRepository
 }: CreateAppDependencies) {
   const app = express();
 
@@ -52,6 +61,11 @@ export function createApp({
   };
   app.use(correlationId);
 
+  app.use(["/api/auth", "/api/admin"], (_request, response, next) => {
+    response.setHeader("Cache-Control", "no-store");
+    next();
+  });
+
   app.use(
     session({
       ...(sessionStore ? { store: sessionStore } : {}),
@@ -70,13 +84,24 @@ export function createApp({
     })
   );
 
+  app.use("/api", async (request, response, next) => {
+    const user = request.session.user;
+    if (authActivity && user && !await authActivity.current(user)) {
+      await new Promise<void>((resolve, reject) => request.session.destroy((err) => err ? reject(err) : resolve()));
+      response.clearCookie("edupath.sid", { path: "/", httpOnly: true, secure: config.session.secure, sameSite: "lax" });
+      response.status(401).json({ error: "authentication_required" });
+      return;
+    }
+    next();
+  });
+
   app.get("/api/health", (_request, response) => {
     response.json({ status: "ok", service: "edupath-api" });
   });
 
   app.use(
     "/api/auth",
-    createAuthRouter({ config, microsoftAuthClient, userRepository })
+    createAuthRouter({ config, microsoftAuthClient, userRepository, ...(authActivity ? { authActivity } : {}) })
   );
 
   app.get(
@@ -96,6 +121,13 @@ export function createApp({
       role: request.session.user?.role
     });
   });
+
+  app.get("/api/admin/me", requireRole("admin"), (request, response) => {
+    response.json({ authenticated: true, user: request.session.user });
+  });
+
+  app.use("/api/admin/accounts", createAdminAccountsRouter(adminAccountRepository, config.webOrigin));
+  app.use("/api/admin/students", createStudentProfilesRouter(studentProfileRepository, adminAccountRepository));
 
   if (config.nodeEnv === "production") {
     app.use(

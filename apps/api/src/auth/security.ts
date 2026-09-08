@@ -18,6 +18,7 @@ export function normalizeReturnTo(value: unknown): string {
   try {
     const parsed = new URL(value, "https://edupath.local");
     if (parsed.origin !== "https://edupath.local") return "/dashboard";
+    if (parsed.pathname === "/quantri" || parsed.pathname.startsWith("/quantri/")) return "/quantri";
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return "/dashboard";

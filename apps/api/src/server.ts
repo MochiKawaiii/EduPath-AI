@@ -7,6 +7,9 @@ import { createDatabasePool } from "./db/pool.js";
 import { createPostgresSessionStore } from "./session/postgres-session-store.js";
 import { PostgresUserRepository } from "./users/postgres-user-repository.js";
 import { MemoryUserRepository } from "./users/memory-user-repository.js";
+import { PostgresAdminAccountRepository } from "./admin/accounts.js";
+import { PostgresAuthActivity } from "./auth/activity.js";
+import { PostgresStudentProfileRepository } from "./admin/student-profiles.js";
 
 async function startServer(): Promise<void> {
   const config = loadConfig();
@@ -29,7 +32,12 @@ async function startServer(): Promise<void> {
       config,
       microsoftAuthClient,
       userRepository,
-      ...(databasePool ? { sessionStore: createPostgresSessionStore(databasePool) } : {})
+      ...(databasePool ? {
+        sessionStore: createPostgresSessionStore(databasePool),
+        authActivity: new PostgresAuthActivity(databasePool),
+        studentProfileRepository: new PostgresStudentProfileRepository(databasePool),
+        adminAccountRepository: new PostgresAdminAccountRepository(databasePool)
+      } : {})
     });
 
     const server = app.listen(config.port, () => {

@@ -1,7 +1,8 @@
-export type AppRoute = "landing" | "login" | "authenticated";
+export type AppRoute = "landing" | "login" | "authenticated" | "admin";
 
 export function resolveAppRoute(pathname: string, search: string): AppRoute {
   const path = pathname.replace(/\/+$/, "") || "/";
+  if (path === "/quantri" || path.startsWith("/quantri/")) return "admin";
   if (path === "/") {
     // Older deployments sent authentication failures to the home page.
     return new URLSearchParams(search).has("authError") ? "login" : "landing";
@@ -24,9 +25,9 @@ export function safeReturnTo(search: string): string {
   try {
     const base = "https://edupath.local";
     const target = new URL(value, base);
-    // Only the dashboard is an authenticated destination at this stage.
+    // Only known application destinations are allowed.
     // Returning to /login or /auth/callback would create a redirect loop.
-    if (target.origin !== base || target.pathname !== "/dashboard") {
+    if (target.origin !== base || !["/dashboard", "/quantri"].includes(target.pathname)) {
       return fallback;
     }
     return `${target.pathname}${target.search}${target.hash}`;

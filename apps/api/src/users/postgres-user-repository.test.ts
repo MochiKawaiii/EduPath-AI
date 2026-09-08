@@ -19,6 +19,25 @@ const identity: MicrosoftIdentity = {
 };
 
 describe("PostgresUserRepository", () => {
+  it.each(["admin", "student", null] as const)("reads override %s by immutable Microsoft identity", async (roleOverride) => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ roleOverride, isActive: true }] });
+    const repository = new PostgresUserRepository({ query } as unknown as DatabasePool);
+    expect(await repository.getRoleOverride(identity)).toBe(roleOverride);
+    expect(query.mock.calls[0]?.[1]).toEqual([identity.tenantId, identity.objectId]);
+    expect(query.mock.calls[0]?.[0]).not.toContain("email =");
+  });
+
+  it("does not grant a stored override to an inactive user", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ roleOverride: "admin", isActive: false }] });
+    const repository = new PostgresUserRepository({ query } as unknown as DatabasePool);
+    await expect(repository.getRoleOverride(identity)).rejects.toThrow("account is inactive");
+  });
+
+  it("returns no override for a new identity", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const repository = new PostgresUserRepository({ query } as unknown as DatabasePool);
+    expect(await repository.getRoleOverride(identity)).toBeNull();
+  });
   it("uses a parameterized tenant/object upsert and maps the persisted user", async () => {
     const loginAt = new Date("2026-09-03T14:00:00.000Z");
     const query = vi.fn().mockResolvedValue({
@@ -43,6 +62,7 @@ describe("PostgresUserRepository", () => {
     const [sql, values] = query.mock.calls[0] as [string, unknown[]];
     expect(sql).toContain("ON CONFLICT (entra_tenant_id, entra_object_id)");
     expect(sql).toContain("WHERE users.is_active = TRUE");
+    expect(sql).toContain("role = COALESCE(users.role_override, EXCLUDED.role)");
     expect(values[0]).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     );

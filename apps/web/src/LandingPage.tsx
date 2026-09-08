@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 import "./landing.css";
+import EduPathBrand from "./EduPathBrand";
 
 type IconName =
   | "arrow"
@@ -116,19 +117,7 @@ const features = [
 ];
 
 function Brand({ light = false }: { light?: boolean }) {
-  return (
-    <a
-      className={`lp-brand${light ? " lp-brand-light" : ""}`}
-      href="/"
-      aria-label="EduPath AI — Trang chủ"
-    >
-      <img src="/favicon.svg" width="42" height="42" alt="" />
-      <span>
-        EduPath <em>AI</em>
-        <small>AI đồng hành · Học tập bứt phá</small>
-      </span>
-    </a>
-  );
+  return <EduPathBrand href="/" light={light} />;
 }
 
 function FeaturePreview({ selected, active }: { selected: number; active: boolean }) {

@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { resolveAppRoute, safeReturnTo } from "./routing";
 
 describe("public and authenticated routes", () => {
+  it("routes the admin portal independently from student login", () => {
+    expect(resolveAppRoute("/quantri", "")).toBe("admin");
+    expect(resolveAppRoute("/quantri/", "?authError=admin_required")).toBe("admin");
+    expect(resolveAppRoute("/quantri/users", "")).toBe("admin");
+    expect(resolveAppRoute("/quantrifake", "")).toBe("authenticated");
+    expect(safeReturnTo("?returnTo=%2Fquantri")).toBe("/quantri");
+  });
   it("opens the public overview without an authentication decision", () => {
     expect(resolveAppRoute("/", "")).toBe("landing");
     expect(resolveAppRoute("/", "?utm_source=vlu")).toBe("landing");

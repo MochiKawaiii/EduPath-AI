@@ -112,14 +112,14 @@ export class MsalMicrosoftAuthClient implements MicrosoftAuthClient {
     return identityFromResult(result);
   }
 
-  public getLogoutUrl(tenantId?: string): string {
+  public getLogoutUrl(tenantId?: string, returnPath: "/login" | "/quantri" = "/login"): string {
     const tenant = tenantId ?? "organizations";
     const url = new URL(
       `https://login.microsoftonline.com/${encodeURIComponent(tenant)}/oauth2/v2.0/logout`
     );
     url.searchParams.set(
       "post_logout_redirect_uri",
-      this.config.entra.postLogoutRedirectUri
+      new URL(returnPath, this.config.entra.postLogoutRedirectUri).toString()
     );
     return url.toString();
   }

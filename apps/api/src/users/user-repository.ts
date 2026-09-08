@@ -5,6 +5,7 @@ import type {
 } from "../auth/types.js";
 
 export interface UserRepository {
+  getRoleOverride(identity: MicrosoftIdentity): Promise<AppRole | null>;
   upsertMicrosoftUser(
     identity: MicrosoftIdentity,
     role: AppRole
