@@ -15,9 +15,9 @@ const errorMessages: Record<string, string> = {
 };
 
 const loginLinks = [
-  { targetId: "gioi-thieu", label: "Giới thiệu" },
-  { targetId: "tinh-nang", label: "Tính năng" },
-  { targetId: "huong-dan", label: "Hướng dẫn" }
+  { targetId: "/gioi-thieu", label: "Giới thiệu" },
+  { targetId: "/tinh-nang", label: "Tính năng" },
+  { targetId: "/huong-dan", label: "Hướng dẫn" }
 ];
 
 function getAuthError(): string | null {
@@ -173,7 +173,7 @@ function LoginPage({ error }: { error: string | null }) {
               Hệ thống đánh giá năng lực và tư vấn lộ trình học tập dành cho sinh viên
               Công nghệ Thông tin.
             </p>
-            <small>© 2026 EduPath AI. All rights reserved.</small>
+            <small>© 2026 · Bản Quyền Thuộc Khoa Công nghệ Thông tin · Trường Đại Học Văn Lang.</small>
           </section>
 
           <nav className="footer-column footer-links" aria-label="Liên kết nhanh">

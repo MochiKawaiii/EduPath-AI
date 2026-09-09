@@ -98,7 +98,7 @@
   .am-shell { flex-direction: column; }
   .am-sidebar { position: static; width: 100%; height: auto; min-height: 0; flex: none; }
   .am-sidebar-brand { padding: 17px 20px; }
-  .am-sidebar-brand img { width: 29px; height: 34px; }
+  .am-sidebar-brand .ep-brand > img { width: 100%; height: auto; }
   .am-sidebar-brand strong { font-size: 20px; }
   .am-sidebar nav, .am-nav-label, .am-sidebar-footer { display: none; }
   .am-sidebar-open nav { display: grid; }

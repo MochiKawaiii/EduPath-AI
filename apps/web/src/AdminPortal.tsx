@@ -97,7 +97,7 @@ export default function AdminPortal() {
 
     <main className="admin-login-layout">
       <section className="admin-intro" aria-labelledby="admin-intro-title">
-        <p className="admin-eyebrow">EDUPATH AI / ADMINISTRATION</p>
+        <p className="admin-eyebrow">EDUPATH AI / QUẢN TRỊ VIÊN</p>
         <h1 id="admin-intro-title">Một nền tảng.<br />Kết nối hành trình<br /><em>học tập.</em></h1>
         <p>Không gian quản trị dành cho đội ngũ vận hành hệ thống đánh giá năng lực và tư vấn lộ trình học tập.</p>
         <div className="admin-intro-rule" />
@@ -118,12 +118,12 @@ export default function AdminPortal() {
                   <span className="microsoft-icon" aria-hidden="true"><i /><i /><i /><i /></span>
                   {busy ? "Đang chuyển đến Microsoft…" : "Đăng nhập bằng Microsoft"}
                 </button>}
-          <div className="admin-login-divider"><span>XÁC THỰC MICROSOFT ENTRA ID</span></div>
+          <div className="admin-login-divider"><span><b>Đăng nhập với tài khoản Văn Lang</b></span></div>
           <p className="admin-login-help">Chưa có quyền truy cập?<br />Vui lòng liên hệ người quản lý hệ thống để được cấp quyền.</p>
         </div>
         <p className="admin-panel-caption">EduPath AI · Cổng quản lý học tập thông minh</p>
       </section>
     </main>
-    <footer className="admin-footer">EduPath AI · Bản Quyền Thuộc Khoa Công nghệ Thông tin · Trường Đại Học Văn Lang.</footer>
+    <footer className="admin-footer">© 2026 · Bản Quyền Thuộc Khoa Công nghệ Thông tin · Trường Đại Học Văn Lang.</footer>
   </div>;
 }

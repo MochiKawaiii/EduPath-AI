@@ -55,8 +55,8 @@ a {
   position: relative;
   z-index: 3;
   width: 100%;
-  min-height: 88px;
-  padding: 12px clamp(24px, 4vw, 72px);
+  min-height: 76px;
+  padding: 6px clamp(24px, 4vw, 72px);
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto minmax(120px, 1fr);
   align-items: center;
@@ -77,6 +77,10 @@ a {
   background: transparent;
   text-align: left;
   cursor: pointer;
+}
+
+.login-header .ep-brand {
+  width: 220px;
 }
 
 .edupath-symbol {
@@ -187,11 +191,10 @@ a {
 }
 
 .login-card {
-  width: min(480px, 100%);
+  width: min(560px, 100%);
   padding: 28px clamp(28px, 3.5vw, 44px) 32px;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, .84);
-  border-top: 4px solid #cf1738;
   border-radius: 18px;
   background: rgba(255, 255, 255, .975);
   box-shadow:
@@ -625,8 +628,8 @@ a {
 
 @media (max-width: 860px) {
   .login-header {
-    min-height: 112px;
-    padding: 10px 24px 12px;
+    min-height: 96px;
+    padding: 6px 24px 8px;
     grid-template-columns: 1fr auto;
     gap: 4px 24px;
   }
@@ -680,14 +683,18 @@ a {
 
 @media (max-width: 540px) {
   .login-header {
-    min-height: 106px;
-    padding: 8px 15px 11px;
+    min-height: 88px;
+    padding: 5px 15px 7px;
     gap: 2px 12px;
   }
 
   .edupath-symbol {
     width: 42px;
     height: 42px;
+  }
+
+  .login-header .ep-brand {
+    width: 170px;
   }
 
   .brand-wordmark strong {

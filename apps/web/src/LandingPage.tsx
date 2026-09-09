@@ -132,7 +132,7 @@ function FeaturePreview({ selected, active }: { selected: number; active: boolea
     >
       <div className="lp-preview-top">
         <span>
-          <img src="/favicon.svg" alt="" width="22" height="22" /> EduPath AI
+          <EduPathBrand />
         </span>
         <span className="lp-demo-label">Dữ liệu minh họa</span>
       </div>
@@ -531,7 +531,7 @@ export default function LandingPage() {
               <br />
               <em>Tiến xa theo cách của bạn.</em>
             </h2>
-            <p>Đăng nhập là bước đầu tiên. Đây là hành trình trải nghiệm mà đồ án hướng đến.</p>
+            <p></p>
           </div>
           <ol className="lp-journey">
             {[
