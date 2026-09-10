@@ -15,6 +15,7 @@ export interface StudentProfileQuery {
 export interface StudentProfileSummary {
   id: string; name: string; email: string | null; isActive: boolean;
   studentCode: string | null; cohortYear: number | null; currentSemester: number | null;
+  cohortCode: string | null; className: string | null;
   profileStatus: "missing" | "incomplete" | "complete";
 }
 export interface StudentProfileDetail extends StudentProfileSummary {
@@ -28,7 +29,8 @@ export interface StudentProfileRepository {
   detail(actor: AuthenticatedUser, id: string): Promise<StudentProfileDetail>;
 }
 const profileStatus = `CASE WHEN p.user_id IS NULL THEN 'missing' WHEN p.onboarding_completed THEN 'complete' ELSE 'incomplete' END`;
-const summaryColumns = `u.id, u.display_name AS name, u.email, u.is_active AS "isActive",
+const summaryColumns = `u.id, COALESCE(p.full_name, u.display_name) AS name, u.email, u.is_active AS "isActive",
+  p.cohort_code AS "cohortCode", p.class_name AS "className",
   p.student_code AS "studentCode", p.cohort_year AS "cohortYear", p.current_semester AS "currentSemester",
   ${profileStatus} AS "profileStatus"`;
 const studentScope = `COALESCE(u.role_override, u.role) = 'student'`;
@@ -37,10 +39,10 @@ export class PostgresStudentProfileRepository implements StudentProfileRepositor
   constructor(private readonly pool: DatabasePool) {}
   async list(_actor: AuthenticatedUser, query: StudentProfileQuery): Promise<StudentProfilePage> {
     const result = await this.pool.query<StudentProfilePage>(`WITH students AS (
-      SELECT ${summaryColumns}, concat_ws(' ', u.display_name, u.email, u.username, p.student_code, p.career_goal) AS search_text
+      SELECT ${summaryColumns}, concat_ws(' ', u.display_name, p.full_name, u.email, u.username, p.student_code, p.cohort_code, p.class_name, p.career_goal) AS search_text
       FROM users u LEFT JOIN student_profiles p ON p.user_id = u.id WHERE ${studentScope}
     ), filtered AS (
-      SELECT id, name, email, "isActive", "studentCode", "cohortYear", "currentSemester", "profileStatus" FROM students
+      SELECT id, name, email, "isActive", "studentCode", "cohortCode", "className", "cohortYear", "currentSemester", "profileStatus" FROM students
       WHERE ($1 = '' OR strpos(lower(search_text), lower($1)) > 0)
         AND ($2::int IS NULL OR "cohortYear" = $2)
         AND ($3::int IS NULL OR "currentSemester" = $3)
