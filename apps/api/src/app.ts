@@ -7,6 +7,8 @@ import express, {
 import session from "express-session";
 import type { Store } from "express-session";
 import helmet from "helmet";
+import type { DatabasePool } from "./db/pool.js";
+import { createStudentDataRouter } from "./student/router.js";
 import type { AppConfig } from "./config.js";
 import { createAuthRouter } from "./auth/router.js";
 import type { MicrosoftAuthClient } from "./auth/types.js";
@@ -20,6 +22,7 @@ import {
 } from "./middleware/authorization.js";
 
 export interface CreateAppDependencies {
+  databasePool?: DatabasePool;
   studentProfileRepository?: StudentProfileRepository;
   authActivity?: AuthActivity;
   config: AppConfig;
@@ -32,6 +35,7 @@ export interface CreateAppDependencies {
 const webDistPath = fileURLToPath(new URL("../../web/dist/", import.meta.url));
 
 export function createApp({
+  databasePool,
   config,
   microsoftAuthClient,
   userRepository,
@@ -137,6 +141,7 @@ export function createApp({
   });
 
   app.use("/api/admin/accounts", createAdminAccountsRouter(adminAccountRepository, config.webOrigin));
+  app.use("/api/student", createStudentDataRouter(databasePool, config.webOrigin));
   app.use("/api/admin/students", createStudentProfilesRouter(studentProfileRepository, adminAccountRepository));
 
   if (config.nodeEnv === "production") {

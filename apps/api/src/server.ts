@@ -33,6 +33,7 @@ async function startServer(): Promise<void> {
       microsoftAuthClient,
       userRepository,
       ...(databasePool ? {
+        databasePool,
         sessionStore: createPostgresSessionStore(databasePool),
         authActivity: new PostgresAuthActivity(databasePool),
         studentProfileRepository: new PostgresStudentProfileRepository(databasePool),

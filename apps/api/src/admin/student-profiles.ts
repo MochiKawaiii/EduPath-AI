@@ -19,6 +19,7 @@ export interface StudentProfileSummary {
   profileStatus: "missing" | "incomplete" | "complete";
 }
 export interface StudentProfileDetail extends StudentProfileSummary {
+  interests: string | null;
   username: string | null; careerGoal: string | null;
   accountCreatedAt: string; firstLoginAt: string; lastLoginAt: string;
   profileCreatedAt: string | null; profileUpdatedAt: string | null;
@@ -57,7 +58,7 @@ export class PostgresStudentProfileRepository implements StudentProfileRepositor
   }
   async detail(_actor: AuthenticatedUser, id: string): Promise<StudentProfileDetail> {
     const result = await this.pool.query<StudentProfileDetail>(`SELECT ${summaryColumns}, u.username,
-      p.career_goal AS "careerGoal", u.created_at AS "accountCreatedAt", u.first_login_at AS "firstLoginAt",
+      p.career_goal AS "careerGoal", p.interests, u.created_at AS "accountCreatedAt", u.first_login_at AS "firstLoginAt",
       u.last_login_at AS "lastLoginAt", p.created_at AS "profileCreatedAt", p.updated_at AS "profileUpdatedAt"
       FROM users u LEFT JOIN student_profiles p ON p.user_id = u.id
       WHERE ${studentScope} AND u.id = $1`, [id]);
