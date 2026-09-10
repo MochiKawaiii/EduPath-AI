@@ -59,19 +59,19 @@ describe("student profile read API", () => {
   });
 });
 describe("student profile SQL safety", () => {
-  it("uses a left join, effective Student role and tenant scope with parameterized filters", async () => {
+  it("uses a left join and effective Student role across tenants with parameterized filters", async () => {
     const query = vi.fn().mockResolvedValue({ rows: [{ items: [], total: 0, cohortYears: [] }] });
     const repo = new PostgresStudentProfileRepository({ query } as unknown as DatabasePool);
     await repo.list(actor, { q: "' OR 1=1 --", page: 2, pageSize: 10, cohortYear: 2023, semester: 6, active: "false", profileStatus: "incomplete" });
     const [sql, values] = query.mock.calls[0]!;
-    expect(sql).toContain("LEFT JOIN student_profiles"); expect(sql).toContain("u.entra_tenant_id = $1");
+    expect(sql).toContain("LEFT JOIN student_profiles"); expect(sql).not.toContain("u.entra_tenant_id =");
     expect(sql).toContain("COALESCE(u.role_override, u.role) = 'student'");
     expect(sql).not.toContain("' OR 1=1 --"); expect(sql).not.toContain("SELECT * FROM users");
-    expect(values).toEqual([actor.tenantId, "' OR 1=1 --", 2023, 6, "false", "incomplete", 10, 10]);
+    expect(values).toEqual(["' OR 1=1 --", 2023, 6, "false", "incomplete", 10, 10]);
   });
-  it("does not expose other-tenant or non-student details", async () => {
+  it("does not return absent or non-student details", async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] }); const repo = new PostgresStudentProfileRepository({ query } as unknown as DatabasePool);
     await expect(repo.detail(actor, id)).rejects.toMatchObject({ code: "student_not_found", status: 404 });
-    expect(query).toHaveBeenCalledWith(expect.stringContaining("COALESCE(u.role_override, u.role) = 'student'"), [actor.tenantId, id]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("COALESCE(u.role_override, u.role) = 'student'"), [id]);
   });
 });

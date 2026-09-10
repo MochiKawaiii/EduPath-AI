@@ -31,34 +31,34 @@ const profileStatus = `CASE WHEN p.user_id IS NULL THEN 'missing' WHEN p.onboard
 const summaryColumns = `u.id, u.display_name AS name, u.email, u.is_active AS "isActive",
   p.student_code AS "studentCode", p.cohort_year AS "cohortYear", p.current_semester AS "currentSemester",
   ${profileStatus} AS "profileStatus"`;
-const studentScope = `u.entra_tenant_id = $1 AND COALESCE(u.role_override, u.role) = 'student'`;
+const studentScope = `COALESCE(u.role_override, u.role) = 'student'`;
 
 export class PostgresStudentProfileRepository implements StudentProfileRepository {
   constructor(private readonly pool: DatabasePool) {}
-  async list(actor: AuthenticatedUser, query: StudentProfileQuery): Promise<StudentProfilePage> {
+  async list(_actor: AuthenticatedUser, query: StudentProfileQuery): Promise<StudentProfilePage> {
     const result = await this.pool.query<StudentProfilePage>(`WITH students AS (
       SELECT ${summaryColumns}, concat_ws(' ', u.display_name, u.email, u.username, p.student_code, p.career_goal) AS search_text
       FROM users u LEFT JOIN student_profiles p ON p.user_id = u.id WHERE ${studentScope}
     ), filtered AS (
       SELECT id, name, email, "isActive", "studentCode", "cohortYear", "currentSemester", "profileStatus" FROM students
-      WHERE ($2 = '' OR strpos(lower(search_text), lower($2)) > 0)
-        AND ($3::int IS NULL OR "cohortYear" = $3)
-        AND ($4::int IS NULL OR "currentSemester" = $4)
-        AND ($5::boolean IS NULL OR "isActive" = $5)
-        AND ($6::text IS NULL OR "profileStatus" = $6)
-    ), paged AS (SELECT * FROM filtered ORDER BY name, id LIMIT $7 OFFSET $8)
+      WHERE ($1 = '' OR strpos(lower(search_text), lower($1)) > 0)
+        AND ($2::int IS NULL OR "cohortYear" = $2)
+        AND ($3::int IS NULL OR "currentSemester" = $3)
+        AND ($4::boolean IS NULL OR "isActive" = $4)
+        AND ($5::text IS NULL OR "profileStatus" = $5)
+    ), paged AS (SELECT * FROM filtered ORDER BY name, id LIMIT $6 OFFSET $7)
     SELECT COALESCE((SELECT json_agg(paged ORDER BY name, id) FROM paged), '[]'::json) AS items,
       (SELECT count(*)::int FROM filtered) AS total,
       COALESCE((SELECT json_agg(year ORDER BY year DESC) FROM (SELECT DISTINCT "cohortYear" AS year FROM students WHERE "cohortYear" IS NOT NULL) years), '[]'::json) AS "cohortYears"`,
-    [actor.tenantId, query.q, query.cohortYear ?? null, query.semester ?? null, query.active ?? null, query.profileStatus ?? null, query.pageSize, (query.page - 1) * query.pageSize]);
+    [query.q, query.cohortYear ?? null, query.semester ?? null, query.active ?? null, query.profileStatus ?? null, query.pageSize, (query.page - 1) * query.pageSize]);
     return result.rows[0] ?? { items: [], total: 0, cohortYears: [] };
   }
-  async detail(actor: AuthenticatedUser, id: string): Promise<StudentProfileDetail> {
+  async detail(_actor: AuthenticatedUser, id: string): Promise<StudentProfileDetail> {
     const result = await this.pool.query<StudentProfileDetail>(`SELECT ${summaryColumns}, u.username,
       p.career_goal AS "careerGoal", u.created_at AS "accountCreatedAt", u.first_login_at AS "firstLoginAt",
       u.last_login_at AS "lastLoginAt", p.created_at AS "profileCreatedAt", p.updated_at AS "profileUpdatedAt"
       FROM users u LEFT JOIN student_profiles p ON p.user_id = u.id
-      WHERE ${studentScope} AND u.id = $2`, [actor.tenantId, id]);
+      WHERE ${studentScope} AND u.id = $1`, [id]);
     if (!result.rows[0]) throw new AccountError("student_not_found", 404);
     return result.rows[0];
   }

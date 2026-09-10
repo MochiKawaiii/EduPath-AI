@@ -78,11 +78,11 @@ describe("Postgres admin account repository", () => {
     const repository = new PostgresAdminAccountRepository({ connect: vi.fn().mockResolvedValue({ query, release }) } as unknown as DatabasePool);
     return { repository, query, release };
   }
-  it("grants only the matched tenant identity in a transaction", async () => {
+  it("grants the uniquely matched identity across tenants in a transaction", async () => {
     const { repository, query, release } = repositoryWith([target]);
     expect((await repository.createAdmin(actor, target.email)).role).toBe("admin");
-    expect(query.mock.calls.find(([sql]) => sql.includes("FOR UPDATE"))?.[1]).toEqual([actor.tenantId, target.email]);
-    expect(query.mock.calls.find(([sql]) => sql.includes("UPDATE users SET"))?.[1]).toEqual([target.id, actor.tenantId]);
+    expect(query.mock.calls.find(([sql]) => sql.includes("FOR UPDATE"))?.[1]).toEqual([target.email]);
+    expect(query.mock.calls.find(([sql]) => sql.includes("UPDATE users SET"))?.[1]).toEqual([target.id]);
     expect(query).toHaveBeenCalledWith("COMMIT"); expect(release).toHaveBeenCalled();
   });
   it.each([
@@ -100,11 +100,11 @@ describe("Postgres admin account repository", () => {
     await expect(repository.createAdmin(actor, target.email)).rejects.toMatchObject({ code: "insufficient_role" });
     expect(query.mock.calls.some(([sql]) => sql.includes("FOR UPDATE"))).toBe(false);
   });
-  it("parameterizes search and scopes listings to the actor tenant", async () => {
+  it("parameterizes search across all tenants", async () => {
     const query = vi.fn().mockResolvedValue({ rows: [{ items: [], total: 0 }] });
     const repository = new PostgresAdminAccountRepository({ query } as unknown as DatabasePool);
     await repository.list(actor, { q: "' OR 1=1 --", page: 2, pageSize: 10 });
-    expect(query.mock.calls[0]?.[1]).toEqual([actor.tenantId, "' OR 1=1 --", 10, 10, null, null]);
+    expect(query.mock.calls[0]?.[1]).toEqual(["' OR 1=1 --", 10, 10, null, null]);
     expect(query.mock.calls[0]?.[0]).not.toContain("' OR 1=1 --");
   });
 });

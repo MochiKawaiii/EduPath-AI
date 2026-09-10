@@ -23,7 +23,7 @@ describe("account management authorization and validation", () => {
     await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ role: "admin", confirmed: true }).expect(status);
     expect(repository.update).not.toHaveBeenCalled();
   });
-  it("reads detail and handles absent/cross-tenant account uniformly", async () => {
+  it("reads detail and handles an absent account", async () => {
     const { app, repository } = setup();
     await request(app).get(`/accounts/${id}`).expect(200); expect(repository.detail).toHaveBeenCalledWith(actor, id);
     repository.detail.mockRejectedValue(new AccountError("account_not_found", 404));
@@ -65,10 +65,10 @@ describe("transactional role and lock changes", () => {
     await expect(repository.update(actor, actor.userId, { isActive: false })).rejects.toMatchObject({ code: "self_change_forbidden" });
     expect(pool.connect).not.toHaveBeenCalled();
   });
-  it("serializes tenant changes, bumps version and revokes sessions atomically", async () => {
+  it("serializes global changes, bumps version and revokes sessions atomically", async () => {
     const { repository, query, release } = setupRepository(); await repository.update(actor, id, { role: "student" });
-    expect(query).toHaveBeenCalledWith("SELECT pg_advisory_xact_lock(hashtext($1))", [actor.tenantId]);
-    expect(query).toHaveBeenCalledWith(expect.stringContaining("auth_version = auth_version + 1"), [id, actor.tenantId, "student", null]);
+    expect(query).toHaveBeenCalledWith("SELECT pg_advisory_xact_lock(hashtext($1))", ["edupath:admin-account-management"]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("auth_version = auth_version + 1"), [id, "student", null]);
     expect(query).toHaveBeenCalledWith("DELETE FROM user_sessions WHERE sess->'user'->>'userId' = $1", [id]);
     expect(query).toHaveBeenCalledWith("COMMIT"); expect(release).toHaveBeenCalled();
   });

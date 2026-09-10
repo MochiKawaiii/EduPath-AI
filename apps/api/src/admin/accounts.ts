@@ -46,20 +46,19 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
     return result.rows.length === 1;
   }
 
-  async list(actor: AuthenticatedUser, query: AccountQuery): Promise<AccountPage> {
+  async list(_actor: AuthenticatedUser, query: AccountQuery): Promise<AccountPage> {
     const result = await this.pool.query<AccountPage>(
       `WITH filtered AS (
         SELECT ${columns} FROM users
-        WHERE entra_tenant_id = $1
-          AND ($2 = '' OR strpos(lower(concat_ws(' ', display_name, email, username)), lower($2)) > 0)
-          AND ($5::text IS NULL OR COALESCE(role_override, role) = $5)
-          AND ($6::boolean IS NULL OR is_active = $6)
+        WHERE ($1 = '' OR strpos(lower(concat_ws(' ', display_name, email, username)), lower($1)) > 0)
+          AND ($4::text IS NULL OR COALESCE(role_override, role) = $4)
+          AND ($5::boolean IS NULL OR is_active = $5)
       ), paged AS (
-        SELECT * FROM filtered ORDER BY name, id LIMIT $3 OFFSET $4
+        SELECT * FROM filtered ORDER BY name, id LIMIT $2 OFFSET $3
       )
       SELECT COALESCE((SELECT json_agg(paged ORDER BY name, id) FROM paged), '[]'::json) AS items,
         (SELECT count(*)::int FROM filtered) AS total`,
-      [actor.tenantId, query.q, query.pageSize, (query.page - 1) * query.pageSize, query.role ?? null, query.active ?? null]
+      [query.q, query.pageSize, (query.page - 1) * query.pageSize, query.role ?? null, query.active ?? null]
     );
     return result.rows[0] ?? { items: [], total: 0 };
   }
@@ -68,8 +67,8 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [actor.tenantId]);
-      // Serialize tenant grants with role/status changes, then recheck actor.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["edupath:admin-account-management"]);
+      // Serialize all administrative role/status changes, then recheck actor.
       const activeActor = await client.query(
         `SELECT id FROM users WHERE id = $1 AND entra_tenant_id = $2
          AND is_active AND COALESCE(role_override, role) = 'admin' FOR SHARE`,
@@ -78,9 +77,9 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
       if (!activeActor.rows.length) throw new AccountError("insufficient_role", 403);
       const matches = await client.query<Account>(
         `SELECT ${columns} FROM users
-         WHERE entra_tenant_id = $1 AND (lower(email) = $2 OR lower(username) = $2)
+         WHERE (lower(email) = $1 OR lower(username) = $1)
          ORDER BY id LIMIT 2 FOR UPDATE`,
-        [actor.tenantId, email]
+        [email]
       );
       if (!matches.rows.length) throw new AccountError("account_not_registered", 404);
       if (matches.rows.length !== 1) throw new AccountError("ambiguous_account", 409);
@@ -89,8 +88,8 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
       if (target.role === "admin") throw new AccountError("already_admin", 409);
       const result = await client.query<Account>(
         `UPDATE users SET role = 'admin', role_override = 'admin', auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1 AND entra_tenant_id = $2 RETURNING ${columns}`,
-        [target.id, actor.tenantId]
+         WHERE id = $1 RETURNING ${columns}`,
+        [target.id]
       );
       await client.query("DELETE FROM user_sessions WHERE sess->'user'->>'userId' = $1", [target.id]);
       await client.query("COMMIT");
@@ -101,9 +100,9 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
     } finally { client.release(); }
   }
 
-  async detail(actor: AuthenticatedUser, id: string): Promise<AccountDetail> {
+  async detail(_actor: AuthenticatedUser, id: string): Promise<AccountDetail> {
     const result = await this.pool.query<AccountDetail>(`SELECT ${columns}, created_at AS "createdAt",
-      first_login_at AS "firstLoginAt", updated_at AS "updatedAt" FROM users WHERE id = $1 AND entra_tenant_id = $2`, [id, actor.tenantId]);
+      first_login_at AS "firstLoginAt", updated_at AS "updatedAt" FROM users WHERE id = $1`, [id]);
     if (!result.rows[0]) throw new AccountError("account_not_found", 404);
     return result.rows[0];
   }
@@ -113,14 +112,14 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [actor.tenantId]);
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["edupath:admin-account-management"]);
       const activeActor = await client.query(`SELECT id FROM users WHERE id = $1 AND entra_tenant_id = $2
         AND is_active AND COALESCE(role_override, role) = 'admin' FOR SHARE`, [actor.userId, actor.tenantId]);
       if (!activeActor.rows.length) throw new AccountError("insufficient_role", 403);
       const result = await client.query<Account>(`UPDATE users SET
-        role = COALESCE($3, role), role_override = COALESCE($3, role_override),
-        is_active = COALESCE($4, is_active), auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 AND entra_tenant_id = $2 RETURNING ${columns}`, [id, actor.tenantId, change.role ?? null, change.isActive ?? null]);
+        role = COALESCE($2, role), role_override = COALESCE($2, role_override),
+        is_active = COALESCE($3, is_active), auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 RETURNING ${columns}`, [id, change.role ?? null, change.isActive ?? null]);
       if (!result.rows[0]) throw new AccountError("account_not_found", 404);
       await client.query("DELETE FROM user_sessions WHERE sess->'user'->>'userId' = $1", [id]);
       await client.query("COMMIT");
@@ -135,14 +134,14 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
       SELECT e.id, e.user_id AS "userId", u.display_name AS name, u.email,
         e.occurred_at AS "occurredAt", e.outcome, e.reason, e.portal
       FROM login_events e JOIN users u ON u.id = e.user_id AND u.entra_tenant_id = e.tenant_id
-      WHERE e.tenant_id = $1 AND ($2::uuid IS NULL OR e.user_id = $2)
-        AND ($3 = '' OR strpos(lower(concat_ws(' ', u.display_name, u.email, u.username, e.reason)), lower($3)) > 0)
-        AND ($4::text IS NULL OR e.outcome = $4) AND ($5::text IS NULL OR e.portal = $5)
-        AND ($6::timestamptz IS NULL OR e.occurred_at >= $6) AND ($7::timestamptz IS NULL OR e.occurred_at < $7)
-      ), paged AS (SELECT * FROM filtered ORDER BY "occurredAt" DESC, id DESC LIMIT $8 OFFSET $9)
+      WHERE ($1::uuid IS NULL OR e.user_id = $1)
+        AND ($2 = '' OR strpos(lower(concat_ws(' ', u.display_name, u.email, u.username, e.reason)), lower($2)) > 0)
+        AND ($3::text IS NULL OR e.outcome = $3) AND ($4::text IS NULL OR e.portal = $4)
+        AND ($5::timestamptz IS NULL OR e.occurred_at >= $5) AND ($6::timestamptz IS NULL OR e.occurred_at < $6)
+      ), paged AS (SELECT * FROM filtered ORDER BY "occurredAt" DESC, id DESC LIMIT $7 OFFSET $8)
       SELECT COALESCE((SELECT json_agg(paged ORDER BY "occurredAt" DESC, id DESC) FROM paged), '[]'::json) AS items,
         (SELECT count(*)::int FROM filtered) AS total`,
-    [actor.tenantId, query.userId ?? null, query.q, query.outcome ?? null, query.portal ?? null, query.from ?? null, query.to ?? null, query.pageSize, (query.page - 1) * query.pageSize]);
+    [query.userId ?? null, query.q, query.outcome ?? null, query.portal ?? null, query.from ?? null, query.to ?? null, query.pageSize, (query.page - 1) * query.pageSize]);
     return result.rows[0] ?? { items: [], total: 0 };
   }
 }
