@@ -1,11 +1,47 @@
-.ep-brand { display: inline-flex; align-items: center; width: 260px; max-width: 100%; flex: 0 1 auto; text-decoration: none; }
-.ep-brand > img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 1; object-fit: contain; }
-.ep-brand:focus-visible { outline: 3px solid #bd153b; outline-offset: 5px; border-radius: 4px; }
+.ep-brand {
+  display: inline-flex;
+  align-items: center;
+  width: 260px;
+  max-width: 100%;
+  flex: 0 1 auto;
+  text-decoration: none;
+}
+
+.ep-brand>img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 1;
+  object-fit: contain;
+}
+
+.ep-brand:focus-visible {
+  outline: 3px solid #bd153b;
+  outline-offset: 5px;
+  border-radius: 4px;
+}
+
 /* Keep the supplied colors and dark tagline readable on dark footers. */
-.ep-brand-light { background: #fff; border-radius: 8px; padding: 4px 8px; }
-.am-sidebar-brand .ep-brand { width: 100%; }
-.lp-preview-top .ep-brand { width: 170px; }
+.ep-brand-light {
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.am-sidebar-brand .ep-brand {
+  width: 100%;
+}
+
+.lp-preview-top .ep-brand {
+  width: 170px;
+}
+
 @media (max-width: 760px) {
-  .ep-brand { width: 210px; }
-  .lp-preview-top .ep-brand { width: 140px; }
+  .ep-brand {
+    width: 210px;
+  }
+
+  .lp-preview-top .ep-brand {
+    width: 140px;
+  }
 }

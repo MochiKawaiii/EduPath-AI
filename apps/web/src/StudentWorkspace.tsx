@@ -91,7 +91,7 @@ export default function StudentWorkspace({ user }: { user: AuthenticatedUser }) 
     <a className="sw-skip" href="#student-main">Đến nội dung chính</a>
     {menu && <button className="sw-overlay" aria-label="Đóng menu" onClick={() => setMenu(false)} />}
     <aside className={`sw-sidebar ${menu ? "sw-sidebar-open" : ""}`}>
-      <div className="sw-brand"><EduPathBrand /><span>KHÔNG GIAN SINH VIÊN</span></div>
+      <div className="sw-brand"><EduPathBrand /></div>
       <div className="sw-nav-caption">HỌC TẬP CỦA BẠN</div>
       <nav aria-label="Điều hướng sinh viên">{pages.map(p => <a key={p.id} href={`#${p.id}`} className={page === p.id ? "sw-active" : ""} aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)}><Icon name={p.icon} /><span>{p.label}</span>{p.id === "assistant" && <small>AI</small>}</a>)}</nav>
       <div className="sw-sidebar-bottom"><div className="sw-sidebar-note"><Icon name="spark" /><p>Hiểu năng lực.<br /><strong>Chủ động tương lai.</strong></p></div><a href="/" className="sw-home-link">Về trang giới thiệu <Icon name="arrow" /></a><button onClick={() => void exit()} disabled={loggingOut}><Icon name="logout" />{loggingOut ? "Đang đăng xuất…" : "Đăng xuất"}</button></div>

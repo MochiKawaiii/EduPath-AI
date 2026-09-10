@@ -191,7 +191,7 @@ a {
 }
 
 .login-card {
-  width: min(560px, 100%);
+  width: min(610px, 100%);
   padding: 28px clamp(28px, 3.5vw, 44px) 32px;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, .84);
@@ -369,7 +369,7 @@ a {
   border-top: 4px solid #e2ae51;
   background:
     radial-gradient(circle at 88% 20%, rgba(255, 255, 255, .10), transparent 28%),
-    linear-gradient(120deg, #8e0c29 0%, #b61134 50%, #cc1d3d 100%);
+    linear-gradient(120deg, #b51639 0%, #b51639 50%, #b51639 100%);
   box-shadow: 0 -12px 36px rgba(63, 7, 20, .15);
 }
 
@@ -448,7 +448,7 @@ a {
   font-style: normal;
 }
 
-.footer-addresses address > span {
+.footer-addresses address>span {
   display: grid;
   grid-template-columns: 18px 1fr;
   align-items: start;
@@ -770,7 +770,7 @@ a {
     height: 34px;
   }
 
-  .footer-addresses address > span {
+  .footer-addresses address>span {
     column-gap: 7px;
   }
 }
