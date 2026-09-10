@@ -80,6 +80,7 @@ export function parsePages(pages: Page[]): TranscriptData {
   let active: TranscriptSection | undefined;
   let count = 0;
   const codePattern = /^\d{2}[A-Z]{2,10}\d{5,8}$/;
+  if (pages.some(page => !page.items.some(item => clean(item.text)))) throw new TranscriptError("scanned_pdf");
   const firstText = fold(lines(pages[0]?.items ?? []).map(l => l.text).join(" "));
   if (!["ma mon hoc", "ten mon hoc", "tin chi", "he 10", "he 4"].every(t => firstText.includes(t))) throw new TranscriptError("unsupported_layout");
   for (const page of pages) {
