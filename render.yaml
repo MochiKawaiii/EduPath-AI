@@ -33,9 +33,9 @@ services:
       - key: ENTRA_AUTHORITY
         value: https://login.microsoftonline.com/organizations
       - key: ENTRA_ALLOW_ANY_TENANT
-        value: "false"
-      # Microsoft Entra tenant chính thức của vlu.edu.vn (không phải secret).
+        value: "true"
+      # Use the original multitenant Entra app; no school-specific allowlist.
       - key: ENTRA_ALLOWED_TENANT_IDS
-        value: 3011a54b-0a5d-4929-bf02-a00787877c6a
+        value: ""
       - key: AUTH_DEFAULT_ROLE
         value: student

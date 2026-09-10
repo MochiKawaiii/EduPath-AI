@@ -111,16 +111,6 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     );
   }
 
-  if (
-    parsed.NODE_ENV === "production" &&
-    parsed.ENTRA_ALLOW_ANY_TENANT &&
-    parsed.AUTH_DEFAULT_ROLE === "student"
-  ) {
-    throw new Error(
-      "Production cannot allow every tenant while assigning Student as the default role"
-    );
-  }
-
   return {
     nodeEnv: parsed.NODE_ENV,
     port: parsed.PORT,

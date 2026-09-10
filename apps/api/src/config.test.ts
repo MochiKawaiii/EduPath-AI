@@ -65,15 +65,14 @@ describe("loadConfig", () => {
     }
   );
 
-  it("rejects an unrestricted production tenant with automatic Student access", () => {
-    expect(() =>
-      loadConfig({
-        ...baseEnvironment,
-        ENTRA_ALLOW_ANY_TENANT: "true"
-      })
-    ).toThrow(
-      "Production cannot allow every tenant while assigning Student as the default role"
-    );
+  it("allows explicitly configured multitenant Student registration in production", () => {
+    const config = loadConfig({
+      ...baseEnvironment,
+      ENTRA_ALLOW_ANY_TENANT: "true"
+    });
+    expect(config.entra.allowAnyTenant).toBe(true);
+    expect(config.authDefaultRole).toBe("student");
+    expect(config.session.secure).toBe(true);
   });
 
   it("rejects a non-PostgreSQL database URL", () => {
