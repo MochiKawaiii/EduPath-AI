@@ -49,7 +49,11 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
   async list(_actor: AuthenticatedUser, query: AccountQuery): Promise<AccountPage> {
     const result = await this.pool.query<AccountPage>(
       `WITH filtered AS (
-        SELECT ${columns} FROM users
+        SELECT id,
+          COALESCE((SELECT NULLIF(btrim(full_name), '') FROM student_profiles WHERE user_id = users.id), display_name) AS name,
+          email, username, COALESCE(role_override, role) AS role,
+          is_active AS "isActive", last_login_at AS "lastLoginAt"
+        FROM users
         WHERE ($1 = '' OR strpos(lower(concat_ws(' ', display_name, email, username)), lower($1)) > 0)
           AND ($4::text IS NULL OR COALESCE(role_override, role) = $4)
           AND ($5::boolean IS NULL OR is_active = $5)
