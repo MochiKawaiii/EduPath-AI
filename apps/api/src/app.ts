@@ -122,6 +122,16 @@ export function createApp({
     });
   });
 
+  app.get("/api/student/profile", requireRole("student"), async (request, response) => {
+    response.setHeader("Cache-Control", "no-store");
+    if (!studentProfileRepository) {
+      response.status(503).json({ error: "database_required" });
+      return;
+    }
+    const user = request.session.user!;
+    response.json({ student: await studentProfileRepository.detail(user, user.userId) });
+  });
+
   app.get("/api/admin/me", requireRole("admin"), (request, response) => {
     response.json({ authenticated: true, user: request.session.user });
   });

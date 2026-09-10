@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { beginMicrosoftLogin, getCurrentUser, logout } from "./auth-api";
+import { beginMicrosoftLogin, getCurrentUser } from "./auth-api";
 import LandingPage from "./LandingPage";
 import EduPathBrand from "./EduPathBrand";
 import AdminPortal from "./AdminPortal";
 import { resolveAppRoute, safeReturnTo } from "./routing";
-import type { AuthResponse, AuthenticatedUser } from "./types";
+import type { AuthResponse } from "./types";
+import StudentWorkspace from "./StudentWorkspace";
 
 const errorMessages: Record<string, string> = {
   microsoft_denied: "Bạn đã hủy hoặc Microsoft từ chối yêu cầu đăng nhập.",
@@ -224,58 +225,6 @@ function LoginPage({ error }: { error: string | null }) {
   );
 }
 
-function Dashboard({
-  user,
-  onLogout
-}: {
-  user: AuthenticatedUser;
-  onLogout: () => void;
-}) {
-  const roleLabel = user.role === "admin" ? "Quản trị viên" : "Sinh viên";
-  return (
-    <main className="dashboard-shell">
-      <header className="dashboard-header">
-        <EduPathBrand />
-        <button className="text-button" type="button" onClick={onLogout}>
-          Đăng xuất
-        </button>
-      </header>
-
-      <section className="dashboard-content">
-        <p className="eyebrow dark">Đăng nhập thành công</p>
-        <h1>Xin chào, {user.name}</h1>
-        <p className="muted large">
-          Tài khoản Microsoft đã được xác thực và phiên đăng nhập an toàn đã được tạo.
-        </p>
-
-        <div className="profile-grid">
-          <article>
-            <span>Vai trò</span>
-            <strong>{roleLabel}</strong>
-          </article>
-          <article>
-            <span>Tài khoản</span>
-            <strong>{user.email ?? user.username ?? "Không có email claim"}</strong>
-          </article>
-          <article>
-            <span>Thời điểm đăng nhập</span>
-            <strong>{new Date(user.signedInAt).toLocaleString("vi-VN")}</strong>
-          </article>
-        </div>
-
-        <div className="next-step">
-          <span>Tiếp theo</span>
-          <p>
-            {user.role === "admin"
-              ? "Trang quản trị sẽ được phát triển trên quyền Admin đã xác thực."
-              : "Hồ sơ, bảng điểm và lộ trình cá nhân sẽ được phát triển tại đây."}
-          </p>
-        </div>
-      </section>
-    </main>
-  );
-}
-
 function AuthenticatedApp({ isLoginRoute }: { isLoginRoute: boolean }) {
   const [auth, setAuth] = useState<AuthResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -331,7 +280,7 @@ function AuthenticatedApp({ isLoginRoute }: { isLoginRoute: boolean }) {
     return <LoginPage error={authError ?? loadError} />;
   }
 
-  return <Dashboard user={auth.user} onLogout={() => void logout()} />;
+  return <StudentWorkspace user={auth.user} />;
 }
 
 export default function App() {
