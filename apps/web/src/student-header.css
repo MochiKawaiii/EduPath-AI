@@ -2,20 +2,20 @@
   position: sticky;
   top: 0;
   z-index: 11;
-  min-height: 80px;
+  min-height: 92px;
   padding: 12px 20px;
   flex-wrap: nowrap;
   gap: 8px 12px;
 }
 
 .sw-header-brand {
-  flex: 0 0 150px;
+  flex: 0 0 172px;
   display: flex;
   align-items: center;
 }
 
 .sw-header-brand .ep-brand {
-  width: 150px;
+  width: 172px;
 }
 
 .sw-header-nav {

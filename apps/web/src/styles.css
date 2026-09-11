@@ -55,10 +55,10 @@ a {
   position: relative;
   z-index: 3;
   width: 100%;
-  min-height: 80px;
+  min-height: 92px;
   padding: 8px clamp(20px, 4vw, 72px);
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) auto minmax(120px, 1fr);
+  grid-template-columns: minmax(172px, 1fr) auto minmax(120px, 1fr);
   align-items: center;
   gap: clamp(24px, 4vw, 64px);
   border-top: 6px solid #171717;
@@ -79,7 +79,7 @@ a {
 }
 
 .login-header .ep-brand {
-  width: 150px;
+  width: 172px;
 }
 
 .edupath-symbol {
@@ -150,8 +150,8 @@ a {
 }
 
 .header-vlu-logo {
-  width: 180px;
-  height: 46px;
+  width: 206px;
+  height: 53px;
   display: block;
   justify-self: end;
   overflow: hidden;
@@ -627,7 +627,7 @@ a {
 
 @media (max-width: 860px) {
   .login-header {
-    min-height: 96px;
+    min-height: 108px;
     padding: 6px 24px 8px;
     grid-template-columns: 1fr auto;
     gap: 4px 24px;

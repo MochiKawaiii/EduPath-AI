@@ -3,7 +3,7 @@
   --lp-red-dark: #85172d;
   --lp-ink: #25242a;
   --lp-muted: #68666c;
-  --lp-paper: #faf8f4;
+  --lp-paper: #faf6ef;
   color: var(--lp-ink);
   background: var(--lp-paper);
   font-size: 15px;
@@ -94,7 +94,7 @@
 }
 
 .lp-header-inner {
-  min-height: 80px;
+  min-height: 92px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1397,7 +1397,7 @@
 
 @media (max-width: 900px) {
   .lp-header-inner {
-    min-height: 76px;
+    min-height: 88px;
   }
 
   .lp-menu-toggle {
@@ -1617,7 +1617,7 @@
   }
 
   .lp-header-inner {
-    min-height: 70px;
+    min-height: 76px;
     gap: 10px;
   }
 
@@ -2029,11 +2029,24 @@
     display: none;
   }
 }
+
 /* Session-aware portal action remains readable on narrow screens. */
-.lp-header-actions .lp-return-portal { white-space: normal; text-align: center; max-width: 270px; line-height: 1.45; }
-@media (max-width: 600px) { .lp-header-actions .lp-return-portal { max-width: 170px; padding: 10px 12px; font-size: 12px; } }
+.lp-header-actions .lp-return-portal {
+  white-space: normal;
+  text-align: center;
+  max-width: 270px;
+  line-height: 1.45;
+}
+
+@media (max-width: 600px) {
+  .lp-header-actions .lp-return-portal {
+    max-width: 170px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}
 
 .lp-header .ep-brand {
-  width: 150px;
+  width: 172px;
   flex-shrink: 0;
 }
