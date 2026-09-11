@@ -25,15 +25,15 @@
 .sw-account-dropdown button { margin-top: 8px; border-top: 1px solid var(--sw-border); color: var(--sw-red); }
 .sw-account-dropdown a:hover, .sw-account-dropdown button:hover { background: #faeaf0; }
 .sw-shell .sw-menu-button { display: grid; width: 44px; height: 44px; flex-shrink: 0; }
-.sw-drawer-backdrop { position: fixed; inset: 80px 0 0; z-index: 9; background: #151c2c55; }
-.sw-drawer { position: fixed; top: 80px; bottom: 0; left: 0; width: min(290px, 88vw); padding: 20px 16px; background: #1b202c; color: #f4f5f8; z-index: 10; overflow-y: auto; box-shadow: 8px 0 28px #151c2c20; }
+.sw-drawer-backdrop { position: fixed; inset: 80px 0 0; z-index: 9; background: #151c2c55; touch-action: none; }
+.sw-drawer { position: fixed; top: 80px; bottom: 0; left: 0; width: min(290px, 88vw); padding: 16px; background: #1b202c; color: #f4f5f8; z-index: 10; display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: none; box-shadow: 8px 0 28px #151c2c20; }
 .sw-drawer-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .sw-drawer-heading button { width: 44px; height: 44px; border-radius: 8px; color: inherit; background: #ffffff12; font-size: 24px; }
-.sw-drawer nav { display: grid; gap: 8px; }
-.sw-drawer nav a { padding: 14px; min-height: 44px; border-radius: 8px; color: inherit; font-weight: 600; }
+.sw-drawer nav { display: grid; gap: 4px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; }
+.sw-drawer nav a { padding: 12px 14px; min-height: 44px; border-radius: 8px; color: inherit; font-weight: 600; }
 .sw-drawer nav a:hover { background: #ffffff12; }
 .sw-drawer nav a[aria-current="page"] { background: var(--sw-red); color: white; }
-.sw-drawer > p { margin: 24px 14px; border-top: 1px solid #ffffff25; padding-top: 24px; line-height: 1.8; color: #d8dce6; }
+.sw-drawer > p { flex-shrink: 0; margin: 16px 14px 0; border-top: 1px solid #ffffff25; padding-top: 16px; line-height: 1.8; color: #d8dce6; }
 @media (max-width: 1200px) {
   .sw-shell .sw-search { display: none; }
 }
