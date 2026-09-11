@@ -113,8 +113,8 @@ function LoginPage({ error }: { error: string | null }) {
         >
           <img
             className="vlu-logo"
-            src="/vlu-logo.png"
-            alt="Logo Trường Đại học Văn Lang"
+            src="/vlu-shield.png"
+            alt="Biểu tượng Trường Đại học Văn Lang"
           />
 
           <p className="login-eyebrow"></p>
