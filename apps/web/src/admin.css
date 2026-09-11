@@ -15,7 +15,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 24px clamp(24px, 5vw, 88px);
+  min-height: 80px;
+  padding: 12px clamp(20px, 5vw, 88px);
   background: #fff;
   border-bottom: 1px solid var(--admin-border);
 }
@@ -397,7 +398,7 @@
 
 @media (max-width: 640px) {
   .admin-header {
-    padding: 20px;
+    padding: 12px 20px;
     gap: 12px;
   }
 
@@ -461,4 +462,7 @@
   .admin-primary {
     transition: none;
   }
+}
+.admin-header .ep-brand {
+  width: 150px;
 }

@@ -15,7 +15,7 @@ export default function AdminWorkspace({ user, busy, error, onLogout }: { user: 
   const shell = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!header.current) return;
-    const syncHeight = () => shell.current?.style.setProperty("--am-header-height", `${header.current?.getBoundingClientRect().height ?? 88}px`);
+    const syncHeight = () => shell.current?.style.setProperty("--am-header-height", `${header.current?.getBoundingClientRect().height ?? 80}px`);
     const observer = new ResizeObserver(syncHeight);
     observer.observe(header.current);
     syncHeight();

@@ -22,7 +22,7 @@
 }
 
 .am-sidebar-brand {
-  height: var(--am-header-height, 88px);
+  height: var(--am-header-height, 80px);
   flex-shrink: 0;
   padding: 12px 24px;
   justify-content: center;
@@ -113,11 +113,11 @@
 }
 
 .am-topbar {
-  min-height: 88px;
+  min-height: 80px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 32px;
+  padding: 12px 24px;
   gap: 24px;
   border-bottom: 1px solid var(--am-line);
   background: #fff;
@@ -989,7 +989,7 @@
   }
 }
 .am-sidebar-brand .ep-brand {
-  width: 190px;
+  width: 150px;
 }
 
 .am-sidebar-brand .ep-brand > img {
