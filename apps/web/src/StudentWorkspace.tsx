@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import EduPathBrand from "./EduPathBrand";
 import StudentProfileEditor from "./StudentProfileEditor";
 import StudentTranscript from "./StudentTranscript";
 import type { AuthenticatedUser } from "./types";
 import "./student-workspace.css";
+import "./student-header.css";
 
 const pages = [
   { id: "overview", label: "Tổng quan", icon: "home" },
@@ -49,7 +50,15 @@ const featureCopy: Partial<Record<Page, { title: string; text: string; steps: st
 export default function StudentWorkspace({ user }: { user: AuthenticatedUser }) {
   const [page, setPage] = useState<Page>(currentPage);
   const [menu, setMenu] = useState(false);
-  const [panel, setPanel] = useState<"notifications" | "help" | null>(null);
+  const [panel, setPanel] = useState<"notifications" | "help" | "account" | null>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const accountButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => { if (!accountRef.current?.contains(event.target as Node)) setPanel(p => p === "account" ? null : p); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { if (panel === "account") accountButton.current?.focus(); setPanel(null); setMenu(false); } };
+    document.addEventListener("pointerdown", dismiss); document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", escape); };
+  }, [panel]);
   const [query, setQuery] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,15 +98,8 @@ export default function StudentWorkspace({ user }: { user: AuthenticatedUser }) 
   const profileCard = <section className="sw-panel sw-profile"><div className="sw-section-heading"><h2>Thông tin học tập</h2><span className="sw-tag">Hồ sơ của bạn</span></div><div className="sw-profile-intro"><span className="sw-avatar sw-avatar-large">{initials}</span><div><h3>{name}</h3><p>{profile?.email ?? user.email ?? "Chưa cập nhật email"}</p></div></div><dl className="sw-fields">{Object.entries(fields).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{loading ? "Đang tải…" : value ?? "Chưa cập nhật"}</dd></div>)}</dl></section>;
   return <div className="sw-shell">
     <a className="sw-skip" href="#student-main">Đến nội dung chính</a>
-    {menu && <button className="sw-overlay" aria-label="Đóng menu" onClick={() => setMenu(false)} />}
-    <aside className={`sw-sidebar ${menu ? "sw-sidebar-open" : ""}`}>
-      <div className="sw-brand"><EduPathBrand /></div>
-      <div className="sw-nav-caption">HỌC TẬP CỦA BẠN</div>
-      <nav aria-label="Điều hướng sinh viên">{pages.map(p => <a key={p.id} href={`#${p.id}`} className={page === p.id ? "sw-active" : ""} aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)}><Icon name={p.icon} /><span>{p.label}</span>{p.id === "assistant" && <small>AI</small>}</a>)}</nav>
-      <div className="sw-sidebar-bottom"><div className="sw-sidebar-note"><Icon name="spark" /><p>Hiểu năng lực.<br /><strong>Chủ động tương lai.</strong></p></div><a href="/" className="sw-home-link">Về trang giới thiệu <Icon name="arrow" /></a><button onClick={() => void exit()} disabled={loggingOut}><Icon name="logout" />{loggingOut ? "Đang đăng xuất…" : "Đăng xuất"}</button></div>
-    </aside>
     <div className="sw-workspace">
-      <header className="sw-topbar"><button className="sw-icon-button sw-menu-button" aria-label="Mở menu" aria-expanded={menu} onClick={() => setMenu(!menu)}><Icon name="menu" /></button><div className="sw-breadcrumb">Không gian học tập <span>/</span> <strong>{selected.label}</strong></div><div className="sw-tools"><div className="sw-search"><Icon name="search" /><input aria-label="Tìm chức năng" placeholder="Tìm chức năng…" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Escape") setQuery(""); }} />{query.trim() && <div className="sw-search-results">{pages.filter(p => p.label.toLocaleLowerCase("vi").includes(query.trim().toLocaleLowerCase("vi"))).map(p => <button key={p.id} onClick={() => navigate(p.id)}>{p.label}<Icon name="arrow" /></button>)}{!pages.some(p => p.label.toLocaleLowerCase("vi").includes(query.trim().toLocaleLowerCase("vi"))) && <p>Không tìm thấy chức năng.</p>}</div>}</div><button className="sw-icon-button" aria-label="Hướng dẫn" aria-expanded={panel === "help"} onClick={() => setPanel(panel === "help" ? null : "help")}><Icon name="help" /></button><button className="sw-icon-button" aria-label="Thông báo" aria-expanded={panel === "notifications"} onClick={() => setPanel(panel === "notifications" ? null : "notifications")}><Icon name="bell" /></button><button className="sw-avatar" aria-label="Xem hồ sơ của tôi" onClick={() => navigate("profile")}>{initials}</button></div>{panel && <section className="sw-popover"><button className="sw-popover-close" onClick={() => setPanel(null)} aria-label="Đóng">×</button><h3>{panel === "help" ? "Bắt đầu với EduPath" : "Thông báo"}</h3><p>{panel === "help" ? "Xem thông tin tại Hồ sơ & bảng điểm. Các mục năng lực, nghề nghiệp và lộ trình sẽ được bổ sung khi chức năng tương ứng sẵn sàng." : "Chức năng thông báo học tập đang được phát triển."}</p></section>}</header>
+      <header className="sw-topbar"><button className="sw-icon-button sw-menu-button" aria-label="Mở menu" aria-controls="student-navigation" aria-expanded={menu} onClick={() => setMenu(!menu)}><Icon name="menu" /></button><div className="sw-header-brand"><EduPathBrand href="/dashboard" /></div><nav id="student-navigation" className={`sw-header-nav ${menu ? "sw-header-nav-open" : ""}`} aria-label="Điều hướng sinh viên">{pages.map(p => <a key={p.id} href={`#${p.id}`} aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)}><Icon name={p.icon} /><span>{p.label}</span></a>)}<a href="/">Về trang giới thiệu <Icon name="arrow" /></a></nav><div className="sw-tools"><div className="sw-search"><Icon name="search" /><input aria-label="Tìm chức năng" placeholder="Tìm chức năng…" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Escape") setQuery(""); }} />{query.trim() && <div className="sw-search-results">{pages.filter(p => p.label.toLocaleLowerCase("vi").includes(query.trim().toLocaleLowerCase("vi"))).map(p => <button key={p.id} onClick={() => navigate(p.id)}>{p.label}<Icon name="arrow" /></button>)}{!pages.some(p => p.label.toLocaleLowerCase("vi").includes(query.trim().toLocaleLowerCase("vi"))) && <p>Không tìm thấy chức năng.</p>}</div>}</div><button className="sw-icon-button" aria-label="Hướng dẫn" aria-expanded={panel === "help"} onClick={() => setPanel(panel === "help" ? null : "help")}><Icon name="help" /></button><button className="sw-icon-button" aria-label="Thông báo" aria-expanded={panel === "notifications"} onClick={() => setPanel(panel === "notifications" ? null : "notifications")}><Icon name="bell" /></button><div className="sw-account" ref={accountRef} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPanel(p => p === "account" ? null : p); }}><button ref={accountButton} className="sw-avatar" aria-label={`Tài khoản ${name}`} aria-expanded={panel === "account"} aria-controls="student-account-menu" onClick={() => setPanel(panel === "account" ? null : "account")}>{initials}</button>{panel === "account" && <div id="student-account-menu" className="sw-account-dropdown"><strong>{name}</strong><span>{profile?.email ?? user.email}</span><a href="#profile" onClick={() => navigate("profile")}><Icon name="user" />Hồ sơ & bảng điểm</a><button disabled={loggingOut} onClick={() => void exit()}><Icon name="logout" />{loggingOut ? "Đang đăng xuất…" : "Đăng xuất"}</button></div>}</div></div>{panel && panel !== "account" && <section className="sw-popover"><button className="sw-popover-close" onClick={() => setPanel(null)} aria-label="Đóng">×</button><h3>{panel === "help" ? "Bắt đầu với EduPath" : "Thông báo"}</h3><p>{panel === "help" ? "Xem thông tin tại Hồ sơ & bảng điểm. Các mục năng lực, nghề nghiệp và lộ trình sẽ được bổ sung khi chức năng tương ứng sẵn sàng." : "Chức năng thông báo học tập đang được phát triển."}</p></section>}</header>
       <main className="sw-main" id="student-main" tabIndex={-1}>
         {error && <div className="sw-error" role="alert">{error}<button onClick={() => setReload(n => n + 1)}>Thử lại</button></div>}
         <div className="sw-page-heading"><div><p className="sw-eyebrow">{page === "overview" ? "HÀNH TRÌNH HỌC TẬP" : "KHÔNG GIAN CỦA BẠN"}</p><h1>{page === "overview" ? `Xin chào, ${name}!` : selected.label}</h1><p>{page === "overview" ? "Hiểu rõ bản thân hôm nay, sẵn sàng cho cơ hội ngày mai." : "Từng bước xây dựng hành trình học tập phù hợp với bạn."}</p></div><span className="sw-student-label"><span />Sinh viên CNTT</span></div>

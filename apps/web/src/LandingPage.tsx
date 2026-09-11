@@ -1,5 +1,6 @@
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import "./landing.css";
+import { getCurrentUser } from "./auth-api";
 import EduPathBrand from "./EduPathBrand";
 
 type IconName =
@@ -247,6 +248,14 @@ function FeaturePreview({ selected, active }: { selected: number; active: boolea
 }
 
 export default function LandingPage() {
+  const [portal, setPortal] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => { void getCurrentUser().then(auth => { if (active) setPortal(auth.authenticated ? auth.user.role === "admin" ? "/quantri" : "/dashboard" : null); }).catch(() => { if (active) setPortal(null); }); };
+    refresh(); window.addEventListener("pageshow", refresh); window.addEventListener("focus", refresh);
+    return () => { active = false; window.removeEventListener("pageshow", refresh); window.removeEventListener("focus", refresh); };
+  }, []);
+  const portalLabel = "Quay lại cổng quản lý học tập";
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState(0);
 
@@ -305,8 +314,8 @@ export default function LandingPage() {
             </a>
           </nav>
           <div className="lp-header-actions">
-            <a className="lp-button lp-button-small" href="/login">
-              Đăng nhập <Icon name="arrow" />
+            <a className={`lp-button lp-button-small${portal ? " lp-return-portal" : ""}`} href={portal ?? "/login"}>
+              {portal ? portalLabel : "Đăng nhập"} <Icon name="arrow" />
             </a>
             <button
               id="landing-menu-toggle"
@@ -342,8 +351,8 @@ export default function LandingPage() {
                 kỹ năng và mục tiêu thành một lộ trình của riêng mình.
               </p>
               <div className="lp-hero-actions">
-                <a className="lp-button" href="/login">
-                  Bắt đầu hành trình <Icon name="arrow" />
+                <a className="lp-button" href={portal ?? "/login"}>
+                  {portal ? portalLabel : "Bắt đầu hành trình"} <Icon name="arrow" />
                 </a>
                 <a className="lp-text-link" href="#tinh-nang">
                   Khám phá tính năng <span>↗</span>
@@ -662,8 +671,8 @@ export default function LandingPage() {
               </h2>
             </div>
             <div className="lp-cta-action">
-              <a className="lp-button lp-button-white" href="/login">
-                Khám phá EduPath AI <Icon name="arrow" />
+              <a className="lp-button lp-button-white" href={portal ?? "/login"}>
+                {portal ? portalLabel : "Khám phá EduPath AI"} <Icon name="arrow" />
               </a>
               <span>Dành cho tài khoản Microsoft Văn Lang</span>
             </div>
@@ -697,8 +706,8 @@ export default function LandingPage() {
                 Website trường <span aria-hidden="true">↗</span>
                 <span className="sr-only"> (mở trong tab mới)</span>
               </a>
-              <a href="/login">
-                Đăng nhập hệ thống <Icon name="arrow" />
+              <a href={portal ?? "/login"}>
+                {portal ? portalLabel : "Đăng nhập hệ thống"} <Icon name="arrow" />
               </a>
             </div>
           </div>

@@ -293,7 +293,7 @@ export default function App() {
   }, [route]);
 
   // The overview is public and renders even when the API is unavailable.
-  // Authentication is requested only when entering login or the dashboard.
+  // The landing page checks the session separately to update its portal links.
   return route === "landing"
     ? <LandingPage />
     : route === "admin" ? <AdminPortal />
