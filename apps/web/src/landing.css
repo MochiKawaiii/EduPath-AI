@@ -88,7 +88,7 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #faf8f4f5;
+  background: #fcfbfb;
   border-bottom: 1px solid #e7e2dc;
   backdrop-filter: blur(12px);
 }
@@ -583,7 +583,7 @@
 
 .lp-features-section {
   padding-block: 86px 98px;
-  background: #f1ede7;
+  background: #f8efe9;
 }
 
 .lp-feature-explorer {
@@ -1009,7 +1009,7 @@
 .lp-campus-story {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: #68182c;
+  background: #b51639;
   color: #fff;
 }
 

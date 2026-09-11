@@ -416,7 +416,7 @@ export default function LandingPage() {
           <div className="lp-container">
             <img src="/vlu-logo-horizontal.png" alt="Van Lang University" width="180" height="46" />
             <div>
-              <strong>Được xây dựng từ câu chuyện học tập của sinh viên.</strong>
+              <strong>EduPath AI được xây dựng từ câu chuyện học tập của sinh viên.</strong>
               <span>Công nghệ Thông tin · Trường Đại học Văn Lang</span>
             </div>
             <Icon name="cap" />
@@ -700,8 +700,7 @@ export default function LandingPage() {
               <a href="#cau-hoi">Câu hỏi thường gặp</a>
             </nav>
             <div className="lp-footer-university">
-              <h2>Trường Đại học Văn Lang</h2>
-              <p>Khoa Công nghệ Thông tin</p>
+              <h2>Trường Đại học Văn Lang · Khoa Công nghệ Thông tin</h2>
               <a href="https://www.vlu.edu.vn/" target="_blank" rel="noreferrer">
                 Website trường <span aria-hidden="true">↗</span>
                 <span className="sr-only"> (mở trong tab mới)</span>
@@ -712,7 +711,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="lp-footer-bottom">
-            <span>© {new Date().getFullYear()} EduPath AI</span>
+            <span>© {new Date().getFullYear()} · Bản Quyền Thuộc Khoa Công nghệ Thông tin · Trường Đại Học Văn Lang.</span>
             <span>AI đồng hành · Học tập bứt phá</span>
             <a href="#noi-dung">Về đầu trang ↑</a>
           </div>
