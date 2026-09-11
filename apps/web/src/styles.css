@@ -61,7 +61,6 @@ a {
   grid-template-columns: minmax(172px, 1fr) auto minmax(120px, 1fr);
   align-items: center;
   gap: clamp(24px, 4vw, 64px);
-  border-top: 6px solid #171717;
   border-bottom: 1px solid rgba(23, 23, 23, .08);
   background: rgba(255, 255, 255, .98);
 }
@@ -209,8 +208,8 @@ a {
 }
 
 .vlu-logo {
-  width: 108px;
-  height: auto;
+  width: 94px;
+  height: 77px;
   display: block;
   margin: 0 auto 5px;
   object-fit: contain;
@@ -365,7 +364,6 @@ a {
   z-index: 2;
   padding: 40px clamp(24px, 5vw, 80px) 34px;
   color: #fff;
-  border-top: 4px solid #e2ae51;
   background:
     radial-gradient(circle at 88% 20%, rgba(255, 255, 255, .10), transparent 28%),
     linear-gradient(120deg, #b51639 0%, #b51639 50%, #b51639 100%);
@@ -726,7 +724,8 @@ a {
   }
 
   .vlu-logo {
-    width: 92px;
+    width: 82px;
+    height: 67px;
     margin-bottom: 4px;
   }
 

@@ -113,7 +113,7 @@ function LoginPage({ error }: { error: string | null }) {
         >
           <img
             className="vlu-logo"
-            src="/vlu-shield.png"
+            src="/vlu-shield.jpg"
             alt="Biểu tượng Trường Đại học Văn Lang"
           />
 
