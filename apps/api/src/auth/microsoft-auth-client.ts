@@ -112,7 +112,7 @@ export class MsalMicrosoftAuthClient implements MicrosoftAuthClient {
     return identityFromResult(result);
   }
 
-  public getLogoutUrl(tenantId?: string, returnPath: "/login" | "/quantri" = "/login"): string {
+  public getLogoutUrl(tenantId?: string, returnPath: "/" | "/quantri" = "/"): string {
     const tenant = tenantId ?? "organizations";
     const url = new URL(
       `https://login.microsoftonline.com/${encodeURIComponent(tenant)}/oauth2/v2.0/logout`

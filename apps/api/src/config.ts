@@ -89,10 +89,10 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   const redirectUri =
     parsed.ENTRA_REDIRECT_URI ??
     new URL("/api/auth/microsoft/callback", `${webOrigin}/`).toString();
-  // Logout returns to the login page, including older configs that point
-  // at the home page or an authenticated route.
+  // Student logout returns to the introduction page, including older configs
+  // that point at the login page or an authenticated route.
   const postLogoutRedirectUri = new URL(
-    "/login",
+    "/",
     parsed.ENTRA_POST_LOGOUT_REDIRECT_URI ?? `${webOrigin}/`
   ).toString();
   const allowedTenantIds = new Set(

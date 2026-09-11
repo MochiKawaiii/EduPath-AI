@@ -43,5 +43,5 @@ export interface MicrosoftAuthClient {
     codeVerifier: string,
     nonce: string
   ): Promise<MicrosoftIdentity>;
-  getLogoutUrl(tenantId?: string, returnPath?: "/login" | "/quantri"): string;
+  getLogoutUrl(tenantId?: string, returnPath?: "/" | "/quantri"): string;
 }

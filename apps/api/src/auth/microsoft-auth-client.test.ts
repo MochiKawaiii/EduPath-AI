@@ -12,14 +12,14 @@ describe("Microsoft logout destinations", () => {
     WEB_ORIGIN: "https://edupath.example"
   }));
 
-  it.each(["/login", "/quantri"] as const)("uses the fixed destination %s", (path) => {
+  it.each(["/", "/quantri"] as const)("uses the fixed destination %s", (path) => {
     const url = new URL(client.getLogoutUrl("test-tenant", path));
     expect(url.origin).toBe("https://login.microsoftonline.com");
     expect(url.pathname).toBe("/test-tenant/oauth2/v2.0/logout");
     expect(url.searchParams.get("post_logout_redirect_uri")).toBe(`https://edupath.example${path}`);
   });
 
-  it("preserves the default Student login destination", () => {
-    expect(new URL(client.getLogoutUrl()).searchParams.get("post_logout_redirect_uri")).toBe("https://edupath.example/login");
+  it("preserves the default Student introduction destination", () => {
+    expect(new URL(client.getLogoutUrl()).searchParams.get("post_logout_redirect_uri")).toBe("https://edupath.example/");
   });
 });

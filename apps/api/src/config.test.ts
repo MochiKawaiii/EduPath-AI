@@ -30,14 +30,14 @@ describe("loadConfig", () => {
       "https://edupath-ai-vlu.onrender.com/api/auth/microsoft/callback"
     );
     expect(config.entra.postLogoutRedirectUri).toBe(
-      "https://edupath-ai-vlu.onrender.com/login"
+      "https://edupath-ai-vlu.onrender.com/"
     );
     expect(config.session.secure).toBe(true);
     expect(config.database.maxConnections).toBe(10);
     expect(config.database.autoMigrate).toBe(true);
   });
 
-  it("keeps configured origins and returns logout to the login page", () => {
+  it("keeps configured origins and returns logout to the introduction page", () => {
     const config = loadConfig({
       ...baseEnvironment,
       WEB_ORIGIN: "https://example.edu.vn/",
@@ -50,18 +50,18 @@ describe("loadConfig", () => {
       "https://api.example.edu.vn/api/auth/microsoft/callback"
     );
     expect(config.entra.postLogoutRedirectUri).toBe(
-      "https://example.edu.vn/login"
+      "https://example.edu.vn/"
     );
   });
 
   it.each(["/", "/login", "/dashboard", "/auth/callback?returnTo=%2Fdashboard"])(
-    "normalizes a legacy logout destination %s to login",
+    "normalizes a legacy logout destination %s to the introduction page",
     (path) => {
       const config = loadConfig({
         ...baseEnvironment,
         ENTRA_POST_LOGOUT_REDIRECT_URI: `https://example.edu.vn${path}`
       });
-      expect(config.entra.postLogoutRedirectUri).toBe("https://example.edu.vn/login");
+      expect(config.entra.postLogoutRedirectUri).toBe("https://example.edu.vn/");
     }
   );
 

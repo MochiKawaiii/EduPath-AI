@@ -80,7 +80,7 @@ class FakeMicrosoftAuthClient implements MicrosoftAuthClient {
     };
   }
 
-  public getLogoutUrl(id?: string, returnPath: "/login" | "/quantri" = "/login"): string {
+  public getLogoutUrl(id?: string, returnPath: "/" | "/quantri" = "/"): string {
     const url = new URL(`https://login.microsoftonline.com/${id ?? "organizations"}/logout`);
     url.searchParams.set("post_logout_redirect_uri", new URL(returnPath, config.webOrigin).toString());
     return url.toString();
@@ -258,7 +258,7 @@ describe("Microsoft authentication routes", () => {
     const agent = request.agent(createTestApp(client));
     await login(agent, client);
     const result = await agent.post("/api/auth/logout?portal=https://evil.example&returnTo=https://evil.example").expect(200);
-    expect(new URL(result.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/login`);
+    expect(new URL(result.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/`);
   });
   it("supports login, repeated login and logout without PostgreSQL", async () => {
     const authClient = new FakeMicrosoftAuthClient();
@@ -397,6 +397,7 @@ describe("Microsoft authentication routes", () => {
       .set("Origin", config.webOrigin)
       .expect(200);
     expect(logout.body.logoutUrl).toContain(tenantId);
+    expect(new URL(logout.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/`);
     expect(logout.headers["set-cookie"]?.[0]).toContain("edupath.sid=");
 
     const me = await agent.get("/api/auth/me").expect(200);

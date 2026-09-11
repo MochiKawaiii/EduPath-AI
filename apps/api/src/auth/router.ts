@@ -186,7 +186,7 @@ export function createAuthRouter({
     const tenantId = request.session.user?.tenantId;
     // Only fixed local destinations are accepted; this is not a role grant.
     const returnPath = request.query.portal === "admin" || request.session.user?.role === "admin"
-      ? "/quantri" : "/login";
+      ? "/quantri" : "/";
     const logoutUrl = microsoftAuthClient.getLogoutUrl(tenantId, returnPath);
     await destroySession(request);
     response.clearCookie("edupath.sid", {
