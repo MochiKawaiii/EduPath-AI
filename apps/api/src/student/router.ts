@@ -31,7 +31,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       className: z.string().trim().max(32).regex(/^[\p{L}\p{N} _.-]*$/u).nullable(),
       interests: z.string().trim().max(2000).nullable(),
       careerGoal: z.string().trim().max(2000).nullable(),
-      currentSemester: z.number().int().min(1).max(20).nullable()
+      currentSemester: z.number().int().min(1).max(3).nullable()
     }).strict().safeParse(req.body);
     if (!input.success) { res.status(400).json({ error: "invalid_profile" }); return; }
     const client = await pool!.connect();

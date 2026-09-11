@@ -38,10 +38,10 @@ describe("student profile read API", () => {
   });
   it("combines bounded search and all supported filters", async () => {
     const { app, repository } = setup();
-    await request(app).get("/students").query({ q: "  23748  ", page: 2, pageSize: 20, cohortYear: 2023, semester: 6, active: "false", profileStatus: "incomplete" }).expect(200);
-    expect(repository.list).toHaveBeenCalledWith(actor, { q: "23748", page: 2, pageSize: 20, cohortYear: 2023, semester: 6, active: "false", profileStatus: "incomplete" });
+    await request(app).get("/students").query({ q: "  23748  ", page: 2, pageSize: 20, cohortYear: 2023, semester: 3, active: "false", profileStatus: "incomplete" }).expect(200);
+    expect(repository.list).toHaveBeenCalledWith(actor, { q: "23748", page: 2, pageSize: 20, cohortYear: 2023, semester: 3, active: "false", profileStatus: "incomplete" });
   });
-  it.each(["page=0", "pageSize=51", "page=1&page=2", "cohortYear=1999", "cohortYear=2101", "cohortYear=2023.5", "cohortYear=abc", "semester=0", "semester=21", "active=yes", "profileStatus=all", "tenantId=other", "role=admin"])("rejects invalid filters %s", async (query) => {
+  it.each(["page=0", "pageSize=51", "page=1&page=2", "cohortYear=1999", "cohortYear=2101", "cohortYear=2023.5", "cohortYear=abc", "semester=0", "semester=4", "semester=20", "semester=21", "semester=1.5", "active=yes", "profileStatus=all", "tenantId=other", "role=admin"])("rejects invalid filters %s", async (query) => {
     const { app, repository } = setup(); await request(app).get(`/students?${query}`).expect(400); expect(repository.list).not.toHaveBeenCalled();
   });
   it("rejects oversized keywords and malformed ids", async () => {
@@ -62,12 +62,12 @@ describe("student profile SQL safety", () => {
   it("uses a left join and effective Student role across tenants with parameterized filters", async () => {
     const query = vi.fn().mockResolvedValue({ rows: [{ items: [], total: 0, cohortYears: [] }] });
     const repo = new PostgresStudentProfileRepository({ query } as unknown as DatabasePool);
-    await repo.list(actor, { q: "' OR 1=1 --", page: 2, pageSize: 10, cohortYear: 2023, semester: 6, active: "false", profileStatus: "incomplete" });
+    await repo.list(actor, { q: "' OR 1=1 --", page: 2, pageSize: 10, cohortYear: 2023, semester: 3, active: "false", profileStatus: "incomplete" });
     const [sql, values] = query.mock.calls[0]!;
     expect(sql).toContain("LEFT JOIN student_profiles"); expect(sql).not.toContain("u.entra_tenant_id =");
     expect(sql).toContain("COALESCE(u.role_override, u.role) = 'student'");
     expect(sql).not.toContain("' OR 1=1 --"); expect(sql).not.toContain("SELECT * FROM users");
-    expect(values).toEqual(["' OR 1=1 --", 2023, 6, "false", "incomplete", 10, 10]);
+    expect(values).toEqual(["' OR 1=1 --", 2023, 3, "false", "incomplete", 10, 10]);
   });
   it("does not return absent or non-student details", async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] }); const repo = new PostgresStudentProfileRepository({ query } as unknown as DatabasePool);

@@ -82,7 +82,7 @@ export function createStudentProfilesRouter(repository: StudentProfileRepository
       page: z.coerce.number().int().min(1).max(100000).default(1),
       pageSize: z.coerce.number().int().min(1).max(50).default(10),
       cohortYear: z.coerce.number().int().min(2000).max(2100).optional(),
-      semester: z.coerce.number().int().min(1).max(20).optional(),
+      semester: z.coerce.number().int().min(1).max(3).optional(),
       active: z.enum(["true", "false"]).optional(),
       profileStatus: z.enum(["missing", "incomplete", "complete"]).optional()
     }).strict().safeParse(request.query);
