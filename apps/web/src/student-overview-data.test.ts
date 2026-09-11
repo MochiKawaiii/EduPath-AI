@@ -5,9 +5,11 @@ import type { Transcript } from "./StudentTranscript";
 type Section = Transcript["data"]["sections"][number];
 function section(id: string, score: number | null = null): Section {
   const [year, semester] = id.split("/");
-  return { id, label: id, academicYear: year, semester, summaries: [], courses: [
-    { ordinal: 1, code: "71IT000001", name: "Sample course", credits: 3, score10: score, score4: null, letter: null, result: null, conditional: false, sourcePage: 1 }
-  ] };
+  return {
+    id, label: id, academicYear: year, semester, summaries: [], courses: [
+      { ordinal: 1, code: "71IT000001", name: "Sample course", credits: 3, score10: score, score4: null, letter: null, result: null, conditional: false, sourcePage: 1 }
+    ]
+  };
 }
 describe("student overview academic data", () => {
   it("excludes transfer sections, sorts terms, and leaves source order unchanged", () => {

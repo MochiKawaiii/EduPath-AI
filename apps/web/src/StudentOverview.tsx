@@ -47,7 +47,7 @@ export default function StudentOverview({ profile, loading: profileLoading, navi
       <article className="so-quick-card">
         <div className="so-card-heading"><span className="so-kicker">THEO DÕI</span><span className={`sw-tag ${transcript && !error ? "sw-tag-green" : ""}`}>{loading ? "Đang tải" : error ? "Chưa kết nối" : transcript ? "Đã có bảng điểm" : "Chưa có dữ liệu"}</span></div>
         <h3>Kết quả học tập</h3><p>Bảng điểm và học phần, cùng một nơi.</p>
-        <dl className="so-card-metrics"><div><dt>Dòng học phần</dt><dd>{loading || error ? "—" : transcript?.data.courseCount ?? "—"}</dd></div><div><dt>Học kỳ đã import</dt><dd>{loading || error || !transcript ? "—" : semesters.length}</dd></div></dl>
+        <dl className="so-card-metrics"><div><dt>Môn học</dt><dd>{loading || error ? "—" : transcript?.data.courseCount ?? "—"}</dd></div><div><dt>Học kỳ đã import</dt><dd>{loading || error || !transcript ? "—" : semesters.length}</dd></div></dl>
         <button className="so-card-link" onClick={() => navigate("profile")}>{transcript ? "Xem bảng điểm" : "Import bảng điểm"}<span aria-hidden="true">↗</span></button>
       </article>
       <article className="so-quick-card">
