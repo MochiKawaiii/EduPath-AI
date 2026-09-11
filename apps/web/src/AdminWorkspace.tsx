@@ -43,7 +43,7 @@ export default function AdminWorkspace({ user, busy, error, onLogout }: { user: 
       <main className="am-content"><div className="am-page-heading"><div><p className="admin-eyebrow">{current.eyebrow}</p><h1 ref={heading} tabIndex={-1}>{current.label}</h1></div></div>
         {error && <p className="admin-error" role="alert">{error}</p>}
         {current.path === "/quantri/sinh-vien" ? <StudentProfiles /> : <AccountsManagement actorId={user.userId} />}
-      </main><footer className="am-footer">EduPath AI · Khoa Công nghệ Thông tin · Trường Đại học Văn Lang</footer>
+      </main><footer className="am-footer">© 2026 · Bản Quyền Thuộc Khoa Công nghệ Thông tin · Trường Đại Học Văn Lang.</footer>
     </div>
   </div>;
 }

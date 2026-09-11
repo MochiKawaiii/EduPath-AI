@@ -52,7 +52,7 @@
 }
 
 .admin-university-logo {
-  width: 195px;
+  width: 168px;
   height: auto;
   object-fit: contain;
 }
@@ -260,8 +260,8 @@
   padding: 0 12px;
   background: #fff;
   color: var(--admin-muted);
-  font-size: 9px;
-  letter-spacing: 1px;
+  font-size: 13px;
+  letter-spacing: .4px;
 }
 
 .admin-login-help {
@@ -417,7 +417,7 @@
   }
 
   .admin-university-logo {
-    width: 115px;
+    width: 100px;
   }
 
   .admin-login-layout {
@@ -464,5 +464,5 @@
   }
 }
 .admin-header .ep-brand {
-  width: 150px;
+  width: 172px;
 }
