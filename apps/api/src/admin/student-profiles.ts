@@ -29,7 +29,13 @@ export interface StudentProfileRepository {
   list(actor: AuthenticatedUser, query: StudentProfileQuery): Promise<StudentProfilePage>;
   detail(actor: AuthenticatedUser, id: string): Promise<StudentProfileDetail>;
 }
-const profileStatus = `CASE WHEN p.user_id IS NULL THEN 'missing' WHEN p.onboarding_completed THEN 'complete' ELSE 'incomplete' END`;
+// Derive completion from saved data so profile edits and transcript deletion stay in sync.
+const profileStatus = `CASE WHEN p.user_id IS NULL THEN 'missing'
+  WHEN p.current_semester BETWEEN 1 AND 3
+    AND NULLIF(btrim(p.interests), '') IS NOT NULL
+    AND NULLIF(btrim(p.career_goal), '') IS NOT NULL
+    AND EXISTS (SELECT 1 FROM student_transcripts t WHERE t.user_id = p.user_id)
+  THEN 'complete' ELSE 'incomplete' END`;
 const summaryColumns = `u.id, COALESCE(p.full_name, u.display_name) AS name, u.email, u.is_active AS "isActive",
   p.cohort_code AS "cohortCode", p.class_name AS "className",
   p.student_code AS "studentCode", p.cohort_year AS "cohortYear", p.current_semester AS "currentSemester",
