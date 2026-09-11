@@ -51,6 +51,7 @@ function identityFromResult(result: AuthenticationResult): MicrosoftIdentity {
       "Microsoft user",
     email: optionalString(claims, "email"),
     username: optionalString(claims, "preferred_username"),
+    loginHint: optionalString(claims, "login_hint"),
     roles,
     nonce: requiredString(claims, "nonce"),
     audience: requiredString(claims, "aud"),
@@ -112,7 +113,11 @@ export class MsalMicrosoftAuthClient implements MicrosoftAuthClient {
     return identityFromResult(result);
   }
 
-  public getLogoutUrl(tenantId?: string, returnPath: "/" | "/quantri" = "/"): string {
+  public getLogoutUrl(
+    tenantId?: string,
+    returnPath: "/" | "/quantri" = "/",
+    logoutHint?: string
+  ): string {
     const tenant = tenantId ?? "organizations";
     const url = new URL(
       `https://login.microsoftonline.com/${encodeURIComponent(tenant)}/oauth2/v2.0/logout`
@@ -121,6 +126,10 @@ export class MsalMicrosoftAuthClient implements MicrosoftAuthClient {
       "post_logout_redirect_uri",
       new URL(returnPath, this.config.entra.postLogoutRedirectUri).toString()
     );
+    // Without the hint Microsoft always renders its account picker, even when a
+    // single account is signed in. Only the login_hint claim is accepted here;
+    // Microsoft asks callers not to send a UPN.
+    if (logoutHint) url.searchParams.set("logout_hint", logoutHint);
     return url.toString();
   }
 }

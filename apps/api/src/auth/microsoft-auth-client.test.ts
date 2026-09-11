@@ -22,4 +22,13 @@ describe("Microsoft logout destinations", () => {
   it("preserves the default Student introduction destination", () => {
     expect(new URL(client.getLogoutUrl()).searchParams.get("post_logout_redirect_uri")).toBe("https://edupath.example/");
   });
+
+  it("passes the login hint on so Microsoft skips its account picker", () => {
+    const url = new URL(client.getLogoutUrl("test-tenant", "/", "opaque-login-hint"));
+    expect(url.searchParams.get("logout_hint")).toBe("opaque-login-hint");
+  });
+
+  it("omits the hint when the tenant does not release the login_hint claim", () => {
+    expect(new URL(client.getLogoutUrl("test-tenant")).searchParams.has("logout_hint")).toBe(false);
+  });
 });

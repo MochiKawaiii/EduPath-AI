@@ -100,6 +100,9 @@ App Registration phát triển cần có:
 - Redirect URI: `http://localhost:4000/api/auth/microsoft/callback`.
 - App Roles tùy chọn: `Admin` và `Student`.
 - `Assignment required = No` nếu muốn mọi tài khoản tổ chức có thể thử đăng nhập.
+- Optional claim `login_hint` cho ID token, khai báo trong **Token configuration**.
+  Thiếu claim này thì Microsoft vẫn hiện màn "Chọn một tài khoản" mỗi lần đăng
+  xuất; ứng dụng chạy bình thường, chỉ là mất thêm một bước bấm.
 
 Không đặt mật khẩu tài khoản demo hoặc Client Secret vào Git.
 

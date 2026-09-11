@@ -16,6 +16,9 @@ export interface MicrosoftIdentity {
   name: string;
   email: string | null;
   username: string | null;
+  // The login_hint optional claim, replayed as logout_hint so Microsoft can end
+  // the right session without showing its account picker.
+  loginHint: string | null;
   roles: string[];
   nonce: string;
   audience: string;
@@ -43,5 +46,9 @@ export interface MicrosoftAuthClient {
     codeVerifier: string,
     nonce: string
   ): Promise<MicrosoftIdentity>;
-  getLogoutUrl(tenantId?: string, returnPath?: "/" | "/quantri"): string;
+  getLogoutUrl(
+    tenantId?: string,
+    returnPath?: "/" | "/quantri",
+    logoutHint?: string
+  ): string;
 }

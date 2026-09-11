@@ -150,6 +150,7 @@ export function createAuthRouter({
 
       await regenerateSession(request);
       request.session.user = user;
+      if (identity.loginHint) request.session.logoutHint = identity.loginHint;
       await saveSession(request);
 
       await authActivity?.record(identity, "success", "signed_in", portal);
@@ -184,10 +185,11 @@ export function createAuthRouter({
     }
 
     const tenantId = request.session.user?.tenantId;
+    const logoutHint = request.session.logoutHint;
     // Only fixed local destinations are accepted; this is not a role grant.
     const returnPath = request.query.portal === "admin" || request.session.user?.role === "admin"
       ? "/quantri" : "/";
-    const logoutUrl = microsoftAuthClient.getLogoutUrl(tenantId, returnPath);
+    const logoutUrl = microsoftAuthClient.getLogoutUrl(tenantId, returnPath, logoutHint);
     await destroySession(request);
     response.clearCookie("edupath.sid", {
       httpOnly: true,

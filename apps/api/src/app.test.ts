@@ -72,6 +72,7 @@ class FakeMicrosoftAuthClient implements MicrosoftAuthClient {
       name: "Test User",
       email: "test@example.edu",
       username: "test@example.edu",
+      loginHint: "test-login-hint",
       roles: this.nextRoles,
       nonce,
       audience: clientId,
@@ -80,9 +81,10 @@ class FakeMicrosoftAuthClient implements MicrosoftAuthClient {
     };
   }
 
-  public getLogoutUrl(id?: string, returnPath: "/" | "/quantri" = "/"): string {
+  public getLogoutUrl(id?: string, returnPath: "/" | "/quantri" = "/", logoutHint?: string): string {
     const url = new URL(`https://login.microsoftonline.com/${id ?? "organizations"}/logout`);
     url.searchParams.set("post_logout_redirect_uri", new URL(returnPath, config.webOrigin).toString());
+    if (logoutHint) url.searchParams.set("logout_hint", logoutHint);
     return url.toString();
   }
 }
@@ -398,6 +400,7 @@ describe("Microsoft authentication routes", () => {
       .expect(200);
     expect(logout.body.logoutUrl).toContain(tenantId);
     expect(new URL(logout.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/`);
+    expect(new URL(logout.body.logoutUrl).searchParams.get("logout_hint")).toBe("test-login-hint");
     expect(logout.headers["set-cookie"]?.[0]).toContain("edupath.sid=");
 
     const me = await agent.get("/api/auth/me").expect(200);

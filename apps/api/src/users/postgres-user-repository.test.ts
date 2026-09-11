@@ -10,6 +10,7 @@ const identity: MicrosoftIdentity = {
   name: "Nguyễn Văn Lang",
   email: "student@vlu.edu.vn",
   username: "student@vlu.edu.vn",
+  loginHint: "student-login-hint",
   roles: [],
   nonce: "nonce",
   audience: "11111111-1111-4111-8111-111111111111",

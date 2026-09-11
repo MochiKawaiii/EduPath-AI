@@ -54,6 +54,7 @@ function identity(overrides: Partial<MicrosoftIdentity> = {}): MicrosoftIdentity
     name: "Test Student",
     email: "student@example.edu",
     username: "student@example.edu",
+    loginHint: "student-login-hint",
     roles: [],
     nonce: "expected-nonce",
     audience: clientId,
