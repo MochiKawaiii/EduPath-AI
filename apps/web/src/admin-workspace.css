@@ -1001,3 +1001,7 @@
   max-height: 70px;
   object-fit: contain;
 }
+
+.am-action-list { display: grid; gap: 12px; }
+.am-action-list button { min-height: 44px; text-align: left; }
+.am-portal-link { color: #b51639; text-decoration: none; padding: 10px 0; }

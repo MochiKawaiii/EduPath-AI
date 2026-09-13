@@ -8,7 +8,7 @@ import { AccountError, createAdminAccountsRouter, PostgresAdminAccountRepository
 const actor = { userId: "actor-id", tenantId: "tenant-id", role: "admin" } as AuthenticatedUser;
 const target = { id: "target-id", name: "Test account", email: "test@example.edu", role: "student", isActive: true };
 function setup(role: "admin" | "student" | null = "admin", available = true) {
-  const repository = { isAdmin: vi.fn().mockResolvedValue(true), list: vi.fn().mockResolvedValue({ items: [], total: 0 }), createAdmin: vi.fn().mockResolvedValue({ ...target, role: "admin" }) };
+  const repository = { canAccessAdmin: vi.fn().mockResolvedValue(true), list: vi.fn().mockResolvedValue({ items: [], total: 0 }), createAdmin: vi.fn().mockResolvedValue({ ...target, role: "admin" }) };
   const app = express();
   app.use(express.json());
   // Test-only sessions; production uses the Microsoft session middleware.
@@ -26,7 +26,7 @@ describe("admin accounts API", () => {
     expect(repository.createAdmin).not.toHaveBeenCalled();
   });
   it("rejects a revoked Admin even with an old Admin session", async () => {
-    const { app, repository } = setup(); repository.isAdmin.mockResolvedValue(false);
+    const { app, repository } = setup(); repository.canAccessAdmin.mockResolvedValue(false);
     await request(app).get("/accounts").expect(403);
     await request(app).post("/accounts").expect(403);
     expect(repository.createAdmin).not.toHaveBeenCalled();

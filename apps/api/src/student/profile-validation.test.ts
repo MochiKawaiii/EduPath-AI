@@ -19,6 +19,10 @@ function setup() {
 }
 const profile = { className: "CNTT08", interests: null, careerGoal: null };
 describe("student profile semester bounds", () => {
+  it("saves a profile without the removed current semester field", async () => {
+    const { app } = setup();
+    await request(app).patch("/student/profile").set("Origin", "https://edupath.example").send(profile).expect(200);
+  });
   it.each([1, 2, 3, null])("saves semester %s", async currentSemester => {
     const { app, query } = setup();
     await request(app).patch("/student/profile").set("Origin", "https://edupath.example").send({ ...profile, currentSemester }).expect(200);

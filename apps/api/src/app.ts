@@ -18,7 +18,7 @@ import { createStudentProfilesRouter, type StudentProfileRepository } from "./ad
 import { createAdminAccountsRouter, type AdminAccountRepository } from "./admin/accounts.js";
 import {
   requireAuthentication,
-  requireRole
+  requireRole, requireAdminAccess
 } from "./middleware/authorization.js";
 
 export interface CreateAppDependencies {
@@ -126,7 +126,7 @@ export function createApp({
     });
   });
 
-  app.get("/api/student/profile", requireRole("student"), async (request, response) => {
+  app.get("/api/student/profile", requireAuthentication, async (request, response) => {
     response.setHeader("Cache-Control", "no-store");
     if (!studentProfileRepository) {
       response.status(503).json({ error: "database_required" });
@@ -136,7 +136,7 @@ export function createApp({
     response.json({ student: await studentProfileRepository.detail(user, user.userId) });
   });
 
-  app.get("/api/admin/me", requireRole("admin"), (request, response) => {
+  app.get("/api/admin/me", requireAdminAccess, (request, response) => {
     response.json({ authenticated: true, user: request.session.user });
   });
 

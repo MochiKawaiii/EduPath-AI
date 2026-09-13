@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
 import type { AuthenticatedUser } from "../auth/types.js";
-import { requireRole } from "../middleware/authorization.js";
+import { requireAuthentication } from "../middleware/authorization.js";
 import { parseTranscript, TranscriptError, type TranscriptData } from "./transcript-parser.js";
 
 const transcriptColumns = `version, filename, file_size AS "fileSize", parsed_data AS data,
@@ -12,13 +12,13 @@ const transcriptColumns = `version, filename, file_size AS "fileSize", parsed_da
 type TranscriptRow = { version: string; filename: string; fileSize: number; data: TranscriptData; createdAt: string; updatedAt: string };
 async function lockStudent(client: PoolClient, user: AuthenticatedUser) {
   const active = await client.query(`SELECT id FROM users WHERE id=$1 AND entra_tenant_id=$2
-    AND is_active AND COALESCE(role_override,role)='student' FOR UPDATE`, [user.userId, user.tenantId]);
+    AND is_active FOR UPDATE`, [user.userId, user.tenantId]);
   if (!active.rowCount) throw new TranscriptError("insufficient_role", 403);
 }
 
 export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigin: string) {
   const router = Router();
-  router.use(requireRole("student"));
+  router.use(requireAuthentication);
   router.use((req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
     if (!pool) { res.status(503).json({ error: "database_required" }); return; }
@@ -31,7 +31,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       className: z.string().trim().max(32).regex(/^[\p{L}\p{N} _.-]*$/u).nullable(),
       interests: z.string().trim().max(2000).nullable(),
       careerGoal: z.string().trim().max(2000).nullable(),
-      currentSemester: z.number().int().min(1).max(3).nullable()
+      currentSemester: z.number().int().min(1).max(3).nullable().optional()
     }).strict().safeParse(req.body);
     if (!input.success) { res.status(400).json({ error: "invalid_profile" }); return; }
     const client = await pool!.connect();
@@ -41,7 +41,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       await client.query(`INSERT INTO student_profiles (user_id,class_name,interests,career_goal,current_semester)
         VALUES($1,$2,$3,$4,$5) ON CONFLICT(user_id) DO UPDATE SET class_name=EXCLUDED.class_name,
         interests=EXCLUDED.interests,career_goal=EXCLUDED.career_goal,current_semester=EXCLUDED.current_semester,updated_at=CURRENT_TIMESTAMP`,
-        [req.session.user!.userId, input.data.className || null, input.data.interests || null, input.data.careerGoal || null, input.data.currentSemester]);
+        [req.session.user!.userId, input.data.className || null, input.data.interests || null, input.data.careerGoal || null, input.data.currentSemester ?? null]);
       await client.query("COMMIT");
       res.json({ saved: true });
     } catch (error) { await client.query("ROLLBACK"); throw error; }

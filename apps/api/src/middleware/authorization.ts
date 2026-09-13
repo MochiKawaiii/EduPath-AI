@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import type { AppRole } from "../auth/types.js";
+import { canAccessAdmin, type AppRole } from "../auth/types.js";
 
 export function requireAuthentication(
   request: Request,
@@ -27,3 +27,9 @@ export function requireRole(role: AppRole) {
   };
 }
 
+
+export const requireAdminAccess = (request: Request, response: Response, next: NextFunction): void => {
+  if (!request.session.user) { response.status(401).json({ error: "authentication_required" }); return; }
+  if (!canAccessAdmin(request.session.user.role)) { response.status(403).json({ error: "insufficient_role" }); return; }
+  next();
+};

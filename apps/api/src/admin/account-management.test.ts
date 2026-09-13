@@ -9,13 +9,30 @@ const id = "12345678-1234-4234-8234-123456789012";
 const actor = { userId: "22345678-1234-4234-8234-123456789012", tenantId: "tenant", role: "admin" } as AuthenticatedUser;
 const origin = "http://localhost:5173";
 function setup(role: string | null = "admin") {
-  const repository = { isAdmin: vi.fn().mockResolvedValue(true), list: vi.fn().mockResolvedValue({ items: [], total: 0 }), createAdmin: vi.fn(), detail: vi.fn().mockResolvedValue({ id }), update: vi.fn().mockResolvedValue({ id }), history: vi.fn().mockResolvedValue({ items: [], total: 0 }) };
+  const repository = { canAccessAdmin: vi.fn().mockResolvedValue(true), list: vi.fn().mockResolvedValue({ items: [], total: 0 }), createAdmin: vi.fn(), detail: vi.fn().mockResolvedValue({ id }), update: vi.fn().mockResolvedValue({ id }), history: vi.fn().mockResolvedValue({ items: [], total: 0 }) };
   const app = express(); app.use(express.json());
   app.use((req, _res, next) => { req.session = { user: role ? { ...actor, role } : undefined } as typeof req.session; next(); });
   app.use("/accounts", createAdminAccountsRouter(repository, origin));
   return { app, repository };
 }
 describe("account management authorization and validation", () => {
+  it.each(["faculty_board", "department_head", "lecturer"])("allows %s to read but never grant roles, lock accounts or read history", async role => {
+    const { app, repository } = setup(role);
+    await request(app).get("/accounts").expect(200);
+    await request(app).get(`/accounts/${id}`).expect(200);
+    await request(app).post("/accounts").set("Origin", origin).send({ email: "test@example.com", confirmAdmin: true }).expect(403);
+    await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ role: "admin", confirmed: true }).expect(403);
+    await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ isActive: false, confirmed: true }).expect(403);
+    await request(app).get("/accounts/history").expect(403);
+    expect(repository.createAdmin).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
+    expect(repository.history).not.toHaveBeenCalled();
+  });
+  it.each(["faculty_board", "department_head", "lecturer"])("lets an admin assign %s", async role => {
+    const { app, repository } = setup();
+    await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ role, confirmed: true }).expect(200);
+    expect(repository.update).toHaveBeenCalledWith(actor, id, { role, confirmed: true });
+  });
   it.each([null, "student"])("blocks %s on all new endpoints", async (role) => {
     const { app, repository } = setup(role); const status = role ? 403 : 401;
     await request(app).get(`/accounts/${id}`).expect(status);
@@ -50,7 +67,7 @@ describe("account management authorization and validation", () => {
     await request(setup().app).get(`/accounts/history?${query}`).expect(400);
   });
   it("denies a revoked actor before reading history", async () => {
-    const { app, repository } = setup(); repository.isAdmin.mockResolvedValue(false);
+    const { app, repository } = setup(); repository.canAccessAdmin.mockResolvedValue(false);
     await request(app).get("/accounts/history").expect(403); expect(repository.history).not.toHaveBeenCalled();
   });
 });

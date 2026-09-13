@@ -1,3 +1,4 @@
+import { canAccessAdmin } from "./types";
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import "./landing.css";
 import { getCurrentUser } from "./auth-api";
@@ -251,7 +252,7 @@ export default function LandingPage() {
   const [portal, setPortal] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    const refresh = () => { void getCurrentUser().then(auth => { if (active) setPortal(auth.authenticated ? auth.user.role === "admin" ? "/quantri" : "/dashboard" : null); }).catch(() => { if (active) setPortal(null); }); };
+    const refresh = () => { void getCurrentUser().then(auth => { if (active) setPortal(auth.authenticated ? canAccessAdmin(auth.user.role) ? "/quantri" : "/dashboard" : null); }).catch(() => { if (active) setPortal(null); }); };
     refresh(); window.addEventListener("pageshow", refresh); window.addEventListener("focus", refresh);
     return () => { active = false; window.removeEventListener("pageshow", refresh); window.removeEventListener("focus", refresh); };
   }, []);

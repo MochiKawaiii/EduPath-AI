@@ -46,10 +46,11 @@ export class PostgresUserRepository implements UserRepository {
           email,
           username,
           role,
+          is_student,
           first_login_at,
           last_login_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8::varchar = 'student', $9, $9)
         ON CONFLICT (entra_tenant_id, entra_object_id)
         DO UPDATE SET
           entra_subject = EXCLUDED.entra_subject,
@@ -57,6 +58,7 @@ export class PostgresUserRepository implements UserRepository {
           email = COALESCE(EXCLUDED.email, users.email),
           username = COALESCE(EXCLUDED.username, users.username),
           role = COALESCE(users.role_override, EXCLUDED.role),
+          is_student = users.is_student OR EXCLUDED.is_student,
           last_login_at = EXCLUDED.last_login_at,
           updated_at = EXCLUDED.last_login_at
         WHERE users.is_active = TRUE

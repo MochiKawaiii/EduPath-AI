@@ -1,4 +1,5 @@
-export type AppRole = "admin" | "student";
+export type AppRole = "admin" | "student" | "faculty_board" | "department_head" | "lecturer";
+export const canAccessAdmin = (role: AppRole) => ["admin", "faculty_board", "department_head", "lecturer"].includes(role);
 
 export interface AuthenticatedUser {
   userId: string;

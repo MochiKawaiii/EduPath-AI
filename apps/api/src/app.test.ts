@@ -177,6 +177,18 @@ describe("Microsoft authentication routes", () => {
     expect((await login(agent, client, "/quantri")).headers.location).toContain("authError=callback_failed");
     await agent.get("/api/admin/me").expect(401);
   });
+  it.each(["faculty_board", "department_head", "lecturer", "admin"] as const)("allows assigned %s to sign in to both portals", async role => {
+    const client = new FakeMicrosoftAuthClient();
+    const repository = new FakeUserRepository(); repository.roleOverride = role;
+    const agent = request.agent(createTestApp(client, repository));
+    expect((await login(agent, client, "/quantri")).headers.location).toBe(`${config.webOrigin}/quantri`);
+    await agent.get("/api/admin/me").expect(200);
+    await agent.post("/api/auth/logout").expect(200);
+    expect((await login(agent, client, "/dashboard")).headers.location).toContain("/auth/callback");
+    await agent.get("/api/student/summary").expect(200);
+    const result = await agent.post("/api/auth/logout").expect(200);
+    expect(new URL(result.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/`);
+  });
   it("accepts a database-assigned Admin without a Microsoft Admin claim", async () => {
     const client = new FakeMicrosoftAuthClient();
     const repository = new FakeUserRepository();

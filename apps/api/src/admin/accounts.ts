@@ -1,21 +1,21 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { DatabasePool } from "../db/pool.js";
-import type { AuthenticatedUser } from "../auth/types.js";
-import { requireRole } from "../middleware/authorization.js";
+import type { AuthenticatedUser, AppRole } from "../auth/types.js";
+import { requireRole, requireAdminAccess } from "../middleware/authorization.js";
 
 export interface Account {
   id: string;
   name: string;
   email: string | null;
   username: string | null;
-  role: "admin" | "student";
+  role: AppRole;
   isActive: boolean;
   lastLoginAt: string;
 }
-export interface AccountQuery { q: string; page: number; pageSize: number; role?: "admin" | "student" | undefined; active?: "true" | "false" | undefined }
+export interface AccountQuery { q: string; page: number; pageSize: number; role?: AppRole | undefined; active?: "true" | "false" | undefined }
 export interface HistoryQuery { q: string; page: number; pageSize: number; userId?: string | undefined; outcome?: "success" | "denied" | undefined; portal?: "admin" | "student" | undefined; from?: string | undefined; to?: string | undefined }
-export interface AccountChange { role?: "admin" | "student" | undefined; isActive?: boolean | undefined }
+export interface AccountChange { role?: AppRole | undefined; isActive?: boolean | undefined }
 export interface LoginEvent { id: string; userId: string; name: string; email: string | null; occurredAt: string; outcome: string; reason: string; portal: string }
 export interface AccountDetail extends Account { createdAt: string; firstLoginAt: string; updatedAt: string }
 export interface AccountPage { items: Account[]; total: number }
@@ -23,7 +23,7 @@ export class AccountError extends Error {
   constructor(public readonly code: string, public readonly status: number) { super(code); }
 }
 export interface AdminAccountRepository {
-  isAdmin(actor: AuthenticatedUser): Promise<boolean>;
+  canAccessAdmin(actor: AuthenticatedUser): Promise<boolean>;
   list(actor: AuthenticatedUser, query: AccountQuery): Promise<AccountPage>;
   createAdmin(actor: AuthenticatedUser, email: string): Promise<Account>;
   detail(actor: AuthenticatedUser, id: string): Promise<AccountDetail>;
@@ -37,10 +37,10 @@ const columns = `id, display_name AS name, email, username,
 export class PostgresAdminAccountRepository implements AdminAccountRepository {
   constructor(private readonly pool: DatabasePool) {}
 
-  async isAdmin(actor: AuthenticatedUser): Promise<boolean> {
+  async canAccessAdmin(actor: AuthenticatedUser): Promise<boolean> {
     const result = await this.pool.query(
       `SELECT id FROM users WHERE id = $1 AND entra_tenant_id = $2
-       AND is_active AND COALESCE(role_override, role) = 'admin'`,
+       AND is_active AND COALESCE(role_override, role) IN ('admin', 'faculty_board', 'department_head', 'lecturer')`,
       [actor.userId, actor.tenantId]
     );
     return result.rows.length === 1;
@@ -91,7 +91,7 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
       if (!target.isActive) throw new AccountError("account_locked", 409);
       if (target.role === "admin") throw new AccountError("already_admin", 409);
       const result = await client.query<Account>(
-        `UPDATE users SET role = 'admin', role_override = 'admin', auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
+        `UPDATE users SET is_student = is_student OR COALESCE(role_override, role) = 'student', role = 'admin', role_override = 'admin', auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 RETURNING ${columns}`,
         [target.id]
       );
@@ -121,6 +121,7 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
         AND is_active AND COALESCE(role_override, role) = 'admin' FOR SHARE`, [actor.userId, actor.tenantId]);
       if (!activeActor.rows.length) throw new AccountError("insufficient_role", 403);
       const result = await client.query<Account>(`UPDATE users SET
+        is_student = is_student OR COALESCE(role_override, role) = 'student' OR COALESCE($2::varchar = 'student', FALSE),
         role = COALESCE($2, role), role_override = COALESCE($2, role_override),
         is_active = COALESCE($3, is_active), auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 RETURNING ${columns}`, [id, change.role ?? null, change.isActive ?? null]);
@@ -152,10 +153,10 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
 
 export function createAdminAccountsRouter(repository: AdminAccountRepository | undefined, webOrigin: string) {
   const router = Router();
-  router.use(requireRole("admin"));
+  router.use(requireAdminAccess);
   router.use(async (request, response, next) => {
     if (!repository) { response.status(503).json({ error: "database_required" }); return; }
-    if (!await repository.isAdmin(request.session.user!)) {
+    if (!await repository.canAccessAdmin(request.session.user!)) {
       response.status(403).json({ error: "insufficient_role" }); return;
     }
     next();
@@ -165,12 +166,12 @@ export function createAdminAccountsRouter(repository: AdminAccountRepository | u
       q: z.string().trim().max(120).default(""),
       page: z.coerce.number().int().min(1).max(100000).default(1),
       pageSize: z.coerce.number().int().min(1).max(50).default(10),
-      role: z.enum(["admin", "student"]).optional(), active: z.enum(["true", "false"]).optional()
+      role: z.enum(["admin", "student", "faculty_board", "department_head", "lecturer"]).optional(), active: z.enum(["true", "false"]).optional()
     }).strict().safeParse(request.query);
     if (!input.success) { response.status(400).json({ error: "invalid_query" }); return; }
     response.json({ ...await repository!.list(request.session.user!, input.data), page: input.data.page, pageSize: input.data.pageSize });
   });
-  router.get("/history", async (request, response) => {
+  router.get("/history", requireRole("admin"), async (request, response) => {
     const input = z.object({ q: z.string().trim().max(120).default(""),
       page: z.coerce.number().int().min(1).max(100000).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(10),
       userId: z.uuid().optional(), outcome: z.enum(["success", "denied"]).optional(), portal: z.enum(["admin", "student"]).optional(),
@@ -184,15 +185,15 @@ export function createAdminAccountsRouter(repository: AdminAccountRepository | u
     if (!id.success) { response.status(400).json({ error: "invalid_input" }); return; }
     response.json({ user: await repository!.detail(request.session.user!, id.data) });
   });
-  router.patch("/:id", async (request, response) => {
+  router.patch("/:id", requireRole("admin"), async (request, response) => {
     if (request.get("origin") !== webOrigin) { response.status(403).json({ error: "invalid_origin" }); return; }
     const id = z.uuid().safeParse(request.params.id);
-    const change = z.object({ role: z.enum(["admin", "student"]).optional(), isActive: z.boolean().optional(), confirmed: z.literal(true) })
+    const change = z.object({ role: z.enum(["admin", "student", "faculty_board", "department_head", "lecturer"]).optional(), isActive: z.boolean().optional(), confirmed: z.literal(true) })
       .strict().refine((value) => (value.role !== undefined) !== (value.isActive !== undefined)).safeParse(request.body);
     if (!id.success || !change.success) { response.status(400).json({ error: "invalid_input" }); return; }
     response.json({ user: await repository!.update(request.session.user!, id.data, change.data) });
   });
-  router.post("/", async (request, response) => {
+  router.post("/", requireRole("admin"), async (request, response) => {
     // Browser mutations require an exact Origin; missing Origin is not accepted.
     if (request.get("origin") !== webOrigin) { response.status(403).json({ error: "invalid_origin" }); return; }
     const input = z.object({ email: z.email().max(320).transform((value) => value.toLowerCase()), confirmAdmin: z.literal(true) }).strict().safeParse(request.body);

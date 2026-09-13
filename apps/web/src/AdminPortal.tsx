@@ -1,3 +1,4 @@
+import { canAccessAdmin } from "./types";
 import { useCallback, useEffect, useState } from "react";
 import EduPathBrand from "./EduPathBrand";
 import { beginMicrosoftLogin, logout } from "./auth-api";
@@ -46,7 +47,7 @@ export default function AdminPortal() {
       if (response.status === 403) return { kind: "forbidden" } as const;
       if (!response.ok) throw new Error("Admin API unavailable");
       const data = await response.json();
-      if (!data.authenticated || data.user?.role !== "admin") return { kind: "forbidden" } as const;
+      if (!data.authenticated || (!data.user || !canAccessAdmin(data.user.role))) return { kind: "forbidden" } as const;
       return { kind: "authenticated", user: data.user as AuthenticatedUser } as const;
     }).then((result) => {
       if (!controller.signal.aborted) {

@@ -1,3 +1,4 @@
+import type { AppRole } from "./types";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 const failures: Record<string, string> = {
   student_not_found: "Không tìm thấy sinh viên hoặc tài khoản không còn mang vai trò Sinh viên.",
@@ -14,7 +15,7 @@ const failures: Record<string, string> = {
   invalid_origin: "Yêu cầu không hợp lệ. Vui lòng tải lại trang rồi thử lại.",
   authentication_required: "Phiên đăng nhập đã hết hạn. Vui lòng đăng xuất và đăng nhập lại."
 };
-export type Account = { id: string; name: string; email: string | null; username: string | null; role: "admin" | "student"; isActive: boolean; lastLoginAt: string };
+export type Account = { id: string; name: string; email: string | null; username: string | null; role: AppRole; isActive: boolean; lastLoginAt: string };
 export type AccountPage = { items: Account[]; total: number; page: number; pageSize: number };
 
 export function Icon({ name }: { name: string }) {
@@ -72,3 +73,8 @@ export function CreateAccount({ onList, onBusy }: { onList: () => void; onBusy?:
       </form>}
   </section><aside className="am-create-note"><Icon name="shield" /><h3>Cấp đúng quyền.<br />Đúng người dùng.</h3><p>Quản trị viên có thể truy cập khu vực quản trị và thêm quản trị viên khác.</p><hr /><h4>Không cần tạo mật khẩu</h4><p>Người dùng tiếp tục đăng nhập bằng Microsoft. Thao tác này không tạo hộp thư hay tài khoản mới trên hệ thống của trường.</p><h4>Email chưa có trong hệ thống?</h4><p>Nhờ người dùng đăng nhập EduPath một lần trước, rồi quay lại thêm quyền quản trị.</p></aside></div>;
 }
+
+export const roleLabels: Record<AppRole, string> = {
+  student: "Sinh viên", admin: "Quản trị viên", faculty_board: "Ban chủ nhiệm khoa",
+  department_head: "Trưởng/phó bộ môn", lecturer: "Giảng viên"
+};

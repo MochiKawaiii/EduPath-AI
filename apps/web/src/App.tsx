@@ -245,7 +245,7 @@ function AuthenticatedApp({ isLoginRoute }: { isLoginRoute: boolean }) {
 
   useEffect(() => {
     if (auth?.authenticated) {
-      if (auth.user.role === "admin" || safeReturnTo(window.location.search) === "/quantri") {
+      if (safeReturnTo(window.location.search) === "/quantri") {
         window.location.replace("/quantri");
         return;
       }

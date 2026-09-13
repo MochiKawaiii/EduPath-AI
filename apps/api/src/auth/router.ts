@@ -1,3 +1,4 @@
+import { canAccessAdmin } from "./types.js";
 import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import type { AppConfig } from "../config.js";
@@ -133,7 +134,7 @@ export function createAuthRouter({
       verifiedIdentity = identity;
       const roleOverride = await userRepository.getRoleOverride(identity);
       const role = roleOverride ?? resolveAppRole(identity.roles, config.authDefaultRole);
-      if (transaction.returnTo === "/quantri" && role !== "admin") {
+      if (transaction.returnTo === "/quantri" && !canAccessAdmin(role)) {
         await authActivity?.record(identity, "denied", "admin_required", portal);
         await saveSession(request);
         response.redirect(authErrorRedirect(config, "admin_required", transaction.returnTo));
@@ -141,7 +142,7 @@ export function createAuthRouter({
       }
       const user = await userRepository.upsertMicrosoftUser(identity, role);
       // Check the persisted role too, in case an override changed during sign-in.
-      if (transaction.returnTo === "/quantri" && user.role !== "admin") {
+      if (transaction.returnTo === "/quantri" && !canAccessAdmin(user.role)) {
         await authActivity?.record(identity, "denied", "admin_required", portal);
         await saveSession(request);
         response.redirect(authErrorRedirect(config, "admin_required", transaction.returnTo));
@@ -187,7 +188,7 @@ export function createAuthRouter({
     const tenantId = request.session.user?.tenantId;
     const logoutHint = request.session.logoutHint;
     // Only fixed local destinations are accepted; this is not a role grant.
-    const returnPath = request.query.portal === "admin" || request.session.user?.role === "admin"
+    const returnPath = request.query.portal === "admin"
       ? "/quantri" : "/";
     const logoutUrl = microsoftAuthClient.getLogoutUrl(tenantId, returnPath, logoutHint);
     await destroySession(request);
