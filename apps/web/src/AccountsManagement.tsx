@@ -53,6 +53,9 @@ function ChangeAccount({ account, mode, onClose, onSaved }: { account: Account; 
     <div className="am-form-actions"><button className="am-primary" disabled={busy || (mode === "role" && role === account.role)}>{busy ? "Đang lưu…" : "Xác nhận"}</button><button className="am-quiet" type="button" onClick={onClose} disabled={busy}>Hủy</button></div>
   </form></Modal>;
 }
+function ActionItem({ icon, label, hint, danger = false, disabled = false, onClick }: { icon: string; label: string; hint: string; danger?: boolean; disabled?: boolean; onClick: () => void }) {
+  return <button type="button" className={`am-action-item${danger ? " am-action-danger" : ""}`} disabled={disabled} onClick={onClick}><span className="am-action-icon"><Icon name={icon} /></span><span className="am-action-text"><strong>{label}</strong><small>{hint}</small></span><Icon name="chevron" /></button>;
+}
 export default function AccountsManagement({ actorId, canManage = false }: { actorId: string; canManage?: boolean }) {
   const { draft, setDraft, filters, page, setPage, flush, reset } = useLiveFilters({ q: "", role: "", active: "" });
   const [revision, setRevision] = useState(0);
@@ -74,15 +77,23 @@ export default function AccountsManagement({ actorId, canManage = false }: { act
       <label>Vai trò<select value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })}><option value="">Tất cả vai trò</option>{Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label>Trạng thái<select value={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.value })}><option value="">Tất cả trạng thái</option><option value="true">Đang hoạt động</option><option value="false">Đã khóa</option></select></label>
       <button className="am-quiet" type="button" onClick={reset}>Xóa bộ lọc</button>
-    </form><Status {...state} />{state.data && <><div className="am-table-scroll" tabIndex={0} role="region" aria-label="Bảng tài khoản người dùng"><table className="am-table"><thead><tr><th>STT</th><th>Người dùng</th><th>Vai trò</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th><th>Thao tác</th></tr></thead><tbody>{state.data.items.map((account, index) => <tr key={account.id}><td>{(page - 1) * 10 + index + 1}</td><td><div className="am-person"><span className="am-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span><div><button className="am-name-link" onClick={() => setModal({ mode: "detail", account })}>{account.name}</button><small>{account.email ?? account.username}</small></div></div></td><td><span className={`am-badge ${account.role === "admin" ? "am-badge-admin" : ""}`}>{roleName(account.role)}</span></td><td><span className={`am-state ${account.isActive ? "" : "am-state-locked"}`}>{account.isActive ? "Đang hoạt động" : "Đã khóa"}</span></td><td>{date(account.lastLoginAt)}</td><td><button className="am-outline" aria-label={`Thao tác với ${account.name}`} onClick={() => setModal({ mode: "actions", account })}>Thao tác ···</button></td></tr>)}</tbody></table></div>{!state.data.items.length && <p className="am-empty">Không tìm thấy tài khoản phù hợp.</p>}<Pagination total={state.data.total} page={page} setPage={setPage} /></>}
+    </form><Status {...state} />{state.data && <><div className="am-table-scroll" tabIndex={0} role="region" aria-label="Bảng tài khoản người dùng"><table className="am-table"><thead><tr><th>STT</th><th>Người dùng</th><th>Vai trò</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th><th>Thao tác</th></tr></thead><tbody>{state.data.items.map((account, index) => <tr key={account.id}><td>{(page - 1) * 10 + index + 1}</td><td><div className="am-person"><span className="am-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span><div><button className="am-name-link" onClick={() => setModal({ mode: "detail", account })}>{account.name}</button><small>{account.email ?? account.username}</small></div></div></td><td><span className={`am-badge ${account.role === "admin" ? "am-badge-admin" : ""}`}>{roleName(account.role)}</span></td><td><span className={`am-state ${account.isActive ? "" : "am-state-locked"}`}>{account.isActive ? "Đang hoạt động" : "Đã khóa"}</span></td><td>{date(account.lastLoginAt)}</td><td><button className="am-icon-btn" type="button" aria-haspopup="dialog" aria-label={`Thao tác với ${account.name}`} title="Thao tác" onClick={() => setModal({ mode: "actions", account })}><Icon name="menu" /></button></td></tr>)}</tbody></table></div>{!state.data.items.length && <p className="am-empty">Không tìm thấy tài khoản phù hợp.</p>}<Pagination total={state.data.total} page={page} setPage={setPage} /></>}
       <p className="am-table-note"></p></>}
   </section>
-    {modal?.mode === "actions" && <Modal title={`Thao tác — ${modal.account.name}`} onClose={() => setModal(null)}><div className="am-action-list">
-      <button className="am-outline" onClick={() => setModal({ ...modal, mode: "detail" })}>Xem chi tiết tài khoản</button>
-      {canManage && <><button className="am-outline" disabled={modal.account.id === actorId} onClick={() => setModal({ ...modal, mode: "role" })}>Phân quyền theo vai trò</button>
-      <button className="am-outline" disabled={modal.account.id === actorId} onClick={() => setModal({ ...modal, mode: "lock" })}>{modal.account.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}</button>
-      <button className="am-outline" onClick={() => setModal({ ...modal, mode: "history" })}>Xem lịch sử đăng nhập</button></>}
-    </div></Modal>}
+    {modal?.mode === "actions" && <Modal size="sm" title="Thao tác tài khoản" onClose={() => setModal(null)}>
+      <div className="am-action-account"><span className="am-avatar" aria-hidden="true">{modal.account.name.slice(0, 1)}</span><div><strong>{modal.account.name}</strong><small>{modal.account.email ?? modal.account.username}</small></div><span className={`am-badge ${modal.account.role === "admin" ? "am-badge-admin" : ""}`}>{roleName(modal.account.role)}</span></div>
+      <div className="am-action-list">
+        <ActionItem icon="eye" label="Xem chi tiết tài khoản" hint="Thông tin, vai trò và các mốc thời gian" onClick={() => setModal({ ...modal, mode: "detail" })} />
+        {canManage && <>
+          <ActionItem icon="clock" label="Xem lịch sử đăng nhập" hint="Các lần đăng nhập thành công và bị từ chối" onClick={() => setModal({ ...modal, mode: "history" })} />
+          <ActionItem icon="shield" label="Phân quyền theo vai trò" hint={`Vai trò hiện tại: ${roleName(modal.account.role)}`} disabled={modal.account.id === actorId} onClick={() => setModal({ ...modal, mode: "role" })} />
+          {modal.account.isActive
+            ? <ActionItem icon="lock" danger label="Khóa tài khoản" hint="Chặn đăng nhập và thu hồi các phiên hiện tại" disabled={modal.account.id === actorId} onClick={() => setModal({ ...modal, mode: "lock" })} />
+            : <ActionItem icon="unlock" label="Mở khóa tài khoản" hint="Cho phép người dùng đăng nhập trở lại" disabled={modal.account.id === actorId} onClick={() => setModal({ ...modal, mode: "lock" })} />}
+        </>}
+      </div>
+      {canManage && modal.account.id === actorId && <p className="am-action-note">Bạn không thể tự đổi vai trò hoặc khóa tài khoản đang sử dụng.</p>}
+    </Modal>}
     {creating && <Modal title="Tạo tài khoản quản trị" busy={creatingBusy} onClose={() => { setCreating(false); refreshed(); }}><CreateAccount onBusy={setCreatingBusy} onList={() => { setCreating(false); refreshed(); }} /></Modal>}
     {modal && (modal.mode === "role" || modal.mode === "lock") && <ChangeAccount account={modal.account} mode={modal.mode} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshed(); setNotice("Đã cập nhật tài khoản và thu hồi các phiên đăng nhập cũ."); }} />}
     {modal && (modal.mode === "detail" || modal.mode === "history") && <Modal title={`${modal.mode === "detail" ? "Chi tiết tài khoản" : "Lịch sử đăng nhập"} — ${modal.account.name}`} onClose={() => setModal(null)}>{modal.mode === "detail" ? <AccountDetails id={modal.account.id} /> : <History userId={modal.account.id} />}</Modal>}

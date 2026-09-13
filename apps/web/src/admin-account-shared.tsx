@@ -28,7 +28,11 @@ export function Icon({ name }: { name: string }) {
     clock: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M12 6v6l4 2",
     search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
     exit: "M9 21H3V3h6M10 12h12M18 8l4 4-4 4",
-    menu: "M3 6h18M3 12h18M3 18h18"
+    menu: "M3 6h18M3 12h18M3 18h18",
+    eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
+    unlock: "M5 10h14v11H5zM8 10V6a4 4 0 0 1 7.75-1.4M12 14v3",
+    chevron: "m9 6 6 6-6 6",
+    close: "M18 6 6 18M6 6l12 12"
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.users} /></svg>;
 }
