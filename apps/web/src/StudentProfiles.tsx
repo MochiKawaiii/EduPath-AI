@@ -1,3 +1,4 @@
+import { useLiveFilters } from "./use-live-filters";
 import { useEffect, useState } from "react";
 import { useData, Status, Pagination, Modal } from "./admin-ui";
 import "./student-profiles.css";
@@ -29,9 +30,7 @@ function StudentDetails({ id }: { id: string }) {
 }
 
 export default function StudentProfiles() {
-  const [draft, setDraft] = useState(emptyFilters);
-  const [filters, setFilters] = useState(emptyFilters);
-  const [page, setPage] = useState(1);
+  const { draft, setDraft, filters, page, setPage, flush, reset } = useLiveFilters(emptyFilters);
   const [selected, setSelected] = useState<Student | null>(null);
   const [cohortCodes, setCohortCodes] = useState<string[]>([]);
   const [cohortYears, setCohortYears] = useState<number[]>([]);
@@ -42,13 +41,13 @@ export default function StudentProfiles() {
   const filtered = Object.values(filters).some(Boolean);
   return <><section className="am-card" aria-labelledby="student-list-title">
     <div className="am-card-heading"><div><h2 id="student-list-title">Danh sách sinh viên {state.data && <span className="am-count">{state.data.total}</span>}</h2><p>Tra cứu thông tin cá nhân, học tập và mục tiêu nghề nghiệp của sinh viên.</p></div><span className="sp-readonly">Chỉ xem hồ sơ</span></div>
-    <form className="am-filters sp-filters" onSubmit={(event) => { event.preventDefault(); setFilters({ ...draft, q: draft.q.trim() }); setPage(1); state.retry(); }}>
+    <form className="am-filters sp-filters" onSubmit={(event) => { event.preventDefault(); flush(); }}>
       <label className="sp-search" htmlFor="student-search">Nhập từ khóa tìm kiếm<input id="student-search" maxLength={120} value={draft.q} onChange={(e) => setDraft({ ...draft, q: e.target.value })} placeholder="MSSV, họ tên, email, khóa, lớp, mục tiêu…" /></label>
       <label htmlFor="student-cohort">Năm nhập học<select id="student-cohort" value={draft.cohortYear} onChange={(e) => setDraft({ ...draft, cohortYear: e.target.value })}><option value="">Tất cả năm</option>{cohortYears.map((year) => <option key={year} value={year}>{year}</option>)}</select></label>
       <label htmlFor="student-cohort-code">Khóa<select id="student-cohort-code" value={draft.cohortCode} onChange={(e) => setDraft({ ...draft, cohortCode: e.target.value })}><option value="">Tất cả khóa</option>{cohortCodes.map(code => <option key={code} value={code}>{code}</option>)}</select></label>
       <label htmlFor="student-profile-status">Trạng thái hồ sơ<select id="student-profile-status" value={draft.profileStatus} onChange={(e) => setDraft({ ...draft, profileStatus: e.target.value })}><option value="">Tất cả hồ sơ</option>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
       <label htmlFor="student-active">Trạng thái tài khoản<select id="student-active" value={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.value })}><option value="">Tất cả tài khoản</option><option value="true">Đang hoạt động</option><option value="false">Đã khóa</option></select></label>
-      <div className="sp-filter-actions"><button className="am-primary" type="submit">Tìm kiếm / Lọc</button><button className="am-outline" type="button" onClick={() => { setFilters(emptyFilters); setDraft(emptyFilters); setPage(1); state.retry(); }}>Xóa bộ lọc</button></div>
+      <div className="sp-filter-actions"><button className="am-outline" type="button" onClick={reset}>Xóa bộ lọc</button></div>
     </form>
     <Status {...state} />{state.data && <><div className="am-table-scroll" tabIndex={0} role="region" aria-label="Bảng hồ sơ sinh viên, cuộn ngang trên màn hình nhỏ"><table className="am-table sp-table"><thead><tr><th scope="col">STT</th><th scope="col">Sinh viên</th><th scope="col">Mã sinh viên</th><th scope="col">Khóa học</th><th scope="col">Lớp học</th><th scope="col">Năm nhập học</th><th scope="col">Hồ sơ</th><th scope="col">Tài khoản</th><th scope="col">Thao tác</th></tr></thead><tbody>{state.data.items.map((student, index) => <tr key={student.id}><td>{(page - 1) * 10 + index + 1}</td><td><div className="am-person"><span className="am-avatar" aria-hidden="true">{student.name.slice(0, 1)}</span><div><button className="am-name-link" onClick={() => setSelected(student)}>{student.name}</button><small>{student.email ?? "Chưa có email"}</small></div></div></td><td>{student.studentCode ?? "Chưa cập nhật"}</td><td>{student.cohortCode ?? "—"}</td><td>{student.className ?? "—"}</td><td>{student.cohortYear ?? "—"}</td><td><ProfileBadge status={student.profileStatus} /></td><td><span className={`am-state ${student.isActive ? "" : "am-state-locked"}`}>{student.isActive ? "Đang hoạt động" : "Đã khóa"}</span></td><td><button className="am-outline" onClick={() => setSelected(student)}>Xem hồ sơ</button></td></tr>)}</tbody></table></div>
       {!state.data.items.length && <div className="am-empty"><h3>{filtered ? "Không tìm thấy hồ sơ phù hợp" : "Chưa có sinh viên trong danh sách"}</h3><p>{filtered ? "Thử từ khóa khác hoặc xóa bộ lọc." : "Danh sách sẽ hiển thị khi có tài khoản mang vai trò Sinh viên trong hệ thống."}</p></div>}
