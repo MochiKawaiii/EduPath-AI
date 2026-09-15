@@ -7,7 +7,7 @@ type Item = { text: string; x: number; y: number; width: number };
 type Page = { page: number; items: Item[] };
 export type TranscriptCourse = { ordinal: number; code: string; name: string; credits: number; score10: number | null; score4: number | null; letter: string | null; result: string | null; conditional: boolean; sourcePage: number };
 export type TranscriptSection = { id: string; academicYear: string | null; semester: string | null; label: string; courses: TranscriptCourse[]; summaries: { label: string; value: string | null }[] };
-export type TranscriptData = { schemaVersion: 1; parserVersion: "vlu-native-1"; pageCount: number; courseCount: number; sections: TranscriptSection[]; warnings: string[] };
+export type TranscriptData = { schemaVersion: 1; parserVersion: "vlu-native-1" | "vlu-ocr-1.1"; pageCount: number; courseCount: number; sections: TranscriptSection[]; warnings: string[]; ocr?: { needsReview: boolean; pages: {page:number; method:string; warnings:string[]}[]; semesters: Record<string, unknown>[] } };
 const clean = (s: string) => s.normalize("NFC").replace(/\s+/g, " ").trim();
 const fold = (s: string) => clean(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/đ/g, "d");
 function join(items: Item[]) {

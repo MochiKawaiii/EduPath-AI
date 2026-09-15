@@ -1,5 +1,7 @@
 # Student profiles and PDF transcripts (STU-PROF-01–05)
 
+> OCR update: see [OCR demo setup](ocr-demo.md). When `OCR_WORKER_KEY` is configured, upload returns 202 and a persistent job; the local Python worker reads PDF text first and falls back to OCR. The synchronous native-only behavior below remains the fallback for deployments without a worker key.
+
 Students can import, replace, view and delete their own transcript from **Hồ sơ & bảng điểm**, and edit class, current semester, interests and career goal. Identity fields remain read-only.
 
 ## Storage and deployment

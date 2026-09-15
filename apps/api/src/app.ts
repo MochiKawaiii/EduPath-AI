@@ -9,6 +9,7 @@ import type { Store } from "express-session";
 import helmet from "helmet";
 import type { DatabasePool } from "./db/pool.js";
 import { createStudentDataRouter } from "./student/router.js";
+import { createTranscriptWorkerRouter } from "./student/transcript-jobs.js";
 import type { AppConfig } from "./config.js";
 import { createAuthRouter } from "./auth/router.js";
 import type { MicrosoftAuthClient } from "./auth/types.js";
@@ -55,6 +56,7 @@ export function createApp({
       crossOriginResourcePolicy: { policy: "same-site" }
     })
   );
+  app.use("/api/worker/transcripts", createTranscriptWorkerRouter(databasePool,config.ocrWorkerKey));
   app.use(express.json({ limit: "100kb" }));
   app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
@@ -141,7 +143,7 @@ export function createApp({
   });
 
   app.use("/api/admin/accounts", createAdminAccountsRouter(adminAccountRepository, config.webOrigin));
-  app.use("/api/student", createStudentDataRouter(databasePool, config.webOrigin));
+  app.use("/api/student", createStudentDataRouter(databasePool, config.webOrigin,Boolean(config.ocrWorkerKey)));
   app.use("/api/admin/students", createStudentProfilesRouter(studentProfileRepository, adminAccountRepository));
 
   if (config.nodeEnv === "production") {

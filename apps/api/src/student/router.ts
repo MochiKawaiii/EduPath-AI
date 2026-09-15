@@ -6,6 +6,7 @@ import type { DatabasePool } from "../db/pool.js";
 import type { AuthenticatedUser } from "../auth/types.js";
 import { requireAuthentication } from "../middleware/authorization.js";
 import { parseTranscript, TranscriptError, type TranscriptData } from "./transcript-parser.js";
+import { enqueueTranscript, expireJobs, jobColumns } from "./transcript-jobs.js";
 
 const transcriptColumns = `version, filename, file_size AS "fileSize", parsed_data AS data,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
@@ -16,7 +17,7 @@ async function lockStudent(client: PoolClient, user: AuthenticatedUser) {
   if (!active.rowCount) throw new TranscriptError("insufficient_role", 403);
 }
 
-export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigin: string) {
+export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigin: string, ocrEnabled = false) {
   const router = Router();
   router.use(requireAuthentication);
   router.use((req, res, next) => {
@@ -49,8 +50,21 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
   });
 
   router.get("/transcript", async (req, res) => {
+    await expireJobs(pool!);
     const result = await pool!.query<TranscriptRow>(`SELECT ${transcriptColumns} FROM student_transcripts WHERE user_id=$1`, [req.session.user!.userId]);
-    res.json({ transcript: result.rows[0] ?? null });
+    const jobs = await pool!.query(`SELECT ${jobColumns} FROM transcript_jobs WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1`,[req.session.user!.userId]);
+    const worker = await pool!.query<{online:boolean}>("SELECT seen_at>now()-interval '60 seconds' AS online FROM transcript_worker_status WHERE id=1");
+    res.json({ transcript: result.rows[0] ?? null, job:jobs.rows[0] ?? null, workerOnline:worker.rows[0]?.online ?? false, ocrEnabled });
+  });
+  router.delete("/transcript/job",async(req,res)=>{
+    const input=z.object({id:z.uuid()}).safeParse(req.body);
+    if(!input.success) {res.status(400).json({error:"invalid_input"});return;}
+    const client=await pool!.connect();
+    try {
+      await client.query("BEGIN");await lockStudent(client,req.session.user!);
+      await client.query("UPDATE transcript_jobs SET status='cancelled',pdf_data=NULL,lease_token=NULL,updated_at=now() WHERE id=$1 AND user_id=$2 AND status IN ('queued','processing')",[input.data.id,req.session.user!.userId]);
+      await client.query("COMMIT");res.json({cancelled:true});
+    } catch(e) {await client.query("ROLLBACK");throw e;} finally {client.release();}
   });
   router.get("/transcript/file", async (req, res) => {
     const result = await pool!.query<{ filename: string; pdf: Buffer }>(`SELECT filename,pdf_data AS pdf FROM student_transcripts WHERE user_id=$1`, [req.session.user!.userId]);
@@ -70,13 +84,18 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
     try { filename = decodeURIComponent(req.get("x-file-name") ?? "bang-diem.pdf").normalize("NFC").replace(/[\x00-\x1f\x7f/\\]/g, "_").slice(0, 200); }
     catch { res.status(400).json({ error: "invalid_filename" }); return; }
     if (!filename.toLowerCase().endsWith(".pdf")) { res.status(400).json({ error: "invalid_pdf" }); return; }
-    const data = await parseTranscript(req.body);
+    if (ocrEnabled) await expireJobs(pool!);
+    const data = ocrEnabled ? undefined : await parseTranscript(req.body);
     const client = await pool!.connect();
     try {
       await client.query("BEGIN");
       await lockStudent(client, req.session.user!);
       const existing = await client.query<{ version: string }>("SELECT version FROM student_transcripts WHERE user_id=$1 FOR UPDATE", [req.session.user!.userId]);
       if ((existing.rows[0]?.version ?? undefined) !== rawVersion) throw new TranscriptError("transcript_changed", 409);
+      if (ocrEnabled) {
+        const job=await enqueueTranscript(client,req.session.user!.userId,filename,req.body,rawVersion);
+        await client.query("COMMIT");res.status(202).json({job});return;
+      }
       const result = await client.query<TranscriptRow>(`INSERT INTO student_transcripts
         (user_id,version,filename,pdf_data,file_size,sha256,parsed_data) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb)
         ON CONFLICT(user_id) DO UPDATE SET version=EXCLUDED.version,filename=EXCLUDED.filename,
@@ -94,6 +113,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
     try {
       await client.query("BEGIN");
       await lockStudent(client, req.session.user!);
+      await client.query("UPDATE transcript_jobs SET status='cancelled',pdf_data=NULL,lease_token=NULL,updated_at=now() WHERE user_id=$1 AND status IN ('queued','processing')",[req.session.user!.userId]);
       const deleted = await client.query("DELETE FROM student_transcripts WHERE user_id=$1 AND version=$2", [req.session.user!.userId, input.data.version]);
       if (!deleted.rowCount) throw new TranscriptError("transcript_changed", 409);
       await client.query("COMMIT"); res.json({ deleted: true });

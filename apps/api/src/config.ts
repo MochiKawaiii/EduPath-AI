@@ -15,6 +15,7 @@ const postgresUrl = z.string().trim().min(1).refine((value) => {
 }, "DATABASE_URL must be a valid PostgreSQL connection URL");
 
 const environmentSchema = z.object({
+  OCR_WORKER_KEY: z.preprocess(v => typeof v === "string" && !v.trim() ? undefined : v, z.string().min(32).optional()),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   WEB_ORIGIN: z.url().optional(),
@@ -50,6 +51,7 @@ const environmentSchema = z.object({
 });
 
 export interface AppConfig {
+  ocrWorkerKey?: string;
   nodeEnv: "development" | "test" | "production";
   port: number;
   webOrigin: string;
@@ -112,6 +114,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   }
 
   return {
+    ...(parsed.OCR_WORKER_KEY ? {ocrWorkerKey:parsed.OCR_WORKER_KEY} : {}),
     nodeEnv: parsed.NODE_ENV,
     port: parsed.PORT,
     webOrigin,

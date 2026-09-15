@@ -1,0 +1,14 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import {randomBytes} from 'node:crypto';
+const root=new URL('../',import.meta.url);
+const envFile=new URL('apps/api/.env',root);
+let env=await readFile(envFile,'utf8').catch(()=> '');
+const match=env.match(/^OCR_WORKER_KEY=(.*)$/m);
+const key=match?.[1]?.trim().replace(/^['"]|['"]$/g,'') || randomBytes(32).toString('hex');
+if(key.length<32) throw new Error('Existing OCR_WORKER_KEY is too short.');
+if(!match) await writeFile(envFile,env.trimEnd()+'\nOCR_WORKER_KEY='+key+'\n','utf8');
+const url=process.argv[2] || 'http://localhost:4000';
+const parsed=new URL(url);
+if(parsed.protocol!=='https:' && !(parsed.protocol==='http:' && ['localhost','127.0.0.1'].includes(parsed.hostname))) throw new Error('Use HTTPS or localhost.');
+await writeFile(new URL('services/ocr/.env',root),`OCR_API_URL=${parsed.origin}\nOCR_WORKER_KEY=${key}\nOCR_DEVICE=cpu\nOCR_DET_MODEL=PP-OCRv5_mobile_det\n`,'utf8');
+console.log('Configured apps/api/.env and services/ocr/.env. Secrets were not printed. Restart the backend after changing its environment.');
