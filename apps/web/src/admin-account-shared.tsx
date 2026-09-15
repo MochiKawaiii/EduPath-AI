@@ -20,6 +20,7 @@ export type AccountPage = { items: Account[]; total: number; page: number; pageS
 
 export function Icon({ name }: { name: string }) {
   const paths: Record<string, string> = {
+    book: "M12 5v16M12 5C9 2 4 2 2 3v16c4-1 7 0 10 2 3-2 6-3 10-2V3c-2-1-7-1-10 2Z",
     users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3a4 4 0 0 1 0 8M22 21v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
     add: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M20 8v6M17 11h6",
     profile: "M4 3h16v18H4zM9 8a3 3 0 1 0 6 0 3 3 0 1 0-6 0M7 18a5 5 0 0 1 10 0",

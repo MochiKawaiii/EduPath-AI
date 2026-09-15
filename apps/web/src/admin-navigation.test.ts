@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { adminNavigation, resolveAdminPage } from "./admin-navigation";
 describe("admin section navigation", () => {
-  it("has exactly the account and student-profile sections", () => {
-    expect(adminNavigation.map(item => item.path)).toEqual(["/quantri/tai-khoan", "/quantri/sinh-vien"]);
+  it("has account, student-profile and curriculum sections", () => {
+    expect(adminNavigation.map(item => item.path)).toEqual(["/quantri/tai-khoan", "/quantri/sinh-vien", "/quantri/chuong-trinh"]);
   });
   it.each(["/quantri/sinh-vien", "/quantri/sinh-vien/"])("resolves direct student link %s", path => {
     expect(resolveAdminPage(path).label).toBe("Hồ sơ sinh viên");
