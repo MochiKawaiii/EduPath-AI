@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
 import "./student-records.css";
 
 type Course = { ordinal: number; code: string; name: string; credits: number; score10: number | null; score4: number | null; letter: string | null; result: string | null; conditional: boolean; sourcePage: number };
@@ -79,7 +79,21 @@ export default function StudentTranscript() {
     } catch(e) { setError(e instanceof Error ? e.message : "Không hủy được tác vụ."); }
     finally {setBusy(false);}
   };
+  const [dragging, setDragging] = useState(false);
   const clearFile = () => { setFile(null); setConfirmed(false); if (input.current) input.current.value = ""; };
+  const pick = (selected: File | undefined) => {
+    setError(""); setMessage(""); setConfirmed(false);
+    if (!selected) { setFile(null); return; }
+    if (!selected.name.toLowerCase().endsWith(".pdf") || selected.size > 5 * 1024 * 1024 || !selected.size) { setError("Chọn file PDF không rỗng, tối đa 5 MB."); clearFile(); return; }
+    setFile(selected);
+  };
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); setDragging(false);
+    if (busy || pendingJob) return;
+    const files = e.dataTransfer.files;
+    if (files.length > 1) { setError("Chỉ kéo thả một file PDF mỗi lần."); return; }
+    pick(files[0]);
+  };
   const upload = async () => {
     if (!file || !confirmed || !loaded || pendingJob) return;
     setBusy(true); setError(""); setMessage("");
@@ -113,10 +127,16 @@ export default function StudentTranscript() {
     {job && pendingJob && <div className="sr-job"><div role="status" aria-live="polite" aria-atomic="true"><strong>{job.status === "queued" ? "Đã nhận PDF · Đang chờ xử lý" : "Đang đọc bảng điểm"}</strong><p>{job.filename}</p><p>{workerOnline ? "Hệ thống đọc lớp chữ trước và nhận dạng tự động nếu cần. Bạn có thể rời trang và quay lại sau." : "Máy xử lý hiện chưa kết nối. PDF đã được giữ trong hàng đợi và sẽ được xử lý khi máy kết nối lại."}</p></div><ol className="sr-job-steps" aria-label="Tiến trình import"><li>1. Đã tải PDF</li><li aria-current="step">2. {job.status === "queued" ? "Chờ đọc bảng điểm" : "Đọc chữ / nhận dạng"}</li><li>3. Lưu kết quả</li></ol><button className="sr-secondary" disabled={busy} onClick={() => void cancelJob()}>Hủy xử lý</button></div>}
     {job?.status === "failed" && <div className="sr-error" role="alert">{errors[job.errorCode ?? ""] ?? "Không xử lý được bảng điểm. Hãy chọn lại PDF để thử lại."} Bảng điểm trước đó vẫn được giữ nguyên.</div>}
     {transcript?.data.parserVersion === "vlu-ocr-1.1" && <div className="sr-review" role="note">{transcript.data.warnings.join(" ")}</div>}
-    {loaded && <><div className="sr-upload"><div><strong>{transcript ? "Cập nhật bảng điểm mới" : "Thêm bảng điểm đầu tiên"}</strong><p>Dùng PDF rõ, lưu từ cổng đào tạo. Hệ thống đọc chữ trước, tự nhận dạng khi cần.</p></div><label className="sr-file-label">Chọn file PDF<input ref={input} type="file" accept=".pdf,application/pdf" disabled={busy || pendingJob} onChange={e => { const selected = e.target.files?.[0]; setError(""); setMessage(""); setConfirmed(false); if (!selected) { setFile(null); return; } if (!selected.name.toLowerCase().endsWith(".pdf") || selected.size > 5 * 1024 * 1024 || !selected.size) { setError("Chọn file PDF không rỗng, tối đa 5 MB."); clearFile(); return; } setFile(selected); }} /></label></div>
+    {loaded && <>{transcript && <div className="sr-upload"><div><strong>Cập nhật bảng điểm mới</strong><p>Dùng PDF rõ, lưu từ cổng đào tạo. Hệ thống đọc chữ trước, tự nhận dạng khi cần.</p></div><label className="sr-file-label">Chọn file PDF<input ref={input} type="file" accept=".pdf,application/pdf" disabled={busy || pendingJob} onChange={e => pick(e.target.files?.[0])} /></label></div>}
       {file && <div className="sr-pending"><p><strong>{file.name}</strong> · {(file.size / 1024).toFixed(0)} KB</p>{transcript && <p>Bảng điểm mới sẽ thay thế PDF và toàn bộ dữ liệu bảng điểm hiện tại sau khi đọc thành công.</p>}<label className="sr-confirm"><input type="checkbox" checked={confirmed} disabled={busy || pendingJob} onChange={e => setConfirmed(e.target.checked)} />Tôi xác nhận đây là bảng điểm của mình. Hệ thống không xác minh chủ sở hữu từ PDF.</label><div className="sr-actions"><button className="sw-primary" disabled={busy || pendingJob || !confirmed} onClick={() => void upload()}>{busy ? "Đang đọc và lưu PDF…" : transcript ? "Cập nhật bảng điểm" : "Import bảng điểm"}</button><button className="sr-secondary" disabled={busy || pendingJob} onClick={clearFile}>Hủy chọn</button></div></div>}
       {transcript ? <><div className="sr-file-info"><div><strong>{transcript.filename}</strong><p>{transcript.data.pageCount} trang · {transcript.data.courseCount} môn học · Cập nhật {new Date(transcript.updatedAt).toLocaleString("vi-VN")}</p></div><div className="sr-file-actions"><button className="sr-danger" disabled={busy || pendingJob} onClick={() => void remove()}>Xóa bảng điểm</button></div></div><div className="sr-table-filters"><label>Học kỳ<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả học kỳ</option>{transcript.data.sections.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></label><label>Tìm học phần<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Mã hoặc tên môn học…" /></label><span>{count} dòng học phần</span></div>
         {sections.map(section => { const courses = section.courses.filter(matches); if (!courses.length) return null; return <section className="sr-term" key={section.id}><h3>{section.label}</h3><div className="sr-table-scroll" tabIndex={0} role="region" aria-label={`Bảng điểm ${section.label}`}><table><thead><tr><th scope="col">STT</th><th scope="col">Mã môn học</th><th scope="col">Tên môn học</th><th scope="col">Tín chỉ</th><th scope="col">Hệ 10</th><th scope="col">Hệ 4</th><th scope="col">Điểm chữ</th><th scope="col">Kết quả</th></tr></thead><tbody>{courses.map(course => <tr key={`${course.sourcePage}-${course.ordinal}`}><td>{course.ordinal}</td><td>{course.code}</td><td>{course.name}</td><td>{course.credits}</td><td>{course.score10 ?? "—"}</td><td>{course.score4 === null ? "—" : course.score4.toFixed(2)}</td><td><span className={course.letter === "F" ? "sr-grade-fail" : "sr-grade"}>{course.letter ?? "—"}</span></td><td>{course.result ?? "—"}</td></tr>)}</tbody></table></div>{section.summaries.length > 0 && <dl className="sr-summaries">{section.summaries.map((summary, i) => <div key={i}><dt>{summary.label}</dt><dd>{summary.value ?? "—"}</dd></div>)}</dl>}</section>; })}{!count && <p className="sw-empty">Không tìm thấy học phần phù hợp.</p>}<p className="sw-muted">(*) Môn điều kiện theo ghi chú PDF. Các tổng kết học kỳ được đọc nguyên từ trường, không tính lại từ các hàng đang lọc.</p>
-      </> : !file && !pendingJob && <div className="sw-empty"><h3>Chưa có bảng điểm</h3><p>Chọn file PDF ở trên để bắt đầu. Bảng điểm sẽ được lưu riêng trong tài khoản của bạn.</p></div>}</>}
+      </> : !file && !pendingJob && <div className={`sr-dropzone${dragging ? " is-dragging" : ""}`} onClick={() => { if (!busy) input.current?.click(); }} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = busy ? "none" : "copy"; setDragging(true); }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }} onDrop={onDrop}>
+        <svg className="sr-dropzone-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 16V6h24l12 12v20" /><path d="M42 6v12h12" /><path d="M18 30v28h22" /><rect x="8" y="16" width="26" height="14" rx="2" /><text x="21" y="26.5" fill="currentColor" stroke="none" fontSize="9" fontWeight="700" textAnchor="middle" fontFamily="inherit">PDF</text><path d="M26 40h12M26 47h8" /><path d="M50 60V44M44 50l6-6 6 6" /></svg>
+        <h3>{dragging ? "Thả file PDF vào đây" : "Chưa có bảng điểm"}</h3>
+        <p>Kéo thả hoặc tải lên bảng điểm PDF xuất từ cổng đào tạo. Bảng điểm sẽ được lưu riêng trong tài khoản của bạn.</p>
+        <button type="button" className="sw-primary sr-drop-button" disabled={busy}>Tải tệp</button>
+        <input ref={input} type="file" accept=".pdf,application/pdf" hidden disabled={busy} onChange={e => pick(e.target.files?.[0])} />
+      </div>}</>}
   </section>;
 }
