@@ -4,6 +4,7 @@ import { MsalMicrosoftAuthClient } from "./auth/microsoft-auth-client.js";
 import { loadConfig } from "./config.js";
 import { runDatabaseMigrations } from "./db/migrate.js";
 import { seedCurricula } from "./curricula/seed.js";
+import { seedPlans } from "./plans/seed.js";
 import { createDatabasePool } from "./db/pool.js";
 import { createPostgresSessionStore } from "./session/postgres-session-store.js";
 import { PostgresUserRepository } from "./users/postgres-user-repository.js";
@@ -20,6 +21,7 @@ async function startServer(): Promise<void> {
     if (databasePool && config.database.autoMigrate) {
       await runDatabaseMigrations(databasePool);
       await seedCurricula(databasePool);
+      await seedPlans(databasePool);
     } else if (databasePool) {
       await databasePool.query("SELECT 1");
     } else {
