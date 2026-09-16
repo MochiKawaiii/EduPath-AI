@@ -15,7 +15,7 @@ import { createStudentCurriculaRouter } from "./curricula/student-router.js";
 import { createTranscriptWorkerRouter } from "./student/transcript-jobs.js";
 import type { AppConfig } from "./config.js";
 import { createAuthRouter } from "./auth/router.js";
-import { isStaffAccount } from "./auth/security.js";
+import { canUseStudentPortal } from "./auth/security.js";
 import type { MicrosoftAuthClient } from "./auth/types.js";
 import type { UserRepository } from "./users/user-repository.js";
 import type { AuthActivity } from "./auth/activity.js";
@@ -105,11 +105,12 @@ export function createApp({
     next();
   });
 
-  // Staff accounts live in the admin portal only; their session must not reach
-  // any student endpoint, even through a link or a restored tab.
+  // Admin-portal roles and staff mailboxes live in the admin portal only; their
+  // session must not reach any student endpoint, even through a link or a
+  // restored tab.
   app.use("/api/student", (request, response, next) => {
     const user = request.session.user;
-    if (user && isStaffAccount(user, config.staffEmailDomains)) {
+    if (user && !canUseStudentPortal(user, config.staffEmailDomains)) {
       response.status(403).json({ error: "student_portal_blocked" });
       return;
     }
@@ -154,11 +155,7 @@ export function createApp({
   });
 
   app.get("/api/admin/me", requireAdminAccess, (request, response) => {
-    response.json({
-      authenticated: true,
-      user: request.session.user,
-      studentPortal: !isStaffAccount(request.session.user!, config.staffEmailDomains)
-    });
+    response.json({ authenticated: true, user: request.session.user });
   });
 
   app.use("/api/admin/accounts", createAdminAccountsRouter(adminAccountRepository, config.webOrigin));

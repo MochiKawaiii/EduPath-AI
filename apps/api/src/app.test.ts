@@ -179,17 +179,20 @@ describe("Microsoft authentication routes", () => {
     expect((await login(agent, client, "/quantri")).headers.location).toContain("authError=callback_failed");
     await agent.get("/api/admin/me").expect(401);
   });
-  it.each(["faculty_board", "department_head", "lecturer", "admin"] as const)("allows assigned %s to sign in to both portals", async role => {
+  it.each(["faculty_board", "department_head", "lecturer", "admin"] as const)("keeps assigned %s on the admin portal only", async role => {
     const client = new FakeMicrosoftAuthClient();
+    client.nextEmail = "hoa.2374802010145@vanlanguni.vn";
     const repository = new FakeUserRepository(); repository.roleOverride = role;
-    const agent = request.agent(createTestApp(client, repository));
+    const activity = { current: vi.fn().mockResolvedValue(true), record: vi.fn().mockResolvedValue(undefined) };
+    const agent = request.agent(createApp({ config, microsoftAuthClient: client, userRepository: repository, authActivity: activity }));
     expect((await login(agent, client, "/quantri")).headers.location).toBe(`${config.webOrigin}/quantri`);
     await agent.get("/api/admin/me").expect(200);
+    expect((await agent.get("/api/auth/me").expect(200)).body.studentPortal).toBe(false);
+    await agent.get("/api/student/summary").expect(403);
     await agent.post("/api/auth/logout").expect(200);
-    expect((await login(agent, client, "/dashboard")).headers.location).toContain("/auth/callback");
-    await agent.get("/api/student/summary").expect(200);
-    const result = await agent.post("/api/auth/logout").expect(200);
-    expect(new URL(result.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/`);
+    expect((await login(agent, client, "/dashboard")).headers.location).toBe(`${config.webOrigin}/login?authError=admin_portal_only`);
+    expect(activity.record).toHaveBeenCalledWith(expect.objectContaining({ tenantId }), "denied", "admin_portal_only", "student");
+    expect((await agent.get("/api/auth/me")).body.authenticated).toBe(false);
   });
   it("keeps a staff mailbox out of the student portal before saving a user", async () => {
     const client = new FakeMicrosoftAuthClient();
@@ -199,7 +202,7 @@ describe("Microsoft authentication routes", () => {
     const agent = request.agent(createApp({ config, microsoftAuthClient: client, userRepository: repository, authActivity: activity }));
     const callback = await login(agent, client, "/dashboard");
     expect(callback.headers.location).toBe(`${config.webOrigin}/login?authError=staff_portal_only`);
-    expect(activity.record).toHaveBeenCalledWith(expect.objectContaining({ tenantId }), "denied", "student_portal_blocked", "student");
+    expect(activity.record).toHaveBeenCalledWith(expect.objectContaining({ tenantId }), "denied", "staff_portal_only", "student");
     expect(repository.upsertCount).toBe(0);
     expect((await agent.get("/api/auth/me")).body.authenticated).toBe(false);
   });
@@ -211,8 +214,7 @@ describe("Microsoft authentication routes", () => {
     repository.roleOverride = "lecturer";
     const agent = request.agent(createTestApp(client, repository));
     expect((await login(agent, client, "/quantri")).headers.location).toBe(`${config.webOrigin}/quantri`);
-    expect((await agent.get("/api/admin/me").expect(200)).body.studentPortal).toBe(false);
-    expect((await agent.get("/api/auth/me").expect(200)).body.studentPortal).toBe(false);
+    await agent.get("/api/admin/me").expect(200);
     await agent.get("/api/student/summary").expect(403);
   });
 
@@ -225,17 +227,15 @@ describe("Microsoft authentication routes", () => {
     expect(repository.upsertCount).toBe(0);
   });
 
-  it("keeps the student mailbox on both portals while no lecturer account exists for testing", async () => {
+  it("keeps a student-role mailbox on the student portal only", async () => {
     const client = new FakeMicrosoftAuthClient();
-    client.nextEmail = "hoa.2374802010145@vanlanguni.vn";
-    const repository = new FakeUserRepository();
-    repository.roleOverride = "admin";
-    const agent = request.agent(createTestApp(client, repository));
-    expect((await login(agent, client, "/quantri")).headers.location).toBe(`${config.webOrigin}/quantri`);
-    expect((await agent.get("/api/admin/me").expect(200)).body.studentPortal).toBe(true);
-    await agent.post("/api/auth/logout").expect(200);
+    client.nextEmail = "duy.2374802010078@vanlanguni.vn";
+    const agent = request.agent(createTestApp(client));
     expect((await login(agent, client, "/dashboard")).headers.location).toContain("/auth/callback");
+    expect((await agent.get("/api/auth/me").expect(200)).body.studentPortal).toBe(true);
     await agent.get("/api/student/summary").expect(200);
+    await agent.post("/api/auth/logout").expect(200);
+    expect((await login(agent, client, "/quantri")).headers.location).toBe(`${config.webOrigin}/quantri?authError=admin_required`);
   });
 
   it("accepts a database-assigned Admin without a Microsoft Admin claim", async () => {
@@ -441,7 +441,7 @@ describe("Microsoft authentication routes", () => {
     const adminClient = new FakeMicrosoftAuthClient();
     adminClient.nextRoles = ["Admin"];
     const admin = request.agent(createTestApp(adminClient));
-    await login(admin, adminClient);
+    await login(admin, adminClient, "/quantri");
     await admin.get("/api/admin/summary").expect(200);
   });
 

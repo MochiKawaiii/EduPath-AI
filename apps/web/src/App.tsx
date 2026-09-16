@@ -14,7 +14,9 @@ const errorMessages: Record<string, string> = {
   callback_failed:
     "Không thể hoàn tất đăng nhập. Hãy kiểm tra quyền tài khoản và thử lại.",
   staff_portal_only:
-    "Tài khoản email nội bộ của Trường chỉ đăng nhập được cổng quản trị EduPath AI. Không gian học tập dành riêng cho sinh viên."
+    "Tài khoản email nội bộ của Trường chỉ đăng nhập được cổng quản trị EduPath AI. Không gian học tập dành riêng cho sinh viên.",
+  admin_portal_only:
+    "Tài khoản này được phân quyền quản trị nên chỉ sử dụng cổng quản trị EduPath AI."
 };
 
 const loginLinks = [
@@ -227,8 +229,8 @@ function LoginPage({ error }: { error: string | null }) {
   );
 }
 
-// Staff mailboxes keep a valid session for the admin portal, so the student
-// workspace shows them the way back instead of any student data.
+// Admin-portal roles and staff mailboxes keep a valid session for the admin
+// portal, so the student workspace shows them the way back instead of any data.
 function StaffPortalNotice() {
   const [busy, setBusy] = useState(false);
   return (
@@ -241,7 +243,10 @@ function StaffPortalNotice() {
             alt="Biểu tượng Trường Đại học Văn Lang"
           />
           <h1 id="staff-portal-title">Tài khoản dành cho cổng quản trị</h1>
-          <p className="login-description">{errorMessages.staff_portal_only}</p>
+          <p className="login-description">
+            Tài khoản này chỉ sử dụng cổng quản trị EduPath AI. Không gian học tập
+            dành riêng cho tài khoản được phân quyền sinh viên.
+          </p>
           <a className="microsoft-button" href="/quantri">
             <span>Đi tới cổng quản trị</span>
           </a>

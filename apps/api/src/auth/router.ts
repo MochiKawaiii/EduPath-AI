@@ -11,9 +11,11 @@ import {
   createAuthTransaction,
   isAuthTransactionFresh,
   isSafeEqual,
+  canUseStudentPortal,
   isStaffAccount,
   resolveAppRole
 } from "./security.js";
+import type { AppRole } from "./types.js";
 
 export interface AuthRouterDependencies {
   authActivity?: AuthActivity;
@@ -136,25 +138,32 @@ export function createAuthRouter({
       // Staff mailboxes may only sign in through the admin portal, and only
       // after an admin approves a role for them below.
       if (transaction.returnTo !== "/quantri" && isStaffAccount(identity, config.staffEmailDomains)) {
-        await authActivity?.record(identity, "denied", "student_portal_blocked", portal);
+        await authActivity?.record(identity, "denied", "staff_portal_only", portal);
         await saveSession(request);
         response.redirect(authErrorRedirect(config, "staff_portal_only", transaction.returnTo));
         return;
       }
+      // The assigned role decides the portal: admin-portal roles sign in only
+      // through /quantri, and the student role only through the student portal.
+      const portalDenial = (role: AppRole) => portal === "admin"
+        ? canAccessAdmin(role) ? null : "admin_required"
+        : canAccessAdmin(role) ? "admin_portal_only" : null;
       const roleOverride = await userRepository.getRoleOverride(identity);
       const role = roleOverride ?? resolveAppRole(identity.roles, config.authDefaultRole);
-      if (transaction.returnTo === "/quantri" && !canAccessAdmin(role)) {
-        await authActivity?.record(identity, "denied", "admin_required", portal);
+      const denial = portalDenial(role);
+      if (denial) {
+        await authActivity?.record(identity, "denied", denial, portal);
         await saveSession(request);
-        response.redirect(authErrorRedirect(config, "admin_required", transaction.returnTo));
+        response.redirect(authErrorRedirect(config, denial, transaction.returnTo));
         return;
       }
       const user = await userRepository.upsertMicrosoftUser(identity, role);
       // Check the persisted role too, in case an override changed during sign-in.
-      if (transaction.returnTo === "/quantri" && !canAccessAdmin(user.role)) {
-        await authActivity?.record(identity, "denied", "admin_required", portal);
+      const persistedDenial = portalDenial(user.role);
+      if (persistedDenial) {
+        await authActivity?.record(identity, "denied", persistedDenial, portal);
         await saveSession(request);
-        response.redirect(authErrorRedirect(config, "admin_required", transaction.returnTo));
+        response.redirect(authErrorRedirect(config, persistedDenial, transaction.returnTo));
         return;
       }
 
@@ -185,7 +194,7 @@ export function createAuthRouter({
     response.json({
       authenticated: true,
       user: request.session.user,
-      studentPortal: !isStaffAccount(request.session.user, config.staffEmailDomains)
+      studentPortal: canUseStudentPortal(request.session.user, config.staffEmailDomains)
     });
   });
 

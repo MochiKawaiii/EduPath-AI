@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { AppConfig } from "../config.js";
+import { canAccessAdmin } from "./types.js";
 import type {
   AppRole,
   AuthTransaction,
@@ -100,6 +101,15 @@ export function isStaffAccount(
     const domain = emailDomain(value);
     return domain !== null && staffEmailDomains.has(domain);
   });
+}
+
+// Each account uses only the portal its role belongs to: admin-portal roles
+// never enter the student workspace, and staff mailboxes never do either.
+export function canUseStudentPortal(
+  account: { email: string | null; username: string | null; role: AppRole },
+  staffEmailDomains: ReadonlySet<string>
+): boolean {
+  return !canAccessAdmin(account.role) && !isStaffAccount(account, staffEmailDomains);
 }
 
 export function resolveAppRole(
