@@ -57,18 +57,26 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
   return body;
 }
 function Warnings({ data }: { data: PlanData }) {
-  return (
-    <details className="cm-warning">
-      <summary>{data.warnings.length} ghi chú cần rà soát</summary>
+  return data.warnings.length ? (
+    <div className="cm-warning">
+      <strong>{data.warnings.length} ghi chú cần rà soát</strong>
+      <p>
+        Giữ nguyên dữ liệu nguồn. Hãy đối chiếu các dòng dưới đây với file Excel
+        trước khi dùng kế hoạch để gợi ý lộ trình.
+      </p>
       <ul>
         {data.warnings.map((w, i) => (
           <li key={i}>
-            {w.row !== null && `Dòng ${w.row}: `}
+            {w.row !== null && <span>Dòng {w.row} · </span>}
             {w.message}
           </li>
         ))}
       </ul>
-    </details>
+    </div>
+  ) : (
+    <p className="cm-success">
+      Không phát hiện vấn đề theo các quy tắc kiểm tra hiện tại.
+    </p>
   );
 }
 function Summary({ data }: { data: PlanData }) {
@@ -128,183 +136,192 @@ export default function PlansManagement({ canManage }: { canManage: boolean }) {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-  const open = (next: string) => {
+  function open(next: string) {
     window.location.hash = next;
     setId(next);
-  };
+    setNotice("");
+  }
   const refresh = () => setRevision((n) => n + 1);
+  if (id)
+    return (
+      <PlanView
+        key={id}
+        id={id}
+        canManage={canManage}
+        initialNotice={notice}
+        onBack={() => {
+          open("");
+          refresh();
+        }}
+        onChanged={refresh}
+      />
+    );
   return (
-    <div className="cm-workspace pm-workspace">
+    <section className="cm-workspace">
+      <div className="cm-toolbar">
+        <div>
+          <h2>Kế hoạch đào tạo</h2>
+          <p>Quản lý phân bổ học phần theo khóa, năm học và học kỳ.</p>
+        </div>
+        {canManage ? (
+          <button className="am-primary" onClick={() => setImportOpen(true)}>
+            Import kế hoạch
+          </button>
+        ) : (
+          <span className="cm-tag">Chỉ xem</span>
+        )}
+      </div>
       {notice && (
-        <p className="cm-success" role="status">
+        <p role="status" className="cm-success">
           {notice}
         </p>
       )}
-      {id ? (
-        <PlanView
-          key={id}
-          id={id}
-          canManage={canManage}
-          onBack={() => open("")}
-          onChanged={refresh}
-        />
-      ) : (
-        <section className="am-card">
-          <div className="am-card-heading">
-            <div>
-              <h2>Kế hoạch đào tạo</h2>
-              <p>Quản lý phân bổ học phần theo khóa, năm học và học kỳ.</p>
-            </div>
-            {canManage && (
-              <button
-                className="am-primary"
-                onClick={() => setImportOpen(true)}
-              >
-                Import kế hoạch
-              </button>
-            )}
-          </div>
-          <form
-            className="pm-filters"
-            onSubmit={(e) => {
-              e.preventDefault();
-              flush();
-            }}
-          >
-            <label>
-              Tìm kế hoạch
-              <input
-                type="search"
-                placeholder="Tên, ngành, chuyên ngành hoặc khóa…"
-                value={draft.q}
-                onChange={(e) => setDraft({ ...draft, q: e.target.value })}
-              />
-            </label>
-            <label>
-              Khóa
-              <select
-                value={draft.cohort}
-                onChange={(e) => setDraft({ ...draft, cohort: e.target.value })}
-              >
-                <option value="">Tất cả khóa</option>
-                {remote.data?.cohorts.map((k) => (
-                  <option key={k}>{k}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Trạng thái
-              <select
-                value={draft.active}
-                onChange={(e) => setDraft({ ...draft, active: e.target.value })}
-              >
-                <option value="">Tất cả trạng thái</option>
-                <option value="true">Đang mở</option>
-                <option value="false">Đã khóa</option>
-              </select>
-            </label>
-            <button type="button" className="am-outline" onClick={reset}>
-              Xóa bộ lọc
-            </button>
-          </form>
-          <Status {...remote} />
-          {remote.data && (
-            <>
-              <div
-                className="am-table-scroll"
-                tabIndex={0}
-                role="region"
-                aria-label="Danh sách kế hoạch đào tạo"
-              >
-                <table className="am-table">
-                  <thead>
-                    <tr>
-                      <th>Kế hoạch / Ngành</th>
-                      <th>Khóa</th>
-                      <th>Phân bổ</th>
-                      <th>Trạng thái</th>
-                      <th>Ghi chú</th>
-                      <th>Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {remote.data.items.map((p) => (
-                      <tr key={p.id}>
-                        <td>
-                          <button
-                            className="am-name-link"
-                            onClick={() => open(p.id)}
-                          >
-                            {p.name}
-                          </button>
-                          <small className="pm-muted">
-                            {p.major} · Phiên bản {p.version}
+      <div className="cm-panel">
+        <form
+          className="cm-filters"
+          onSubmit={(e) => {
+            e.preventDefault();
+            flush();
+          }}
+        >
+          <label className="cm-search">
+            Tìm kế hoạch
+            <input
+              type="search"
+              placeholder="Tên, ngành, chuyên ngành hoặc khóa…"
+              value={draft.q}
+              onChange={(e) => setDraft({ ...draft, q: e.target.value })}
+            />
+          </label>
+          <label>
+            Khóa học
+            <select
+              value={draft.cohort}
+              onChange={(e) => setDraft({ ...draft, cohort: e.target.value })}
+            >
+              <option value="">Tất cả khóa</option>
+              {remote.data?.cohorts.map((k) => (
+                <option key={k}>{k}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Trạng thái
+            <select
+              value={draft.active}
+              onChange={(e) => setDraft({ ...draft, active: e.target.value })}
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="true">Đang mở</option>
+              <option value="false">Đã khóa</option>
+            </select>
+          </label>
+          <button type="button" className="am-outline" onClick={reset}>
+            Xóa bộ lọc
+          </button>
+        </form>
+        <Status {...remote} />
+        {remote.data && (
+          <>
+            <div className="cm-table-scroll">
+              <table className="cm-table">
+                <thead>
+                  <tr>
+                    <th>Kế hoạch đào tạo</th>
+                    <th>Khóa</th>
+                    <th>Lượt môn</th>
+                    <th>Phiên bản</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {remote.data.items.map((p) => (
+                    <tr key={p.id}>
+                      <td>
+                        <strong>{p.name}</strong>
+                        <small>
+                          {p.major} · {p.totalCredits ?? "—"} tín chỉ
+                        </small>
+                        {p.warningCount > 0 && (
+                          <small className="cm-warning-text">
+                            {p.warningCount} ghi chú cần rà soát
                           </small>
-                        </td>
-                        <td>{p.cohortCode}</td>
-                        <td>
-                          {p.itemCount} lượt môn
-                          <br />
-                          {p.totalCredits ?? "—"} tín chỉ
-                        </td>
-                        <td>
-                          <span className="am-badge">
-                            {p.isActive ? "Đang mở" : "Đã khóa"}
-                          </span>
-                        </td>
-                        <td>{p.warningCount} cần rà soát</td>
-                        <td>
-                          <button
-                            className="am-outline"
-                            onClick={() => open(p.id)}
-                          >
-                            Chi tiết
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {!remote.data.items.length && (
-                <p className="am-empty">Không có kế hoạch phù hợp.</p>
-              )}
-              <Pagination
-                total={remote.data.total}
-                page={page}
-                setPage={setPage}
-              />
-            </>
-          )}
-        </section>
-      )}
+                        )}
+                      </td>
+                      <td>
+                        <span className="cm-cohort">{p.cohortCode}</span>
+                      </td>
+                      <td>{p.itemCount}</td>
+                      <td>v{p.version}</td>
+                      <td>
+                        <span
+                          className={`cm-tag ${p.isActive ? "cm-open" : ""}`}
+                        >
+                          {p.isActive ? "Đang mở" : "Đã khóa"}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="am-outline"
+                          onClick={() => open(p.id)}
+                        >
+                          Xem chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {!remote.data.total && (
+              <p className="am-empty">
+                Chưa có kế hoạch phù hợp. Thử đổi bộ lọc
+                {canManage ? " hoặc import tệp Excel mới." : "."}
+              </p>
+            )}
+            <Pagination
+              total={remote.data.total}
+              page={page}
+              setPage={setPage}
+            />
+          </>
+        )}
+      </div>
+      <p className="cm-help">
+        Mỗi kế hoạch gắn với một ngành và khóa. Kế hoạch đã khóa vẫn giữ lịch sử
+        để tra cứu; các phiên bản cũ không bị xóa khi cập nhật.
+      </p>
       {importOpen && (
         <ImportPlan
           onClose={() => setImportOpen(false)}
           onSaved={(p) => {
             setImportOpen(false);
             refresh();
-            setNotice("Đã nhập kế hoạch đào tạo.");
             open(p.id);
+            setNotice("Đã nhập kế hoạch đào tạo.");
           }}
         />
       )}
-    </div>
+    </section>
   );
 }
 function PlanView({
   id,
   canManage,
+  initialNotice,
   onBack,
   onChanged,
 }: {
   id: string;
   canManage: boolean;
+  initialNotice: string;
   onBack: () => void;
   onChanged: () => void;
 }) {
   const [revision, setRevision] = useState(""),
-    [reload, setReload] = useState(0);
+    [reload, setReload] = useState(0),
+    [tab, setTab] = useState("items");
   const remote = useData<PlanDetail>(
     `${endpoint}/${id}${revision ? `?revision=${revision}` : ""}`,
     reload,
@@ -313,63 +330,67 @@ function PlanView({
       null,
     ),
     [item, setItem] = useState<PlanItem | null>(null),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(initialNotice);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus(), [remote.data?.revisionId]);
   const p = remote.data,
-    editable = !!p && canManage && p.revisionId === p.history[0]?.id;
+    historical = !!p && p.revisionId !== p.history[0]?.id,
+    editable = !!p && canManage && !historical;
   const saved = () => {
     setModal(null);
     setItem(null);
     setRevision("");
     setReload((n) => n + 1);
     onChanged();
-    setNotice("Đã lưu thay đổi.");
+    setNotice("Đã lưu thay đổi. Dữ liệu và phiên bản trước được giữ nguyên.");
   };
   return (
-    <>
-      <div className="pm-toolbar">
+    <section className="cm-workspace">
+      <div className="cm-toolbar">
         <button className="am-outline" onClick={onBack}>
           ← Danh sách kế hoạch
         </button>
-        <button className="am-outline" onClick={() => setReload((n) => n + 1)}>
+        <button
+          className="am-outline"
+          onClick={() => {
+            setReload((n) => n + 1);
+            setNotice("");
+          }}
+        >
           Tải lại
         </button>
       </div>
       <Status {...remote} />
-      {notice && (
-        <p className="cm-success" role="status">
-          {notice}
-        </p>
-      )}
       {p && (
         <>
-          <section className="am-card pm-overview">
-            <div className="pm-title">
+          <div className="cm-panel cm-intro">
+            <div className="cm-toolbar">
               <div>
-                <p className="pm-muted">
-                  {p.data.major} · {p.isActive ? "Đang mở" : "Đã khóa"}
+                <p className="cm-eyebrow">
+                  {p.data.major} · {p.data.cohortCode}
                 </p>
-                <h2>{p.data.name}</h2>
+                <h2 ref={heading} tabIndex={-1}>
+                  {p.data.name}
+                </h2>
+                <p>
+                  <span className={`cm-tag ${p.isActive ? "cm-open" : ""}`}>
+                    {p.isActive ? "Đang mở" : "Đã khóa"}
+                  </span>{" "}
+                  <span>
+                    Phiên bản {p.version} {historical ? "· Bản lưu lịch sử" : ""}
+                  </span>
+                </p>
               </div>
-              <label>
-                Phiên bản
-                <select
-                  value={p.revisionId}
-                  onChange={(e) =>
-                    setRevision(
-                      e.target.value === p.history[0]?.id ? "" : e.target.value,
-                    )
-                  }
-                >
-                  {p.history.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      Phiên bản {h.version} · {date(h.createdAt)}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
             <Summary data={p.data} />
-            <div className="pm-toolbar">
+            {p.data.notes && <p className="cm-prewrap">{p.data.notes}</p>}
+            <div className="cm-actions">
+              <a
+                className="am-outline"
+                href={`${endpoint}/${id}/source/${p.revisionId}`}
+              >
+                Tải Excel nguồn
+              </a>
               {editable && (
                 <>
                   <button
@@ -392,39 +413,86 @@ function PlanView({
                   </button>
                 </>
               )}
-              <a
-                className="am-outline"
-                href={`${endpoint}/${id}/source/${p.revisionId}`}
-              >
-                Tải Excel gốc
-              </a>
             </div>
-            {!editable && (
-              <p className="pm-muted">
-                Chế độ chỉ xem
-                {canManage ? " — chọn bản hiện hành để chỉnh sửa" : ""}.
-              </p>
+            <p className="cm-help">
+              Tệp nguồn: {p.sourceFilename}. Tín chỉ từng kỳ giữ theo file
+              nguồn, không cộng mọi môn tự chọn hoặc chuyên ngành.
+            </p>
+          </div>
+          {notice && (
+            <p className="cm-success" role="status">
+              {notice}
+            </p>
+          )}
+          <div className="cm-panel">
+            <div className="cm-tabs" aria-label="Nội dung kế hoạch đào tạo">
+              {[
+                ["items", "Phân bổ học phần"],
+                ["warnings", `Ghi chú (${p.data.warnings.length})`],
+                ["history", "Lịch sử phiên bản"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  aria-pressed={tab === value}
+                  onClick={() => setTab(value!)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {tab === "items" && (
+              <PlanStructure data={p.data} onItem={setItem} />
             )}
-            <p className="pm-muted">Nguồn: {p.sourceFilename}</p>
-            {p.data.notes && <p className="pm-prewrap">{p.data.notes}</p>}
-            <Warnings data={p.data} />
-          </section>
-          <PlanStructure data={p.data} onItem={setItem} />
-          <details className="am-card pm-history">
-            <summary>Lịch sử cập nhật và mở/khóa</summary>
-            <ul>
-              {p.history.map((h) => (
-                <li key={h.id}>
-                  Phiên bản {h.version} · {date(h.createdAt)} · {h.note}
-                </li>
-              ))}
-              {p.events.map((e, i) => (
-                <li key={`event-${i}`}>
-                  {date(e.createdAt)} · {e.action}
-                </li>
-              ))}
-            </ul>
-          </details>
+            {tab === "warnings" && (
+              <div className="cm-dialog-body">
+                <Warnings data={p.data} />
+              </div>
+            )}
+            {tab === "history" && (
+              <div className="cm-dialog-body">
+                <h3>Lịch sử cập nhật</h3>
+                <p>
+                  Chọn một phiên bản để xem toàn bộ kế hoạch tại thời điểm đó.
+                  Chỉnh sửa chỉ thực hiện trên bản hiện hành.
+                </p>
+                <div className="cm-history">
+                  {p.history.map((h, i) => (
+                    <div key={h.id}>
+                      <div>
+                        <strong>
+                          Phiên bản {h.version}
+                          {i === 0 ? " · Hiện hành" : ""}
+                        </strong>
+                        <p>{h.note}</p>
+                        <small>{date(h.createdAt)}</small>
+                      </div>
+                      <button
+                        className="am-outline"
+                        disabled={h.id === p.revisionId}
+                        onClick={() => {
+                          setRevision(i === 0 ? "" : h.id);
+                          setTab("items");
+                          setNotice("");
+                        }}
+                      >
+                        Xem phiên bản
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {p.events.length > 0 && (
+                  <>
+                    <h3>Lịch sử mở / khóa</h3>
+                    {p.events.map((e, i) => (
+                      <p key={i}>
+                        {date(e.createdAt)} · {e.action}
+                      </p>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           {modal === "import" && (
             <ImportPlan
               target={p}
@@ -458,7 +526,7 @@ function PlanView({
           )}
         </>
       )}
-    </>
+    </section>
   );
 }
 function PlanStructure({
@@ -481,22 +549,10 @@ function PlanStructure({
       (!filters.group || labels.get(i.sectionId) === filters.group),
   );
   return (
-    <section className="am-card pm-structure">
-      <div className="am-card-heading">
-        <div>
-          <h2>Phân bổ học phần</h2>
-          <p>
-            Tín chỉ từng kỳ giữ theo file nguồn, không cộng mọi môn tự chọn hoặc
-            chuyên ngành.
-          </p>
-        </div>
-        <span role="status">
-          {items.length} / {data.items.length} lượt môn
-        </span>
-      </div>
-      <div className="pm-filters">
-        <label>
-          Tìm môn
+    <>
+      <div className="cm-filters">
+        <label className="cm-search">
+          Tìm học phần
           <input
             type="search"
             value={draft.q}
@@ -530,83 +586,84 @@ function PlanStructure({
             ))}
           </select>
         </label>
-        <button className="am-outline" onClick={reset}>
+        <button type="button" className="am-outline" onClick={reset}>
           Xóa bộ lọc
         </button>
       </div>
-      {data.terms
-        .filter((t) => items.some((i) => i.termCode === t.code))
-        .map((t) => (
-          <section className="pm-term" key={t.code}>
-            <h3>
-              Năm {t.studyYear} · Học kỳ {t.semester}{" "}
-              <span>
-                {t.code} · {t.sourceCredits ?? "—"} tín chỉ theo Excel
-              </span>
-            </h3>
-            <div
-              className="am-table-scroll"
-              tabIndex={0}
-              role="region"
-              aria-label={`Học phần ${t.code}`}
-            >
-              <table className="am-table">
-                <thead>
-                  <tr>
-                    <th>Mã học phần</th>
-                    <th>Tên học phần</th>
-                    <th>Tín chỉ</th>
-                    <th>Loại môn</th>
-                    <th>Tiên quyết / Học trước</th>
-                    <th>Chi tiết</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items
-                    .filter((i) => i.termCode === t.code)
-                    .map((i, index, all) => (
-                      <Fragment key={i.id}>
-                        {i.sectionId !== all[index - 1]?.sectionId && (
-                          <tr className="pm-group">
-                            <th colSpan={6}>
-                              {labels.get(i.sectionId) ??
-                                "Các học phần trong kỳ"}
-                            </th>
-                          </tr>
-                        )}
-                        <tr>
-                          <td>{i.code || "Chưa có mã"}</td>
-                          <th scope="row">{i.name}</th>
-                          <td>{i.credits ?? "Chưa xác định"}</td>
-                          <td>{i.type || "Chưa xác định"}</td>
-                          <td>
-                            <p>Tiên quyết: {i.prerequisite || "Chưa ghi"}</p>
-                            <p>Học trước: {i.prior || "Chưa ghi"}</p>
-                          </td>
-                          <td>
-                            {onItem ? (
-                              <button
-                                className="am-outline"
-                                onClick={() => onItem(i)}
-                              >
-                                Chi tiết
-                              </button>
-                            ) : (
-                              <span>Dòng {i.sourceRow}</span>
-                            )}
-                          </td>
+      <p className="cm-result" role="status">
+        {items.length} / {data.items.length} lượt môn
+      </p>
+      <div className="cm-table-scroll">
+        <table className="cm-table cm-courses">
+          <thead>
+            <tr>
+              <th>Mã học phần</th>
+              <th>Tên học phần</th>
+              <th>TC</th>
+              <th>Loại môn</th>
+              <th>Tiên quyết / Học trước</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          {data.terms
+            .filter((t) => items.some((i) => i.termCode === t.code))
+            .map((t) => (
+              <tbody key={t.code}>
+                <tr className="pm-term-row">
+                  <th colSpan={6}>
+                    Năm {t.studyYear} · Học kỳ {t.semester}
+                    <span>
+                      {t.code} · {t.sourceCredits ?? "—"} tín chỉ theo Excel
+                    </span>
+                  </th>
+                </tr>
+                {items
+                  .filter((i) => i.termCode === t.code)
+                  .map((i, index, all) => (
+                    <Fragment key={i.id}>
+                      {i.sectionId !== all[index - 1]?.sectionId && (
+                        <tr className="cm-group-row">
+                          <th colSpan={6}>
+                            {labels.get(i.sectionId) ?? "Các học phần trong kỳ"}
+                          </th>
                         </tr>
-                      </Fragment>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ))}
+                      )}
+                      <tr>
+                        <td>{i.code || "Chưa có mã"}</td>
+                        <td>
+                          <strong>{i.name}</strong>
+                        </td>
+                        <td>{i.credits ?? "—"}</td>
+                        <td>{i.type || "—"}</td>
+                        <td className="pm-relations">
+                          <small>
+                            Tiên quyết: {i.prerequisite || "Chưa ghi"}
+                          </small>
+                          <small>Học trước: {i.prior || "Chưa ghi"}</small>
+                        </td>
+                        <td>
+                          {onItem ? (
+                            <button
+                              className="am-outline"
+                              onClick={() => onItem(i)}
+                            >
+                              Chi tiết
+                            </button>
+                          ) : (
+                            <small>Dòng {i.sourceRow}</small>
+                          )}
+                        </td>
+                      </tr>
+                    </Fragment>
+                  ))}
+              </tbody>
+            ))}
+        </table>
+      </div>
       {!items.length && (
         <p className="am-empty">Không có môn phù hợp với bộ lọc.</p>
       )}
-    </section>
+    </>
   );
 }
 function ImportPlan({
