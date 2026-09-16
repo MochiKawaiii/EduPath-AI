@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { beginMicrosoftLogin, getCurrentUser } from "./auth-api";
+import { beginMicrosoftLogin, getCurrentUser, logout } from "./auth-api";
 import LandingPage from "./LandingPage";
 import EduPathBrand from "./EduPathBrand";
 import AdminPortal from "./AdminPortal";
@@ -12,7 +12,9 @@ const errorMessages: Record<string, string> = {
   invalid_state: "Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.",
   missing_code: "Microsoft không trả về mã đăng nhập hợp lệ.",
   callback_failed:
-    "Không thể hoàn tất đăng nhập. Hãy kiểm tra quyền tài khoản và thử lại."
+    "Không thể hoàn tất đăng nhập. Hãy kiểm tra quyền tài khoản và thử lại.",
+  staff_portal_only:
+    "Tài khoản email nội bộ của Trường chỉ đăng nhập được cổng quản trị EduPath AI. Không gian học tập dành riêng cho sinh viên."
 };
 
 const loginLinks = [
@@ -225,6 +227,40 @@ function LoginPage({ error }: { error: string | null }) {
   );
 }
 
+// Staff mailboxes keep a valid session for the admin portal, so the student
+// workspace shows them the way back instead of any student data.
+function StaffPortalNotice() {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="auth-shell">
+      <main className="auth-content">
+        <section className="login-card" aria-labelledby="staff-portal-title">
+          <img
+            className="vlu-logo"
+            src="/vlu-shield.jpg"
+            alt="Biểu tượng Trường Đại học Văn Lang"
+          />
+          <h1 id="staff-portal-title">Tài khoản dành cho cổng quản trị</h1>
+          <p className="login-description">{errorMessages.staff_portal_only}</p>
+          <a className="microsoft-button" href="/quantri">
+            <span>Đi tới cổng quản trị</span>
+          </a>
+          <p className="login-help">
+            <button
+              type="button"
+              className="link-button"
+              disabled={busy}
+              onClick={() => { setBusy(true); void logout().catch(() => setBusy(false)); }}
+            >
+              {busy ? "Đang đăng xuất…" : "Đăng xuất khỏi EduPath"}
+            </button>
+          </p>
+        </section>
+      </main>
+    </div>
+  );
+}
+
 function AuthenticatedApp({ isLoginRoute }: { isLoginRoute: boolean }) {
   const [auth, setAuth] = useState<AuthResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -279,6 +315,8 @@ function AuthenticatedApp({ isLoginRoute }: { isLoginRoute: boolean }) {
   if (!auth?.authenticated) {
     return <LoginPage error={authError ?? loadError} />;
   }
+
+  if (auth.studentPortal === false) return <StaffPortalNotice />;
 
   return <StudentWorkspace user={auth.user} />;
 }

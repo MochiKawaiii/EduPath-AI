@@ -15,4 +15,5 @@ export interface AuthenticatedUser {
 
 export type AuthResponse =
   | { authenticated: false }
-  | { authenticated: true; user: AuthenticatedUser };
+  // studentPortal is false for staff mailboxes, which belong to the admin portal only.
+  | { authenticated: true; user: AuthenticatedUser; studentPortal?: boolean };

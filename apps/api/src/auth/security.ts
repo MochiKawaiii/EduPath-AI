@@ -82,6 +82,26 @@ export function assertIdentityIsAllowed(
   }
 }
 
+function emailDomain(value: string | null | undefined): string | null {
+  const at = typeof value === "string" ? value.lastIndexOf("@") : -1;
+  if (at < 0) return null;
+  const domain = value!.slice(at + 1).trim().toLowerCase();
+  return domain || null;
+}
+
+// Staff mailboxes (lecturers, faculty board, department heads) belong to the
+// admin portal only; the student workspace stays closed to them even when they
+// have no EduPath role yet.
+export function isStaffAccount(
+  account: { email: string | null; username: string | null },
+  staffEmailDomains: ReadonlySet<string>
+): boolean {
+  return [account.email, account.username].some((value) => {
+    const domain = emailDomain(value);
+    return domain !== null && staffEmailDomains.has(domain);
+  });
+}
+
 export function resolveAppRole(
   roles: readonly string[],
   defaultRole: AppConfig["authDefaultRole"]

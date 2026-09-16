@@ -43,12 +43,14 @@ const config: AppConfig = {
     allowAnyTenant: true,
     allowedTenantIds: new Set([tenantId])
   },
-  authDefaultRole: "student"
+  authDefaultRole: "student",
+  staffEmailDomains: new Set(["vlu.edu.vn"])
 };
 
 class FakeMicrosoftAuthClient implements MicrosoftAuthClient {
   public transaction: AuthTransaction | null = null;
   public nextRoles: string[] = [];
+  public nextEmail = "test@example.edu";
   public exchangeCount = 0;
 
   public async getAuthorizationUrl(transaction: AuthTransaction): Promise<string> {
@@ -70,8 +72,8 @@ class FakeMicrosoftAuthClient implements MicrosoftAuthClient {
       objectId: "33333333-3333-4333-8333-333333333333",
       subject: "subject",
       name: "Test User",
-      email: "test@example.edu",
-      username: "test@example.edu",
+      email: this.nextEmail,
+      username: this.nextEmail,
       loginHint: "test-login-hint",
       roles: this.nextRoles,
       nonce,
@@ -189,6 +191,53 @@ describe("Microsoft authentication routes", () => {
     const result = await agent.post("/api/auth/logout").expect(200);
     expect(new URL(result.body.logoutUrl).searchParams.get("post_logout_redirect_uri")).toBe(`${config.webOrigin}/`);
   });
+  it("keeps a staff mailbox out of the student portal before saving a user", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    client.nextEmail = "giangvien@vlu.edu.vn";
+    const repository = new FakeUserRepository();
+    const activity = { current: vi.fn().mockResolvedValue(true), record: vi.fn().mockResolvedValue(undefined) };
+    const agent = request.agent(createApp({ config, microsoftAuthClient: client, userRepository: repository, authActivity: activity }));
+    const callback = await login(agent, client, "/dashboard");
+    expect(callback.headers.location).toBe(`${config.webOrigin}/login?authError=staff_portal_only`);
+    expect(activity.record).toHaveBeenCalledWith(expect.objectContaining({ tenantId }), "denied", "student_portal_blocked", "student");
+    expect(repository.upsertCount).toBe(0);
+    expect((await agent.get("/api/auth/me")).body.authenticated).toBe(false);
+  });
+
+  it("lets an approved staff mailbox use the admin portal but no student endpoint", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    client.nextEmail = "giangvien@vlu.edu.vn";
+    const repository = new FakeUserRepository();
+    repository.roleOverride = "lecturer";
+    const agent = request.agent(createTestApp(client, repository));
+    expect((await login(agent, client, "/quantri")).headers.location).toBe(`${config.webOrigin}/quantri`);
+    expect((await agent.get("/api/admin/me").expect(200)).body.studentPortal).toBe(false);
+    expect((await agent.get("/api/auth/me").expect(200)).body.studentPortal).toBe(false);
+    await agent.get("/api/student/summary").expect(403);
+  });
+
+  it("refuses an unapproved staff mailbox on the admin portal", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    client.nextEmail = "nhanvien@vlu.edu.vn";
+    const repository = new FakeUserRepository();
+    const agent = request.agent(createTestApp(client, repository));
+    expect((await login(agent, client, "/quantri")).headers.location).toBe(`${config.webOrigin}/quantri?authError=admin_required`);
+    expect(repository.upsertCount).toBe(0);
+  });
+
+  it("keeps the student mailbox on both portals while no lecturer account exists for testing", async () => {
+    const client = new FakeMicrosoftAuthClient();
+    client.nextEmail = "hoa.2374802010145@vanlanguni.vn";
+    const repository = new FakeUserRepository();
+    repository.roleOverride = "admin";
+    const agent = request.agent(createTestApp(client, repository));
+    expect((await login(agent, client, "/quantri")).headers.location).toBe(`${config.webOrigin}/quantri`);
+    expect((await agent.get("/api/admin/me").expect(200)).body.studentPortal).toBe(true);
+    await agent.post("/api/auth/logout").expect(200);
+    expect((await login(agent, client, "/dashboard")).headers.location).toContain("/auth/callback");
+    await agent.get("/api/student/summary").expect(200);
+  });
+
   it("accepts a database-assigned Admin without a Microsoft Admin claim", async () => {
     const client = new FakeMicrosoftAuthClient();
     const repository = new FakeUserRepository();

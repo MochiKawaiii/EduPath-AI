@@ -11,6 +11,7 @@ import {
   createAuthTransaction,
   isAuthTransactionFresh,
   isSafeEqual,
+  isStaffAccount,
   resolveAppRole
 } from "./security.js";
 
@@ -132,6 +133,14 @@ export function createAuthRouter({
       );
       assertIdentityIsAllowed(identity, transaction, config);
       verifiedIdentity = identity;
+      // Staff mailboxes may only sign in through the admin portal, and only
+      // after an admin approves a role for them below.
+      if (transaction.returnTo !== "/quantri" && isStaffAccount(identity, config.staffEmailDomains)) {
+        await authActivity?.record(identity, "denied", "student_portal_blocked", portal);
+        await saveSession(request);
+        response.redirect(authErrorRedirect(config, "staff_portal_only", transaction.returnTo));
+        return;
+      }
       const roleOverride = await userRepository.getRoleOverride(identity);
       const role = roleOverride ?? resolveAppRole(identity.roles, config.authDefaultRole);
       if (transaction.returnTo === "/quantri" && !canAccessAdmin(role)) {
@@ -175,7 +184,8 @@ export function createAuthRouter({
 
     response.json({
       authenticated: true,
-      user: request.session.user
+      user: request.session.user,
+      studentPortal: !isStaffAccount(request.session.user, config.staffEmailDomains)
     });
   });
 

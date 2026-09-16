@@ -5,6 +5,7 @@ import type { MicrosoftIdentity } from "./types.js";
 import {
   assertIdentityIsAllowed,
   createAuthTransaction,
+  isStaffAccount,
   normalizeReturnTo,
   resolveAppRole,
   toAuthenticatedUser
@@ -42,7 +43,8 @@ function config(overrides: Partial<AppConfig["entra"]> = {}): AppConfig {
       allowedTenantIds: new Set([tenantId]),
       ...overrides
     },
-    authDefaultRole: "student"
+    authDefaultRole: "student",
+    staffEmailDomains: new Set(["vlu.edu.vn"])
   };
 }
 
@@ -125,5 +127,14 @@ describe("authentication security helpers", () => {
     expect(user.userId).toBe("55555555-5555-4555-8555-555555555555");
     expect(user.identityKey).toBe(`${tenantId}:33333333-3333-4333-8333-333333333333`);
     expect(user.role).toBe("student");
+  });
+
+  it("recognizes staff mailboxes by exact domain, case-insensitively", () => {
+    const staff = new Set(["vlu.edu.vn"]);
+    expect(isStaffAccount({ email: "GiangVien@VLU.edu.vn", username: null }, staff)).toBe(true);
+    expect(isStaffAccount({ email: null, username: "nhanvien@vlu.edu.vn" }, staff)).toBe(true);
+    expect(isStaffAccount({ email: "hoa.2374802010145@vanlanguni.vn", username: "hoa.2374802010145@vanlanguni.vn" }, staff)).toBe(false);
+    expect(isStaffAccount({ email: "someone@notvlu.edu.vn", username: "vlu.edu.vn" }, staff)).toBe(false);
+    expect(isStaffAccount({ email: null, username: null }, staff)).toBe(false);
   });
 });

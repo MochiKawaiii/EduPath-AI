@@ -47,7 +47,11 @@ const environmentSchema = z.object({
   ENTRA_POST_LOGOUT_REDIRECT_URI: z.url().optional(),
   ENTRA_ALLOW_ANY_TENANT: booleanFromString.default(false),
   ENTRA_ALLOWED_TENANT_IDS: z.string().default(""),
-  AUTH_DEFAULT_ROLE: z.enum(["student", "none"]).default("none")
+  AUTH_DEFAULT_ROLE: z.enum(["student", "none"]).default("none"),
+  // Staff mailbox domains. These accounts belong to lecturers and university
+  // staff, so they may only reach the admin portal, and only once an admin has
+  // approved a role for them.
+  STAFF_EMAIL_DOMAINS: z.string().default("vlu.edu.vn")
 });
 
 export interface AppConfig {
@@ -79,6 +83,7 @@ export interface AppConfig {
     allowedTenantIds: ReadonlySet<string>;
   };
   authDefaultRole: "student" | "none";
+  staffEmailDomains: ReadonlySet<string>;
 }
 
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -141,6 +146,11 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
       allowAnyTenant: parsed.ENTRA_ALLOW_ANY_TENANT,
       allowedTenantIds
     },
-    authDefaultRole: parsed.AUTH_DEFAULT_ROLE
+    authDefaultRole: parsed.AUTH_DEFAULT_ROLE,
+    staffEmailDomains: new Set(
+      parsed.STAFF_EMAIL_DOMAINS.split(",")
+        .map((value) => value.trim().toLowerCase().replace(/^@/, ""))
+        .filter(Boolean)
+    )
   };
 }

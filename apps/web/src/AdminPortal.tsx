@@ -23,7 +23,7 @@ function ShieldIcon() {
 
 type AdminState =
   | { kind: "loading" | "login" | "forbidden" | "error" }
-  | { kind: "authenticated"; user: AuthenticatedUser };
+  | { kind: "authenticated"; user: AuthenticatedUser; studentPortal: boolean };
 
 export default function AdminPortal() {
   const [state, setState] = useState<AdminState>({ kind: "loading" });
@@ -48,7 +48,7 @@ export default function AdminPortal() {
       if (!response.ok) throw new Error("Admin API unavailable");
       const data = await response.json();
       if (!data.authenticated || (!data.user || !canAccessAdmin(data.user.role))) return { kind: "forbidden" } as const;
-      return { kind: "authenticated", user: data.user as AuthenticatedUser } as const;
+      return { kind: "authenticated", user: data.user as AuthenticatedUser, studentPortal: data.studentPortal !== false } as const;
     }).then((result) => {
       if (!controller.signal.aborted) {
         setState(result);
@@ -88,7 +88,7 @@ export default function AdminPortal() {
   const signedIn = state.kind === "authenticated";
   const error = actionError ?? (state.kind === "forbidden" ? messages.admin_required : authError);
 
-  if (signedIn) return <AdminWorkspace user={state.user} busy={busy} error={actionError} onLogout={() => void handleLogout()} />;
+  if (state.kind === "authenticated") return <AdminWorkspace user={state.user} studentPortal={state.studentPortal} busy={busy} error={actionError} onLogout={() => void handleLogout()} />;
 
   return <div className={`admin-shell${signedIn ? " admin-shell-signed-in" : ""}`}>
     <header className="admin-header">
