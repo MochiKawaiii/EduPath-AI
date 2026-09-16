@@ -35,6 +35,7 @@ export function Icon({ name }: { name: string }) {
     chevron: "m9 6 6 6-6 6",
     close: "M18 6 6 18M6 6l12 12"
   };
+  if (name === "more") return <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>;
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.users} /></svg>;
 }
 
