@@ -1256,6 +1256,7 @@ function CourseDialog({
             </div>
             {(
               [
+                ["description", "Mô tả học phần"],
                 ["prerequisite", "Điều kiện tiên quyết"],
                 ["prior", "Học phần học trước"],
                 ["notes", "Ghi chú"],
@@ -1266,7 +1267,7 @@ function CourseDialog({
                 <textarea
                   maxLength={12000}
                   rows={3}
-                  value={form[key]}
+                  value={form[key] ?? ""}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                 />
               </label>
@@ -1308,6 +1309,7 @@ function CourseDialog({
             </div>
             {(
               [
+                ["description", "Mô tả học phần"],
                 ["prerequisite", "Tiên quyết"],
                 ["prior", "Học trước"],
                 ["notes", "Ghi chú"],

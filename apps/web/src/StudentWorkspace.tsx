@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import EduPathBrand from "./EduPathBrand";
 import StudentProfileEditor from "./StudentProfileEditor";
 import StudentTranscript from "./StudentTranscript";
+import StudentCurriculum from "./StudentCurriculum";
 import StudentOverview, { type StudentProfile } from "./StudentOverview";
 import { logout } from "./auth-api";
 import type { AuthenticatedUser } from "./types";
@@ -50,7 +51,6 @@ const featureCopy: Partial<Record<Page, { title: string; text: string; steps: st
   competency: { title: "Hiểu năng lực, biết điểm cần cải thiện", text: "Đánh giá các nhóm kỹ năng từ kết quả học tập, theo dõi sự thay đổi và nhận diện kỹ năng cần bổ sung.", steps: ["Kết quả theo nhóm kỹ năng", "Phân tích khoảng trống kỹ năng", "Theo dõi năng lực theo thời gian"] },
   career: { title: "Tìm hướng đi phù hợp với bạn", text: "Khám phá nghề nghiệp trong ngành CNTT và đối chiếu năng lực hiện tại với các kỹ năng nghề nghiệp yêu cầu.", steps: ["Khám phá vị trí nghề nghiệp", "Lựa chọn nghề nghiệp mục tiêu", "Đối chiếu yêu cầu kỹ năng"] },
   roadmap: { title: "Từng học kỳ, tiến gần hơn đến mục tiêu", text: "Lộ trình học tập sẽ kết hợp năng lực, mục tiêu nghề nghiệp và chương trình đào tạo của bạn.", steps: ["Kiểm tra môn tiên quyết và tín chỉ", "Gợi ý môn học theo từng học kỳ", "Bổ sung kỹ năng và tài nguyên tự học"] },
-  curriculum: { title: "Nắm rõ hành trình học tập của bạn", text: "Tra cứu học phần, số tín chỉ, điều kiện tiên quyết và các yêu cầu xét tốt nghiệp.", steps: ["Chương trình đào tạo theo khóa", "Danh mục học phần", "Điều kiện xét tốt nghiệp"] },
   assistant: { title: "Một người bạn đồng hành trong học tập", text: "Trợ lý AI sẽ giúp giải thích kết quả đánh giá và lý do đề xuất môn học, đồng thời tư vấn kỹ năng tự học.", steps: ["Giải thích kết quả năng lực", "Hỏi đáp về lộ trình", "Gợi ý tài nguyên học tập"] }
 };
 
@@ -122,7 +122,7 @@ export default function StudentWorkspace({ user }: { user: AuthenticatedUser }) 
         <div className="sw-body-content"><main className="sw-main" id="student-main" tabIndex={-1}>
           {error && <div className="sw-error" role="alert">{error}<button onClick={() => setReload(n => n + 1)}>Thử lại</button></div>}
           <div className="sw-page-heading">
-            <div><p className="sw-eyebrow">CỔNG QUẢN LÝ HỌC TẬP</p><h1>{page === "overview" ? "Tổng quan học tập" : selected.label}</h1><p>{page === "overview" ? `Xin chào, ${name}. Cùng tiếp tục hành trình của bạn nhé.` : page === "profile" ? "Thông tin cá nhân và kết quả học tập của bạn, tại một nơi." : "Khám phá bước tiếp theo trên hành trình học tập của bạn."}</p></div>
+            <div><p className="sw-eyebrow">CỔNG QUẢN LÝ HỌC TẬP</p><h1>{page === "overview" ? "Tổng quan học tập" : selected.label}</h1><p>{page === "overview" ? `Xin chào, ${name}. Cùng tiếp tục hành trình của bạn nhé.` : page === "profile" ? "Thông tin cá nhân và kết quả học tập của bạn, tại một nơi." : page === "curriculum" ? "Tra cứu học phần, tín chỉ và điều kiện học theo chương trình đào tạo." : "Khám phá bước tiếp theo trên hành trình học tập của bạn."}</p></div>
             {page === "overview" && <button className="sw-outline" onClick={() => navigate("profile")}>Xem hồ sơ của tôi <Icon name="arrow" /></button>}
           </div>
           {page === "overview" ? <>
@@ -131,7 +131,7 @@ export default function StudentWorkspace({ user }: { user: AuthenticatedUser }) 
               <dl><div><dt>Mã sinh viên</dt><dd>{loading ? "Đang tải…" : profile?.studentCode ?? "Chưa cập nhật"}</dd></div><div><dt>Khóa · Lớp</dt><dd>{loading ? "Đang tải…" : [profile?.cohortCode, profile?.className].filter(Boolean).join(" · ") || "Chưa cập nhật"}</dd></div><div><dt>Năm nhập học</dt><dd>{loading ? "Đang tải…" : profile?.cohortYear ?? "Chưa cập nhật"}</dd></div></dl>
             </section>
             <StudentOverview profile={profile} loading={loading} navigate={navigate} />
-          </> : page === "profile" ? <div className="sr-profile-layout">{profileCard}{profile && <StudentProfileEditor profile={profile} onSaved={() => setReload(n => n + 1)} />}<StudentTranscript /></div> : <section className="sw-panel sw-feature"><span className="sw-card-icon"><Icon name={selected.icon} /></span><span className="sw-tag">Sắp ra mắt</span><h2>{featureCopy[page]?.title}</h2><p>{featureCopy[page]?.text}</p><div className="sw-feature-steps">{featureCopy[page]?.steps.map((step, i) => <div key={step}><span>0{i + 1}</span><h3>{step}</h3></div>)}</div><p className="sw-muted">Chức năng này chưa sẵn sàng sử dụng. Bạn có thể xem thông tin học tập hiện có trong hồ sơ.</p><button className="sw-primary" onClick={() => navigate("profile")}>Xem hồ sơ học tập <Icon name="arrow" /></button></section>}
+          </> : page === "profile" ? <div className="sr-profile-layout">{profileCard}{profile && <StudentProfileEditor profile={profile} onSaved={() => setReload(n => n + 1)} />}<StudentTranscript /></div> : page === "curriculum" ? <StudentCurriculum /> : <section className="sw-panel sw-feature"><span className="sw-card-icon"><Icon name={selected.icon} /></span><span className="sw-tag">Sắp ra mắt</span><h2>{featureCopy[page]?.title}</h2><p>{featureCopy[page]?.text}</p><div className="sw-feature-steps">{featureCopy[page]?.steps.map((step, i) => <div key={step}><span>0{i + 1}</span><h3>{step}</h3></div>)}</div><p className="sw-muted">Chức năng này chưa sẵn sàng sử dụng. Bạn có thể xem thông tin học tập hiện có trong hồ sơ.</p><button className="sw-primary" onClick={() => navigate("profile")}>Xem hồ sơ học tập <Icon name="arrow" /></button></section>}
           <footer className="sw-footer"><span>© 2026 · Bản Quyền Thuộc Khoa Công nghệ Thông tin · Trường Đại Học Văn Lang.</span></footer>
         </main></div>
       </div>

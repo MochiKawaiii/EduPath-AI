@@ -3,6 +3,7 @@ export interface CurriculumCourse {
   code: string;
   name: string;
   englishName: string;
+  description?: string;
   credits: number;
   type: string;
   block: string;

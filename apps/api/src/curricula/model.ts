@@ -18,6 +18,7 @@ export const courseSchema = z.object({
     .regex(/^\d{2}[A-Z]{2,12}\d{4,10}$/),
   name: short.min(1),
   englishName: short,
+  description: text.optional(),
   credits: z.number().min(0).max(30),
   type: short.regex(/^(BB(?:KTL)?|TC\d*(?:\s*\(.*\))?)$/),
   block: short,

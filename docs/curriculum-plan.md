@@ -32,6 +32,14 @@ Function list Excel đảo thứ tự mã 01–04 và lặp nhóm kế hoạch �
 - Gắn kỹ năng/chuẩn đầu ra vào mã môn và nội dung theo phiên bản sau khi có dữ liệu chính thức. Không tự sinh kỹ năng trong bước import.
 - Thêm K32 bằng luồng import, không cần thay schema hoặc sửa khung khóa cũ.
 
+## Cổng sinh viên — STU-CURR-01
+
+- Dùng chung các phiên bản CTĐT đã import ở cổng quản trị; API sinh viên chỉ trả khung đang mở và phiên bản hiện hành. Không nhân bản dữ liệu riêng cho sinh viên.
+- Gợi ý theo khóa trong hồ sơ khi có đúng một khung phù hợp. Chưa có dữ liệu ngành được phân công nên không tự xác nhận khung chính thức; trường hợp chưa có K32, thiếu khóa hoặc nhiều khung cùng khóa cần chọn để tham khảo.
+- Tra cứu danh mục, tìm tên/mã không dấu, lọc khối, loại môn, chuyên ngành, năm và học kỳ 1–3; xem mô tả, tín chỉ, tiên quyết và học trước của từng môn.
+- Mô tả là trường tùy chọn trong dữ liệu học phần theo phiên bản, có thể bổ sung qua trình sửa của quản trị viên. Ba Excel nguồn chưa có trường này; không tạo mô tả giả hoặc dùng ghi chú thay thế.
+- Bước này phục vụ tra cứu. Khi triển khai đối chiếu bảng điểm/lộ trình, bổ sung liên kết sinh viên với ngành/chuyên ngành và revision cụ thể trước khi tính điều kiện học.
+
 ## Kết quả triển khai ngày 15/09/2026
 
 - Đã triển khai sáu chức năng và nhập ba khung vào database local: K29 88, K30 89, K31 89 học phần.
@@ -39,3 +47,9 @@ Function list Excel đảo thứ tự mã 01–04 và lặp nhóm kế hoạch �
 - Đã xem giao diện danh sách/chi tiết ở desktop 1440 px và mobile 390 px, kiểm tra bộ lọc và luồng xem trước Excel/cảnh báo khung trùng bằng trình duyệt.
 - Cơ chế khởi động Render tự chạy migration và nhập các khung chưa tồn tại khi `DATABASE_AUTO_MIGRATE=true`. Xác nhận trực tiếp nội dung Supabase sau triển khai cần phiên quản trị của môi trường đó.
 - Hướng dẫn sử dụng và đồng bộ: [curriculum-guide.md](curriculum-guide.md).
+
+## Kết quả STU-CURR-01 ngày 16/09/2026
+
+- Đã nối trang `/dashboard#curriculum` với dữ liệu đang mở, thêm tìm/lọc môn và chi tiết học phần; quản trị viên có thể bổ sung mô tả theo phiên bản.
+- GPT-5.6 Luna (max) thực hiện build/test: build thành công, 201 kiểm tra API và 30 kiểm tra frontend đạt; 8 nhóm kiểm tra tích hợp PostgreSQL local đạt.
+- Đã kiểm tra giao diện desktop/mobile, tìm/lọc và hộp thoại môn học bằng Playwright; không ghi nhận lỗi hoặc cảnh báo console. Dữ liệu tích hợp nằm trong schema tạm, không ghi vào các khung đang dùng.
