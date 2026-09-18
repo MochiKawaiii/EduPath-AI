@@ -14,6 +14,8 @@ node scripts/setup-ocr-worker.mjs
 
 # Hoặc kết nối backend Render
 node scripts/setup-ocr-worker.mjs https://edupath-ai-q28n.onrender.com
+
+powershell -ExecutionPolicy Bypass -File services/ocr/start-worker.ps1
 ```
 
 Script tạo/giữ `OCR_WORKER_KEY` trong `apps/api/.env`, đồng bộ vào `services/ocr/.env`. Không in khóa ra terminal, không commit `.env`.

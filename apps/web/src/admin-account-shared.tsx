@@ -72,7 +72,7 @@ export function CreateAccount({ onList, onBusy }: { onList: () => void; onBusy?:
       : <form onSubmit={(event) => void submit(event)}>
         {error && <p ref={errorRef} tabIndex={-1} className="admin-error" role="alert">{error}</p>}
         <label className="am-field" htmlFor="new-admin-email">Email Microsoft <span aria-hidden="true">*</span><input id="new-admin-email" type="email" autoComplete="off" required maxLength={320} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ten@vanlanguni.vn" aria-describedby="new-admin-help" disabled={busy} /></label>
-        <p id="new-admin-help" className="am-field-help">Tài khoản phải từng đăng nhập EduPath bằng Microsoft, không giới hạn tổ chức hoặc tên miền email.</p>
+        <p id="new-admin-help" className="am-field-help">Tài khoản phải từng đăng nhập EduPath bằng Microsoft.</p>
         <label className="am-field">Vai trò được cấp<input readOnly value="Quản trị viên" /></label>
         <label className="am-confirm"><input type="checkbox" required checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} disabled={busy} /><span>Tôi xác nhận cấp quyền quản trị EduPath AI cho tài khoản trên.</span></label>
         <div className="am-form-actions"><button className="am-primary" type="submit" disabled={busy}>{busy ? "Đang tạo…" : "Tạo tài khoản quản trị"}</button><button className="am-quiet" type="button" onClick={onList} disabled={busy}>Hủy</button></div>

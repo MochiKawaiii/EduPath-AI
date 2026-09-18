@@ -57,7 +57,7 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
     throw new Error(
       (errors[body.error] ??
         "Chưa thực hiện được thao tác. Vui lòng thử lại.") +
-        (body.details?.length ? "\n" + body.details.join("\n") : ""),
+      (body.details?.length ? "\n" + body.details.join("\n") : ""),
     );
   return body;
 }
@@ -403,8 +403,7 @@ function ImportDialog({
         </label>
         <p className="cm-help">
           Dùng mẫu Khoa gồm mã và tên học phần, tín chỉ, BB/TC, tiên quyết, học
-          trước, khối kiến thức, chuyên ngành, học kỳ và năm học. Ngành và khóa
-          được đọc từ nội dung, không phụ thuộc tên tệp.
+          trước, khối kiến thức, chuyên ngành, học kỳ và năm học.
         </p>
         {busy && <p role="status">Đang xử lý khung CTĐT…</p>}
         {error && (
@@ -928,10 +927,10 @@ function MetadataDialog({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState({
-      name: current.data.name,
-      totalCredits: current.data.totalCredits,
-      notes: current.data.notes,
-    }),
+    name: current.data.name,
+    totalCredits: current.data.totalCredits,
+    notes: current.data.notes,
+  }),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   return (

@@ -6,7 +6,7 @@ import { PlanError, reviewPlan, identity, type PlanData } from "./model.js";
 import type { CurriculumData } from "../curricula/model.js";
 const columns = `c.id,c.is_active AS "isActive",c.lock_version AS token,c.updated_at AS "updatedAt",r.id AS "revisionId",r.version,r.data,r.source_filename AS "sourceFilename"`;
 export class PlanRepository {
-  constructor(readonly pool: DatabasePool) {}
+  constructor(readonly pool: DatabasePool) { }
   async access(actor: AuthenticatedUser, write = false, client?: PoolClient) {
     const result = await (client ?? this.pool).query(
       `SELECT id FROM users WHERE id=$1 AND entra_tenant_id=$2 AND is_active
@@ -29,11 +29,11 @@ export class PlanRepository {
     const row = result.rows[0];
     data.curriculum = row
       ? {
-          id: row.id,
-          revisionId: row.revisionId,
-          version: row.version,
-          name: row.data.name,
-        }
+        id: row.id,
+        revisionId: row.revisionId,
+        version: row.version,
+        name: row.data.name,
+      }
       : null;
     return reviewPlan(data, row?.data);
   }
@@ -94,9 +94,9 @@ export class PlanRepository {
   ) {
     const linked = data.curriculum
       ? await client.query<{ data: CurriculumData }>(
-          "SELECT data FROM curriculum_revisions WHERE id=$1 AND curriculum_id=$2",
-          [data.curriculum.revisionId, data.curriculum.id],
-        )
+        "SELECT data FROM curriculum_revisions WHERE id=$1 AND curriculum_id=$2",
+        [data.curriculum.revisionId, data.curriculum.id],
+      )
       : null;
     reviewPlan(data, linked?.rows[0]?.data);
     const revisionId = randomUUID();

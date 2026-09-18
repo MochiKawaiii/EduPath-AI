@@ -52,7 +52,7 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
     throw new Error(
       (messages[body.error] ??
         "Chưa thực hiện được thao tác. Vui lòng thử lại.") +
-        (body.details?.length ? "\n" + body.details.join("\n") : ""),
+      (body.details?.length ? "\n" + body.details.join("\n") : ""),
     );
   return body;
 }
@@ -327,8 +327,8 @@ function PlanView({
     reload,
   );
   const [modal, setModal] = useState<"metadata" | "import" | "status" | null>(
-      null,
-    ),
+    null,
+  ),
     [item, setItem] = useState<PlanItem | null>(null),
     [notice, setNotice] = useState(initialNotice);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -613,7 +613,7 @@ function PlanStructure({
                   <th colSpan={6}>
                     Năm {t.studyYear} · Học kỳ {t.semester}
                     <span>
-                      {t.code} · {t.sourceCredits ?? "—"} tín chỉ theo Excel
+                      {t.code} · {t.sourceCredits ?? "—"} tín chỉ
                     </span>
                   </th>
                 </tr>
@@ -1132,7 +1132,6 @@ function ItemEditor({
               ))}
             </div>
             <p className="pm-muted">
-              Thay đổi phân bổ không tự tính lại tổng tín chỉ ghi trong Excel.
               Dùng Cập nhật từ Excel để thay toàn bộ cấu trúc hoặc các nhóm môn.
             </p>
           </>

@@ -993,11 +993,12 @@
     min-height: 44px;
   }
 }
+
 .am-sidebar-brand .ep-brand {
   width: 172px;
 }
 
-.am-sidebar-brand .ep-brand > img {
+.am-sidebar-brand .ep-brand>img {
   max-height: 70px;
   object-fit: contain;
 }
@@ -1147,6 +1148,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .am-icon-btn,
   .am-action-item {
     transition: none;

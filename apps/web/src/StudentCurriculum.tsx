@@ -118,8 +118,8 @@ export default function StudentCurriculum() {
               : !list.data.profileCohort
                 ? "Hồ sơ chưa có khóa học. Bạn có thể chọn một chương trình để tham khảo."
                 : !list.data.items.some(
-                      (item) => item.cohortCode === list.data!.profileCohort,
-                    )
+                  (item) => item.cohortCode === list.data!.profileCohort,
+                )
                   ? `Chưa có khung đang mở cho ${list.data.profileCohort}. Các khung khác chỉ dùng để tham khảo.`
                   : sameCohort
                     ? `Khung cùng khóa ${list.data.profileCohort} trong hồ sơ của bạn. Hãy đối chiếu ngành học khi lựa chọn.`
@@ -424,10 +424,10 @@ function CurriculumContent({
                       {c.conditions.some(
                         (r) => r.kind === "prerequisite" && r.reviewRequired,
                       ) && (
-                        <small className="sc-review">
-                          Cần xác nhận điều kiện
-                        </small>
-                      )}
+                          <small className="sc-review">
+                            Cần xác nhận điều kiện
+                          </small>
+                        )}
                     </td>
                   </tr>
                 </Fragment>

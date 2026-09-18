@@ -5,6 +5,7 @@ coverage/
 *.tsbuildinfo
 .playwright-cli/
 output/playwright/
+.agents
 
 # Local environment and credentials
 .env

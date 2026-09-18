@@ -4,7 +4,7 @@ import "./student-records.css";
 type Course = { ordinal: number; code: string; name: string; credits: number; score10: number | null; score4: number | null; letter: string | null; result: string | null; conditional: boolean; sourcePage: number };
 type Section = { id: string; label: string; academicYear: string | null; semester: string | null; courses: Course[]; summaries: { label: string; value: string | null }[] };
 export type Transcript = { version: string; filename: string; fileSize: number; createdAt: string; updatedAt: string; data: { schemaVersion: number; parserVersion: string; pageCount: number; courseCount: number; sections: Section[]; warnings: string[] } };
-type ImportJob = { id:string; filename:string; status:"queued"|"processing"|"completed"|"failed"|"cancelled"; errorCode:string|null };
+type ImportJob = { id: string; filename: string; status: "queued" | "processing" | "completed" | "failed" | "cancelled"; errorCode: string | null };
 const errors: Record<string, string> = {
   import_pending: "Bạn đang có một bảng điểm chờ xử lý. Hãy đợi hoặc hủy tác vụ trước.", queue_full: "Đang có nhiều bảng điểm chờ xử lý. Vui lòng thử lại sau.",
   worker_timeout: "Bảng điểm chưa xử lý được trong thời gian cho phép. Hãy kiểm tra máy xử lý và tải lại PDF.", ocr_failed: "Không nhận dạng được bảng điểm. Hãy thử lại với PDF rõ, lưu từ cổng đào tạo.", invalid_ocr_result: "Kết quả nhận dạng chưa hợp lệ. Bảng điểm cũ vẫn được giữ nguyên.",
@@ -58,26 +58,26 @@ export default function StudentTranscript() {
     const pending = new AbortController(); let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
       try {
-        const data = await read(await fetch("/api/student/transcript", {credentials:"include",signal:pending.signal}));
+        const data = await read(await fetch("/api/student/transcript", { credentials: "include", signal: pending.signal }));
         if (!pending.signal.aborted) {
           setJob(data.job ?? null); setWorkerOnline(data.workerOnline ?? false);
           setTranscript(data.transcript ?? null); setError("");
           if (data.job?.status === "completed") setMessage("Đã lưu bảng điểm. Hãy đối chiếu kết quả bên dưới với PDF gốc.");
         }
-      } catch(e) { if (!pending.signal.aborted) setError(e instanceof Error ? e.message : "Không lấy được trạng thái xử lý."); }
-      finally { if (!pending.signal.aborted) timer=setTimeout(() => void poll(),5000); }
+      } catch (e) { if (!pending.signal.aborted) setError(e instanceof Error ? e.message : "Không lấy được trạng thái xử lý."); }
+      finally { if (!pending.signal.aborted) timer = setTimeout(() => void poll(), 5000); }
     };
-    timer=setTimeout(() => void poll(),2000);
+    timer = setTimeout(() => void poll(), 2000);
     return () => { pending.abort(); clearTimeout(timer); };
-  }, [pendingJob,job?.id]);
+  }, [pendingJob, job?.id]);
   const cancelJob = async () => {
     if (!job) return;
     setBusy(true); setError("");
     try {
-      await read(await fetch("/api/student/transcript/job", {method:"DELETE",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:job.id})}));
+      await read(await fetch("/api/student/transcript/job", { method: "DELETE", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: job.id }) }));
       await load();
-    } catch(e) { setError(e instanceof Error ? e.message : "Không hủy được tác vụ."); }
-    finally {setBusy(false);}
+    } catch (e) { setError(e instanceof Error ? e.message : "Không hủy được tác vụ."); }
+    finally { setBusy(false); }
   };
   const [dragging, setDragging] = useState(false);
   const clearFile = () => { setFile(null); setConfirmed(false); if (input.current) input.current.value = ""; };
