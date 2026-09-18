@@ -18,9 +18,9 @@ Migration `011_curricula.sql` tạo các bảng `curricula`, `curriculum_revisio
 
 Ba nguồn nằm trong `apps/api/data/curricula`: K29 có 88 học phần, K30 có 89, K31 có 89. Đây là **266 lượt học phần theo khung**, không phải 266 mã môn khác nhau. Giữ đúng file Mẫu Khoa người dùng cung cấp từ OneDrive; chưa nhập K32.
 
-Khi backend khởi động với `DATABASE_AUTO_MIGRATE=true`, hệ thống chạy migration rồi nhập các khung chưa tồn tại vào database được cấu hình bởi `DATABASE_URL`. Vì vậy local và Render có thể dùng hai database riêng; mỗi môi trường nhận cùng bộ khung ban đầu. Các sửa đổi của quản trị viên ở hai database **không tự sao chép qua lại**.
+Khi backend khởi động với `DATABASE_AUTO_MIGRATE=true`, hệ thống chỉ chạy migration vào database được cấu hình bởi `DATABASE_URL`; backend **không tự nhập khung CTĐT**. Quản trị viên import khung trên trang quản trị. Local và Render có thể dùng hai database riêng; các sửa đổi ở hai database **không tự sao chép qua lại**.
 
-Trên Render, giữ `DATABASE_URL` trỏ đến Supabase và `DATABASE_AUTO_MIGRATE=true`, deploy code mới như bình thường. Không cần sửa schema bằng tay hoặc dùng Supabase API key ở frontend. Lệnh đồng bộ thủ công, chạy tại thư mục gốc dự án khi cần:
+Trên Render, giữ `DATABASE_URL` trỏ đến Supabase và `DATABASE_AUTO_MIGRATE=true`, deploy code mới như bình thường. Không cần sửa schema bằng tay hoặc dùng Supabase API key ở frontend. Để nạp nhanh ba khung K29–K31 vào một database trống, chạy tại thư mục gốc dự án:
 
 ```powershell
 npm run db:seed-curricula --workspace @edupath/api

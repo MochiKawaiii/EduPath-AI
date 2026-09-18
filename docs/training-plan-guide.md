@@ -52,14 +52,14 @@ Mỗi lần cập nhật cần token phiên bản hiện tại để tránh ghi 
 
 ## Đồng bộ và triển khai
 
-Khi `DATABASE_AUTO_MIGRATE=true`, backend chạy migration rồi nạp CTĐT và kế hoạch K29–K31 lúc khởi động. Seed chỉ thêm kế hoạch chưa có cùng ngành/khóa, không ghi đè bản đã chỉnh và không tự mở lại bản đã khóa. K32 có thể import sau khi có file chính thức.
+Khi `DATABASE_AUTO_MIGRATE=true`, backend chỉ chạy migration lúc khởi động; backend không tự nạp CTĐT hay kế hoạch. Quản trị viên import CTĐT trước, rồi import kế hoạch cùng ngành/khóa để kế hoạch được liên kết.
 
-Có thể chạy thủ công từ thư mục repository:
+Để nạp nhanh CTĐT và kế hoạch K29–K31 vào một database trống, chạy từ thư mục repository. Lệnh chỉ thêm bản chưa có cùng ngành/khóa, không ghi đè bản đã chỉnh và không tự mở lại bản đã khóa:
 
 ```powershell
 npm run db:seed-plans --workspace @edupath/api
 ```
 
-Lệnh dùng `DATABASE_URL` trong môi trường của API; kiểm tra đúng môi trường trước khi chạy. Trên Render, cần triển khai mã mới rồi backend khởi động thành công để migration và seed áp dụng vào database đang cấu hình. Không lưu khóa bí mật trong mã nguồn.
+Lệnh dùng `DATABASE_URL` trong môi trường của API; kiểm tra đúng môi trường trước khi chạy. Trên Render, cần triển khai mã mới rồi backend khởi động thành công để migration áp dụng vào database đang cấu hình. Không lưu khóa bí mật trong mã nguồn.
 
 Các bảng có RLS và không cấp quyền truy cập trực tiếp cho client Supabase; ứng dụng truy cập qua backend có kiểm tra quyền.
