@@ -1,7 +1,22 @@
+/*
+  One token drives the mark everywhere. The image keeps an explicit 3:1 box that
+  matches the artwork, and `contain` guarantees it is never stretched to fit a
+  header row, so the logo reads at the same size on every page.
+
+  The supplied PNG leaves roughly 30% of its height empty, so the drawn mark is
+  about 3.98:1 - the same proportion as the Van Lang lockup. Sizing the box a
+  step wider than that logo is what makes the two read as a matched pair rather
+  than leaving EduPath AI looking like the smaller partner.
+*/
+:root {
+  --ep-header-brand-w: 210px;
+}
+
 .ep-brand {
+  --ep-brand-w: var(--ep-header-brand-w);
   display: inline-flex;
   align-items: center;
-  width: 260px;
+  width: var(--ep-brand-w);
   max-width: 100%;
   flex: 0 1 auto;
   text-decoration: none;
@@ -9,9 +24,10 @@
 
 .ep-brand>img {
   display: block;
+  flex: 0 0 auto;
+  align-self: center;
   width: 100%;
-  height: auto;
-  aspect-ratio: 3 / 1;
+  height: calc(var(--ep-brand-w) / 3);
   object-fit: contain;
 }
 
@@ -28,20 +44,16 @@
   padding: 4px 8px;
 }
 
-.am-sidebar-brand .ep-brand {
-  width: 100%;
-}
-
 .lp-preview-top .ep-brand {
-  width: 170px;
+  --ep-brand-w: 170px;
 }
 
 @media (max-width: 760px) {
   .ep-brand {
-    width: 210px;
+    --ep-brand-w: 178px;
   }
 
   .lp-preview-top .ep-brand {
-    width: 140px;
+    --ep-brand-w: 140px;
   }
 }

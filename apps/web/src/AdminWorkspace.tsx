@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import EduPathBrand from "./EduPathBrand";
+import { layoutHeight } from "./page-scale";
 import type { AuthenticatedUser } from "./types";
 import { Icon, roleLabels } from "./admin-account-shared";
 import AccountsManagement from "./AccountsManagement";
@@ -17,7 +18,7 @@ export default function AdminWorkspace({ user, busy, error, onLogout }: { user: 
   const shell = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!header.current) return;
-    const syncHeight = () => shell.current?.style.setProperty("--am-header-height", `${header.current?.getBoundingClientRect().height ?? 80}px`);
+    const syncHeight = () => shell.current?.style.setProperty("--am-header-height", `${header.current ? layoutHeight(header.current) : 80}px`);
     const observer = new ResizeObserver(syncHeight);
     observer.observe(header.current);
     syncHeight();

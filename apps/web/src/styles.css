@@ -6,6 +6,33 @@
   background: #e8eef6;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+
+  /*
+    The screens are designed to be read at 75% browser zoom, so the page scales
+    itself down by that factor instead of asking anyone to zoom by hand. Phones
+    and small laptops keep their natural size, where the layout is already
+    responsive and 75% would leave the text too small to read.
+
+    `zoom` multiplies used lengths, and viewport units are no exception: 100dvh
+    inside a zoomed box only covers 75% of the screen. Full-viewport lengths are
+    therefore written as `calc(100 * var(--ep-vh))`, which divides the factor
+    back out and is correct whether or not the scale is active.
+  */
+  --ep-zoom: 1;
+  --ep-vh: 1dvh;
+  --ep-vw: 1vw;
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --ep-zoom: .75;
+    --ep-vh: calc(1dvh / .75);
+    --ep-vw: calc(1vw / .75);
+  }
+
+  body {
+    zoom: var(--ep-zoom);
+  }
 }
 
 * {
@@ -19,7 +46,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: calc(100 * var(--ep-vh));
 }
 
 button {
@@ -43,8 +70,7 @@ a {
 }
 
 .auth-shell {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: calc(100 * var(--ep-vh));
   display: grid;
   grid-template-rows: auto minmax(540px, 1fr) auto;
   overflow-x: hidden;
@@ -78,7 +104,7 @@ a {
 }
 
 .login-header .ep-brand {
-  width: 172px;
+  --ep-brand-w: var(--ep-header-brand-w);
 }
 
 .edupath-symbol {
@@ -149,8 +175,8 @@ a {
 }
 
 .header-vlu-logo {
-  width: 206px;
-  height: 53px;
+  width: 176px;
+  height: 45px;
   display: block;
   justify-self: end;
   overflow: hidden;
@@ -483,7 +509,7 @@ a {
 }
 
 .loading-screen {
-  min-height: 100vh;
+  min-height: calc(100 * var(--ep-vh));
   display: grid;
   place-items: center;
   color: #355070;
@@ -491,7 +517,7 @@ a {
 }
 
 .dashboard-shell {
-  min-height: 100vh;
+  min-height: calc(100 * var(--ep-vh));
   color: #172033;
   background: #f4f6f1;
 }
@@ -706,7 +732,7 @@ a {
   }
 
   .login-header .ep-brand {
-    width: 150px;
+    --ep-brand-w: 170px;
   }
 
   .brand-wordmark strong {

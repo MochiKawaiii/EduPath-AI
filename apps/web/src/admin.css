@@ -3,7 +3,7 @@
   --admin-dark: #242329;
   --admin-muted: #64616b;
   --admin-border: #e6e1e3;
-  min-height: 100dvh;
+  min-height: calc(100 * var(--ep-vh));
   display: flex;
   flex-direction: column;
   background: #faf9f7;
@@ -51,8 +51,9 @@
   color: var(--admin-muted);
 }
 
+/* Matches the EduPath mark's artwork width so neither logo reads as the smaller one. */
 .admin-university-logo {
-  width: 168px;
+  width: 176px;
   height: auto;
   object-fit: contain;
 }
@@ -465,5 +466,5 @@
 }
 
 .admin-header .ep-brand {
-  width: 172px;
+  --ep-brand-w: var(--ep-header-brand-w);
 }

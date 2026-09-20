@@ -8,7 +8,7 @@
   --sw-green: #27765b;
   --sw-radius: 10px;
   display: flex;
-  min-height: 100dvh;
+  min-height: calc(100 * var(--ep-vh));
   background: #f6f7f9;
   color: var(--sw-ink);
   font-size: 14px;
@@ -152,7 +152,7 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 20px;
-  width: min(340px, calc(100vw - 32px));
+  width: min(340px, calc(100 * var(--ep-vw) - 32px));
   background: white;
   padding: 22px;
   border: 1px solid var(--sw-border);

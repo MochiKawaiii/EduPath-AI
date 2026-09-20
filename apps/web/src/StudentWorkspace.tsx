@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import EduPathBrand from "./EduPathBrand";
+import { layoutHeight } from "./page-scale";
 import StudentProfileEditor from "./StudentProfileEditor";
 import StudentTranscript from "./StudentTranscript";
 import StudentCurriculum from "./StudentCurriculum";
@@ -62,7 +63,7 @@ export default function StudentWorkspace({ user }: { user: AuthenticatedUser }) 
     const header = headerRef.current;
     if (!header) return;
     const resize = new ResizeObserver(() => {
-      header.closest<HTMLElement>(".sw-shell")?.style.setProperty("--sw-header-height", `${header.getBoundingClientRect().height}px`);
+      header.closest<HTMLElement>(".sw-shell")?.style.setProperty("--sw-header-height", `${layoutHeight(header)}px`);
     });
     resize.observe(header);
     return () => resize.disconnect();

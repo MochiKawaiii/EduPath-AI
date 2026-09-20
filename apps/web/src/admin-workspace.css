@@ -12,10 +12,10 @@
   flex: 0 0 258px;
   background: #b51639;
   color: #fff;
-  min-height: 100dvh;
+  min-height: calc(100 * var(--ep-vh));
   position: sticky;
   top: 0;
-  height: 100dvh;
+  height: calc(100 * var(--ep-vh));
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -706,9 +706,9 @@
     padding: 17px 20px;
   }
 
-  .am-sidebar-brand .ep-brand>img {
-    width: 100%;
-    height: auto;
+  /* The brand row keeps the header's fixed height, so the mark steps down with the padding. */
+  .am-sidebar-brand .ep-brand {
+    --ep-brand-w: 168px;
   }
 
   .am-sidebar-brand strong {
@@ -901,7 +901,7 @@
 .am-dialog {
   width: min(960px, calc(100% - 32px));
   max-width: calc(100% - 32px);
-  max-height: calc(100dvh - 32px);
+  max-height: calc(100 * var(--ep-vh) - 32px);
   padding: 0;
   border: 1px solid #e8e7ec;
   border-radius: 12px;
@@ -995,12 +995,7 @@
 }
 
 .am-sidebar-brand .ep-brand {
-  width: 172px;
-}
-
-.am-sidebar-brand .ep-brand>img {
-  max-height: 70px;
-  object-fit: contain;
+  --ep-brand-w: 196px;
 }
 
 .am-icon-btn {

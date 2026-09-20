@@ -2047,6 +2047,6 @@
 }
 
 .lp-header .ep-brand {
-  width: 172px;
+  --ep-brand-w: var(--ep-header-brand-w);
   flex-shrink: 0;
 }

@@ -255,8 +255,8 @@
 .sc-dialog {
   border: 1px solid var(--sw-border);
   border-radius: 12px;
-  width: min(820px, calc(100vw - 32px));
-  max-height: calc(100dvh - 40px);
+  width: min(820px, calc(100 * var(--ep-vw) - 32px));
+  max-height: calc(100 * var(--ep-vh) - 40px);
   padding: 0;
   color: var(--sw-ink);
   background: #fff;
@@ -428,8 +428,8 @@
     padding: 16px;
   }
   .sc-dialog {
-    width: calc(100vw - 24px);
-    max-height: calc(100dvh - 24px);
+    width: calc(100 * var(--ep-vw) - 24px);
+    max-height: calc(100 * var(--ep-vh) - 24px);
   }
   .sc-empty {
     padding: 24px;
