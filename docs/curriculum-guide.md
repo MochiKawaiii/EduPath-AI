@@ -4,13 +4,17 @@ Truy cập **Quản trị → Chương trình đào tạo** tại `/quantri/chuo
 
 ## Sáu chức năng
 
-- **Import:** chọn `.xlsx` không quá 5 MB, xem trước, đọc và xác nhận ghi chú rồi lưu. Định dạng xác định bằng nội dung; tên tệp bất kỳ. Khung cùng ngành và khóa không được tạo trùng.
+- **Import:** chọn `.xlsx` không quá 5 MB, xem trước, đọc và xác nhận cảnh báo rồi lưu. Định dạng xác định bằng nội dung; tên tệp bất kỳ. Khung cùng ngành và khóa không được tạo trùng.
 - **Danh sách và tìm kiếm:** tìm theo tên, ngành/chuyên ngành hoặc khóa. Gõ tìm kiếm cập nhật sau 300 ms; chọn khóa/trạng thái lọc ngay. Danh sách phân trang 10 khung.
 - **Chi tiết:** xem các khối, học phần, nhóm tự chọn, học kỳ/năm học, tiên quyết/học trước và các điểm cần rà soát. Nút **Chi tiết** ở học phần có toàn bộ trường và các ô Excel gốc.
-- **Cập nhật:** sửa thông tin chương trình hoặc từng học phần; để thêm/bớt nhiều môn hay thay cấu trúc khối, dùng **Cập nhật từ Excel**. Tệp thay thế phải cùng ngành và khóa. Mỗi lần lưu tạo phiên bản mới; lịch sử và Excel nguồn được giữ lại.
+- **Cập nhật:** dùng biểu tượng bút ở đầu khung để sửa thông tin chương trình. Menu **…** cuối mỗi dòng **Khối kiến thức** cho phép thêm, sửa hoặc xóa môn trong khối. Form thêm/sửa có combobox khối kiến thức; khi thêm sẽ chọn sẵn khối vừa mở menu. Có thể chuyển môn sang khối khác, sửa mã và các trường học phần. Muốn thay toàn bộ cấu trúc khối, dùng **Cập nhật từ Excel** với tệp cùng ngành và khóa. Mỗi lần lưu tạo phiên bản mới; lịch sử và Excel nguồn được giữ lại.
 - **Mở/khóa:** khóa khung không còn áp dụng, giữ lại dữ liệu để tra cứu. Có thể mở lại; trạng thái không bị thay đổi khi chạy đồng bộ các nguồn ban đầu.
 
 Quản trị viên được thay đổi dữ liệu. Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng viên chỉ xem. Mọi thao tác ghi kiểm tra lại quyền trong database và phiên bản hiện hành; nếu khung đã được người khác sửa, tải lại trước khi lưu tiếp.
+
+Xóa môn cần xác nhận và chỉ xóa khỏi phiên bản mới của khung đang mở, không xóa danh mục môn toàn hệ thống, khung khác hoặc lịch sử. Nếu môn bị xóa/đổi mã còn nằm trong điều kiện tiên quyết/học trước của môn khác, hệ thống giữ nguyên điều kiện đó và đánh dấu trong tab **Cảnh báo** để quản trị viên sửa. Tổng tín chỉ quy định không tự cộng/trừ khi thêm hoặc xóa môn vì có các nhóm tự chọn và chuyên ngành. Khối trống vẫn hiển thị để thêm môn lại.
+
+**Tải khung CTĐT** tải Excel nguồn để đối chiếu; tệp này không bao gồm chỉnh sửa trực tiếp sau import. Những chỉnh sửa được lưu trong JSON và bảng học phần của phiên bản mới. Kế hoạch đào tạo đã liên kết với phiên bản CTĐT cũ vẫn giữ nguyên liên kết; trang sinh viên đọc phiên bản hiện hành của khung đang mở.
 
 ## Đồng bộ local và Render/Supabase
 

@@ -86,7 +86,10 @@ export function rebuild(data: CurriculumData): CurriculumData {
       throw new CurriculumError("duplicate_course", 422, [c.code]);
     seen.add(c.code);
     if (!c.semester || !c.studyYear)
-      warn(c.sourceRow, `${c.code}: chưa xác định năm/học kỳ kế hoạch.`);
+      warn(
+        c.sourceRow > 0 ? c.sourceRow : null,
+        `${c.code}: chưa xác định năm/học kỳ kế hoạch.`,
+      );
     const match = c.type.match(/^(TC\d*)/);
     if (match) {
       let group = data.electives.find((g) => g.code === match[1]);
@@ -136,7 +139,7 @@ export function rebuild(data: CurriculumData): CurriculumData {
       });
       if (reviewRequired)
         warn(
-          c.sourceRow,
+          c.sourceRow > 0 ? c.sourceRow : null,
           `${c.code}: ${kind === "prior" ? "học trước" : "tiên quyết"} cần rà soát${unresolvedCodes.length ? " (mã ngoài khung: " + unresolvedCodes.join(", ") + ")" : "."}`,
         );
     }

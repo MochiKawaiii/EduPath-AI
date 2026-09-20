@@ -209,7 +209,7 @@ try {
         { "x-version": detail.token },
       )
     ).status,
-    422,
+    409,
   );
   assert.equal((await api(`/${id}`)).body.version, 2);
   result = await api(
@@ -284,21 +284,178 @@ try {
   await seedCurricula(pool);
   assert.equal((await api(`/${id}`)).body.isActive, false);
   assert.equal((await api(`/${id}`)).body.version, 4);
-  assert.equal(
-    (
-      await api(
-        `/${id}/status`,
-        "PATCH",
-        { isActive: true },
-        { "x-version": detail.token },
-      )
-    ).status,
-    200,
+  result = await api(
+    `/${id}/status`,
+    "PATCH",
+    { isActive: true },
+    { "x-version": detail.token },
   );
+  assert.equal(result.status, 200);
+  detail = result.body;
   assert.equal((await api("?active=true")).body.total, 3);
   checks.push(
     "concurrent-write conflict; lock/open filtering; seed preserves later edits and locks",
   );
+
+  // Course CRUD is exercised after the seed/status checks so the disposable
+  // revision chain remains easy to inspect and the public seed assertions
+  // above stay independent of manual course edits.
+  const addGroup = detail.data.groups[0]?.id;
+  const moveGroup = detail.data.groups.find((group) => group.id !== addGroup)?.id;
+  assert(addGroup && moveGroup, "fixture must contain two course groups");
+  const base = detail.data.courses[0];
+  assert(base, "fixture must contain a course");
+  const {
+    position: _position,
+    sourceRow: _sourceRow,
+    sourceSheet: _sourceSheet,
+    sourceCells: _sourceCells,
+    ...editable
+  } = base;
+  const addedCode = "71ITNEW1001";
+  const newCourse = {
+    ...editable,
+    code: addedCode,
+    name: "Integration-only course",
+    englishName: "Integration-only course",
+    groupId: addGroup,
+    prerequisite: "",
+    prior: "",
+  };
+  result = await api(`/${id}/courses`, "POST", newCourse, {
+    "x-version": detail.token,
+  });
+  assert.equal(result.status, 201);
+  detail = result.body;
+  assert.equal(detail.data.courses.find((course) => course.code === addedCode)?.groupId, addGroup);
+  const afterCreateToken = detail.token;
+  assert.equal(
+    (
+      await api(`/${id}/courses`, "POST", newCourse, {
+        "x-version": afterCreateToken,
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await api(
+        `/${id}/courses`,
+        "POST",
+        { ...newCourse, code: "71ITBAD1001", groupId: "missing-group" },
+        { "x-version": afterCreateToken },
+      )
+    ).status,
+    400,
+  );
+  assert.equal((await api(`/${id}`)).body.token, afterCreateToken);
+
+  result = await api(
+    `/${id}/courses/${addedCode}`,
+    "PATCH",
+    { ...newCourse, groupId: moveGroup },
+    { "x-version": afterCreateToken },
+  );
+  assert.equal(result.status, 200);
+  detail = result.body;
+  assert.equal(detail.data.courses.find((course) => course.code === addedCode)?.groupId, moveGroup);
+  assert.deepEqual(
+    detail.data.courses.map((course) => course.position).sort((a, b) => a - b),
+    Array.from({ length: detail.data.courses.length }, (_, index) => index + 1),
+  );
+  assert.equal(
+    (
+      await api(
+        `/${id}/courses/${addedCode}`,
+        "PATCH",
+        { ...newCourse, groupId: addGroup },
+        { "x-version": afterCreateToken },
+      )
+    ).status,
+    409,
+  );
+
+  const dependent = detail.data.courses.find((course) => course.code !== addedCode);
+  assert(dependent, "fixture must contain a dependent course");
+  const {
+    position: _dependentPosition,
+    sourceRow: _dependentSourceRow,
+    sourceSheet: _dependentSourceSheet,
+    sourceCells: _dependentSourceCells,
+    ...dependentChange
+  } = dependent;
+  result = await api(
+    `/${id}/courses/${dependent.code}`,
+    "PATCH",
+    { ...dependentChange, prerequisite: addedCode },
+    { "x-version": detail.token },
+  );
+  assert.equal(result.status, 200);
+  detail = result.body;
+  const revisionWithReference = detail.revisionId;
+  assert(
+    detail.data.relations.some(
+      (relation) =>
+        relation.courseCode === dependent.code &&
+        relation.targetCodes.includes(addedCode) &&
+        relation.unresolvedCodes.length === 0,
+    ),
+  );
+  const deleteToken = detail.token;
+  result = await api(`/${id}/courses/${addedCode}`, "DELETE", undefined, {
+    "x-version": deleteToken,
+  });
+  assert.equal(result.status, 200);
+  detail = result.body;
+  assert.equal(detail.data.courses.some((course) => course.code === addedCode), false);
+  assert(
+    detail.data.warnings.some((warning) => warning.message.includes(addedCode)),
+  );
+  const historicalCrud = await api(`/${id}?revision=${revisionWithReference}`);
+  assert.equal(historicalCrud.status, 200);
+  assert.equal(
+    historicalCrud.body.data.courses.some((course) => course.code === addedCode),
+    true,
+  );
+
+  await pool.query("UPDATE users SET role='faculty_board' WHERE id=$1", [uid]);
+  assert.equal((await api(`/${id}`, "GET", undefined, { "x-role": "faculty_board" })).status, 200);
+  const viewerCourse = detail.data.courses[0];
+  assert(viewerCourse);
+  const {
+    position: _viewerPosition,
+    sourceRow: _viewerSourceRow,
+    sourceSheet: _viewerSourceSheet,
+    sourceCells: _viewerSourceCells,
+    ...viewerChange
+  } = viewerCourse;
+  assert.equal(
+    (
+      await api(
+        `/${id}/courses/${viewerCourse.code}`,
+        "PATCH",
+        viewerChange,
+        { "x-role": "faculty_board", "x-version": detail.token },
+      )
+    ).status,
+    403,
+  );
+  await pool.query("UPDATE users SET role='student' WHERE id=$1", [uid]);
+  assert.equal((await api(`/${id}`, "GET", undefined, { "x-role": "student" })).status, 403);
+  assert.equal(
+    (
+      await api(`/${id}/courses/${viewerCourse.code}`, "DELETE", undefined, {
+        "x-role": "student",
+        "x-version": detail.token,
+      })
+    ).status,
+    403,
+  );
+  await pool.query("UPDATE users SET role='admin' WHERE id=$1", [uid]);
+  checks.push(
+    "course CRUD: duplicate/invalid-group rejection, group move ordering, deleted-reference warning, immutable revision, stale token and viewer/student authorization",
+  );
+
   console.log(JSON.stringify({ passed: true, checks }, null, 2));
   if (process.argv.includes("--ui")) {
     const user = {

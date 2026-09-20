@@ -5,6 +5,7 @@ import { requireAdminAccess } from "../middleware/authorization.js";
 import { CurriculumError, courseSchema } from "./model.js";
 import { parseCurriculum } from "./parser.js";
 import { CurriculumRepository } from "./repository.js";
+import { courseInput, putCourse, removeCourse } from "./course-mutations.js";
 
 const uuid = z.string().uuid();
 const metadata = z
@@ -20,8 +21,8 @@ const editableCourse = courseSchema
     sourceRow: true,
     sourceSheet: true,
     sourceCells: true,
-    groupId: true,
   })
+  .extend({ groupId: z.string().optional() })
   .strict();
 export function createCurriculaRouter(
   pool: DatabasePool | undefined,
@@ -158,13 +159,44 @@ export function createCurriculaRouter(
         uuid.parse(req.params.id),
         uuid.parse(req.get("x-version")),
         req.session.user!,
-        (data) => {
-          const index = data.courses.findIndex((c) => c.code === code);
-          if (index < 0) throw new CurriculumError("not_found", 404);
-          data.courses[index] = { ...data.courses[index]!, ...change };
-          return data;
-        },
+        (data) =>
+          putCourse(
+            data,
+            {
+              ...change,
+              groupId:
+                change.groupId ??
+                data.courses.find((c) => c.code === code)?.groupId,
+            },
+            code,
+          ),
         `Cập nhật học phần ${code}`,
+      ),
+    );
+  });
+  router.post("/:id/courses", async (req, res) => {
+    const change = courseInput.parse(req.body);
+    res
+      .status(201)
+      .json(
+        await repository!.update(
+          uuid.parse(req.params.id),
+          uuid.parse(req.get("x-version")),
+          req.session.user!,
+          (data) => putCourse(data, change),
+          `Thêm học phần ${change.code}`,
+        ),
+      );
+  });
+  router.delete("/:id/courses/:code", async (req, res) => {
+    const code = z.string().max(100).parse(req.params.code);
+    res.json(
+      await repository!.update(
+        uuid.parse(req.params.id),
+        uuid.parse(req.get("x-version")),
+        req.session.user!,
+        (data) => removeCourse(data, code),
+        `Xóa học phần ${code}`,
       ),
     );
   });
@@ -190,12 +222,10 @@ export function createCurriculaRouter(
       return;
     }
     if (error instanceof z.ZodError) {
-      res
-        .status(400)
-        .json({
-          error: "invalid_curriculum_input",
-          details: error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
-        });
+      res.status(400).json({
+        error: "invalid_curriculum_input",
+        details: error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+      });
       return;
     }
     if (error.type === "entity.too.large") {

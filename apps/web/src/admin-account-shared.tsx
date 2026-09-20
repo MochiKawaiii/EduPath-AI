@@ -20,6 +20,11 @@ export type AccountPage = { items: Account[]; total: number; page: number; pageS
 
 export function Icon({ name }: { name: string }) {
   const paths: Record<string, string> = {
+    download: "M12 3v12m-5-5 5 5 5-5M4 15v6h16v-6",
+    upload: "M12 16V4m-5 5 5-5 5 5M4 15v6h16v-6",
+    edit: "m15 4 5 5M4 20l5-1L21 7l-5-5L4 14z",
+    trash: "M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7",
+    plus: "M12 5v14M5 12h14",
     book: "M12 5v16M12 5C9 2 4 2 2 3v16c4-1 7 0 10 2 3-2 6-3 10-2V3c-2-1-7-1-10 2Z",
     users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3a4 4 0 0 1 0 8M22 21v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
     add: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M20 8v6M17 11h6",

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Modal, Pagination, Status, useData } from "./admin-ui";
+import { Icon } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import type {
   CurriculumCourse,
@@ -35,19 +36,22 @@ const errors: Record<string, string> = {
   curriculum_changed:
     "Khung đã được người khác cập nhật. Đóng hộp thoại và tải lại chi tiết trước khi sửa tiếp.",
   review_warnings:
-    "Hãy xem và xác nhận các ghi chú của dữ liệu trước khi nhập.",
+    "Hãy xem và xác nhận các cảnh báo của dữ liệu trước khi nhập.",
   workbook_too_large:
     "Tệp vượt giới hạn 5 MB hoặc có quá nhiều dữ liệu. Hãy dùng khung CTĐT gọn theo mẫu.",
   import_busy: "Hệ thống đang xử lý một tệp Excel khác. Vui lòng thử lại sau.",
   import_timeout: "Đọc Excel quá lâu. Hãy kiểm tra tệp và thử lại.",
   invalid_curriculum_input:
-    "Thông tin chưa hợp lệ. Học kỳ chỉ nhận 1, 2, 3; hãy kiểm tra các trường bên dưới.",
+    "Thông tin chưa hợp lệ. Kiểm tra mã môn, khối kiến thức, tín chỉ và học kỳ (1–3).",
   insufficient_role: "Chỉ quản trị viên được thay đổi khung CTĐT.",
   authentication_required: "Phiên đăng nhập đã hết. Hãy đăng nhập lại.",
   invalid_origin: "Không xác nhận được nguồn yêu cầu. Hãy tải lại trang.",
   database_required: "Chưa kết nối được cơ sở dữ liệu.",
   conflicting_elective_credits:
     "Số tín chỉ phải chọn trong cùng nhóm tự chọn không thống nhất.",
+  invalid_course_group: "Hãy chọn một khối kiến thức có trong khung.",
+  too_many_courses: "Khung chỉ hỗ trợ tối đa 2.000 học phần.",
+  not_found: "Không tìm thấy học phần. Hãy tải lại khung.",
   invalid_filename: "Tên tệp không hợp lệ. Hãy chọn tệp .xlsx.",
 };
 async function request<T>(url: string, init: RequestInit): Promise<T> {
@@ -57,14 +61,14 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
     throw new Error(
       (errors[body.error] ??
         "Chưa thực hiện được thao tác. Vui lòng thử lại.") +
-      (body.details?.length ? "\n" + body.details.join("\n") : ""),
+        (body.details?.length ? "\n" + body.details.join("\n") : ""),
     );
   return body;
 }
 function WarningList({ data }: { data: CurriculumData }) {
   return data.warnings.length ? (
     <div className="cm-warning">
-      <strong>{data.warnings.length} ghi chú cần rà soát</strong>
+      <strong>{data.warnings.length} cảnh báo cần rà soát</strong>
       <p>
         Giữ nguyên dữ liệu nguồn. Quan hệ chưa rõ sẽ cần được xác nhận trước khi
         dùng để gợi ý lộ trình.
@@ -239,7 +243,7 @@ export default function CurriculaManagement({
                         </small>
                         {c.warningCount > 0 && (
                           <small className="cm-warning-text">
-                            {c.warningCount} ghi chú cần rà soát
+                            {c.warningCount} cảnh báo cần rà soát
                           </small>
                         )}
                       </td>
@@ -457,7 +461,7 @@ function ImportDialog({
                   checked={confirmed}
                   onChange={(e) => setConfirmed(e.target.checked)}
                 />
-                Tôi đã xem các ghi chú và đồng ý lưu khung cùng các mục cần rà
+                Tôi đã xem các cảnh báo và đồng ý lưu khung cùng các mục cần rà
                 soát.
               </label>
             )}
@@ -502,6 +506,13 @@ function CurriculumView({
     [tab, setTab] = useState("courses"),
     [edit, setEdit] = useState<"metadata" | "import" | "status" | null>(null),
     [course, setCourse] = useState<CurriculumCourse | null>(null),
+    [courseMode, setCourseMode] = useState<"view" | "edit" | "add" | "delete">(
+      "view",
+    ),
+    [groupAction, setGroupAction] = useState<{
+      id: string;
+      mode: "edit" | "delete";
+    } | null>(null),
     [notice, setNotice] = useState("");
   const remote = useData<CurriculumDetail>(
     `${endpoint}/${id}${version ? "?revision=" + version : ""}`,
@@ -515,9 +526,51 @@ function CurriculumView({
   function saved() {
     setEdit(null);
     setCourse(null);
+    setGroupAction(null);
     setVersion("");
     setRevision((n) => n + 1);
     setNotice("Đã lưu thay đổi. Dữ liệu và phiên bản trước được giữ nguyên.");
+  }
+  function actOnCourse(
+    c: CurriculumCourse,
+    mode: "view" | "edit" | "add" | "delete",
+  ) {
+    setCourseMode(mode);
+    setCourse(c);
+    setGroupAction(null);
+  }
+  function addToGroup(groupId: string) {
+    actOnCourse(
+      {
+        position: 1,
+        code: "",
+        name: "",
+        englishName: "",
+        description: "",
+        credits: 3,
+        type: "BB",
+        block: "",
+        specialty: "",
+        semester: null,
+        studyYear: null,
+        prerequisite: "",
+        prior: "",
+        notes: "",
+        department: "",
+        departmentCode: "",
+        hours: {
+          lecture: null,
+          practice: null,
+          project: null,
+          internship: null,
+        },
+        groupId,
+        sourceRow: 0,
+        sourceSheet: "Thêm trực tiếp",
+        sourceCells: {},
+      },
+      "add",
+    );
   }
   return (
     <section className="cm-workspace">
@@ -560,6 +613,16 @@ function CurriculumView({
                 </p>
               </div>
             </div>
+            {mutable && (
+              <button
+                className="am-icon-btn cm-metadata-edit"
+                title="Sửa thông tin"
+                aria-label="Sửa thông tin"
+                onClick={() => setEdit("metadata")}
+              >
+                <Icon name="edit" />
+              </button>
+            )}
             <Summary data={current.data} />
             {current.data.notes && (
               <p className="cm-prewrap">{current.data.notes}</p>
@@ -568,27 +631,23 @@ function CurriculumView({
               <a
                 className="am-outline"
                 href={`${endpoint}/${id}/source/${current.revisionId}`}
+                title="Tải tệp Excel nguồn; các chỉnh sửa trực tiếp được lưu trong phiên bản trên hệ thống"
               >
-                Tải Excel nguồn
+                <Icon name="download" /> Tải khung CTĐT
               </a>
               {mutable && (
                 <>
                   <button
                     className="am-outline"
-                    onClick={() => setEdit("metadata")}
-                  >
-                    Sửa thông tin
-                  </button>
-                  <button
-                    className="am-outline"
                     onClick={() => setEdit("import")}
                   >
-                    Cập nhật từ Excel
+                    <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
                     className="am-outline"
                     onClick={() => setEdit("status")}
                   >
+                    <Icon name={current.isActive ? "lock" : "unlock"} />{" "}
                     {current.isActive ? "Khóa khung" : "Mở khung"}
                   </button>
                 </>
@@ -596,7 +655,9 @@ function CurriculumView({
             </div>
             <p className="cm-help">
               Tệp nguồn: {current.sourceFilename}. Tổng tín chỉ chương trình
-              không phải tổng của tất cả các môn tự chọn và chuyên ngành.
+              không phải tổng của tất cả các môn tự chọn và chuyên ngành. Tệp
+              tải xuống là Excel nguồn; các chỉnh sửa trực tiếp được lưu trong
+              phiên bản trên hệ thống.
             </p>
           </div>
           {notice && (
@@ -609,7 +670,7 @@ function CurriculumView({
               {[
                 ["courses", "Cấu trúc học phần"],
                 ["rules", "Nhóm & điều kiện"],
-                ["warnings", `Ghi chú (${current.data.warnings.length})`],
+                ["warnings", `Cảnh báo (${current.data.warnings.length})`],
                 ["history", "Lịch sử phiên bản"],
               ].map(([value, label]) => (
                 <button
@@ -622,7 +683,18 @@ function CurriculumView({
               ))}
             </div>
             {tab === "courses" && (
-              <Courses data={current.data} open={setCourse} />
+              <Courses
+                data={current.data}
+                open={(c) => actOnCourse(c, "view")}
+                onGroupAction={
+                  mutable
+                    ? (groupId, mode) =>
+                        mode === "add"
+                          ? addToGroup(groupId)
+                          : setGroupAction({ id: groupId, mode })
+                    : undefined
+                }
+              />
             )}
             {tab === "rules" && (
               <div className="cm-dialog-body">
@@ -763,8 +835,27 @@ function CurriculumView({
               onSaved={saved}
             />
           )}
-          {course && (
+          {groupAction && (
+            <GroupCoursePicker
+              data={current.data}
+              groupId={groupAction.id}
+              mode={groupAction.mode}
+              onClose={() => setGroupAction(null)}
+              onPick={(c) => actOnCourse(c, groupAction.mode)}
+            />
+          )}
+          {course && courseMode === "delete" && (
+            <DeleteCourseDialog
+              current={current}
+              course={course}
+              onClose={() => setCourse(null)}
+              onSaved={saved}
+            />
+          )}
+          {course && courseMode !== "delete" && (
             <CourseDialog
+              mode={courseMode}
+              onDelete={() => setCourseMode("delete")}
               current={current}
               course={course}
               canManage={!!mutable}
@@ -781,9 +872,11 @@ function CurriculumView({
 function Courses({
   data,
   open,
+  onGroupAction,
 }: {
   data: CurriculumData;
   open: (c: CurriculumCourse) => void;
+  onGroupAction?: (id: string, mode: "add" | "edit" | "delete") => void;
 }) {
   const { draft, setDraft, filters, reset } = useLiveFilters({
     q: "",
@@ -820,13 +913,11 @@ function Courses({
             onChange={(e) => setDraft({ ...draft, block: e.target.value })}
           >
             <option value="">Tất cả khối</option>
-            {data.groups
-              .filter((g) => data.courses.some((c) => c.groupId === g.id))
-              .map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.label}
-                </option>
-              ))}
+            {data.groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
+              </option>
+            ))}
           </select>
         </label>
         <label>
@@ -877,36 +968,109 @@ function Courses({
             </tr>
           </thead>
           <tbody>
-            {rows.map((c, i) => (
-              <Fragment key={c.code}>
-                {c.groupId !== rows[i - 1]?.groupId && (
+            {[
+              ...data.groups,
+              ...(data.courses.some(
+                (c) => !data.groups.some((g) => g.id === c.groupId),
+              )
+                ? [{ id: "", label: "Học phần chưa phân khối" }]
+                : []),
+            ]
+              .filter(
+                (g) =>
+                  (!filters.block || filters.block === g.id) &&
+                  (rows.some((c) => c.groupId === g.id) ||
+                    (!filters.q && !filters.specialty && !filters.semester)),
+              )
+              .map((g) => (
+                <Fragment key={g.id}>
                   <tr className="cm-group-row">
                     <th colSpan={6}>
-                      {data.groups.find((g) => g.id === c.groupId)?.label ??
-                        "Học phần"}
+                      <div className="cm-group-heading">
+                        <span>{g.label}</span>
+                        {onGroupAction && g.id && (
+                          <details
+                            className="cm-group-actions"
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") {
+                                e.currentTarget.open = false;
+                                e.currentTarget
+                                  .querySelector("summary")
+                                  ?.focus();
+                              }
+                            }}
+                          >
+                            <summary
+                              title={`Thao tác ${g.label}`}
+                              aria-label={`Thao tác ${g.label}`}
+                            >
+                              <Icon name="more" />
+                            </summary>
+                            <div className="cm-group-buttons">
+                              {(
+                                [
+                                  ["add", "Thêm môn học", "plus"],
+                                  ["edit", "Chỉnh sửa môn học", "edit"],
+                                  ["delete", "Xóa môn học", "trash"],
+                                ] as const
+                              ).map(([mode, label, icon]) => (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  className="am-outline"
+                                  disabled={
+                                    mode !== "add" &&
+                                    !data.courses.some(
+                                      (c) => c.groupId === g.id,
+                                    )
+                                  }
+                                  onClick={(e) => {
+                                    const menu =
+                                      e.currentTarget.closest("details");
+                                    menu?.removeAttribute("open");
+                                    menu?.querySelector("summary")?.focus();
+                                    onGroupAction(g.id, mode);
+                                  }}
+                                >
+                                  <Icon name={icon} />
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                      </div>
                     </th>
                   </tr>
-                )}
-                <tr>
-                  <td>{c.code}</td>
-                  <td>
-                    <strong>{c.name}</strong>
-                    <small>{c.englishName}</small>
-                    {c.specialty && <small>{c.specialty}</small>}
-                  </td>
-                  <td>{c.credits}</td>
-                  <td>{c.type}</td>
-                  <td>
-                    {c.studyYear ?? "—"} · {c.semester ?? "—"}
-                  </td>
-                  <td>
-                    <button className="am-outline" onClick={() => open(c)}>
-                      Chi tiết
-                    </button>
-                  </td>
-                </tr>
-              </Fragment>
-            ))}
+                  {rows
+                    .filter((c) => c.groupId === g.id)
+                    .map((c) => (
+                      <Fragment key={c.code}>
+                        <tr>
+                          <td>{c.code}</td>
+                          <td>
+                            <strong>{c.name}</strong>
+                            <small>{c.englishName}</small>
+                            {c.specialty && <small>{c.specialty}</small>}
+                          </td>
+                          <td>{c.credits}</td>
+                          <td>{c.type}</td>
+                          <td>
+                            {c.studyYear ?? "—"} · {c.semester ?? "—"}
+                          </td>
+                          <td>
+                            <button
+                              className="am-outline"
+                              onClick={() => open(c)}
+                            >
+                              Chi tiết
+                            </button>
+                          </td>
+                        </tr>
+                      </Fragment>
+                    ))}
+                </Fragment>
+              ))}
           </tbody>
         </table>
       </div>
@@ -914,6 +1078,151 @@ function Courses({
         <p className="am-empty">Không có học phần phù hợp với bộ lọc.</p>
       )}
     </>
+  );
+}
+
+function GroupCoursePicker({
+  data,
+  groupId,
+  mode,
+  onClose,
+  onPick,
+}: {
+  data: CurriculumData;
+  groupId: string;
+  mode: "edit" | "delete";
+  onClose: () => void;
+  onPick: (course: CurriculumCourse) => void;
+}) {
+  const courses = data.courses.filter((c) => c.groupId === groupId);
+  const [code, setCode] = useState(courses[0]?.code ?? "");
+  return (
+    <Modal
+      title={
+        mode === "edit"
+          ? "Chỉnh sửa môn học trong khối"
+          : "Xóa môn học trong khối"
+      }
+      onClose={onClose}
+    >
+      <form
+        className="cm-dialog-body cm-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const course = courses.find((c) => c.code === code);
+          if (course) onPick(course);
+        }}
+      >
+        <p>{data.groups.find((g) => g.id === groupId)?.label}</p>
+        <label>
+          Môn học
+          <select
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            required
+          >
+            {courses.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} · {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {!courses.length && <p>Khối chưa có môn học.</p>}
+        <div className="cm-actions">
+          <button type="button" className="am-outline" onClick={onClose}>
+            Hủy
+          </button>
+          <button type="submit" className="am-primary" disabled={!code}>
+            Tiếp tục
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function DeleteCourseDialog({
+  current,
+  course,
+  onClose,
+  onSaved,
+}: {
+  current: CurriculumDetail;
+  course: CurriculumCourse;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const references = current.data.relations.filter(
+    (r) => r.courseCode !== course.code && r.targetCodes.includes(course.code),
+  );
+  return (
+    <Modal title="Xóa môn học khỏi khung" onClose={onClose} busy={busy}>
+      <div className="cm-dialog-body cm-form">
+        <p>
+          Bạn muốn xóa{" "}
+          <strong>
+            {course.code} · {course.name}
+          </strong>{" "}
+          khỏi phiên bản hiện hành?
+        </p>
+        <p>
+          Phiên bản trước vẫn giữ môn này. Tổng tín chỉ quy định của khung không
+          tự thay đổi.
+        </p>
+        {references.length > 0 && (
+          <div className="cm-warning">
+            <strong>
+              Còn {references.length} điều kiện tham chiếu môn này
+            </strong>
+            <p>
+              {[...new Set(references.map((r) => r.courseCode))].join(", ")}.
+              Các điều kiện này sẽ được đánh dấu cần rà soát sau khi xóa.
+            </p>
+          </div>
+        )}
+        {error && (
+          <p className="admin-error cm-prewrap" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="cm-actions">
+          <button
+            type="button"
+            className="am-outline"
+            disabled={busy}
+            onClick={onClose}
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="am-primary"
+            disabled={busy}
+            onClick={async () => {
+              if (busy) return;
+              setBusy(true);
+              setError("");
+              try {
+                await request(
+                  `${endpoint}/${current.id}/courses/${encodeURIComponent(course.code)}`,
+                  { method: "DELETE", headers: { "x-version": current.token } },
+                );
+                onSaved();
+              } catch (e) {
+                setError((e as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? "Đang xóa…" : "Xác nhận xóa môn"}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -927,10 +1236,10 @@ function MetadataDialog({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState({
-    name: current.data.name,
-    totalCredits: current.data.totalCredits,
-    notes: current.data.notes,
-  }),
+      name: current.data.name,
+      totalCredits: current.data.totalCredits,
+      notes: current.data.notes,
+    }),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   return (
@@ -990,8 +1299,8 @@ function MetadataDialog({
           />
         </label>
         <p className="cm-help">
-          Ngành và khóa giữ nguyên để bảo toàn liên kết dữ liệu. Thay đổi học
-          phần bằng nút Chi tiết hoặc cập nhật toàn bộ từ Excel.
+          Ngành và khóa giữ nguyên để bảo toàn liên kết dữ liệu. Thêm, sửa hoặc
+          xóa môn bằng menu … ở từng khối kiến thức.
         </p>
         {error && (
           <p className="admin-error cm-prewrap" role="alert">
@@ -1085,12 +1394,16 @@ function StatusDialog({
 }
 
 function CourseDialog({
+  mode = "view",
+  onDelete,
   current,
   course,
   canManage,
   onClose,
   onSaved,
 }: {
+  mode?: "view" | "edit" | "add";
+  onDelete: () => void;
   current: CurriculumDetail;
   course: CurriculumCourse;
   canManage: boolean;
@@ -1098,7 +1411,7 @@ function CourseDialog({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState(course),
-    [editing, setEditing] = useState(false),
+    [editing, setEditing] = useState(mode !== "view"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const fields = [
@@ -1106,32 +1419,24 @@ function CourseDialog({
     ["name", "Tên học phần"],
     ["englishName", "Tên tiếng Anh"],
     ["type", "Loại (BB, BBKTL, TC…)"],
-    ["block", "Khối kiến thức"],
     ["specialty", "Chuyên ngành"],
     ["departmentCode", "Mã bộ môn"],
     ["department", "Bộ môn"],
   ] as const;
   async function save() {
+    if (busy || !editing || !canManage) return;
     setBusy(true);
     setError("");
-    const {
-      position,
-      sourceRow,
-      sourceSheet,
-      sourceCells,
-      groupId,
-      ...change
-    } = form;
+    const { position, sourceRow, sourceSheet, sourceCells, ...change } = form;
     void position;
     void sourceRow;
     void sourceSheet;
     void sourceCells;
-    void groupId;
     try {
       await request(
-        `${endpoint}/${current.id}/courses/${encodeURIComponent(course.code)}`,
+        `${endpoint}/${current.id}/courses${mode === "add" ? "" : "/" + encodeURIComponent(course.code)}`,
         {
-          method: "PATCH",
+          method: mode === "add" ? "POST" : "PATCH",
           headers: {
             "Content-Type": "application/json",
             "x-version": current.token,
@@ -1148,7 +1453,13 @@ function CourseDialog({
   }
   return (
     <Modal
-      title={editing ? "Cập nhật học phần" : course.name}
+      title={
+        mode === "add"
+          ? "Thêm môn học"
+          : editing
+            ? "Chỉnh sửa môn học"
+            : course.name
+      }
       onClose={onClose}
       busy={busy}
     >
@@ -1162,6 +1473,25 @@ function CourseDialog({
         {editing ? (
           <>
             <div className="cm-form-grid">
+              <label>
+                Khối kiến thức
+                <select
+                  required
+                  value={form.groupId}
+                  onChange={(e) =>
+                    setForm({ ...form, groupId: e.target.value })
+                  }
+                >
+                  <option value="" disabled>
+                    Chọn khối kiến thức
+                  </option>
+                  {current.data.groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {fields.map(([key, label]) => (
                 <label key={key}>
                   {label}
@@ -1280,6 +1610,13 @@ function CourseDialog({
         ) : (
           <>
             <div className="cm-detail-grid">
+              <div>
+                <span>Khối kiến thức</span>
+                <strong>
+                  {current.data.groups.find((g) => g.id === course.groupId)
+                    ?.label ?? course.block}
+                </strong>
+              </div>
               {fields.map(([key, label]) => (
                 <div key={key}>
                   <span>{label}</span>
@@ -1323,8 +1660,9 @@ function CourseDialog({
             ))}
             <details>
               <summary>
-                Dữ liệu Excel gốc · {course.sourceSheet}, dòng{" "}
-                {course.sourceRow}
+                {course.sourceRow > 0
+                  ? `Dữ liệu Excel gốc · ${course.sourceSheet}, dòng ${course.sourceRow}`
+                  : "Môn được thêm trực tiếp trong khung"}
               </summary>
               <dl className="cm-source">
                 {Object.entries(course.sourceCells).map(([col, value]) => (
@@ -1354,16 +1692,36 @@ function CourseDialog({
           >
             Đóng
           </button>
+          {canManage && mode !== "add" && (
+            <button
+              type="button"
+              className="am-outline cm-delete"
+              disabled={busy}
+              onClick={onDelete}
+            >
+              <Icon name="trash" />
+              Xóa môn học
+            </button>
+          )}
           {canManage &&
             (editing ? (
-              <button className="am-primary" disabled={busy}>
+              <button
+                key="save-course"
+                type="submit"
+                className="am-primary"
+                disabled={busy}
+              >
                 {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
               </button>
             ) : (
               <button
+                key="edit-course"
                 className="am-primary"
                 type="button"
-                onClick={() => setEditing(true)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setEditing(true);
+                }}
               >
                 Chỉnh sửa học phần
               </button>
