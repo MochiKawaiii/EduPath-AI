@@ -1,3 +1,4 @@
+import { createStudentPlansRouter } from "./plans/student-router.js";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import express, {
@@ -161,6 +162,7 @@ export function createApp({
   app.use("/api/admin/accounts", createAdminAccountsRouter(adminAccountRepository, config.webOrigin));
   app.use("/api/admin/curricula", createCurriculaRouter(databasePool, config.webOrigin));
   app.use("/api/admin/plans", createPlansRouter(databasePool, config.webOrigin));
+  app.use("/api/student/plans", createStudentPlansRouter(databasePool));
   app.use("/api/student/curricula", createStudentCurriculaRouter(databasePool));
   app.use("/api/student", createStudentDataRouter(databasePool, config.webOrigin,Boolean(config.ocrWorkerKey)));
   app.use("/api/admin/students", createStudentProfilesRouter(studentProfileRepository, adminAccountRepository));

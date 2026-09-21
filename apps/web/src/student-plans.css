@@ -1,0 +1,25 @@
+.sp-selector > p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.sp-content {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.sp-content > h2,
+.sp-content > p {
+  margin: 0;
+}
+.sp-content .sc-table-wrap {
+  margin-top: 12px;
+}
+.sp-content .sc-table td:last-child {
+  white-space: normal;
+}
+.sp-content .sc-table td {
+  vertical-align: top;
+}
+.sp-content .sc-filters {
+  padding: 0;
+}
