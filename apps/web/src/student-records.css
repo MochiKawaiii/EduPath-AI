@@ -436,6 +436,7 @@
 }
 
 .sr-job {
+    position: relative;
     margin-block: 24px;
     padding: 24px;
     border: 1px solid #cbd5e1;
@@ -447,6 +448,43 @@
 .sr-job p {
     margin: 8px 0;
     overflow-wrap: anywhere;
+}
+
+/* The box only exists while a PDF is queued or being read, so a turning
+   ring in its corner says the wait is still moving — the step list alone
+   never changes between polls. */
+.sr-job-spinner {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #dbe3ec;
+    border-top-color: #a7123b;
+    border-radius: 50%;
+    animation: sr-spin 900ms linear infinite;
+}
+
+.sr-job>[role="status"] {
+    padding-right: 32px;
+}
+
+@keyframes sr-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes sr-fade {
+    50% {
+        opacity: .35;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sr-job-spinner {
+        animation: sr-fade 1.6s ease-in-out infinite;
+    }
 }
 
 .sr-job-steps {
