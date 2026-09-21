@@ -444,7 +444,7 @@ function ImportDialog({
                         <td>{c.code}</td>
                         <td>{c.name}</td>
                         <td>{c.credits}</td>
-                        <td>{c.type}</td>
+                        <td>{c.type || "—"}</td>
                         <td>
                           {c.studyYear ?? "—"} · {c.semester ?? "—"}
                         </td>
@@ -548,7 +548,7 @@ function CurriculumView({
         englishName: "",
         description: "",
         credits: 3,
-        type: "BB",
+        type: "",
         block: "",
         specialty: "",
         semester: null,
@@ -1056,7 +1056,7 @@ function Courses({
                             {c.specialty && <small>{c.specialty}</small>}
                           </td>
                           <td>{c.credits}</td>
-                          <td>{c.type}</td>
+                          <td>{c.type || "—"}</td>
                           <td>
                             {c.studyYear ?? "—"} · {c.semester ?? "—"}
                           </td>
@@ -1412,6 +1412,9 @@ function CourseDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [credits, setCredits] = useState(
+    mode === "add" ? "" : String(course.credits),
+  );
   const [form, setForm] = useState(course),
     [editing, setEditing] = useState(mode !== "view"),
     [busy, setBusy] = useState(false),
@@ -1426,7 +1429,7 @@ function CourseDialog({
     ["department", "Bộ môn"],
   ] as const;
   async function save() {
-    if (busy || !editing || !canManage) return;
+    if (busy || !editing || !canManage || credits.trim() === "") return;
     setBusy(true);
     setError("");
     const { position, sourceRow, sourceSheet, sourceCells, ...change } = form;
@@ -1434,6 +1437,7 @@ function CourseDialog({
     void sourceRow;
     void sourceSheet;
     void sourceCells;
+    change.credits = Number(credits);
     try {
       await request(
         `${endpoint}/${current.id}/courses${mode === "add" ? "" : "/" + encodeURIComponent(course.code)}`,
@@ -1474,6 +1478,10 @@ function CourseDialog({
       >
         {editing ? (
           <>
+            <p>
+              Chỉ bắt buộc Mã học phần, Tên học phần và Số tín chỉ. Các thông
+              tin còn lại có thể bổ sung sau.
+            </p>
             <div className="cm-form-grid">
               <label>
                 Khối kiến thức
@@ -1501,7 +1509,7 @@ function CourseDialog({
                   {label}
                   <input
                     maxLength={500}
-                    required={["code", "name", "type"].includes(key)}
+                    required={["code", "name"].includes(key)}
                     value={form[key]}
                     onChange={(e) =>
                       setForm({ ...form, [key]: e.target.value })
@@ -1517,10 +1525,8 @@ function CourseDialog({
                   max={30}
                   step="0.5"
                   required
-                  value={form.credits}
-                  onChange={(e) =>
-                    setForm({ ...form, credits: Number(e.target.value) })
-                  }
+                  value={credits}
+                  onChange={(e) => setCredits(e.target.value)}
                 />
               </label>
               <label>

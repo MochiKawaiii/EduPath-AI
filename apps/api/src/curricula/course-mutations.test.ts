@@ -90,6 +90,16 @@ function input(
   return editable;
 }
 
+function minimalInput(overrides: Record<string, unknown> = {}) {
+  return {
+    code: "71ITMIN1001",
+    name: "Minimal course",
+    credits: 3,
+    groupId: "major",
+    ...overrides,
+  };
+}
+
 function expectCurriculumError(action: () => unknown, code: string, status: number) {
   try {
     action();
@@ -136,6 +146,34 @@ describe("curriculum course mutations", () => {
       400,
     );
     expect(moveToParent).toEqual(beforeMove);
+  });
+
+  it("accepts a course payload with only group, code, name, and credits", () => {
+    const data = fixture();
+
+    putCourse(data, minimalInput());
+
+    expect(data.courses.find((item) => item.code === "71ITMIN1001")).toMatchObject({
+      code: "71ITMIN1001",
+      name: "Minimal course",
+      credits: 3,
+      groupId: "major",
+      englishName: "",
+      type: "",
+      semester: null,
+      studyYear: null,
+      hours: { lecture: null, practice: null, project: null, internship: null },
+    });
+  });
+
+  it("requires code, name, and credits, and rejects a nonempty invalid type", () => {
+    for (const missing of ["code", "name", "credits"]) {
+      const payload = minimalInput();
+      delete payload[missing as keyof typeof payload];
+      expect(() => putCourse(fixture(), payload), missing).toThrow();
+    }
+
+    expect(() => putCourse(fixture(), minimalInput({ type: "not-a-type" }))).toThrow();
   });
 
   it("adds a course to a valid group with direct-edit provenance and a stable order", () => {

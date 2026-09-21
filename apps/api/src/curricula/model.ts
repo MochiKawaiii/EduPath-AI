@@ -20,7 +20,7 @@ export const courseSchema = z.object({
   englishName: short,
   description: text.optional(),
   credits: z.number().min(0).max(30),
-  type: short.regex(/^(BB(?:KTL)?|TC\d*(?:\s*\(.*\))?)$/),
+  type: short.regex(/^(|BB(?:KTL)?|TC\d*(?:\s*\(.*\))?)$/),
   block: short,
   specialty: short,
   semester: z.number().int().min(1).max(3).nullable(),

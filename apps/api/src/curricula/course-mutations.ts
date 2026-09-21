@@ -12,6 +12,26 @@ export const courseInput = courseSchema
     sourceSheet: true,
     sourceCells: true,
   })
+  .extend({
+    englishName: courseSchema.shape.englishName.default(""),
+    description: courseSchema.shape.description.default(""),
+    type: courseSchema.shape.type.default(""),
+    block: courseSchema.shape.block.default(""),
+    specialty: courseSchema.shape.specialty.default(""),
+    semester: courseSchema.shape.semester.default(null),
+    studyYear: courseSchema.shape.studyYear.default(null),
+    prerequisite: courseSchema.shape.prerequisite.default(""),
+    prior: courseSchema.shape.prior.default(""),
+    notes: courseSchema.shape.notes.default(""),
+    department: courseSchema.shape.department.default(""),
+    departmentCode: courseSchema.shape.departmentCode.default(""),
+    hours: courseSchema.shape.hours.default({
+      lecture: null,
+      practice: null,
+      project: null,
+      internship: null,
+    }),
+  })
   .strict();
 
 /** Numbered headings are containers when another block has a child number. */
