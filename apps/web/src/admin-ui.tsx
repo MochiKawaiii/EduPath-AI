@@ -15,7 +15,7 @@ export function useData<T>(url: string, revision = 0) {
   return { ...state, retry: () => setRetry((n) => n + 1) };
 }
 export function Status({ loading, error, retry }: { loading: boolean; error: string | null; retry: () => void }) {
-  return loading ? <p className="am-empty" role="status">Đang tải dữ liệu…</p> : error ? <div className="am-empty"><p className="admin-error" role="alert">{error}</p><button className="am-outline" onClick={retry}>Thử lại</button></div> : null;
+  return loading ? <p className="am-empty" role="status">Đang tải dữ liệu…</p> : error ? <div className="am-empty"><p className="admin-error" role="alert">{error}</p><button className="am-outline" onClick={retry}><Icon name="refresh" /> Thử lại</button></div> : null;
 }
 export function Pagination({ total, page, setPage }: { total: number; page: number; setPage: (page: number) => void }) {
   const pages = Math.max(1, Math.ceil(total / 10));

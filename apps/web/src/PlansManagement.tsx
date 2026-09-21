@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Modal, Pagination, Status, useData } from "./admin-ui";
+import { Icon } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import type { PlanData, PlanDetail, PlanItem, PlanList } from "./plan-types";
 import "./curricula.css";
@@ -165,7 +166,7 @@ export default function PlansManagement({ canManage }: { canManage: boolean }) {
         </div>
         {canManage ? (
           <button className="am-primary" onClick={() => setImportOpen(true)}>
-            Import kế hoạch
+            <Icon name="upload" /> Import kế hoạch
           </button>
         ) : (
           <span className="cm-tag">Chỉ xem</span>
@@ -348,7 +349,7 @@ function PlanView({
     <section className="cm-workspace">
       <div className="cm-toolbar">
         <button className="am-outline" onClick={onBack}>
-          ← Danh sách kế hoạch
+          <Icon name="back" /> Danh sách kế hoạch
         </button>
         <button
           className="am-outline"
@@ -357,7 +358,7 @@ function PlanView({
             setNotice("");
           }}
         >
-          Tải lại
+          <Icon name="refresh" /> Tải lại
         </button>
       </div>
       <Status {...remote} />
@@ -386,10 +387,10 @@ function PlanView({
             {p.data.notes && <p className="cm-prewrap">{p.data.notes}</p>}
             <div className="cm-actions">
               <a
-                className="am-outline"
+                className="am-outline am-tone-brand"
                 href={`${endpoint}/${id}/source/${p.revisionId}`}
               >
-                Tải Excel nguồn
+                <Icon name="download" /> Tải Excel nguồn
               </a>
               {editable && (
                 <>
@@ -397,18 +398,19 @@ function PlanView({
                     className="am-outline"
                     onClick={() => setModal("metadata")}
                   >
-                    Sửa thông tin
+                    <Icon name="edit" /> Sửa thông tin
                   </button>
                   <button
-                    className="am-outline"
+                    className="am-outline am-tone-green"
                     onClick={() => setModal("import")}
                   >
-                    Cập nhật từ Excel
+                    <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className="am-outline"
+                    className="am-outline am-tone-amber"
                     onClick={() => setModal("status")}
                   >
+                    <Icon name={p.isActive ? "lock" : "unlock"} />{" "}
                     {p.isActive ? "Khóa kế hoạch" : "Mở kế hoạch"}
                   </button>
                 </>

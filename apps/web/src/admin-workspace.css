@@ -214,6 +214,39 @@
   background: #f7f3f5;
 }
 
+/* Tinted outline buttons. A row of same-looking actions is read one label at a
+   time; a hue per action makes each one recognisable at a glance. They stay
+   outline-weight so the filled .am-primary keeps the top of the hierarchy. */
+.am-outline.am-tone-brand {
+  background: #fdf5f7;
+  border-color: #ecd0d8;
+  color: #9e1938;
+}
+
+.am-outline.am-tone-brand:hover {
+  background: #f9e9ee;
+}
+
+.am-outline.am-tone-green {
+  background: #eaf5ef;
+  border-color: #c5e1d3;
+  color: #1f5c42;
+}
+
+.am-outline.am-tone-green:hover {
+  background: #ddeee5;
+}
+
+.am-outline.am-tone-amber {
+  background: #fff6e8;
+  border-color: #f0dcb8;
+  color: #8a5a14;
+}
+
+.am-outline.am-tone-amber:hover {
+  background: #fbedd8;
+}
+
 .am-quiet {
   background: transparent;
   border: 1px solid transparent;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Transcript } from "./StudentTranscript";
 import { academicSections, latestResultSection, printedSemesterGpa } from "./student-overview-data";
+import { Icon } from "./student-icons";
 
 export type StudentProfile = {
   name: string; studentCode: string | null; cohortCode: string | null;
@@ -66,7 +67,7 @@ export default function StudentOverview({ profile, loading: profileLoading, navi
     <div className="so-columns">
       <section className="sw-panel so-results" aria-labelledby="recent-results-title">
         <div className="sw-section-heading"><div><h2 id="recent-results-title">Kết quả học tập gần nhất</h2><p className="sw-muted">Các học phần trong bảng điểm bạn đã import.</p></div>{semesters.length > 0 && !error && <label className="so-term-select"><span className="sr-only">Chọn học kỳ</span><select value={selectedId} onChange={event => setSelectedId(event.target.value)}>{[...semesters].reverse().map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}</div>
-        {loading ? <div className="so-loading" role="status"><p>Đang tải kết quả học tập…</p><div /><div /><div /></div> : error ? <div className="sw-empty" role="alert"><h3>{error}</h3><p>Bạn có thể tải lại để tiếp tục xem bảng điểm.</p><button className="sw-outline" onClick={() => setReload(value => value + 1)}>Tải lại kết quả</button></div> : semester ? <>
+        {loading ? <div className="so-loading" role="status"><p>Đang tải kết quả học tập…</p><div /><div /><div /></div> : error ? <div className="sw-empty" role="alert"><h3>{error}</h3><p>Bạn có thể tải lại để tiếp tục xem bảng điểm.</p><button className="sw-outline" onClick={() => setReload(value => value + 1)}><Icon name="refresh" />Tải lại kết quả</button></div> : semester ? <>
           <div className="so-table-wrap" tabIndex={0} role="region" aria-label={`Học phần ${semester.label}`}><table className="so-course-table"><thead><tr><th scope="col">Học phần</th><th scope="col">Tín chỉ</th><th scope="col">Hệ 10</th><th scope="col">Điểm chữ</th></tr></thead><tbody>{semester.courses.map(course => <tr key={`${course.sourcePage}-${course.ordinal}`}><td><strong>{course.name}</strong><span>{course.code}</span></td><td>{course.credits}</td><td>{course.score10 ?? "—"}</td><td><span className={`so-grade ${course.letter === "F" ? "so-grade-fail" : ""}`}>{course.letter ?? "—"}</span></td></tr>)}</tbody></table></div>
           <div className="so-results-footer"><span>Điểm TB học kỳ (hệ 4) <strong>{gpa ?? "Chưa có"}</strong></span><button className="sw-text-link" onClick={() => navigate("profile")}>Xem toàn bộ bảng điểm <span aria-hidden="true">→</span></button></div>
         </> : <div className="sw-empty so-transcript-empty"><span className="so-paper-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><rect x="10" y="5" width="28" height="38" rx="4" /><path d="M17 15h14M17 23h14M17 31h8" /></svg></span><h3>{transcript ? "Chưa có học phần theo học kỳ" : "Bắt đầu với bảng điểm của bạn"}</h3><p>{transcript ? "Xem điểm bảo lưu và các dữ liệu hiện có trong hồ sơ." : "Tải bảng điểm PDF để xem môn học, điểm số và kết quả từng học kỳ ngay tại đây."}</p><button className="sw-outline" onClick={() => navigate("profile")}>{transcript ? "Xem bảng điểm" : "Thêm bảng điểm PDF"}</button></div>}

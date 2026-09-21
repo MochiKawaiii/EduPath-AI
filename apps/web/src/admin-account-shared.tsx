@@ -38,6 +38,8 @@ export function Icon({ name }: { name: string }) {
     eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
     unlock: "M5 10h14v11H5zM8 10V6a4 4 0 0 1 7.75-1.4M12 14v3",
     chevron: "m9 6 6 6-6 6",
+    back: "m12 19-7-7 7-7M19 12H5",
+    refresh: "M21 12a9 9 0 1 1-9-9c2.5 0 4.9 1 6.7 2.7L21 8M21 3v5h-5",
     close: "M18 6 6 18M6 6l12 12"
   };
   if (name === "more") return <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>;

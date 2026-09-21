@@ -9,6 +9,7 @@ import {
   type StudentCurriculumData,
   type StudentCurriculumList,
 } from "./student-curriculum-types";
+import { Icon } from "./student-icons";
 import "./student-curriculum.css";
 
 const endpoint = "/api/student/curricula";
@@ -185,7 +186,7 @@ function CurriculumContent({
           {remote.error}
         </p>
         <button className="sw-outline" onClick={retry}>
-          Thử lại
+          <Icon name="refresh" /> Thử lại
         </button>
       </section>
     );

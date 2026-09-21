@@ -163,7 +163,7 @@ export default function CurriculaManagement({
         </div>
         {canManage ? (
           <button className="am-primary" onClick={() => setImportOpen(true)}>
-            Import khung CTĐT
+            <Icon name="upload" /> Import khung CTĐT
           </button>
         ) : (
           <span className="cm-tag">Chỉ xem</span>
@@ -576,7 +576,7 @@ function CurriculumView({
     <section className="cm-workspace">
       <div className="cm-toolbar">
         <button className="am-outline" onClick={back}>
-          ← Danh sách khung
+          <Icon name="back" /> Danh sách khung
         </button>
         <button
           className="am-outline"
@@ -585,7 +585,7 @@ function CurriculumView({
             setNotice("");
           }}
         >
-          Tải lại
+          <Icon name="refresh" /> Tải lại
         </button>
       </div>
       <Status {...remote} />
@@ -629,7 +629,7 @@ function CurriculumView({
             )}
             <div className="cm-actions">
               <a
-                className="am-outline"
+                className="am-outline am-tone-brand"
                 href={`${endpoint}/${id}/source/${current.revisionId}`}
                 title="Tải tệp Excel nguồn; các chỉnh sửa trực tiếp được lưu trong phiên bản trên hệ thống"
               >
@@ -638,13 +638,13 @@ function CurriculumView({
               {mutable && (
                 <>
                   <button
-                    className="am-outline"
+                    className="am-outline am-tone-green"
                     onClick={() => setEdit("import")}
                   >
                     <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className="am-outline"
+                    className="am-outline am-tone-amber"
                     onClick={() => setEdit("status")}
                   >
                     <Icon name={current.isActive ? "lock" : "unlock"} />{" "}
