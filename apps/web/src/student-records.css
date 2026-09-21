@@ -296,6 +296,16 @@
     color: #c02644
 }
 
+.sr-result-pass {
+    color: #266b45;
+    font-weight: 600
+}
+
+.sr-result-fail {
+    color: #c02644;
+    font-weight: 600
+}
+
 .sr-summaries {
     display: grid;
     grid-template-columns: 1fr 1fr;
