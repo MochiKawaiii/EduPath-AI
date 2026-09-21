@@ -14,6 +14,36 @@ export const courseInput = courseSchema
   })
   .strict();
 
+/** Numbered headings are containers when another block has a child number. */
+export function parentGroupIds(groups: CurriculumData["groups"]): Set<string> {
+  const numbered = groups.map((group) => ({
+    id: group.id,
+    code: group.label
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .replace(/^Khoi kien thuc:\s*/i, "")
+      .match(/^([A-Z]+(?:\.?\d+)*)(?=[.\s:])/i)?.[1]
+      ?.toUpperCase(),
+  }));
+  return new Set(
+    numbered
+      .filter(
+        (parent) =>
+          parent.code &&
+          numbered.some(
+            (child) =>
+              child.id !== parent.id &&
+              child.code?.startsWith(parent.code!) &&
+              (/\d$/.test(parent.code!) ? /^\.\d/ : /^\.?\d/).test(
+                child.code.slice(parent.code!.length),
+              ),
+          ),
+      )
+      .map((group) => group.id),
+  );
+}
+
 function placeCourses(data: CurriculumData) {
   const order = new Map(data.groups.map((group, index) => [group.id, index]));
   data.courses.sort(
@@ -40,7 +70,8 @@ export function putCourse(
     throw new CurriculumError("not_found", 404);
   const change = courseInput.parse(input);
   const group = data.groups.find((g) => g.id === change.groupId);
-  if (!group) throw new CurriculumError("invalid_course_group", 400);
+  if (!group || parentGroupIds(data.groups).has(group.id))
+    throw new CurriculumError("invalid_course_group", 400);
   if (data.courses.some((c, i) => c.code === change.code && i !== index))
     throw new CurriculumError("duplicate_course", 409, [change.code]);
   if (index < 0 && data.courses.length >= 2000)

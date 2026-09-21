@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CurriculumError, rebuild, type CurriculumData } from "./model.js";
-import { putCourse, removeCourse } from "./course-mutations.js";
+import { parentGroupIds, putCourse, removeCourse } from "./course-mutations.js";
 
 function course(
   code: string,
@@ -59,6 +59,23 @@ function fixture(): CurriculumData {
   };
 }
 
+function hierarchyFixture(): CurriculumData {
+  const data = fixture();
+  data.groups = [
+    { id: "a", label: "A. Parent", credits: null, sourceRow: 1 },
+    { id: "a1", label: "A1. Child one", credits: null, sourceRow: 2 },
+    { id: "a2", label: "A2. Child two", credits: null, sourceRow: 3 },
+    { id: "a10", label: "A10. Separate leaf", credits: null, sourceRow: 4 },
+    { id: "b", label: "B. Parent", credits: null, sourceRow: 5 },
+    { id: "b1", label: "B1. Child one", credits: null, sourceRow: 6 },
+    { id: "roman", label: "I. Roman parent", credits: null, sourceRow: 7 },
+    { id: "roman1", label: "I.1. Roman child", credits: null, sourceRow: 8 },
+    { id: "empty", label: "Tự chọn tự do", credits: null, sourceRow: 9 },
+  ];
+  data.courses = [course("71ITLEAF1001", "a1", 1)];
+  return data;
+}
+
 function input(
   code: string,
   groupId: string,
@@ -84,6 +101,43 @@ function expectCurriculumError(action: () => unknown, code: string, status: numb
 }
 
 describe("curriculum course mutations", () => {
+  it("identifies numbered parent headings without confusing A1 with A10", () => {
+    const groups = hierarchyFixture().groups;
+
+    expect(parentGroupIds(groups)).toEqual(
+      new Set(["a", "b", "roman"]),
+    );
+    expect(parentGroupIds(groups).has("a1")).toBe(false);
+    expect(parentGroupIds(groups).has("a10")).toBe(false);
+    expect(parentGroupIds(groups).has("empty")).toBe(false);
+  });
+
+  it("allows an empty-label leaf and rejects adding or moving into a parent heading", () => {
+    const emptyLeaf = hierarchyFixture();
+    putCourse(emptyLeaf, input("71ITEMPTY1001", "empty"));
+    expect(emptyLeaf.courses.find((item) => item.code === "71ITEMPTY1001")).toMatchObject({
+      groupId: "empty",
+    });
+
+    const addToParent = hierarchyFixture();
+    const beforeAdd = structuredClone(addToParent);
+    expectCurriculumError(
+      () => putCourse(addToParent, input("71ITPARENT1001", "a")),
+      "invalid_course_group",
+      400,
+    );
+    expect(addToParent).toEqual(beforeAdd);
+
+    const moveToParent = hierarchyFixture();
+    const beforeMove = structuredClone(moveToParent);
+    expectCurriculumError(
+      () => putCourse(moveToParent, input("71ITLEAF1001", "a"), "71ITLEAF1001"),
+      "invalid_course_group",
+      400,
+    );
+    expect(moveToParent).toEqual(beforeMove);
+  });
+
   it("adds a course to a valid group with direct-edit provenance and a stable order", () => {
     const data = fixture();
 

@@ -1,3 +1,4 @@
+import { parentGroupIds } from "./course-mutations.js";
 import { randomUUID, createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
@@ -65,7 +66,20 @@ export class CurriculumRepository {
       `SELECT action,created_at AS "createdAt" FROM curriculum_events WHERE curriculum_id=$1 ORDER BY id DESC LIMIT 50`,
       [id],
     );
-    return { ...result.rows[0], history: history.rows, events: events.rows };
+    const data = result.rows[0]!.data as CurriculumData;
+    const parents = parentGroupIds(data.groups);
+    return {
+      ...result.rows[0],
+      data: {
+        ...data,
+        groups: data.groups.map((group) => ({
+          ...group,
+          isHeading: parents.has(group.id),
+        })),
+      },
+      history: history.rows,
+      events: events.rows,
+    };
   }
   async source(id: string, revision: string) {
     const result = await this.pool.query(

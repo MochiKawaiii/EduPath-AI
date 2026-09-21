@@ -988,57 +988,59 @@ function Courses({
                     <th colSpan={6}>
                       <div className="cm-group-heading">
                         <span>{g.label}</span>
-                        {onGroupAction && g.id && (
-                          <details
-                            className="cm-group-actions"
-                            onKeyDown={(e) => {
-                              if (e.key === "Escape") {
-                                e.currentTarget.open = false;
-                                e.currentTarget
-                                  .querySelector("summary")
-                                  ?.focus();
-                              }
-                            }}
-                          >
-                            <summary
-                              title={`Thao tác ${g.label}`}
-                              aria-label={`Thao tác ${g.label}`}
+                        {onGroupAction &&
+                          g.id &&
+                          !("isHeading" in g && g.isHeading) && (
+                            <details
+                              className="cm-group-actions"
+                              onKeyDown={(e) => {
+                                if (e.key === "Escape") {
+                                  e.currentTarget.open = false;
+                                  e.currentTarget
+                                    .querySelector("summary")
+                                    ?.focus();
+                                }
+                              }}
                             >
-                              <Icon name="more" />
-                            </summary>
-                            <div className="cm-group-buttons">
-                              {(
-                                [
-                                  ["add", "Thêm môn học", "plus"],
-                                  ["edit", "Chỉnh sửa môn học", "edit"],
-                                  ["delete", "Xóa môn học", "trash"],
-                                ] as const
-                              ).map(([mode, label, icon]) => (
-                                <button
-                                  key={mode}
-                                  type="button"
-                                  className="am-outline"
-                                  disabled={
-                                    mode !== "add" &&
-                                    !data.courses.some(
-                                      (c) => c.groupId === g.id,
-                                    )
-                                  }
-                                  onClick={(e) => {
-                                    const menu =
-                                      e.currentTarget.closest("details");
-                                    menu?.removeAttribute("open");
-                                    menu?.querySelector("summary")?.focus();
-                                    onGroupAction(g.id, mode);
-                                  }}
-                                >
-                                  <Icon name={icon} />
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          </details>
-                        )}
+                              <summary
+                                title={`Thao tác ${g.label}`}
+                                aria-label={`Thao tác ${g.label}`}
+                              >
+                                <Icon name="more" />
+                              </summary>
+                              <div className="cm-group-buttons">
+                                {(
+                                  [
+                                    ["add", "Thêm môn học", "plus"],
+                                    ["edit", "Chỉnh sửa môn học", "edit"],
+                                    ["delete", "Xóa môn học", "trash"],
+                                  ] as const
+                                ).map(([mode, label, icon]) => (
+                                  <button
+                                    key={mode}
+                                    type="button"
+                                    className="am-outline"
+                                    disabled={
+                                      mode !== "add" &&
+                                      !data.courses.some(
+                                        (c) => c.groupId === g.id,
+                                      )
+                                    }
+                                    onClick={(e) => {
+                                      const menu =
+                                        e.currentTarget.closest("details");
+                                      menu?.removeAttribute("open");
+                                      menu?.querySelector("summary")?.focus();
+                                      onGroupAction(g.id, mode);
+                                    }}
+                                  >
+                                    <Icon name={icon} />
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            </details>
+                          )}
                       </div>
                     </th>
                   </tr>
@@ -1485,11 +1487,13 @@ function CourseDialog({
                   <option value="" disabled>
                     Chọn khối kiến thức
                   </option>
-                  {current.data.groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.label}
-                    </option>
-                  ))}
+                  {current.data.groups
+                    .filter((g) => !g.isHeading)
+                    .map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.label}
+                      </option>
+                    ))}
                 </select>
               </label>
               {fields.map(([key, label]) => (

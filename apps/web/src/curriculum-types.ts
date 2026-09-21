@@ -36,6 +36,7 @@ export interface CurriculumData {
   notes: string;
   courses: CurriculumCourse[];
   groups: {
+    isHeading?: boolean;
     id: string;
     label: string;
     credits: number | null;
