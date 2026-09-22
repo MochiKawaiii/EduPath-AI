@@ -1,18 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Icon, readResponse } from "./admin-account-shared";
+import { useLiveData } from "./use-live-data";
 
 export function useData<T>(url: string, revision = 0) {
-  const [state, setState] = useState<{ data: T | null; error: string | null; loading: boolean }>({ data: null, error: null, loading: true });
   const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ data: null, error: null, loading: true });
-    void fetch(url, { credentials: "include", cache: "no-store", signal: controller.signal }).then(readResponse<T>)
-      .then((data) => { if (!controller.signal.aborted) setState({ data, error: null, loading: false }); })
-      .catch((error) => { if (!controller.signal.aborted) setState({ data: null, error: error.message, loading: false }); });
-    return () => controller.abort();
-  }, [url, revision, retry]);
-  return { ...state, retry: () => setRetry((n) => n + 1) };
+  return { ...useLiveData<T>(url, `${revision}.${retry}`, readResponse), retry: () => setRetry((n) => n + 1) };
 }
 export function Status({ loading, error, retry }: { loading: boolean; error: string | null; retry: () => void }) {
   return loading ? <p className="am-empty" role="status">Đang tải dữ liệu…</p> : error ? <div className="am-empty"><p className="admin-error" role="alert">{error}</p><button className="am-outline" onClick={retry}><Icon name="refresh" /> Thử lại</button></div> : null;

@@ -580,9 +580,6 @@ function Standard({
         <button className="am-outline" onClick={back}>
           ← Danh sách tiêu chuẩn
         </button>
-        <button className="am-outline" onClick={remote.retry}>
-          Tải lại
-        </button>
       </div>
       <Status {...remote} />
       {data && (
@@ -626,7 +623,7 @@ function Standard({
                     <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className="am-outline am-tone-amber"
+                    className={data.isActive ? "am-outline am-tone-amber" : "am-outline am-tone-green"}
                     onClick={() => setDialog("status")}
                   >
                     <Icon name={data.isActive ? "lock" : "unlock"} />

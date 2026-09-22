@@ -828,3 +828,9 @@ a {
     animation-iteration-count: 1 !important;
   }
 }
+/* Shared interaction states across public, authentication, student and admin pages. */
+:where(button, a.lp-button, a.microsoft-button, a.am-outline):focus-visible {
+  outline: 3px solid #406f98;
+  outline-offset: 3px;
+}
+button:disabled { cursor: not-allowed; opacity: .55; }

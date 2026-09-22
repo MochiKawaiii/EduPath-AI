@@ -113,6 +113,9 @@
 }
 
 .am-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   min-height: 92px;
   display: flex;
   align-items: center;
@@ -291,7 +294,9 @@
   margin: 0 0 9px;
 }
 
+/* Focused on every page change; keep it clear of the sticky topbar. */
 .am-page-heading h1 {
+  scroll-margin-top: calc(var(--am-header-height, 92px) + 16px);
   font-size: clamp(23px, 2.4vw, 31px);
   line-height: 1.35;
   letter-spacing: -.8px;
@@ -1159,3 +1164,6 @@
 .am-primary.am-delete:hover:not(:disabled) { background: #912018; }
 .am-icon-btn.am-delete-icon { color: #b42318; }
 .am-icon-btn.am-delete-icon:hover:not(:disabled) { background: #fff0ee; }
+
+.am-outline.am-tone-danger { color: #b42318; border-color: #efc3bf; background: #fff5f4; }
+.am-outline.am-tone-danger:hover:not(:disabled) { background: #ffe5e2; }
