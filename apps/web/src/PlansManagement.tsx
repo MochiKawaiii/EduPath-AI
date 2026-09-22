@@ -409,7 +409,7 @@ function PlanView({
                     <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className="am-outline am-tone-amber"
+                    className={p.isActive ? "am-outline am-tone-amber" : "am-outline am-tone-green"}
                     onClick={() => setModal("status")}
                   >
                     <Icon name={p.isActive ? "lock" : "unlock"} />{" "}

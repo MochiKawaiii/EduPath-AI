@@ -626,7 +626,7 @@ function Standard({
                     <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className="am-outline am-tone-amber"
+                    className={data.isActive ? "am-outline am-tone-amber" : "am-outline am-tone-green"}
                     onClick={() => setDialog("status")}
                   >
                     <Icon name={data.isActive ? "lock" : "unlock"} />

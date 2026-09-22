@@ -94,7 +94,7 @@ export default function StudentPlans() {
             </select>
           </label>
           <button
-            className="sw-primary"
+            className="sw-outline"
             onClick={() => setReload((n) => n + 1)}
           >
             Tải lại
@@ -170,7 +170,7 @@ function PlanContents({ id, reload }: { id: string; reload: number }) {
           </select>
         </label>
         <button
-          className="sw-primary"
+          className="sw-outline"
           onClick={() => {
             setQuery("");
             setTerm("");

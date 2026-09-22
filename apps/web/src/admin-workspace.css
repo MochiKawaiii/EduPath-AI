@@ -1164,3 +1164,6 @@
 .am-primary.am-delete:hover:not(:disabled) { background: #912018; }
 .am-icon-btn.am-delete-icon { color: #b42318; }
 .am-icon-btn.am-delete-icon:hover:not(:disabled) { background: #fff0ee; }
+
+.am-outline.am-tone-danger { color: #b42318; border-color: #efc3bf; background: #fff5f4; }
+.am-outline.am-tone-danger:hover:not(:disabled) { background: #ffe5e2; }

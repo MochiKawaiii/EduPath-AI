@@ -526,3 +526,6 @@
 
 .sw-primary.sr-save { background: #236348; border-color: #236348; color: #fff; }
 .sw-primary.sr-save:hover:not(:disabled) { background: #194b35; }
+
+.sr-file-actions .sr-danger { color: #b42318; border: 1px solid #efc3bf; background: #fff5f4; border-radius: 6px; padding: 10px 14px; }
+.sr-file-actions .sr-danger:hover:not(:disabled) { background: #ffe5e2; }

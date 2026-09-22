@@ -75,7 +75,7 @@ export function CreateAccount({ onList, onBusy }: { onList: () => void; onBusy?:
     finally { setBusy(false); }
   }
   return <div className="am-create-layout"><section className="am-card am-create-card"><p className="admin-eyebrow">TÀI KHOẢN MICROSOFT · EDUPATH AI</p><h2>Thêm quản trị viên</h2><p>Thêm một người dùng đã xác thực vào đội ngũ quản trị.</p>
-    {created ? <div className="am-success" role="status"><Icon name="shield" /><h3>Đã thêm quản trị viên</h3><p><strong>{created.name}</strong><br />{created.email ?? created.username}</p><p>Người dùng cần đăng xuất và đăng nhập lại tại <code>/quantri</code> để nhận quyền mới.</p><button className="am-primary" onClick={onList}>Xem danh sách tài khoản</button></div>
+    {created ? <div className="am-success" role="status"><Icon name="shield" /><h3>Đã thêm quản trị viên</h3><p><strong>{created.name}</strong><br />{created.email ?? created.username}</p><p>Người dùng cần đăng xuất và đăng nhập lại tại <code>/quantri</code> để nhận quyền mới.</p><button className="am-outline" onClick={onList}>Xem danh sách tài khoản</button></div>
       : <form onSubmit={(event) => void submit(event)}>
         {error && <p ref={errorRef} tabIndex={-1} className="admin-error" role="alert">{error}</p>}
         <label className="am-field" htmlFor="new-admin-email">Email Microsoft <span aria-hidden="true">*</span><input id="new-admin-email" type="email" autoComplete="off" required maxLength={320} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ten@vanlanguni.vn" aria-describedby="new-admin-help" disabled={busy} /></label>

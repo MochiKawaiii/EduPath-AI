@@ -644,7 +644,7 @@ function CurriculumView({
                     <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className="am-outline am-tone-amber"
+                    className={current.isActive ? "am-outline am-tone-amber" : "am-outline am-tone-green"}
                     onClick={() => setEdit("status")}
                   >
                     <Icon name={current.isActive ? "lock" : "unlock"} />{" "}
@@ -1019,7 +1019,7 @@ function Courses({
                                   <button
                                     key={mode}
                                     type="button"
-                                    className="am-outline"
+                                    className={mode === "delete" ? "am-outline am-tone-danger" : "am-outline"}
                                     disabled={
                                       mode !== "add" &&
                                       !data.courses.some(
@@ -1201,7 +1201,7 @@ function DeleteCourseDialog({
           </button>
           <button
             type="button"
-            className="am-primary"
+            className="am-primary am-delete"
             disabled={busy}
             onClick={async () => {
               if (busy) return;
@@ -1705,7 +1705,7 @@ function CourseDialog({
           {canManage && mode !== "add" && (
             <button
               type="button"
-              className="am-outline cm-delete"
+              className="am-outline am-tone-danger cm-delete"
               disabled={busy}
               onClick={onDelete}
             >
