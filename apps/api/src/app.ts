@@ -1,3 +1,4 @@
+import { createGraduationRouter } from "./graduation/router.js";
 import { createStudentPlansRouter } from "./plans/student-router.js";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -62,6 +63,7 @@ export function createApp({
     })
   );
   app.use("/api/worker/transcripts", createTranscriptWorkerRouter(databasePool,config.ocrWorkerKey));
+  app.use("/api/admin/graduation", express.json({ limit: "2mb" }));
   app.use(express.json({ limit: "100kb" }));
   app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
@@ -161,6 +163,7 @@ export function createApp({
 
   app.use("/api/admin/accounts", createAdminAccountsRouter(adminAccountRepository, config.webOrigin));
   app.use("/api/admin/curricula", createCurriculaRouter(databasePool, config.webOrigin));
+  app.use("/api/admin/graduation", createGraduationRouter(databasePool, config.webOrigin));
   app.use("/api/admin/plans", createPlansRouter(databasePool, config.webOrigin));
   app.use("/api/student/plans", createStudentPlansRouter(databasePool));
   app.use("/api/student/curricula", createStudentCurriculaRouter(databasePool));
