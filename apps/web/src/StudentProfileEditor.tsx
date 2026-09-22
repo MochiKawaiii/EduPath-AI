@@ -22,9 +22,7 @@ export default function StudentProfileEditor({
 }) {
   const [editing, setEditing] = useState(false),
     [draft, setDraft] = useState({
-      className: "",
       interests: "",
-      careerGoal: "",
       careerPositionId: "",
     });
   const [busy, setBusy] = useState(false),
@@ -37,9 +35,7 @@ export default function StudentProfileEditor({
   useEffect(() => {
     if (!editing)
       setDraft({
-        className: profile.className ?? "",
         interests: profile.interests ?? "",
-        careerGoal: profile.careerGoal ?? "",
         careerPositionId: profile.careerPositionId ?? "",
       });
   }, [profile, editing]);
@@ -91,7 +87,7 @@ export default function StudentProfileEditor({
             : res.status === 401
               ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
               : res.status === 400
-                ? "Thông tin chưa hợp lệ. Lớp tối đa 32 ký tự, sở thích và mục tiêu tối đa 2.000 ký tự."
+                ? "Thông tin chưa hợp lệ. Sở thích tối đa 2.000 ký tự."
                 : "Không lưu được hồ sơ. Vui lòng thử lại.",
         );
       }
@@ -104,7 +100,6 @@ export default function StudentProfileEditor({
       setBusy(false);
     }
   };
-  const selected = careers.find((c) => c.id === draft.careerPositionId);
   return (
     <section className="sw-panel sr-editor">
       <div className="sw-section-heading">
@@ -136,17 +131,7 @@ export default function StudentProfileEditor({
       {editing ? (
         <form onSubmit={(e) => void save(e)}>
           <fieldset disabled={busy} className="sr-form-fields">
-            <label>
-              Lớp học
-              <input
-                maxLength={32}
-                value={draft.className}
-                onChange={(e) =>
-                  setDraft({ ...draft, className: e.target.value })
-                }
-                placeholder="Ví dụ: CNTT08"
-              />
-            </label>
+            <label>Lớp học<input value={profile.className ?? "Chưa cập nhật"} readOnly /></label>
             <label className="sr-wide">
               Vị trí nghề nghiệp mong muốn
               <select
@@ -199,9 +184,6 @@ export default function StudentProfileEditor({
                 </button>
               </div>
             )}
-            {selected && (
-              <p className="sr-wide sw-muted">{selected.description}</p>
-            )}
             <label className="sr-wide">
               Sở thích
               <textarea
@@ -214,23 +196,7 @@ export default function StudentProfileEditor({
                 placeholder="Lĩnh vực công nghệ, hoạt động bạn quan tâm…"
               />
             </label>
-            <label className="sr-wide">
-              Mục tiêu nghề nghiệp
-              <textarea
-                rows={3}
-                maxLength={2000}
-                value={draft.careerGoal}
-                onChange={(e) =>
-                  setDraft({ ...draft, careerGoal: e.target.value })
-                }
-                placeholder="Bạn muốn phát triển theo hướng nào?"
-              />
-            </label>
           </fieldset>
-          <p className="sw-muted">
-            Bạn có thể chọn vị trí mong muốn và viết thêm mục tiêu cụ thể của
-            mình.
-          </p>
           <div className="sr-actions">
             <button className="sw-primary" disabled={busy}>
               {busy ? "Đang lưu…" : "Lưu thay đổi"}
@@ -272,12 +238,6 @@ export default function StudentProfileEditor({
           <div>
             <dt>Sở thích</dt>
             <dd>{profile.interests || "Chưa cập nhật sở thích."}</dd>
-          </div>
-          <div>
-            <dt>Mục tiêu nghề nghiệp</dt>
-            <dd>
-              {profile.careerGoal || "Chưa cập nhật mục tiêu nghề nghiệp."}
-            </dd>
           </div>
         </dl>
       )}

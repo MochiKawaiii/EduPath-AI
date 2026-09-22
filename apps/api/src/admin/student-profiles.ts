@@ -34,7 +34,7 @@ export interface StudentProfileRepository {
 // Derive completion from saved data so profile edits and transcript deletion stay in sync.
 const profileStatus = `CASE WHEN p.user_id IS NULL THEN 'missing'
   WHEN NULLIF(btrim(p.interests), '') IS NOT NULL
-    AND (NULLIF(btrim(p.career_goal), '') IS NOT NULL OR p.career_position_id IS NOT NULL)
+    AND p.career_position_id IS NOT NULL
     AND EXISTS (SELECT 1 FROM student_transcripts t WHERE t.user_id = p.user_id)
   THEN 'complete' ELSE 'incomplete' END`;
 const summaryColumns = `u.id, COALESCE(p.full_name, u.display_name) AS name, u.email, u.is_active AS "isActive",

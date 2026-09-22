@@ -383,6 +383,14 @@ function PlanView({
                 </p>
               </div>
             </div>
+            {editable && (
+              <button
+                    className="am-icon-btn cm-metadata-edit" title="Sửa thông tin" aria-label="Sửa thông tin"
+                    onClick={() => setModal("metadata")}
+                  >
+                    <Icon name="edit" />
+              </button>
+            )}
             <Summary data={p.data} />
             {p.data.notes && <p className="cm-prewrap">{p.data.notes}</p>}
             <div className="cm-actions">
@@ -394,12 +402,6 @@ function PlanView({
               </a>
               {editable && (
                 <>
-                  <button
-                    className="am-outline"
-                    onClick={() => setModal("metadata")}
-                  >
-                    <Icon name="edit" /> Sửa thông tin
-                  </button>
                   <button
                     className="am-outline am-tone-green"
                     onClick={() => setModal("import")}

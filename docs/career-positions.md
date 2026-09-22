@@ -25,14 +25,14 @@ Danh mục ban đầu gồm 20 vị trí. Tên và kỹ năng là dữ liệu kh
 | Chuyên viên phân tích nghiệp vụ CNTT | IT Business Analyst |
 | Nhà thiết kế trải nghiệm và giao diện | UX/UI Designer |
 
-Quản trị viên thêm/sửa/xóa; các vai trò khoa, bộ môn và giảng viên chỉ xem. Xóa là ngừng hiển thị trong danh sách chọn mới, giữ liên kết với hồ sơ đã chọn. Sinh viên chọn một vị trí hoặc bỏ chọn, mục tiêu tự viết được giữ riêng. Không tự ánh xạ văn bản cũ sang vị trí để tránh đoán sai.
+Quản trị viên thêm/sửa/xóa; các vai trò khoa, bộ môn và giảng viên chỉ xem. Xóa là ngừng hiển thị trong danh sách chọn mới, giữ liên kết với hồ sơ đã chọn. Sinh viên chọn một vị trí hoặc bỏ chọn; vị trí đã chọn là mục tiêu nghề nghiệp, không còn ô mục tiêu nhập tay. Lớp học chỉ xem, không cho sinh viên chỉnh sửa. Không tự ánh xạ văn bản cũ sang vị trí để tránh đoán sai.
 
 Migration `014_career_positions.sql` tạo danh mục và thêm liên kết từ hồ sơ; 20 vị trí chỉ khởi tạo một lần, không tự phục hồi vị trí đã xóa khi khởi động.
 
 ## Sử dụng
 
 - Admin: **Vị trí nghề nghiệp** tại `/quantri/vi-tri-nghe-nghiep`. Tìm bằng tên Việt/Anh, mã hoặc kỹ năng; tìm không dấu được hỗ trợ. Bộ lọc lĩnh vực áp dụng ngay khi chọn.
-- Sinh viên: **Hồ sơ & bảng điểm → Thông tin cá nhân → Chỉnh sửa thông tin → Vị trí nghề nghiệp mong muốn**. Chọn một vị trí, rồi lưu thay đổi. Có thể bỏ chọn mà không xóa phần mục tiêu tự viết.
+- Sinh viên: **Hồ sơ & bảng điểm → Thông tin cá nhân → Chỉnh sửa thông tin → Vị trí nghề nghiệp mong muốn**. Chọn một vị trí, rồi lưu thay đổi. Có thể bỏ chọn. Văn bản mục tiêu cũ được giữ trong cơ sở dữ liệu nhưng không hiển thị và không tính vào trạng thái hoàn tất hồ sơ.
 - Các vị trí đều có mã, tên Việt/Anh, lĩnh vực, mô tả và danh sách kỹ năng tham khảo. Dữ liệu này có thể tiếp tục được ánh xạ với đánh giá năng lực/lộ trình trong các chức năng sau.
 
 API admin nằm tại `/api/admin/careers`, danh mục cho sinh viên tại `/api/student/careers`. Trường hồ sơ `careerPositionId` lưu UUID của vị trí; bỏ trường này trong yêu cầu cập nhật sẽ giữ nguyên lựa chọn cũ, gửi `null` sẽ bỏ chọn. Không chấp nhận lựa chọn mới trỏ đến vị trí đã xóa. Các thao tác sửa/xóa vị trí kiểm tra phiên bản để tránh ghi đè cập nhật đồng thời.

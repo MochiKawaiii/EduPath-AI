@@ -63,7 +63,7 @@ const profile = {
 };
 
 describe("student career selection", () => {
-  it("saves a catalog selection while preserving the existing free-text goal", async () => {
+  it("saves a catalog selection while preserving stored class and free-text goal", async () => {
     const { app, clientQuery } = setup({ previousCareer: null });
     await request(app)
       .patch("/student/profile")
@@ -72,8 +72,12 @@ describe("student career selection", () => {
       .expect(200, { saved: true });
     expect(clientQuery).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO student_profiles"),
-      [studentId, profile.className, profile.interests, profile.careerGoal, profile.currentSemester],
+      [studentId, null, profile.interests, null, profile.currentSemester],
     );
+    const insertSql = clientQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT INTO student_profiles"))?.[0] as string;
+    expect(insertSql).toContain("interests=EXCLUDED.interests");
+    expect(insertSql).not.toContain("class_name=EXCLUDED");
+    expect(insertSql).not.toContain("career_goal=EXCLUDED");
     expect(clientQuery).toHaveBeenCalledWith(
       "UPDATE student_profiles SET career_position_id=$2 WHERE user_id=$1",
       [studentId, careerId],

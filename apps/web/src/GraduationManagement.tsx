@@ -597,10 +597,22 @@ function Standard({
                 <h2>{data.data.name}</h2>
               </div>
             </div>
+            {editable && (
+              <button
+                    className="am-icon-btn cm-metadata-edit" title="Sửa thông tin" aria-label="Sửa thông tin"
+                    onClick={() => {
+                      setGroup(undefined);
+                      setCourse(undefined);
+                      setDialog("edit");
+                    }}
+                  >
+                    <Icon name="edit" />
+              </button>
+            )}
             <DataSummary data={data.data} />
             <div className="cm-actions">
               <a
-                className="am-outline"
+                className="am-outline am-tone-brand"
                 href={`${endpoint}/${id}/source/${data.revisionId}`}
               >
                 <Icon name="download" /> Tải tệp nguồn
@@ -608,23 +620,13 @@ function Standard({
               {editable && (
                 <>
                   <button
-                    className="am-outline"
-                    onClick={() => {
-                      setGroup(undefined);
-                      setCourse(undefined);
-                      setDialog("edit");
-                    }}
-                  >
-                    <Icon name="edit" /> Sửa thông tin
-                  </button>
-                  <button
-                    className="am-outline"
+                    className="am-outline am-tone-green"
                     onClick={() => setDialog("import")}
                   >
                     <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className="am-outline"
+                    className="am-outline am-tone-amber"
                     onClick={() => setDialog("status")}
                   >
                     <Icon name={data.isActive ? "lock" : "unlock"} />
