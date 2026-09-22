@@ -19,6 +19,8 @@ export interface StudentProfileSummary {
   profileStatus: "missing" | "incomplete" | "complete";
 }
 export interface StudentProfileDetail extends StudentProfileSummary {
+  careerPositionId?: string | null;
+  careerPosition?: { id: string; nameVi: string; nameEn: string; deletedAt: string | null } | null;
   interests: string | null;
   username: string | null; careerGoal: string | null;
   accountCreatedAt: string; firstLoginAt: string; lastLoginAt: string;
@@ -32,7 +34,7 @@ export interface StudentProfileRepository {
 // Derive completion from saved data so profile edits and transcript deletion stay in sync.
 const profileStatus = `CASE WHEN p.user_id IS NULL THEN 'missing'
   WHEN NULLIF(btrim(p.interests), '') IS NOT NULL
-    AND NULLIF(btrim(p.career_goal), '') IS NOT NULL
+    AND (NULLIF(btrim(p.career_goal), '') IS NOT NULL OR p.career_position_id IS NOT NULL)
     AND EXISTS (SELECT 1 FROM student_transcripts t WHERE t.user_id = p.user_id)
   THEN 'complete' ELSE 'incomplete' END`;
 const summaryColumns = `u.id, COALESCE(p.full_name, u.display_name) AS name, u.email, u.is_active AS "isActive",
@@ -64,7 +66,8 @@ export class PostgresStudentProfileRepository implements StudentProfileRepositor
   }
   async detail(_actor: AuthenticatedUser, id: string): Promise<StudentProfileDetail> {
     const result = await this.pool.query<StudentProfileDetail>(`SELECT ${summaryColumns}, u.username,
-      p.career_goal AS "careerGoal", p.interests, u.created_at AS "accountCreatedAt", u.first_login_at AS "firstLoginAt",
+      p.career_goal AS "careerGoal", p.career_position_id AS "careerPositionId",
+      (SELECT json_build_object('id',c.id,'nameVi',c.name_vi,'nameEn',c.name_en,'deletedAt',c.deleted_at) FROM career_positions c WHERE c.id=p.career_position_id) AS "careerPosition", p.interests, u.created_at AS "accountCreatedAt", u.first_login_at AS "firstLoginAt",
       u.last_login_at AS "lastLoginAt", p.created_at AS "profileCreatedAt", p.updated_at AS "profileUpdatedAt"
       FROM users u LEFT JOIN student_profiles p ON p.user_id = u.id
       WHERE (${studentScope} OR u.id = $2::uuid) AND u.id = $1`, [id, _actor.userId === id ? id : null]);

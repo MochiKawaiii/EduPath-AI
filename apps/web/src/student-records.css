@@ -1,4 +1,5 @@
 .sr-form-fields {
+    min-width: 0;
     border: 0;
     padding: 0;
     margin: 0;
@@ -9,6 +10,7 @@
 
 .sr-form-fields label,
 .sr-table-filters label {
+    min-width: 0;
     display: grid;
     gap: 8px;
     font-size: 12px;
@@ -20,6 +22,7 @@
 .sr-form-fields select,
 .sr-table-filters input,
 .sr-table-filters select {
+    min-width: 0;
     font: inherit;
     width: 100%;
     padding: 11px 12px;

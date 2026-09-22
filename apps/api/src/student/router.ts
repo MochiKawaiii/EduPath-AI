@@ -32,6 +32,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       className: z.string().trim().max(32).regex(/^[\p{L}\p{N} _.-]*$/u).nullable(),
       interests: z.string().trim().max(2000).nullable(),
       careerGoal: z.string().trim().max(2000).nullable(),
+      careerPositionId: z.uuid().nullable().optional(),
       currentSemester: z.number().int().min(1).max(3).nullable().optional()
     }).strict().safeParse(req.body);
     if (!input.success) { res.status(400).json({ error: "invalid_profile" }); return; }
@@ -43,6 +44,16 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
         VALUES($1,$2,$3,$4,$5) ON CONFLICT(user_id) DO UPDATE SET class_name=EXCLUDED.class_name,
         interests=EXCLUDED.interests,career_goal=EXCLUDED.career_goal,current_semester=EXCLUDED.current_semester,updated_at=CURRENT_TIMESTAMP`,
         [req.session.user!.userId, input.data.className || null, input.data.interests || null, input.data.careerGoal || null, input.data.currentSemester ?? null]);
+      if (input.data.careerPositionId !== undefined) {
+        const selected = input.data.careerPositionId;
+        if (selected) {
+          const career = await client.query("SELECT deleted_at FROM career_positions WHERE id=$1 FOR SHARE", [selected]);
+          const previous = await client.query("SELECT career_position_id FROM student_profiles WHERE user_id=$1", [req.session.user!.userId]);
+          if (!career.rowCount || (career.rows[0].deleted_at && previous.rows[0]?.career_position_id !== selected))
+            throw new TranscriptError("career_unavailable", 409);
+        }
+        await client.query("UPDATE student_profiles SET career_position_id=$2 WHERE user_id=$1", [req.session.user!.userId, selected]);
+      }
       await client.query("COMMIT");
       res.json({ saved: true });
     } catch (error) { await client.query("ROLLBACK"); throw error; }

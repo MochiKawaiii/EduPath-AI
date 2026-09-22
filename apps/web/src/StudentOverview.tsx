@@ -1,9 +1,11 @@
+import type { CareerSelection } from "./career-types";
 import { useEffect, useState } from "react";
 import type { Transcript } from "./StudentTranscript";
 import { academicSections, latestResultSection, printedSemesterGpa } from "./student-overview-data";
 import { Icon } from "./student-icons";
 
 export type StudentProfile = {
+  careerPositionId?: string | null; careerPosition?: CareerSelection | null;
   name: string; studentCode: string | null; cohortCode: string | null;
   className: string | null; cohortYear: number | null; currentSemester: number | null;
   email: string | null; careerGoal: string | null; interests: string | null; profileStatus: string;
@@ -38,7 +40,7 @@ export default function StudentOverview({ profile, loading: profileLoading, navi
     { label: "Thông tin lớp học", done: Boolean(profile?.className?.trim()) },
     { label: "Bảng điểm học tập", done: Boolean(transcript) },
     { label: "Sở thích cá nhân", done: Boolean(profile?.interests?.trim()) },
-    { label: "Mục tiêu nghề nghiệp", done: Boolean(profile?.careerGoal?.trim()) }
+    { label: "Mục tiêu nghề nghiệp", done: Boolean(profile?.careerPositionId || profile?.careerGoal?.trim()) }
   ];
   const ready = checklist.filter(item => item.done).length;
   const readyKnown = !loading && !profileLoading && !error && profile !== null;
@@ -54,8 +56,8 @@ export default function StudentOverview({ profile, loading: profileLoading, navi
       <article className="so-quick-card">
         <div className="so-card-heading"><span className="so-kicker">KHÁM PHÁ</span><span className="sw-tag">Mục tiêu cá nhân</span></div>
         <h3>Định hướng của bạn</h3><p>Kết nối điều bạn thích với điều muốn làm.</p>
-        <div className="so-card-detail"><small>Mục tiêu nghề nghiệp</small><strong>{profileLoading ? "Đang tải hồ sơ…" : profile?.careerGoal || "Bạn muốn phát triển theo hướng nào?"}</strong></div>
-        <button className="so-card-link" onClick={() => navigate("profile")}>{profile?.careerGoal ? "Cập nhật mục tiêu" : "Thêm mục tiêu của bạn"}<span aria-hidden="true">↗</span></button>
+        <div className="so-card-detail"><small>Mục tiêu nghề nghiệp</small><strong>{profileLoading ? "Đang tải hồ sơ…" : profile?.careerPosition?.nameVi || profile?.careerGoal || "Bạn muốn phát triển theo hướng nào?"}</strong></div>
+        <button className="so-card-link" onClick={() => navigate("profile")}>{profile?.careerPositionId || profile?.careerGoal ? "Cập nhật mục tiêu" : "Thêm mục tiêu của bạn"}<span aria-hidden="true">↗</span></button>
       </article>
       <article className="so-quick-card">
         <div className="so-card-heading"><span className="so-kicker">LÊN KẾ HOẠCH</span><span className="sw-tag">Sắp ra mắt</span></div>

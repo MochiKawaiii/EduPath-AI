@@ -1,0 +1,39 @@
+.career-workspace > *,
+.career-detail {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.career-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.career-row-actions svg,
+.career-workspace .am-primary svg {
+  width: 20px;
+  height: 20px;
+}
+.career-workspace .am-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.career-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.career-detail dl {
+  display: grid;
+  gap: 16px;
+}
+.career-detail dd {
+  margin: 6px 0 0;
+  font-weight: 600;
+}
+.career-description {
+  white-space: pre-wrap;
+}

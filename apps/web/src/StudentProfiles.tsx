@@ -1,3 +1,4 @@
+import type { CareerSelection } from "./career-types";
 import { useLiveFilters } from "./use-live-filters";
 import { useEffect, useState } from "react";
 import { useData, Status, Pagination, Modal } from "./admin-ui";
@@ -5,7 +6,7 @@ import "./student-profiles.css";
 
 type ProfileStatus = "missing" | "incomplete" | "complete";
 type Student = { id: string; name: string; email: string | null; isActive: boolean; studentCode: string | null; cohortCode: string | null; className: string | null; cohortYear: number | null; profileStatus: ProfileStatus };
-type StudentDetail = Student & { username: string | null; interests: string | null; careerGoal: string | null; accountCreatedAt: string; firstLoginAt: string; lastLoginAt: string; profileCreatedAt: string | null; profileUpdatedAt: string | null };
+type StudentDetail = Student & { careerPosition?: CareerSelection | null; username: string | null; interests: string | null; careerGoal: string | null; accountCreatedAt: string; firstLoginAt: string; lastLoginAt: string; profileCreatedAt: string | null; profileUpdatedAt: string | null };
 type StudentPage = { items: Student[]; total: number; cohortYears: number[]; cohortCodes: string[] };
 const statusLabels: Record<ProfileStatus, string> = { missing: "Chưa có hồ sơ", incomplete: "Chưa hoàn tất", complete: "Đã hoàn tất" };
 const emptyFilters = { q: "", cohortYear: "", cohortCode: "", active: "", profileStatus: "" };
@@ -23,7 +24,7 @@ function StudentDetails({ id }: { id: string }) {
     <h3>Thông tin cá nhân và học tập</h3>
     <dl className="am-detail-grid">{Object.entries({ "Họ và tên": student.name, "Mã sinh viên": student.studentCode, "Email": student.email, "Tên đăng nhập": student.username, "Khóa học": student.cohortCode, "Lớp học": student.className, "Năm nhập học": student.cohortYear, "Trạng thái tài khoản": student.isActive ? "Đang hoạt động" : "Đã khóa", "Trạng thái hồ sơ": statusLabels[student.profileStatus] }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? "Chưa cập nhật"}</dd></div>)}</dl>
     <h3>Sở thích</h3><p className="sp-career-goal">{student.interests?.trim() || "Sinh viên chưa cập nhật sở thích."}</p>
-    <h3>Mục tiêu nghề nghiệp</h3><p className="sp-career-goal">{student.careerGoal?.trim() || "Sinh viên chưa cập nhật mục tiêu nghề nghiệp."}</p>
+    <h3>Vị trí nghề nghiệp mong muốn</h3><p className="sp-career-goal">{student.careerPosition ? `${student.careerPosition.nameVi} — ${student.careerPosition.nameEn}${student.careerPosition.deletedAt ? " (đã ngừng sử dụng)" : ""}` : "Chưa chọn vị trí nghề nghiệp."}</p><h3>Mục tiêu nghề nghiệp</h3><p className="sp-career-goal">{student.careerGoal?.trim() || "Sinh viên chưa cập nhật mục tiêu nghề nghiệp."}</p>
     <h3>Thông tin cập nhật</h3><dl className="am-detail-grid">{Object.entries({ "Tạo tài khoản EduPath": date(student.accountCreatedAt), "Đăng nhập đầu tiên": date(student.firstLoginAt), "Đăng nhập gần nhất": date(student.lastLoginAt), "Tạo hồ sơ": date(student.profileCreatedAt), "Cập nhật hồ sơ gần nhất": date(student.profileUpdatedAt) }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
     <p className="sp-note"></p>
   </div>}</>;
