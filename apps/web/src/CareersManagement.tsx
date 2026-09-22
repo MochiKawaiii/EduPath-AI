@@ -126,7 +126,7 @@ export default function CareersManagement({
                                   <Icon name="edit" />
                                 </button>
                                 <button
-                                  className="am-icon-btn"
+                                  className="am-icon-btn am-delete-icon"
                                   aria-label={`Xóa ${c.nameVi}`}
                                   title="Xóa vị trí"
                                   onClick={() => {
@@ -358,7 +358,7 @@ function Editor({
           >
             Hủy
           </button>
-          <button className="am-primary" disabled={busy}>
+          <button className="am-primary am-save" disabled={busy}>
             {busy ? "Đang lưu…" : "Lưu vị trí"}
           </button>
         </div>
@@ -397,7 +397,7 @@ function Delete({
             Hủy
           </button>
           <button
-            className="am-primary"
+            className="am-primary am-delete"
             disabled={busy}
             onClick={async () => {
               setBusy(true);

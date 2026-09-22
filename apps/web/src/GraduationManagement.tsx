@@ -936,7 +936,7 @@ function EditDialog({
           >
             Hủy
           </button>
-          <button type="submit" className="am-primary" disabled={busy}>
+          <button type="submit" className="am-primary am-save" disabled={busy}>
             {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
           </button>
         </div>
@@ -1006,7 +1006,7 @@ function StatusDialog({
             Hủy
           </button>
           <button
-            className="am-primary"
+            className={current.isActive ? "am-primary am-warning" : "am-primary am-save"}
             disabled={busy}
             onClick={async () => {
               setBusy(true);

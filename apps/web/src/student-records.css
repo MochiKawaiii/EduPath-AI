@@ -523,3 +523,6 @@
     border: 1px solid #eed5a7;
     border-radius: 10px;
 }
+
+.sw-primary.sr-save { background: #236348; border-color: #236348; color: #fff; }
+.sw-primary.sr-save:hover:not(:disabled) { background: #194b35; }

@@ -889,7 +889,7 @@ function MetadataEditor({
             {error}
           </p>
         )}
-        <button className="am-primary" disabled={busy}>
+        <button className="am-primary am-save" disabled={busy}>
           {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
         </button>
       </form>
@@ -928,7 +928,7 @@ function StatusEditor({
         )}
         <div className="pm-toolbar">
           <button
-            className="am-primary"
+            className={plan.isActive ? "am-primary am-warning" : "am-primary am-save"}
             disabled={busy}
             onClick={async () => {
               if (busy) return;
@@ -1203,7 +1203,7 @@ function ItemEditor({
                 <button
                   key="save-allocation"
                   type="submit"
-                  className="am-primary"
+                  className="am-primary am-save"
                   disabled={busy}
                 >
                   {busy ? "Đang lưu…" : "Lưu phân bổ"}

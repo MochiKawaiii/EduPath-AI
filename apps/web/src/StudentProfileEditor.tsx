@@ -198,7 +198,7 @@ export default function StudentProfileEditor({
             </label>
           </fieldset>
           <div className="sr-actions">
-            <button className="sw-primary" disabled={busy}>
+            <button className="sw-primary sr-save" disabled={busy}>
               {busy ? "Đang lưu…" : "Lưu thay đổi"}
             </button>
             <button
