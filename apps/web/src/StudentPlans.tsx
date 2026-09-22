@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { PlanData, PlanItem } from "./plan-types";
 import { searchTerm } from "./student-curriculum-types";
+import { useLiveData } from "./use-live-data";
 import "./student-curriculum.css";
 import "./student-plans.css";
 
@@ -18,52 +19,20 @@ type Detail = Pick<
     "position" | "sourceRow" | "sourceSheet" | "sourceCells"
   >[];
 };
-function useData<T>(url: string, reload: number) {
-  const [state, setState] = useState<{
-    data: T | null;
-    error: string;
-    loading: boolean;
-  }>({ data: null, error: "", loading: true });
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ data: null, error: "", loading: true });
-    void fetch(url, {
-      credentials: "include",
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok)
-          throw new Error(
-            response.status === 404
-              ? "Kế hoạch không còn được mở. Hãy tải lại danh sách."
-              : response.status === 401
-                ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
-                : "Không thể tải kế hoạch đào tạo. Vui lòng thử lại.",
-          );
-        return response.json() as Promise<T>;
-      })
-      .then((data) => {
-        if (!controller.signal.aborted)
-          setState({ data, error: "", loading: false });
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted)
-          setState({ data: null, error: error.message, loading: false });
-      });
-    return () => controller.abort();
-  }, [url, reload]);
-  return state;
+async function readPlan<T>(response: Response): Promise<T> {
+  if (!response.ok)
+    throw new Error(
+      response.status === 404
+        ? "Kế hoạch không còn được mở. Hãy chọn kế hoạch khác."
+        : response.status === 401
+          ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+          : "Không thể tải kế hoạch đào tạo. Vui lòng thử lại.",
+    );
+  return response.json() as Promise<T>;
 }
 export default function StudentPlans() {
-  const [reload, setReload] = useState(0),
-    [choice, setChoice] = useState<string | null>(null);
-  const list = useData<List>("/api/student/plans", reload);
-  useEffect(() => {
-    const refresh = () => setReload((n) => n + 1);
-    window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
-  }, []);
+  const [choice, setChoice] = useState<string | null>(null);
+  const list = useLiveData<List>("/api/student/plans", 0, readPlan);
   const id = choice ?? list.data?.suggestedId ?? "";
   const selected = list.data?.items.find((item) => item.id === id);
   return (
@@ -93,12 +62,6 @@ export default function StudentPlans() {
               ))}
             </select>
           </label>
-          <button
-            className="sw-outline"
-            onClick={() => setReload((n) => n + 1)}
-          >
-            Tải lại
-          </button>
         </div>
         {list.loading && <p role="status">Đang tải kế hoạch…</p>}
         {list.error && <p role="alert">{list.error}</p>}
@@ -115,13 +78,13 @@ export default function StudentPlans() {
         )}
       </section>
       {selected && (
-        <PlanContents key={selected.id} id={selected.id} reload={reload} />
+        <PlanContents key={selected.id} id={selected.id} />
       )}
     </div>
   );
 }
-function PlanContents({ id, reload }: { id: string; reload: number }) {
-  const remote = useData<Detail>(`/api/student/plans/${id}`, reload);
+function PlanContents({ id }: { id: string }) {
+  const remote = useLiveData<Detail>(`/api/student/plans/${id}`, 0, readPlan);
   const [query, setQuery] = useState(""),
     [term, setTerm] = useState("");
   if (remote.loading)

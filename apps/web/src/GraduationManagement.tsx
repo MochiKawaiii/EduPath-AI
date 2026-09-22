@@ -580,9 +580,6 @@ function Standard({
         <button className="am-outline" onClick={back}>
           ← Danh sách tiêu chuẩn
         </button>
-        <button className="am-outline" onClick={remote.retry}>
-          Tải lại
-        </button>
       </div>
       <Status {...remote} />
       {data && (

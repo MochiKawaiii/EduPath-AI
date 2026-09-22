@@ -333,7 +333,8 @@ function PlanView({
     [item, setItem] = useState<PlanItem | null>(null),
     [notice, setNotice] = useState(initialNotice);
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus(), [remote.data?.revisionId]);
+  // Only after a load the person waited for; background refreshes must not move focus.
+  useEffect(() => { if (!remote.loading) heading.current?.focus(); }, [remote.loading]);
   const p = remote.data,
     historical = !!p && p.revisionId !== p.history[0]?.id,
     editable = !!p && canManage && !historical;
@@ -350,15 +351,6 @@ function PlanView({
       <div className="cm-toolbar">
         <button className="am-outline" onClick={onBack}>
           <Icon name="back" /> Danh sách kế hoạch
-        </button>
-        <button
-          className="am-outline"
-          onClick={() => {
-            setReload((n) => n + 1);
-            setNotice("");
-          }}
-        >
-          <Icon name="refresh" /> Tải lại
         </button>
       </div>
       <Status {...remote} />

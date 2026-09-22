@@ -10,59 +10,32 @@ import {
   type StudentCurriculumList,
 } from "./student-curriculum-types";
 import { Icon } from "./student-icons";
+import { useLiveData } from "./use-live-data";
 import "./student-curriculum.css";
 
 const endpoint = "/api/student/curricula";
+async function readCurriculum<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const message =
+      res.status === 401
+        ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+        : res.status === 403
+          ? "Tài khoản hiện không thể truy cập dữ liệu."
+          : res.status === 404
+            ? "Khung này không còn được mở để tra cứu. Hãy chọn khung khác."
+            : "Chưa tải được chương trình đào tạo. Vui lòng thử lại.";
+    throw new Error(message);
+  }
+  return res.json() as Promise<T>;
+}
 function useCurriculumRequest<T>(url: string, revision: number) {
-  const [state, setState] = useState<{
-    data: T | null;
-    loading: boolean;
-    error: string;
-  }>({ data: null, loading: true, error: "" });
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ data: null, loading: true, error: "" });
-    void fetch(url, {
-      credentials: "include",
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const message =
-            res.status === 401
-              ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
-              : res.status === 403
-                ? "Tài khoản hiện không thể truy cập dữ liệu."
-                : res.status === 404
-                  ? "Khung này không còn được mở để tra cứu. Hãy chọn khung khác hoặc tải lại danh sách."
-                  : "Chưa tải được chương trình đào tạo. Vui lòng thử lại.";
-          throw new Error(message);
-        }
-        return res.json() as Promise<T>;
-      })
-      .then((data) => {
-        if (!controller.signal.aborted)
-          setState({ data, loading: false, error: "" });
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted)
-          setState({ data: null, loading: false, error: (e as Error).message });
-      });
-    return () => controller.abort();
-  }, [url, revision]);
-  return state;
+  return useLiveData<T>(url, revision, readCurriculum);
 }
 
 export default function StudentCurriculum() {
   const [revision, setRevision] = useState(0),
     [choice, setChoice] = useState<string | null>(null);
   const list = useCurriculumRequest<StudentCurriculumList>(endpoint, revision);
-  useEffect(() => {
-    const refresh = () => setRevision((n) => n + 1);
-    window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
-  }, []);
   const chosen = choice ?? list.data?.suggestedId ?? "";
   const selected = list.data?.items.find((item) => item.id === chosen);
   const sameCohort =
@@ -94,13 +67,6 @@ export default function StudentCurriculum() {
               ))}
             </select>
           </label>
-          <button
-            className="sw-outline"
-            onClick={() => setRevision((n) => n + 1)}
-            disabled={list.loading}
-          >
-            Tải lại
-          </button>
         </div>
         {list.loading && (
           <p role="status" className="sc-muted">

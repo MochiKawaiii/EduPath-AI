@@ -519,7 +519,8 @@ function CurriculumView({
     revision,
   );
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus(), [remote.data?.revisionId]);
+  // Only after a load the person waited for; background refreshes must not move focus.
+  useEffect(() => { if (!remote.loading) heading.current?.focus(); }, [remote.loading]);
   const current = remote.data;
   const historical = current && current.revisionId !== current.history[0]?.id;
   const mutable = canManage && !historical;
@@ -577,15 +578,6 @@ function CurriculumView({
       <div className="cm-toolbar">
         <button className="am-outline" onClick={back}>
           <Icon name="back" /> Danh sách khung
-        </button>
-        <button
-          className="am-outline"
-          onClick={() => {
-            remote.retry();
-            setNotice("");
-          }}
-        >
-          <Icon name="refresh" /> Tải lại
         </button>
       </div>
       <Status {...remote} />
