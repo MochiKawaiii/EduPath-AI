@@ -1,30 +1,38 @@
+.sw-shell {
+  --sw-header-gutter: 20px;
+  --sw-header-gap: 12px;
+  --sw-menu-size: 44px;
+  --sw-brand-width: 210px;
+  --sw-rail-width: calc(var(--sw-header-gutter) + var(--sw-menu-size) + var(--sw-brand-width) + 2 * var(--sw-header-gap));
+}
+
 .sw-shell .sw-topbar {
   position: sticky;
   top: 0;
   z-index: 11;
   min-height: 92px;
-  padding: 12px 20px;
+  padding: 12px var(--sw-header-gutter);
   flex-wrap: nowrap;
-  gap: 8px 12px;
+  gap: 8px var(--sw-header-gap);
 }
 
 .sw-header-brand {
-  flex: 0 0 210px;
+  flex: 0 0 var(--sw-brand-width);
   display: flex;
   align-items: center;
 }
 
 .sw-header-brand .ep-brand {
-  --ep-brand-w: var(--ep-header-brand-w);
+  --ep-brand-w: var(--sw-brand-width);
 }
 
 .sw-header-nav {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: clamp(4px, 1.4vw, 24px);
   flex: 1;
   min-width: 0;
-  margin-left: 20px;
+  margin-left: 0;
   overflow-x: auto;
   scrollbar-width: thin;
   flex-wrap: nowrap;
@@ -35,13 +43,13 @@
   align-items: center;
   gap: 7px;
   min-height: 44px;
-  padding: 8px;
+  padding: 8px 14px;
   white-space: nowrap;
   flex-shrink: 0;
   color: var(--sw-ink);
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .sw-header-nav a svg {
@@ -49,14 +57,14 @@
   height: 17px;
 }
 
-.sw-header-nav a:hover,
-.sw-header-nav a[aria-current="page"] {
+.sw-header-nav a:hover {
   background: #faeaf0;
   color: var(--sw-red);
 }
 
 .sw-header-nav a[aria-current="page"] {
-  box-shadow: inset 0 -2px var(--sw-red);
+  background: var(--sw-red);
+  color: #fff;
 }
 
 .sw-shell .sw-tools {
@@ -126,17 +134,13 @@
 
 .sw-shell .sw-menu-button {
   display: grid;
-  width: 44px;
+  width: var(--sw-menu-size);
   height: 44px;
   flex-shrink: 0;
 }
 
 .sw-drawer-backdrop {
-  position: fixed;
-  inset: 80px 0 0;
-  z-index: 9;
-  background: #151c2c55;
-  touch-action: none;
+  display: none;
 }
 
 .sw-drawer {
@@ -208,17 +212,14 @@
 }
 
 @media (max-width: 700px) {
+  .sw-shell {
+    --sw-header-gutter: 12px;
+    --sw-header-gap: 8px;
+    --sw-brand-width: 150px;
+  }
+
   .sw-shell .sw-topbar {
-    padding: 12px;
-    gap: 8px;
-  }
-
-  .sw-header-brand {
-    flex-basis: 150px;
-  }
-
-  .sw-header-brand .ep-brand {
-    --ep-brand-w: 150px;
+    padding-block: 12px;
   }
 
   .sw-header-nav {
