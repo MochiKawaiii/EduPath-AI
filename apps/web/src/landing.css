@@ -1033,6 +1033,11 @@
   justify-content: center;
   align-items: flex-start;
   padding: 56px clamp(35px, 5.5vw, 85px);
+  /* Match the right edge of the centered 1240px section container, including at 75% zoom. */
+  box-sizing: border-box;
+  min-width: 0;
+  width: min(620px, calc(100% - 48px));
+  padding-right: 0;
 }
 
 .lp-campus-story .lp-eyebrow {
@@ -1321,6 +1326,10 @@
     width: calc(100% - 64px);
   }
 
+  .lp-campus-story-copy {
+    width: calc(100% - 32px);
+  }
+
   .lp-navigation {
     gap: 18px;
   }
@@ -1573,7 +1582,7 @@
   }
 
   .lp-campus-story-copy {
-    padding: 38px 28px;
+    padding: 38px 0 38px 28px;
   }
 
   .lp-campus-story h2 {
@@ -1939,7 +1948,8 @@
   }
 
   .lp-campus-story-copy {
-    padding: 38px 25px 42px;
+    width: auto;
+    padding: 38px 20px 42px;
   }
 
   .lp-campus-story-copy h2 {

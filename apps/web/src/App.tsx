@@ -14,9 +14,9 @@ const errorMessages: Record<string, string> = {
   callback_failed:
     "Không thể hoàn tất đăng nhập. Hãy kiểm tra quyền tài khoản và thử lại.",
   staff_portal_only:
-    "Tài khoản email nội bộ của Trường chỉ đăng nhập được cổng quản trị EduPath AI. Không gian học tập dành riêng cho sinh viên.",
+    "Cán bộ/Giảng viên vui lòng chuyển sang trang Quản trị để đăng nhập và bắt đầu sử dụng.",
   admin_portal_only:
-    "Tài khoản này được phân quyền quản trị nên chỉ sử dụng cổng quản trị EduPath AI."
+    "Tài khoản của bạn thuộc cổng Quản trị. Vui lòng chuyển sang trang Quản trị để đăng nhập và bắt đầu sử dụng."
 };
 
 const loginLinks = [
@@ -25,9 +25,12 @@ const loginLinks = [
   { targetId: "/huong-dan", label: "Hướng dẫn" }
 ];
 
-function getAuthError(): string | null {
+function getAuthError(): { message: string; portalRestricted: boolean } | null {
   const code = new URLSearchParams(window.location.search).get("authError");
-  return code ? (errorMessages[code] ?? "Đăng nhập không thành công.") : null;
+  return code ? {
+    message: errorMessages[code] ?? "Đăng nhập không thành công.",
+    portalRestricted: code === "staff_portal_only" || code === "admin_portal_only"
+  } : null;
 }
 
 
@@ -80,7 +83,7 @@ function LocationIcon() {
   );
 }
 
-function LoginPage({ error }: { error: string | null }) {
+function LoginPage({ error, portalRestricted }: { error: string | null; portalRestricted: boolean }) {
   return (
     <div className="auth-shell">
       <header className="login-header">
@@ -121,9 +124,14 @@ function LoginPage({ error }: { error: string | null }) {
             alt="Biểu tượng Trường Đại học Văn Lang"
           />
 
-          <p className="login-eyebrow"></p>
           <h1 id="login-title">Chào mừng đến với EduPath AI!</h1>
-          <section id="tinh-nang" aria-labelledby="feature-title">
+          <div className="login-message">
+          {error ? (
+            <div className="error-banner login-error" role="alert">
+              <strong>{portalRestricted ? "Trang này chỉ dành cho sinh viên VLU." : "Đăng nhập chưa thành công"}</strong>
+              <p>{error}</p>
+            </div>
+          ) : <section id="tinh-nang" aria-labelledby="feature-title">
             <h2 id="feature-title" className="sr-only">
               Tính năng
             </h2>
@@ -131,15 +139,10 @@ function LoginPage({ error }: { error: string | null }) {
               Đăng nhập để đánh giá năng lực, xây dựng lộ trình học tập
               <br className="desktop-break" /> và khám phá định hướng nghề nghiệp phù hợp.
             </p>
-          </section>
+          </section>}
+          </div>
 
-          {error ? (
-            <div className="error-banner" role="alert">
-              {error}
-            </div>
-          ) : null}
-
-          <button
+          {portalRestricted ? <a className="microsoft-button" href="/quantri">Chuyển sang trang Quản trị <span aria-hidden="true">→</span></a> : <button
             className="microsoft-button"
             type="button"
             aria-describedby="login-help login-security"
@@ -147,16 +150,16 @@ function LoginPage({ error }: { error: string | null }) {
           >
             <MicrosoftIcon />
             <span>Đăng nhập bằng Microsoft</span>
-          </button>
+          </button>}
 
-          <section id="huong-dan" aria-labelledby="guide-title">
+          {portalRestricted ? <p className="login-help"><button className="link-button" type="button" onClick={() => beginMicrosoftLogin("/dashboard")}>Đăng nhập bằng tài khoản sinh viên khác</button></p> : <section id="huong-dan" aria-labelledby="guide-title">
             <h2 id="guide-title" className="sr-only">
               Hướng dẫn đăng nhập
             </h2>
             <p id="login-help" className="login-help">
               Sử dụng tài khoản Microsoft do Trường Đại học Văn Lang cấp
             </p>
-          </section>
+          </section>}
           <p id="login-security" className="sr-only">
             EduPath AI không nhận hoặc lưu mật khẩu Microsoft của bạn.
           </p>
@@ -234,7 +237,7 @@ function LoginPage({ error }: { error: string | null }) {
 function StaffPortalNotice() {
   const [busy, setBusy] = useState(false);
   return (
-    <div className="auth-shell">
+    <div className="auth-shell auth-shell-notice">
       <main className="auth-content">
         <section className="login-card" aria-labelledby="staff-portal-title">
           <img
@@ -242,13 +245,12 @@ function StaffPortalNotice() {
             src="/vlu-shield.jpg"
             alt="Biểu tượng Trường Đại học Văn Lang"
           />
-          <h1 id="staff-portal-title">Tài khoản dành cho cổng quản trị</h1>
+          <h1 id="staff-portal-title">Trang này chỉ dành cho sinh viên VLU.</h1>
           <p className="login-description">
-            Tài khoản này chỉ sử dụng cổng quản trị EduPath AI. Không gian học tập
-            dành riêng cho tài khoản được phân quyền sinh viên.
+            Cán bộ/Giảng viên và tài khoản quản trị vui lòng chuyển sang trang Quản trị để bắt đầu sử dụng.
           </p>
           <a className="microsoft-button" href="/quantri">
-            <span>Đi tới cổng quản trị</span>
+            <span>Chuyển sang trang Quản trị</span>
           </a>
           <p className="login-help">
             <button
@@ -318,7 +320,7 @@ function AuthenticatedApp({ isLoginRoute }: { isLoginRoute: boolean }) {
   }
 
   if (!auth?.authenticated) {
-    return <LoginPage error={authError ?? loadError} />;
+    return <LoginPage error={authError?.message ?? loadError} portalRestricted={authError?.portalRestricted ?? false} />;
   }
 
   if (auth.studentPortal === false) return <StaffPortalNotice />;
