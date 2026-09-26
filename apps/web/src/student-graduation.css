@@ -99,6 +99,21 @@
   font-weight: 650;
   line-height: 1.6;
 }
+/* One table per course group: fixed widths keep the columns lined up across
+   groups instead of each table sizing itself to its own content. */
+.sg-group .sc-table {
+  table-layout: fixed;
+  min-width: 600px;
+}
+.sg-group .sc-table th:nth-child(1) {
+  width: 150px;
+}
+.sg-group .sc-table th:nth-child(3) {
+  width: 72px;
+}
+.sg-group .sc-table th:nth-child(4) {
+  width: 240px;
+}
 .sg-group .sc-table td:last-child {
   white-space: normal;
 }
