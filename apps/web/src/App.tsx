@@ -14,7 +14,7 @@ const errorMessages: Record<string, string> = {
   callback_failed:
     "Không thể hoàn tất đăng nhập. Hãy kiểm tra quyền tài khoản và thử lại.",
   staff_portal_only:
-    "Cán bộ/Giảng viên vui lòng chuyển sang trang Quản trị để đăng nhập và bắt đầu sử dụng.",
+    "Cán bộ/ Giảng viên vui lòng chuyển sang trang Quản trị để đăng nhập và bắt đầu sử dụng.",
   admin_portal_only:
     "Tài khoản của bạn thuộc cổng Quản trị. Vui lòng chuyển sang trang Quản trị để đăng nhập và bắt đầu sử dụng."
 };
@@ -128,7 +128,7 @@ function LoginPage({ error, portalRestricted }: { error: string | null; portalRe
           <div className="login-message">
           {error ? (
             <div className="error-banner login-error" role="alert">
-              <strong>{portalRestricted ? "Trang này chỉ dành cho sinh viên VLU." : "Đăng nhập chưa thành công"}</strong>
+              <strong>{portalRestricted ? "Trang này được xây dựng dành riêng cho Sinh viên VLU." : "Đăng nhập chưa thành công"}</strong>
               <p>{error}</p>
             </div>
           ) : <section id="tinh-nang" aria-labelledby="feature-title">
@@ -245,7 +245,7 @@ function StaffPortalNotice() {
             src="/vlu-shield.jpg"
             alt="Biểu tượng Trường Đại học Văn Lang"
           />
-          <h1 id="staff-portal-title">Trang này chỉ dành cho sinh viên VLU.</h1>
+          <h1 id="staff-portal-title">Trang này được xây dựng dành riêng cho Sinh viên VLU.</h1>
           <p className="login-description">
             Cán bộ/Giảng viên và tài khoản quản trị vui lòng chuyển sang trang Quản trị để bắt đầu sử dụng.
           </p>
