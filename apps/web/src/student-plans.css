@@ -14,11 +14,30 @@
 .sp-content .sc-table-wrap {
   margin-top: 12px;
 }
+/* One table per term: fixed widths keep the columns lined up across terms
+   instead of each table sizing itself to its own content. */
+.sp-content .sc-table {
+  table-layout: fixed;
+  min-width: 760px;
+}
+.sp-content .sc-table th:nth-child(1) {
+  width: 150px;
+}
+.sp-content .sc-table th:nth-child(3) {
+  width: 72px;
+}
+.sp-content .sc-table th:nth-child(4) {
+  width: 110px;
+}
+.sp-content .sc-table th:nth-child(5) {
+  width: 36%;
+}
 .sp-content .sc-table td:last-child {
   white-space: normal;
 }
 .sp-content .sc-table td {
   vertical-align: top;
+  overflow-wrap: anywhere;
 }
 .sp-content .sc-filters {
   padding: 0;
