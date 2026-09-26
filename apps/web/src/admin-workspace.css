@@ -590,7 +590,8 @@
   margin-top: 22px;
 }
 
-.am-field>span {
+.am-required {
+  margin-left: 3px;
   color: #ad1638;
 }
 
@@ -1155,9 +1156,8 @@
   }
 }
 
-/* Color is reserved for committed changes and destructive actions. */
-.am-primary.am-save { background: #236348; border-color: #236348; color: #fff; }
-.am-primary.am-save:hover:not(:disabled) { background: #194b35; }
+/* Save and confirm buttons use the plain brand-red .am-primary; these variants
+   mark the actions that lock or delete. */
 .am-primary.am-warning { background: #fff1d6; border-color: #dfba76; color: #754707; }
 .am-primary.am-warning:hover:not(:disabled) { background: #ffe5b3; }
 .am-primary.am-delete { background: #b42318; border-color: #b42318; color: #fff; }

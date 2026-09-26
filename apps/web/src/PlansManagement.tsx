@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Modal, Pagination, Status, useData } from "./admin-ui";
-import { Icon } from "./admin-account-shared";
+import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import type { PlanData, PlanDetail, PlanItem, PlanList } from "./plan-types";
 import "./curricula.css";
@@ -850,7 +850,7 @@ function MetadataEditor({
         }}
       >
         <label className="am-field">
-          Tên kế hoạch
+          <RequiredLabel>Tên kế hoạch</RequiredLabel>
           <input
             required
             maxLength={500}
@@ -882,7 +882,7 @@ function MetadataEditor({
             {error}
           </p>
         )}
-        <button className="am-primary am-save" disabled={busy}>
+        <button className="am-primary" disabled={busy}>
           {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
         </button>
       </form>
@@ -921,7 +921,7 @@ function StatusEditor({
         )}
         <div className="pm-toolbar">
           <button
-            className={plan.isActive ? "am-primary am-warning" : "am-primary am-save"}
+            className={plan.isActive ? "am-primary am-warning" : "am-primary"}
             disabled={busy}
             onClick={async () => {
               if (busy) return;
@@ -1087,7 +1087,7 @@ function ItemEditor({
             </div>
             {textFields.map(([key, label]) => (
               <label className="am-field" key={key}>
-                {label}
+                {key === "name" ? <RequiredLabel>{label}</RequiredLabel> : label}
                 <textarea
                   rows={key === "prerequisite" || key === "prior" ? 4 : 2}
                   required={key === "name"}
@@ -1196,7 +1196,7 @@ function ItemEditor({
                 <button
                   key="save-allocation"
                   type="submit"
-                  className="am-primary am-save"
+                  className="am-primary"
                   disabled={busy}
                 >
                   {busy ? "Đang lưu…" : "Lưu phân bổ"}

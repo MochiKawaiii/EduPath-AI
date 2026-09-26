@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ActionMenu, Modal, Pagination, Status, useData } from "./admin-ui";
-import { Icon } from "./admin-account-shared";
+import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import type {
   CurriculumCourse,
@@ -1080,7 +1080,7 @@ function GroupCoursePicker({
       >
         <p>{data.groups.find((g) => g.id === groupId)?.label}</p>
         <label>
-          Môn học
+          <RequiredLabel>Môn học</RequiredLabel>
           <select
             value={code}
             onChange={(e) => setCode(e.target.value)}
@@ -1233,7 +1233,7 @@ function MetadataDialog({
         }}
       >
         <label>
-          Tên chương trình
+          <RequiredLabel>Tên chương trình</RequiredLabel>
           <input
             required
             maxLength={500}
@@ -1242,7 +1242,7 @@ function MetadataDialog({
           />
         </label>
         <label>
-          Tổng tín chỉ quy định
+          <RequiredLabel>Tổng tín chỉ quy định</RequiredLabel>
           <input
             type="number"
             required
@@ -1281,7 +1281,7 @@ function MetadataDialog({
           >
             Hủy
           </button>
-          <button className="am-primary am-save" disabled={busy}>
+          <button className="am-primary" disabled={busy}>
             {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
           </button>
         </div>
@@ -1328,7 +1328,7 @@ function StatusDialog({
             Hủy
           </button>
           <button
-            className={current.isActive ? "am-primary am-warning" : "am-primary am-save"}
+            className={current.isActive ? "am-primary am-warning" : "am-primary"}
             disabled={busy}
             onClick={async () => {
               setBusy(true);
@@ -1442,12 +1442,12 @@ function CourseDialog({
         {editing ? (
           <>
             <p>
-              Chỉ bắt buộc Mã học phần, Tên học phần và Số tín chỉ. Các thông
-              tin còn lại có thể bổ sung sau.
+              Các trường có dấu * là bắt buộc. Các thông tin còn lại có thể bổ
+              sung sau.
             </p>
             <div className="cm-form-grid">
               <label>
-                Khối kiến thức
+                <RequiredLabel>Khối kiến thức</RequiredLabel>
                 <select
                   required
                   value={form.groupId}
@@ -1469,7 +1469,7 @@ function CourseDialog({
               </label>
               {fields.map(([key, label]) => (
                 <label key={key}>
-                  {label}
+                  {["code", "name"].includes(key) ? <RequiredLabel>{label}</RequiredLabel> : label}
                   <input
                     maxLength={500}
                     required={["code", "name"].includes(key)}
@@ -1481,7 +1481,7 @@ function CourseDialog({
                 </label>
               ))}
               <label>
-                Số tín chỉ
+                <RequiredLabel>Số tín chỉ</RequiredLabel>
                 <input
                   type="number"
                   min={0}
@@ -1681,7 +1681,7 @@ function CourseDialog({
               <button
                 key="save-course"
                 type="submit"
-                className="am-primary am-save"
+                className="am-primary"
                 disabled={busy}
               >
                 {busy ? "Đang lưu…" : "Lưu phiên bản mới"}

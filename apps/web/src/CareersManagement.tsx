@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Modal, Pagination, Status, useData } from "./admin-ui";
-import { Icon } from "./admin-account-shared";
+import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import { careerCategories, careerRequest, type Career } from "./career-types";
 import "./curricula.css";
@@ -276,7 +276,7 @@ function Editor({
       >
         <fieldset disabled={busy} className="career-fields">
           <label>
-            Mã vị trí *
+            <RequiredLabel>Mã vị trí</RequiredLabel>
             <input
               required
               maxLength={60}
@@ -289,7 +289,7 @@ function Editor({
           </label>
           <div className="cm-form-grid">
             <label>
-              Tên tiếng Việt *
+              <RequiredLabel>Tên tiếng Việt</RequiredLabel>
               <input
                 required
                 maxLength={160}
@@ -298,7 +298,7 @@ function Editor({
               />
             </label>
             <label>
-              Tên tiếng Anh *
+              <RequiredLabel>Tên tiếng Anh</RequiredLabel>
               <input
                 required
                 maxLength={160}
@@ -359,7 +359,7 @@ function Editor({
           >
             Hủy
           </button>
-          <button className="am-primary am-save" disabled={busy}>
+          <button className="am-primary" disabled={busy}>
             {busy ? "Đang lưu…" : "Lưu vị trí"}
           </button>
         </div>

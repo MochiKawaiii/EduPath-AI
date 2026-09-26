@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal, Pagination, Status, useData } from "./admin-ui";
-import { Icon } from "./admin-account-shared";
+import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import type {
   GraduationData,
@@ -803,7 +803,7 @@ function EditDialog({
         {group ? (
           <>
             <label>
-              Tên nhóm
+              <RequiredLabel>Tên nhóm</RequiredLabel>
               <input
                 required
                 maxLength={500}
@@ -832,7 +832,7 @@ function EditDialog({
         ) : course ? (
           <>
             <label>
-              Mã học phần
+              <RequiredLabel>Mã học phần</RequiredLabel>
               <input
                 required
                 maxLength={500}
@@ -841,7 +841,7 @@ function EditDialog({
               />
             </label>
             <label>
-              Tên học phần
+              <RequiredLabel>Tên học phần</RequiredLabel>
               <input
                 required
                 maxLength={500}
@@ -880,7 +880,7 @@ function EditDialog({
         ) : (
           <>
             <label>
-              Tên tiêu chuẩn
+              <RequiredLabel>Tên tiêu chuẩn</RequiredLabel>
               <input
                 required
                 maxLength={500}
@@ -927,7 +927,7 @@ function EditDialog({
           >
             Hủy
           </button>
-          <button type="submit" className="am-primary am-save" disabled={busy}>
+          <button type="submit" className="am-primary" disabled={busy}>
             {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
           </button>
         </div>
@@ -997,7 +997,7 @@ function StatusDialog({
             Hủy
           </button>
           <button
-            className={current.isActive ? "am-primary am-warning" : "am-primary am-save"}
+            className={current.isActive ? "am-primary am-warning" : "am-primary"}
             disabled={busy}
             onClick={async () => {
               setBusy(true);

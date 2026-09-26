@@ -1,5 +1,5 @@
 import type { AppRole } from "./types";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 const failures: Record<string, string> = {
   student_not_found: "Không tìm thấy sinh viên hoặc tài khoản không còn mang vai trò Sinh viên.",
   self_change_forbidden: "Không thể tự thay đổi quyền hoặc khóa tài khoản đang sử dụng.",
@@ -17,6 +17,13 @@ const failures: Record<string, string> = {
 };
 export type Account = { id: string; name: string; email: string | null; username: string | null; role: AppRole; isActive: boolean; lastLoginAt: string };
 export type AccountPage = { items: Account[]; total: number; page: number; pageSize: number };
+
+/** A field label ending in the red asterisk that marks the field as required.
+    The asterisk is hidden from screen readers, which announce the input's own
+    required state instead. */
+export function RequiredLabel({ children }: { children: ReactNode }) {
+  return <span>{children}<span className="am-required" aria-hidden="true">*</span></span>;
+}
 
 export function Icon({ name }: { name: string }) {
   const paths: Record<string, string> = {
@@ -78,7 +85,7 @@ export function CreateAccount({ onList, onBusy }: { onList: () => void; onBusy?:
     {created ? <div className="am-success" role="status"><Icon name="shield" /><h3>Đã thêm quản trị viên</h3><p><strong>{created.name}</strong><br />{created.email ?? created.username}</p><p>Người dùng cần đăng xuất và đăng nhập lại tại <code>/quantri</code> để nhận quyền mới.</p><button className="am-outline" onClick={onList}>Xem danh sách tài khoản</button></div>
       : <form onSubmit={(event) => void submit(event)}>
         {error && <p ref={errorRef} tabIndex={-1} className="admin-error" role="alert">{error}</p>}
-        <label className="am-field" htmlFor="new-admin-email">Email Microsoft <span aria-hidden="true">*</span><input id="new-admin-email" type="email" autoComplete="off" required maxLength={320} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ten@vanlanguni.vn" aria-describedby="new-admin-help" disabled={busy} /></label>
+        <label className="am-field" htmlFor="new-admin-email"><RequiredLabel>Email Microsoft</RequiredLabel><input id="new-admin-email" type="email" autoComplete="off" required maxLength={320} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ten@vanlanguni.vn" aria-describedby="new-admin-help" disabled={busy} /></label>
         <p id="new-admin-help" className="am-field-help">Tài khoản phải từng đăng nhập EduPath bằng Microsoft.</p>
         <label className="am-field">Vai trò được cấp<input readOnly value="Quản trị viên" /></label>
         <label className="am-confirm"><input type="checkbox" required checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} disabled={busy} /><span>Tôi xác nhận cấp quyền quản trị EduPath AI cho tài khoản trên.</span></label>
