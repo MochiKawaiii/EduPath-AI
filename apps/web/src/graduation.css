@@ -5,10 +5,6 @@
   overflow-wrap: anywhere;
 }
 
-.grad-workspace .cm-intro > .cm-toolbar {
-  padding-right: 0;
-}
-
 .cm-stats.grad-stats {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
 }
@@ -55,7 +51,9 @@
   margin-top: 24px;
 }
 .grad-group > .cm-toolbar {
-  background: #f7edf1;
+  background: #f7edf0;
+  color: #792840;
+  border-block: 1px solid #ebd9df;
   padding: 16px;
   margin: 0;
 }
@@ -89,3 +87,12 @@
     flex-direction: column;
   }
 }
+
+/* Inherit the admin typeface and shared curriculum hierarchy throughout forms. */
+.grad-workspace,
+.grad-preview-detail,
+.grad-search input {
+  font-family: inherit;
+}
+.grad-group h3 { font-size: 13px; font-weight: 650; line-height: 1.6; }
+.grad-group > .cm-toolbar p { color: var(--cm-muted); font-size: 13px; }

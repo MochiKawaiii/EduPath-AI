@@ -4,7 +4,8 @@ coverage/
 *.log
 *.tsbuildinfo
 .playwright-cli/
-output/playwright/
+# Generated previews, OCR/transcript data, audits and local worker state
+output/
 .agents
 
 # Local environment and credentials

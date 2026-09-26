@@ -79,6 +79,8 @@ export default function GraduationManagement({
     `${endpoint}?${new URLSearchParams(filters)}`,
     revision,
   );
+  const catalogue = useData<GraduationList>(endpoint, revision);
+  const cohorts = [...new Set((catalogue.data?.items ?? []).map((item) => item.cohortCode))].sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
   useEffect(() => {
     const change = () => setId(window.location.hash.slice(1));
     window.addEventListener("hashchange", change);
@@ -118,7 +120,7 @@ export default function GraduationManagement({
       </div>
       <section className="cm-panel">
         <div className="cm-filters">
-          <label>
+          <label className="cm-search">
             Tìm tiêu chuẩn
             <input
               value={draft.q}
@@ -127,18 +129,11 @@ export default function GraduationManagement({
             />
           </label>
           <label>
-            Khóa tuyển sinh
-            <input
-              value={draft.cohort}
-              maxLength={3}
-              onChange={(e) =>
-                setFilter(
-                  "cohort",
-                  e.target.value.toUpperCase().replace(/[^K0-9]/g, ""),
-                )
-              }
-              placeholder="K29"
-            />
+            Khóa học
+            <select value={draft.cohort} onChange={(e) => setFilter("cohort", e.target.value)}>
+              <option value="">Tất cả khóa</option>
+              {cohorts.map((cohort) => <option key={cohort} value={cohort}>{cohort}</option>)}
+            </select>
           </label>
           <label>
             Trạng thái
@@ -146,7 +141,7 @@ export default function GraduationManagement({
               value={draft.active}
               onChange={(e) => setFilter("active", e.target.value)}
             >
-              <option value="">Tất cả</option>
+              <option value="">Tất cả trạng thái</option>
               <option value="true">Đang mở</option>
               <option value="false">Đã khóa</option>
             </select>
@@ -181,16 +176,16 @@ export default function GraduationManagement({
                             {item.classBlock} · Phiên bản {item.version}
                           </small>
                         </td>
-                        <td>{item.cohortCode}</td>
+                        <td><span className="cm-cohort">{item.cohortCode}</span></td>
                         <td>{item.specialty || "Không phân chuyên ngành"}</td>
                         <td>{fmt(item.minimumCredits)}</td>
-                        <td>{item.isActive ? "Đang mở" : "Đã khóa"}</td>
+                        <td><span className={`cm-tag ${item.isActive ? "cm-open" : ""}`}>{item.isActive ? "Đang mở" : "Đã khóa"}</span></td>
                         <td>
                           <button
                             className="am-outline"
                             onClick={() => open(item.id)}
                           >
-                            Chi tiết
+                            Xem chi tiết
                           </button>
                         </td>
                       </tr>
@@ -301,9 +296,7 @@ function ImportDialog({
     >
       <div className="cm-dialog-body cm-form">
         <p>
-          Chọn Excel .xls, .xlsx hoặc ZIP, tối đa 5 MB. Mỗi sheet tiêu chuẩn
-          được nhập riêng; các cột đánh dấu đã đạt không được nhập thành điều
-          kiện.
+          Chọn Excel .xls, .xlsx hoặc ZIP, tối đa 5 MB.
         </p>
         <label>
           Biểu mẫu
@@ -342,7 +335,7 @@ function ImportDialog({
                   preview.items.filter((p) => p.key === item.key).length > 1;
                 const allowed = current
                   ? item.data.standardCode === current.data.standardCode &&
-                    item.data.classBlock === current.data.classBlock
+                  item.data.classBlock === current.data.classBlock
                   : !item.existingId;
                 return (
                   <div className="grad-preview-item" key={item.index}>
@@ -588,10 +581,10 @@ function Standard({
             <div className="cm-toolbar">
               <div>
                 <p className="cm-eyebrow">
-                  {data.data.cohortCode} · Phiên bản {data.version} ·{" "}
-                  {data.isActive ? "Đang mở" : "Đã khóa"}
+                  {data.data.cohortCode}
                 </p>
                 <h2>{data.data.name}</h2>
+                <p><span className={`cm-tag ${data.isActive ? "cm-open" : ""}`}>{data.isActive ? "Đang mở" : "Đã khóa"}</span>{" "}<span>Phiên bản {data.version}</span></p>
               </div>
             </div>
             {editable && (
@@ -632,7 +625,7 @@ function Standard({
                 </>
               )}
             </div>
-            <p className="cm-source-note">
+            <p className="cm-help">
               Nguồn: {data.data.sourceWorkbook} · Sheet {data.data.sourceSheet}.
               Tệp tải xuống là nguồn gốc, chưa bao gồm chỉnh sửa trực tiếp.
             </p>
@@ -661,19 +654,19 @@ function Standard({
                     editGroup={
                       editable
                         ? (g) => {
-                            setGroup(g);
-                            setCourse(undefined);
-                            setDialog("edit");
-                          }
+                          setGroup(g);
+                          setCourse(undefined);
+                          setDialog("edit");
+                        }
                         : undefined
                     }
                     editCourse={
                       editable
                         ? (c) => {
-                            setCourse(c);
-                            setGroup(undefined);
-                            setDialog("edit");
-                          }
+                          setCourse(c);
+                          setGroup(undefined);
+                          setDialog("edit");
+                        }
                         : undefined
                     }
                   />

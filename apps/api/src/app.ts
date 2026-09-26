@@ -1,5 +1,6 @@
 import { createCareersRouter } from "./careers/router.js";
 import { createGraduationRouter } from "./graduation/router.js";
+import { createStudentGraduationRouter } from "./graduation/student-router.js";
 import { createStudentPlansRouter } from "./plans/student-router.js";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -169,6 +170,7 @@ export function createApp({
   app.use("/api/admin/graduation", createGraduationRouter(databasePool, config.webOrigin));
   app.use("/api/admin/plans", createPlansRouter(databasePool, config.webOrigin));
   app.use("/api/student/plans", createStudentPlansRouter(databasePool));
+  app.use("/api/student/graduation", createStudentGraduationRouter(databasePool));
   app.use("/api/student/curricula", createStudentCurriculaRouter(databasePool));
   app.use("/api/student", createStudentDataRouter(databasePool, config.webOrigin,Boolean(config.ocrWorkerKey)));
   app.use("/api/admin/students", createStudentProfilesRouter(studentProfileRepository, adminAccountRepository));

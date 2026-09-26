@@ -1,27 +1,38 @@
-/* The navigation participates in layout; it never covers the workspace. */
+/* Reserve the logo column even when the sidebar is closed, so content stays put. */
+html:has(.sw-shell) {
+  scrollbar-gutter: stable;
+}
+
 .sw-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: var(--sw-rail-width) minmax(0, 1fr);
   align-items: start;
   min-height: calc(100 * var(--ep-vh) - var(--sw-header-height, 92px));
 }
 
-.sw-body-menu-open {
-  grid-template-columns: 260px minmax(0, 1fr);
-}
-
 .sw-body-content {
+  grid-column: 2;
+  grid-row: 1;
   min-width: 0;
   container-type: inline-size;
   container-name: student-content;
 }
 
+.sw-main {
+  max-width: none;
+  margin: 0;
+  padding: 32px 32px 0 0;
+}
+
 .sw-body .sw-drawer {
+  grid-column: 1;
+  grid-row: 1;
   position: sticky;
   top: var(--sw-header-height, 92px);
   bottom: auto;
   left: auto;
-  width: 100%;
+  /* Leave a gap so the drawer never touches the page content beside it. */
+  width: calc(100% - var(--sw-header-gutter));
   height: calc(100 * var(--ep-vh) - var(--sw-header-height, 92px));
   box-shadow: none;
   z-index: 1;
@@ -29,7 +40,7 @@
 
 @container student-content (max-width: 1050px) {
   .sw-main {
-    padding-inline: 24px;
+    padding-right: 24px;
   }
 
   .so-student-strip {
@@ -86,7 +97,7 @@
 
 @container student-content (max-width: 560px) {
   .sw-main {
-    padding-inline: 16px;
+    padding-right: 16px;
   }
 
   .so-quick-grid,
@@ -100,16 +111,47 @@
   }
 }
 
-/* On a phone the expanded navigation gets its own row, keeping content readable. */
+/* Balance the reserved sidebar space with an equal right margin on desktop. */
+@media (min-width: 1100px) {
+  .sw-body {
+    grid-template-columns: var(--sw-rail-width) minmax(0, 1fr) var(--sw-rail-width);
+  }
+
+  .sw-body .sw-main {
+    padding-inline: 0;
+  }
+}
+
+/* On phones, navigation overlays the page instead of moving content down. */
 @media (max-width: 700px) {
-  .sw-body-menu-open {
+  .sw-body {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .sw-body-content {
+    grid-column: 1;
+  }
+
+  .sw-main {
+    padding: 24px 16px 0;
+  }
+
   .sw-body .sw-drawer {
-    position: relative;
-    top: auto;
-    height: auto;
-    max-height: calc(100 * var(--ep-vh) - var(--sw-header-height, 92px));
+    position: fixed;
+    top: var(--sw-header-height, 92px);
+    left: 0;
+    bottom: 0;
+    width: min(290px, calc(88 * var(--ep-vw)));
+    z-index: 10;
+    box-shadow: 8px 0 28px #151c2c20;
+  }
+
+  .sw-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: var(--sw-header-height, 92px) 0 0;
+    z-index: 9;
+    background: #151c2c55;
+    touch-action: none;
   }
 }
