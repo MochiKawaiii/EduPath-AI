@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Modal, Pagination, Status, useData } from "./admin-ui";
+import { ActionMenu, Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import type {
@@ -984,55 +984,25 @@ function Courses({
                         {onGroupAction &&
                           g.id &&
                           !("isHeading" in g && g.isHeading) && (
-                            <details
-                              className="cm-group-actions"
-                              onKeyDown={(e) => {
-                                if (e.key === "Escape") {
-                                  e.currentTarget.open = false;
-                                  e.currentTarget
-                                    .querySelector("summary")
-                                    ?.focus();
-                                }
-                              }}
-                            >
-                              <summary
-                                title={`Thao tác ${g.label}`}
-                                aria-label={`Thao tác ${g.label}`}
-                              >
-                                <Icon name="more" />
-                              </summary>
-                              <div className="cm-group-buttons">
-                                {(
-                                  [
-                                    ["add", "Thêm môn học", "plus"],
-                                    ["edit", "Chỉnh sửa môn học", "edit"],
-                                    ["delete", "Xóa môn học", "trash"],
-                                  ] as const
-                                ).map(([mode, label, icon]) => (
-                                  <button
-                                    key={mode}
-                                    type="button"
-                                    className={mode === "delete" ? "am-outline am-tone-danger" : "am-outline"}
-                                    disabled={
-                                      mode !== "add" &&
-                                      !data.courses.some(
-                                        (c) => c.groupId === g.id,
-                                      )
-                                    }
-                                    onClick={(e) => {
-                                      const menu =
-                                        e.currentTarget.closest("details");
-                                      menu?.removeAttribute("open");
-                                      menu?.querySelector("summary")?.focus();
-                                      onGroupAction(g.id, mode);
-                                    }}
-                                  >
-                                    <Icon name={icon} />
-                                    {label}
-                                  </button>
-                                ))}
-                              </div>
-                            </details>
+                            <ActionMenu
+                              label={`Thao tác ${g.label}`}
+                              items={(
+                                [
+                                  ["add", "Thêm môn học", "plus"],
+                                  ["edit", "Chỉnh sửa môn học", "edit"],
+                                  ["delete", "Xóa môn học", "trash"],
+                                ] as const
+                              ).map(([mode, label, icon]) => ({
+                                key: mode,
+                                icon,
+                                label,
+                                danger: mode === "delete",
+                                disabled:
+                                  mode !== "add" &&
+                                  !data.courses.some((c) => c.groupId === g.id),
+                                onSelect: () => onGroupAction(g.id, mode),
+                              }))}
+                            />
                           )}
                       </div>
                     </th>

@@ -1,7 +1,6 @@
 import { useLiveFilters } from "./use-live-filters";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useData, Status, Pagination, Modal } from "./admin-ui";
-import { layoutZoom } from "./page-scale";
+import { useEffect, useRef, useState } from "react";
+import { useData, Status, Pagination, Modal, ActionMenu, type MenuEntry } from "./admin-ui";
 import { CreateAccount, Icon, readResponse, roleLabels, type Account, type AccountPage } from "./admin-account-shared";
 
 type Detail = Account & { createdAt: string; firstLoginAt: string; updatedAt: string };
@@ -55,69 +54,15 @@ function ChangeAccount({ account, mode, onClose, onSaved }: { account: Account; 
   </form></Modal>;
 }
 type MenuAction = "detail" | "history" | "role" | "lock";
-function MenuItem({ icon, label, danger = false, disabled = false, onSelect }: { icon: string; label: string; danger?: boolean; disabled?: boolean; onSelect: () => void }) {
-  return <button type="button" role="menuitem" className={`am-menu-item${danger ? " am-menu-danger" : ""}`} disabled={disabled} onClick={onSelect}><Icon name={icon} />{label}</button>;
-}
 function RowMenu({ account, self, canManage, onPick }: { account: Account; self: boolean; canManage: boolean; onPick: (mode: MenuAction) => void }) {
-  const [open, setOpen] = useState(false);
-  const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const popup = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (!open) return;
-    // The popup hangs off the row button, so it is placed by measurement: fixed
-    // to the viewport to escape the table's horizontal scroll, flipped above the
-    // button when the row sits near the bottom of the screen.
-    function position() {
-      const anchor = trigger.current, box = popup.current;
-      if (!anchor || !box) return;
-      const zoom = layoutZoom(anchor), gap = 6 * zoom, edge = 8 * zoom;
-      const rect = anchor.getBoundingClientRect(), menu = box.getBoundingClientRect();
-      const left = Math.max(edge, Math.min(rect.right - menu.width, window.innerWidth - menu.width - edge));
-      const below = rect.bottom + gap, above = rect.top - menu.height - gap;
-      const top = below + menu.height <= window.innerHeight - edge ? below
-        : above >= edge ? above
-          : Math.max(edge, window.innerHeight - menu.height - edge);
-      setPlace({ top: top / zoom, left: left / zoom });
-    }
-    position();
-    window.addEventListener("resize", position);
-    window.addEventListener("scroll", position, true);
-    return () => { window.removeEventListener("resize", position); window.removeEventListener("scroll", position, true); };
-  }, [open]);
-  useEffect(() => {
-    if (!open) return;
-    popup.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus();
-    const away = (event: Event) => { const target = event.target as Node; if (!popup.current?.contains(target) && !trigger.current?.contains(target)) setOpen(false); };
-    const keyed = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); trigger.current?.focus(); } };
-    document.addEventListener("pointerdown", away, true);
-    document.addEventListener("keydown", keyed, true);
-    return () => { document.removeEventListener("pointerdown", away, true); document.removeEventListener("keydown", keyed, true); };
-  }, [open]);
-  function step(by: number) {
-    const items = [...popup.current?.querySelectorAll<HTMLButtonElement>("[role=menuitem]:not(:disabled)") ?? []];
-    if (!items.length) return;
-    const at = items.indexOf(document.activeElement as HTMLButtonElement);
-    items[at < 0 ? (by > 0 ? 0 : items.length - 1) : (at + by + items.length) % items.length].focus();
-  }
-  function pick(mode: MenuAction) { trigger.current?.focus(); setOpen(false); onPick(mode); }
-  return <div className="am-menu-anchor">
-    <button ref={trigger} className="am-icon-btn" type="button" aria-haspopup="menu" aria-expanded={open} aria-label={`Thao tác với ${account.name}`} title="Thao tác" onClick={() => { setPlace(null); setOpen(!open); }}><Icon name="more" /></button>
-    {open && <div ref={popup} className="am-menu" style={place ? { top: place.top, left: place.left } : { top: 0, left: 0, visibility: "hidden" }}>
-      <div className="am-menu-items" role="menu" aria-label={`Thao tác với ${account.name}`}
-        onKeyDown={(event) => { if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); step(event.key === "ArrowDown" ? 1 : -1); } }}>
-        <MenuItem icon="eye" label="Xem chi tiết" onSelect={() => pick("detail")} />
-        {canManage && <>
-          <MenuItem icon="clock" label="Lịch sử đăng nhập" onSelect={() => pick("history")} />
-          <MenuItem icon="shield" label="Phân quyền" disabled={self} onSelect={() => pick("role")} />
-          {account.isActive
-            ? <MenuItem icon="lock" danger label="Khóa tài khoản" disabled={self} onSelect={() => pick("lock")} />
-            : <MenuItem icon="unlock" label="Mở khóa tài khoản" disabled={self} onSelect={() => pick("lock")} />}
-        </>}
-      </div>
-      {canManage && self && <p className="am-menu-note">Bạn không thể tự đổi vai trò hoặc khóa tài khoản đang sử dụng.</p>}
-    </div>}
-  </div>;
+  const items: MenuEntry[] = [{ key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => onPick("detail") }];
+  if (canManage) items.push(
+    { key: "history", icon: "clock", label: "Lịch sử đăng nhập", onSelect: () => onPick("history") },
+    { key: "role", icon: "shield", label: "Phân quyền", disabled: self, onSelect: () => onPick("role") },
+    account.isActive
+      ? { key: "lock", icon: "lock", danger: true, label: "Khóa tài khoản", disabled: self, onSelect: () => onPick("lock") }
+      : { key: "lock", icon: "unlock", label: "Mở khóa tài khoản", disabled: self, onSelect: () => onPick("lock") });
+  return <ActionMenu label={`Thao tác với ${account.name}`} items={items} note={canManage && self ? "Bạn không thể tự đổi vai trò hoặc khóa tài khoản đang sử dụng." : undefined} />;
 }
 export default function AccountsManagement({ actorId, canManage = false }: { actorId: string; canManage?: boolean }) {
   const { draft, setDraft, filters, page, setPage, flush, reset } = useLiveFilters({ q: "", role: "", active: "" });
