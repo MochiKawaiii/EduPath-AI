@@ -5,6 +5,7 @@ import {
   courseTypeLabel,
   searchableCourse,
   searchTerm,
+  termLabel,
   type StudentCourse,
   type StudentCurriculumData,
   type StudentCurriculumList,
@@ -381,8 +382,8 @@ function CurriculumContent({
                         {courseTypeLabel(c.type)}
                       </span>
                     </td>
-                    <td>
-                      {c.studyYear ?? "—"} · {c.semester ?? "—"}
+                    <td className="sc-term">
+                      {termLabel(c.studyYear, c.semester)}
                     </td>
                     <td>
                       <span className="sc-condition-text">

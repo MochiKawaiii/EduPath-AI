@@ -4,6 +4,7 @@ import {
   courseTypeLabel,
   searchableCourse,
   searchTerm,
+  termLabel,
   type StudentCourse,
 } from "./student-curriculum-types";
 
@@ -14,6 +15,13 @@ describe("student curriculum display helpers", () => {
     expect(courseKind("TC309 (9 TC)")).toBe("elective");
     expect(courseTypeLabel("TC309")).toContain("TC309");
     expect(courseTypeLabel("unrecognised")).toBe("unrecognised");
+  });
+
+  it("spells out the planned year and semester, skipping a missing part", () => {
+    expect(termLabel(1, 2)).toBe("Năm 1 · HK 2");
+    expect(termLabel(null, 3)).toBe("HK 3");
+    expect(termLabel(4, null)).toBe("Năm 4");
+    expect(termLabel(null, null)).toBe("—");
   });
 
   it("builds a stable search index from the public course fields", () => {

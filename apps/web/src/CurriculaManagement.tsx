@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { ActionMenu, Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
+import { termLabel } from "./student-curriculum-types";
 import type {
   CurriculumCourse,
   CurriculumData,
@@ -446,8 +447,8 @@ function ImportDialog({
                         <td>{c.name}</td>
                         <td>{c.credits}</td>
                         <td>{c.type || "—"}</td>
-                        <td>
-                          {c.studyYear ?? "—"} · {c.semester ?? "—"}
+                        <td className="cm-term">
+                          {termLabel(c.studyYear, c.semester)}
                         </td>
                       </tr>
                     ))}
@@ -1020,8 +1021,8 @@ function Courses({
                           </td>
                           <td>{c.credits}</td>
                           <td>{c.type || "—"}</td>
-                          <td>
-                            {c.studyYear ?? "—"} · {c.semester ?? "—"}
+                          <td className="cm-term">
+                            {termLabel(c.studyYear, c.semester)}
                           </td>
                           <td>
                             <button

@@ -66,6 +66,15 @@ export const courseTypeLabel = (type: string) =>
       : type.startsWith("TC")
         ? `Tự chọn · ${type}`
         : type;
+/** "Năm 1 · HK 2" for a course's planned year and semester, leaving out
+    whichever part the curriculum does not give. */
+export const termLabel = (studyYear: number | null, semester: number | null) =>
+  [
+    studyYear === null ? "" : `Năm ${studyYear}`,
+    semester === null ? "" : `HK ${semester}`,
+  ]
+    .filter(Boolean)
+    .join(" · ") || "—";
 export const searchableCourse = (course: StudentCourse) =>
   `${course.code} ${course.name} ${course.englishName}`
     .normalize("NFD")

@@ -227,6 +227,7 @@
   margin-top: 5px;
 }
 
+.cm-table td.cm-term,
 .cm-table td :is(button, .cm-tag) {
   white-space: nowrap;
 }

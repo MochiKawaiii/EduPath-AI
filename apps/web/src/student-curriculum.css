@@ -201,6 +201,9 @@
   white-space: nowrap;
   font-size: 12px;
 }
+.sc-table td.sc-term {
+  white-space: nowrap;
+}
 .sc-table td:nth-child(4) {
   min-width: 155px;
 }
