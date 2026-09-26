@@ -7,6 +7,7 @@ export function Icon({ name }: { name: string }) {
     compass: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0ZM16 8l-3 5-5 3 3-5 5-3Z",
     route: "M5 3v12a5 5 0 0 0 10 0V9m-4 4 4-4 4 4M2 3h6",
     book: "M12 5v16M3 3l9 2 9-2v16l-9 2-9-2V3Z",
+    shield: "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Zm-3 9 2 2 4-4",
     spark: "m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z",
     bell: "M5 17h14l-2-3V8A5 5 0 0 0 7 8v6l-2 3ZM10 21h4",
     arrow: "M4 12h16m-6-6 6 6-6 6",

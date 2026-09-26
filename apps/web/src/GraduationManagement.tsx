@@ -296,9 +296,7 @@ function ImportDialog({
     >
       <div className="cm-dialog-body cm-form">
         <p>
-          Chọn Excel .xls, .xlsx hoặc ZIP, tối đa 5 MB. Mỗi sheet tiêu chuẩn
-          được nhập riêng; các cột đánh dấu đã đạt không được nhập thành điều
-          kiện.
+          Chọn Excel .xls, .xlsx hoặc ZIP, tối đa 5 MB.
         </p>
         <label>
           Biểu mẫu
@@ -337,7 +335,7 @@ function ImportDialog({
                   preview.items.filter((p) => p.key === item.key).length > 1;
                 const allowed = current
                   ? item.data.standardCode === current.data.standardCode &&
-                    item.data.classBlock === current.data.classBlock
+                  item.data.classBlock === current.data.classBlock
                   : !item.existingId;
                 return (
                   <div className="grad-preview-item" key={item.index}>
@@ -656,19 +654,19 @@ function Standard({
                     editGroup={
                       editable
                         ? (g) => {
-                            setGroup(g);
-                            setCourse(undefined);
-                            setDialog("edit");
-                          }
+                          setGroup(g);
+                          setCourse(undefined);
+                          setDialog("edit");
+                        }
                         : undefined
                     }
                     editCourse={
                       editable
                         ? (c) => {
-                            setCourse(c);
-                            setGroup(undefined);
-                            setDialog("edit");
-                          }
+                          setCourse(c);
+                          setGroup(undefined);
+                          setDialog("edit");
+                        }
                         : undefined
                     }
                   />

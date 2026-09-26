@@ -111,6 +111,17 @@ html:has(.sw-shell) {
   }
 }
 
+/* Balance the reserved sidebar space with an equal right margin on desktop. */
+@media (min-width: 1100px) {
+  .sw-body {
+    grid-template-columns: var(--sw-rail-width) minmax(0, 1fr) var(--sw-rail-width);
+  }
+
+  .sw-body .sw-main {
+    padding-inline: 0;
+  }
+}
+
 /* On phones, navigation overlays the page instead of moving content down. */
 @media (max-width: 700px) {
   .sw-body {
