@@ -266,16 +266,14 @@ a {
   line-height: 1.62;
 }
 
+/* No min-height: centring the notice in a reserved box added empty space
+   above and below it, so the title and button sit at the same distance as
+   they do around the default description. */
 .login-message {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 144px;
   margin-top: 16px;
-}
-
-.login-message:has(.login-description) {
-  min-height: 0;
 }
 
 .login-message .login-description {
@@ -285,20 +283,21 @@ a {
 .login-message .login-error {
   width: 100%;
   margin: 0;
-  padding: 18px 20px;
-  font-size: 16px;
-  line-height: 1.65;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .login-error strong {
   display: block;
-  margin-bottom: 8px;
-  font-size: 18px;
+  margin-bottom: 4px;
+  font-size: 16px;
   line-height: 1.45;
 }
 
 .login-error p {
   margin: 0;
+  text-wrap: pretty;
 }
 
 .auth-shell.auth-shell-notice {
@@ -830,12 +829,8 @@ a {
     font-size: 14px;
   }
 
-  .login-message {
-    min-height: 232px;
-  }
-
   .login-message .login-error {
-    padding: 16px;
+    padding: 12px 14px;
   }
 
   .desktop-break {
