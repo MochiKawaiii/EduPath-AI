@@ -267,6 +267,7 @@ export default function PlansManagement({ canManage }: { canManage: boolean }) {
                           className="am-outline"
                           onClick={() => open(p.id)}
                         >
+                          <Icon name="eye" />
                           Xem chi tiết
                         </button>
                       </td>

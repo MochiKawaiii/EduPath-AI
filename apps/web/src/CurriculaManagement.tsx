@@ -267,6 +267,7 @@ export default function CurriculaManagement({
                           className="am-outline"
                           onClick={() => open(c.id)}
                         >
+                          <Icon name="eye" />
                           Xem chi tiết
                         </button>
                       </td>

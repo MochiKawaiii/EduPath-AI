@@ -110,6 +110,7 @@ export default function CareersManagement({
                                 setMode("detail");
                               }}
                             >
+                              <Icon name="eye" />
                               Chi tiết
                             </button>
                             {canManage && (

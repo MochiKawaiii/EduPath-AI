@@ -185,6 +185,7 @@ export default function GraduationManagement({
                             className="am-outline"
                             onClick={() => open(item.id)}
                           >
+                            <Icon name="eye" />
                             Xem chi tiết
                           </button>
                         </td>
