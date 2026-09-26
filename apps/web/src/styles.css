@@ -274,6 +274,10 @@ a {
   margin-top: 16px;
 }
 
+.login-message:has(.login-description) {
+  min-height: 0;
+}
+
 .login-message .login-description {
   margin: 0;
 }
