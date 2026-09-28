@@ -15,7 +15,11 @@ export const courseSchema = z.object({
   code: z
     .string()
     .trim()
-    .regex(/^\d{2}[A-Z]{2,12}\d{4,10}$/),
+    .toUpperCase()
+    .regex(
+      /^\d{2}[A-Z]{2,12}\d{4,10}$/,
+      "Mã học phần phải gồm 2 chữ số đầu, tiếp theo 2–12 chữ cái và 4–10 chữ số cuối, không có khoảng trắng. Ví dụ: 71ITSE30503.",
+    ),
   name: short.min(1),
   englishName: short,
   description: text.optional(),

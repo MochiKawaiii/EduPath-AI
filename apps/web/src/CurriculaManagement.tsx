@@ -12,6 +12,8 @@ import type {
 import "./curricula.css";
 
 const endpoint = "/api/admin/curricula";
+const courseCodePattern = "[0-9]{2}[A-Z]{2,12}[0-9]{4,10}";
+const courseCodeHint = "Ví dụ: 71ITSE30503.";
 const mime =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const date = (s: string) => new Date(s).toLocaleString("vi-VN");
@@ -62,7 +64,7 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
     throw new Error(
       (errors[body.error] ??
         "Chưa thực hiện được thao tác. Vui lòng thử lại.") +
-        (body.details?.length ? "\n" + body.details.join("\n") : ""),
+      (body.details?.length ? "\n" + body.details.join("\n") : ""),
     );
   return body;
 }
@@ -216,7 +218,7 @@ export default function CurriculaManagement({
             </select>
           </label>
           <button type="button" className="am-outline" onClick={reset}>
-            Xóa bộ lọc
+            <Icon name="refresh" /> Xóa bộ lọc
           </button>
         </form>
         <Status {...remote} />
@@ -404,13 +406,26 @@ function ImportDialog({
             type="file"
             accept=".xlsx"
             disabled={busy}
-            onChange={(e) => void inspect(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              setPreview(null);
+              setConfirmed(false);
+              setError("");
+            }}
           />
         </label>
         <p className="cm-help">
           Dùng mẫu Khoa gồm mã và tên học phần, tín chỉ, BB/TC, tiên quyết, học
           trước, khối kiến thức, chuyên ngành, học kỳ và năm học.
         </p>
+        <button
+          type="button"
+          className="am-outline cm-preview-button"
+          disabled={!file || busy}
+          onClick={() => void inspect(file)}
+        >
+          <Icon name="eye" /> {busy ? "Đang xử lý…" : "Xem trước"}
+        </button>
         {busy && <p role="status">Đang xử lý khung CTĐT…</p>}
         {error && (
           <p
@@ -475,20 +490,22 @@ function ImportDialog({
             )}
           </>
         )}
-        <div className="cm-actions">
-          <button className="am-outline" disabled={busy} onClick={onClose}>
-            Hủy
-          </button>
-          <button
-            className="am-primary"
-            disabled={
-              busy || !preview || (!!preview.warnings.length && !confirmed)
-            }
-            onClick={() => void save()}
-          >
-            Lưu khung CTĐT
-          </button>
-        </div>
+        {preview && (
+          <div className="cm-actions cm-dialog-actions">
+            <button className="am-outline" disabled={busy} onClick={onClose}>
+              <Icon name="close" /> Hủy
+            </button>
+            <button
+              className="am-primary"
+              disabled={
+                busy || !preview || (!!preview.warnings.length && !confirmed)
+              }
+              onClick={() => void save()}
+            >
+              <Icon name="save" /> Lưu khung CTĐT
+            </button>
+          </div>
+        )}
       </div>
     </Modal>
   );
@@ -672,7 +689,7 @@ function CurriculumView({
                   aria-pressed={tab === value}
                   onClick={() => setTab(value!)}
                 >
-                  {label}
+                  <Icon name={value === "history" ? "clock" : value === "warnings" ? "info" : value === "rules" ? "shield" : "book"} /> {label}
                 </button>
               ))}
             </div>
@@ -683,9 +700,9 @@ function CurriculumView({
                 onGroupAction={
                   mutable
                     ? (groupId, mode) =>
-                        mode === "add"
-                          ? addToGroup(groupId)
-                          : setGroupAction({ id: groupId, mode })
+                      mode === "add"
+                        ? addToGroup(groupId)
+                        : setGroupAction({ id: groupId, mode })
                     : undefined
                 }
               />
@@ -790,7 +807,7 @@ function CurriculumView({
                           setNotice("");
                         }}
                       >
-                        Xem phiên bản
+                        <Icon name="eye" /> Xem phiên bản
                       </button>
                     </div>
                   ))}
@@ -943,7 +960,7 @@ function Courses({
           </select>
         </label>
         <button className="am-outline" onClick={reset}>
-          Xóa bộ lọc
+          <Icon name="refresh" /> Xóa bộ lọc
         </button>
       </div>
       <p className="cm-result" role="status">
@@ -1029,7 +1046,7 @@ function Courses({
                               className="am-outline"
                               onClick={() => open(c)}
                             >
-                              Chi tiết
+                              <Icon name="eye" /> Chi tiết
                             </button>
                           </td>
                         </tr>
@@ -1097,10 +1114,10 @@ function GroupCoursePicker({
         {!courses.length && <p>Khối chưa có môn học.</p>}
         <div className="cm-actions">
           <button type="button" className="am-outline" onClick={onClose}>
-            Hủy
+            <Icon name="close" /> Hủy
           </button>
           <button type="submit" className="am-primary" disabled={!code}>
-            Tiếp tục
+            <Icon name="chevron" /> Tiếp tục
           </button>
         </div>
       </form>
@@ -1161,7 +1178,7 @@ function DeleteCourseDialog({
             disabled={busy}
             onClick={onClose}
           >
-            Hủy
+            <Icon name="close" /> Hủy
           </button>
           <button
             type="button"
@@ -1184,7 +1201,7 @@ function DeleteCourseDialog({
               }
             }}
           >
-            {busy ? "Đang xóa…" : "Xác nhận xóa môn"}
+            <Icon name="trash" /> {busy ? "Đang xóa…" : "Xác nhận xóa môn"}
           </button>
         </div>
       </div>
@@ -1202,10 +1219,10 @@ function MetadataDialog({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState({
-      name: current.data.name,
-      totalCredits: current.data.totalCredits,
-      notes: current.data.notes,
-    }),
+    name: current.data.name,
+    totalCredits: current.data.totalCredits,
+    notes: current.data.notes,
+  }),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   return (
@@ -1280,10 +1297,10 @@ function MetadataDialog({
             disabled={busy}
             onClick={onClose}
           >
-            Hủy
+            <Icon name="close" /> Hủy
           </button>
           <button className="am-primary" disabled={busy}>
-            {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
           </button>
         </div>
       </form>
@@ -1326,7 +1343,7 @@ function StatusDialog({
         )}
         <div className="cm-actions">
           <button className="am-outline" onClick={onClose} disabled={busy}>
-            Hủy
+            <Icon name="close" /> Hủy
           </button>
           <button
             className={current.isActive ? "am-primary am-warning" : "am-primary"}
@@ -1351,7 +1368,7 @@ function StatusDialog({
               }
             }}
           >
-            {busy ? "Đang lưu…" : "Xác nhận"}
+            <Icon name={current.isActive ? "lock" : "unlock"} /> {busy ? "Đang lưu…" : "Xác nhận"}
           </button>
         </div>
       </div>
@@ -1472,13 +1489,22 @@ function CourseDialog({
                 <label key={key}>
                   {["code", "name"].includes(key) ? <RequiredLabel>{label}</RequiredLabel> : label}
                   <input
-                    maxLength={500}
+                    maxLength={key === "code" ? 24 : 500}
+                    pattern={key === "code" ? courseCodePattern : undefined}
+                    title={key === "code" ? courseCodeHint : undefined}
+                    placeholder={key === "code" ? "Ví dụ: 71ITSE30503" : undefined}
+                    aria-describedby={key === "code" ? "course-code-help" : undefined}
                     required={["code", "name"].includes(key)}
                     value={form[key]}
-                    onChange={(e) =>
-                      setForm({ ...form, [key]: e.target.value })
-                    }
+                    onInvalid={(e) => e.currentTarget.setCustomValidity(
+                      key === "code" && e.currentTarget.validity.patternMismatch ? courseCodeHint : "",
+                    )}
+                    onChange={(e) => {
+                      e.currentTarget.setCustomValidity("");
+                      setForm({ ...form, [key]: key === "code" ? e.target.value.trim().toUpperCase() : e.target.value });
+                    }}
                   />
+                  {key === "code" && <small id="course-code-help" className="cm-help">{courseCodeHint}</small>}
                 </label>
               ))}
               <label>
@@ -1664,7 +1690,7 @@ function CourseDialog({
             disabled={busy}
             onClick={onClose}
           >
-            Đóng
+            <Icon name="close" /> Đóng
           </button>
           {canManage && mode !== "add" && (
             <button
@@ -1685,7 +1711,7 @@ function CourseDialog({
                 className="am-primary"
                 disabled={busy}
               >
-                {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+                <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
               </button>
             ) : (
               <button
@@ -1697,7 +1723,7 @@ function CourseDialog({
                   setEditing(true);
                 }}
               >
-                Chỉnh sửa học phần
+                <Icon name="edit" /> Chỉnh sửa học phần
               </button>
             ))}
         </div>

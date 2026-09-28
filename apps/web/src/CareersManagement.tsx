@@ -72,7 +72,7 @@ export default function CareersManagement({
             </select>
           </label>
           <button className="am-outline" onClick={reset}>
-            Xóa bộ lọc
+            <Icon name="refresh" /> Xóa bộ lọc
           </button>
         </div>
         <Status {...list} />
@@ -350,17 +350,17 @@ function Editor({
             {error}
           </p>
         )}
-        <div className="cm-actions">
+        <div className="cm-actions cm-dialog-actions">
           <button
             type="button"
             className="am-outline"
             disabled={busy}
             onClick={close}
           >
-            Hủy
+            <Icon name="close" /> Hủy
           </button>
-          <button className="am-primary" disabled={busy}>
-            {busy ? "Đang lưu…" : "Lưu vị trí"}
+          <button type="submit" className="am-primary" disabled={busy}>
+            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu vị trí"}
           </button>
         </div>
       </form>
@@ -395,7 +395,7 @@ function Delete({
         )}
         <div className="cm-actions">
           <button className="am-outline" disabled={busy} onClick={close}>
-            Hủy
+            <Icon name="close" /> Hủy
           </button>
           <button
             className="am-primary am-delete"
@@ -420,7 +420,7 @@ function Delete({
               }
             }}
           >
-            {busy ? "Đang xóa…" : "Xác nhận xóa"}
+            <Icon name="trash" /> {busy ? "Đang xóa…" : "Xác nhận xóa"}
           </button>
         </div>
       </div>

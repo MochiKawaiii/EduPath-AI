@@ -147,7 +147,7 @@ export default function GraduationManagement({
             </select>
           </label>
           <button className="am-outline" onClick={reset}>
-            Xóa bộ lọc
+            <Icon name="refresh" /> Xóa bộ lọc
           </button>
         </div>
         <Status {...list} />
@@ -299,7 +299,7 @@ function ImportDialog({
         <p>
           Chọn Excel .xls, .xlsx hoặc ZIP, tối đa 5 MB.
         </p>
-        <label>
+        <label className="cm-upload">
           Biểu mẫu
           <input
             type="file"
@@ -318,7 +318,7 @@ function ImportDialog({
           disabled={!file || busy}
           onClick={() => void read()}
         >
-          {busy ? "Đang xử lý…" : "Đọc và xem trước"}
+          <Icon name="eye" /> {busy ? "Đang xử lý…" : "Đọc và xem trước"}
         </button>
         {preview && (
           <>
@@ -376,7 +376,7 @@ function ImportDialog({
                       disabled={busy}
                       onClick={() => setInspect(item.index)}
                     >
-                      Xem trước
+                      <Icon name="eye" /> Xem trước
                     </button>
                   </div>
                 );
@@ -397,18 +397,20 @@ function ImportDialog({
             {error}
           </p>
         )}
-        <div className="cm-actions">
-          <button className="am-outline" disabled={busy} onClick={close}>
-            Hủy
-          </button>
-          <button
-            className="am-primary"
-            disabled={busy || !preview || !selected.length}
-            onClick={() => void save()}
-          >
-            Xác nhận lưu {selected.length} tiêu chuẩn
-          </button>
-        </div>
+        {preview && (
+          <div className="cm-actions cm-dialog-actions">
+            <button className="am-outline" disabled={busy} onClick={close}>
+              <Icon name="close" /> Hủy
+            </button>
+            <button
+              className="am-primary"
+              disabled={busy || !preview || !selected.length}
+              onClick={() => void save()}
+            >
+              <Icon name="save" /> Xác nhận lưu {selected.length} tiêu chuẩn
+            </button>
+          </div>
+        )}
       </div>
     </Modal>
   );
@@ -527,7 +529,7 @@ function Conditions({
                             className="am-outline"
                             onClick={() => editCourse(c.id)}
                           >
-                            Sửa môn
+                            <Icon name="edit" /> Sửa môn
                           </button>
                         </td>
                       )}
@@ -572,7 +574,7 @@ function Standard({
     <section className="cm-workspace grad-workspace">
       <div className="cm-toolbar">
         <button className="am-outline" onClick={back}>
-          ← Danh sách tiêu chuẩn
+          <Icon name="back" /> Danh sách tiêu chuẩn
         </button>
       </div>
       <Status {...remote} />
@@ -637,13 +639,13 @@ function Standard({
                 aria-pressed={tab === "conditions"}
                 onClick={() => setTab("conditions")}
               >
-                Điều kiện xét tốt nghiệp
+                <Icon name="shield" /> Điều kiện xét tốt nghiệp
               </button>
               <button
                 aria-pressed={tab === "history"}
                 onClick={() => setTab("history")}
               >
-                Lịch sử phiên bản
+                <Icon name="clock" /> Lịch sử phiên bản
               </button>
             </div>
             <div className="cm-dialog-body">
@@ -690,7 +692,7 @@ function Standard({
                           setVersion(h.id === data.history[0]?.id ? "" : h.id)
                         }
                       >
-                        Xem phiên bản
+                        <Icon name="eye" /> Xem phiên bản
                       </button>
                     </div>
                   ))}
@@ -925,10 +927,10 @@ function EditDialog({
             disabled={busy}
             onClick={close}
           >
-            Hủy
+            <Icon name="close" /> Hủy
           </button>
           <button type="submit" className="am-primary" disabled={busy}>
-            {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
           </button>
         </div>
       </form>
@@ -994,7 +996,7 @@ function StatusDialog({
         )}
         <div className="cm-actions">
           <button className="am-outline" disabled={busy} onClick={close}>
-            Hủy
+            <Icon name="close" /> Hủy
           </button>
           <button
             className={current.isActive ? "am-primary am-warning" : "am-primary"}
@@ -1018,7 +1020,7 @@ function StatusDialog({
               }
             }}
           >
-            Xác nhận
+            <Icon name={current.isActive ? "lock" : "unlock"} /> Xác nhận
           </button>
         </div>
       </div>

@@ -27,6 +27,8 @@ export function RequiredLabel({ children }: { children: ReactNode }) {
 
 export function Icon({ name }: { name: string }) {
   const paths: Record<string, string> = {
+    save: "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2ZM7 3v6h10V3M7 21v-8h10v8",
+    info: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M12 11v6M12 7v1",
     download: "M12 3v12m-5-5 5 5 5-5M4 15v6h16v-6",
     upload: "M12 16V4m-5 5 5-5 5 5M4 15v6h16v-6",
     edit: "m15 4 5 5M4 20l5-1L21 7l-5-5L4 14z",

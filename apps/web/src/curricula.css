@@ -309,6 +309,15 @@
   margin-top: 24px;
 }
 
+.cm-dialog-actions {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.cm-dialog-actions > .am-primary {
+  margin-inline-start: auto;
+}
+
 .cm-actions a {
   text-decoration: none;
   display: inline-flex;
@@ -341,9 +350,22 @@
   background: var(--cm-soft);
 }
 
-.cm-upload input {
+.cm-dialog-body .cm-upload input[type="file"] {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--cm-muted);
+  font: inherit;
   max-width: 100%;
   margin-top: 8px;
+}
+
+.cm-preview-button {
+  width: 100%;
 }
 
 .cm-upload input::file-selector-button {
@@ -391,6 +413,10 @@
 }
 
 .cm-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: 0;
   border-bottom: 3px solid transparent;
   background: transparent;
@@ -453,6 +479,15 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
+}
+
+.cm-form-grid {
+  align-items: start;
+}
+
+.cm-form-grid > label {
+  min-width: 0;
+  align-content: start;
 }
 
 .cm-detail-grid > div {

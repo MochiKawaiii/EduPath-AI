@@ -224,7 +224,7 @@ export function createCurriculaRouter(
     if (error instanceof z.ZodError) {
       res.status(400).json({
         error: "invalid_curriculum_input",
-        details: error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+        details: error.issues.map((i) => i.path.join(".") === "code" ? i.message : `${i.path.join(".")}: ${i.message}`),
       });
       return;
     }

@@ -13,7 +13,7 @@ export function Status({ loading, error, retry }: { loading: boolean; error: str
 export function Pagination({ total, page, setPage }: { total: number; page: number; setPage: (page: number) => void }) {
   const pages = Math.max(1, Math.ceil(total / 10));
   useEffect(() => { if (page > pages) setPage(pages); }, [page, pages, setPage]);
-  return <div className="am-pagination"><span role="status">{total} kết quả</span><div><button className="am-outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Trước</button><span>Trang {page} / {pages}</span><button className="am-outline" disabled={page >= pages} onClick={() => setPage(page + 1)}>Sau</button></div></div>;
+  return <div className="am-pagination"><span role="status">{total} kết quả</span><div><button className="am-outline" disabled={page <= 1} onClick={() => setPage(page - 1)}><Icon name="back" /> Trước</button><span>Trang {page} / {pages}</span><button className="am-outline" disabled={page >= pages} onClick={() => setPage(page + 1)}>Sau <Icon name="chevron" /></button></div></div>;
 }
 export function Modal({ title, children, onClose, busy = false, size }: { title: string; children: ReactNode; onClose: () => void; busy?: boolean; size?: "sm" }) {
   const ref = useRef<HTMLDialogElement>(null);

@@ -75,6 +75,10 @@ export function reviewPlan(data: PlanData, curriculum?: CurriculumData) {
   const warn = (row: number | null, message: string) =>
     data.warnings.push({ row, message });
   const ids = new Set<string>();
+  const codeKey = (code: string) => code.trim().toUpperCase();
+  const courses = new Map(
+    curriculum?.courses.map((course) => [codeKey(course.code), course]),
+  );
   for (const item of data.items) {
     itemSchema.parse(item);
     if (ids.has(item.id))
@@ -108,11 +112,11 @@ export function reviewPlan(data: PlanData, curriculum?: CurriculumData) {
         "Nhóm môn phải thuộc học kỳ đã chọn.",
       ]);
     if (curriculum && item.code) {
-      const course = curriculum.courses.find((c) => c.code === item.code);
+      const course = courses.get(codeKey(item.code));
       if (!course)
         warn(
           item.sourceRow,
-          `${item.code}: chưa khớp mã trong CTĐT liên kết; giữ nguyên, chưa tự quy đổi.`,
+          `${item.code}: mã môn học không tồn tại trong CTĐT cùng ngành, khóa ${data.cohortCode}. Vẫn cho phép import và giữ nguyên dữ liệu để rà soát.`,
         );
       else {
         const fields = (
@@ -142,15 +146,17 @@ export function reviewPlan(data: PlanData, curriculum?: CurriculumData) {
       null,
       "Chưa có CTĐT cùng ngành và khóa để liên kết. Có thể cập nhật liên kết sau khi bổ sung khung.",
     );
-  const codes = new Set<string>();
-  for (const item of data.items)
-    if (item.code) {
-      if (codes.has(item.code))
-        warn(
-          item.sourceRow,
-          `${item.code}: xuất hiện nhiều lần; giữ riêng từng lượt phân bổ, không cộng thành tín chỉ tích lũy.`,
-        );
-      codes.add(item.code);
-    }
+  const occurrences = new Map<string, PlanItem[]>();
+  for (const item of data.items) {
+    const code = codeKey(item.code);
+    if (code) occurrences.set(code, [...(occurrences.get(code) ?? []), item]);
+  }
+  for (const [code, items] of occurrences) {
+    if (items.length > 1)
+      warn(
+        items[1]!.sourceRow,
+        `${code}: xuất hiện nhiều lần (${items.length} lần): ${items.map((item) => `dòng ${item.sourceRow}, ${item.sourceSheet}, năm ${item.studyYear} - HK ${item.semester}`).join("; ")}. Vẫn cho phép import, giữ riêng từng lượt phân bổ, không cộng thành tín chỉ tích lũy.`,
+      );
+  }
   return data;
 }

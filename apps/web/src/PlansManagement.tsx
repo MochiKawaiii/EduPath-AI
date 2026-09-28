@@ -60,10 +60,11 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
 function Warnings({ data }: { data: PlanData }) {
   return data.warnings.length ? (
     <div className="cm-warning">
-      <strong>{data.warnings.length} ghi chú cần rà soát</strong>
+      <strong>{data.warnings.length} cảnh báo cần rà soát</strong>
       <p>
-        Giữ nguyên dữ liệu nguồn. Hãy đối chiếu các dòng dưới đây với file Excel
-        trước khi dùng kế hoạch để gợi ý lộ trình.
+        Dữ liệu được đối chiếu với CTĐT cùng ngành và khóa khi có khung tương ứng.
+        Các cảnh báo không chặn import: bạn vẫn có thể xác nhận và lưu nguyên dữ
+        liệu sau khi rà soát.
       </p>
       <ul>
         {data.warnings.map((w, i) => (
@@ -218,7 +219,7 @@ export default function PlansManagement({ canManage }: { canManage: boolean }) {
             </select>
           </label>
           <button type="button" className="am-outline" onClick={reset}>
-            Xóa bộ lọc
+            <Icon name="refresh" /> Xóa bộ lọc
           </button>
         </form>
         <Status {...remote} />
@@ -433,7 +434,7 @@ function PlanView({
                   aria-pressed={tab === value}
                   onClick={() => setTab(value!)}
                 >
-                  {label}
+                  <Icon name={value === "history" ? "clock" : value === "warnings" ? "info" : "book"} /> {label}
                 </button>
               ))}
             </div>
@@ -472,7 +473,7 @@ function PlanView({
                           setNotice("");
                         }}
                       >
-                        Xem phiên bản
+                        <Icon name="eye" /> Xem phiên bản
                       </button>
                     </div>
                   ))}
@@ -584,7 +585,7 @@ function PlanStructure({
           </select>
         </label>
         <button type="button" className="am-outline" onClick={reset}>
-          Xóa bộ lọc
+          <Icon name="refresh" /> Xóa bộ lọc
         </button>
       </div>
       <p className="cm-result" role="status">
@@ -644,7 +645,7 @@ function PlanStructure({
                               className="am-outline"
                               onClick={() => onItem(i)}
                             >
-                              Chi tiết
+                              <Icon name="eye" /> Chi tiết
                             </button>
                           ) : (
                             <small>Dòng {i.sourceRow}</small>
@@ -739,7 +740,7 @@ function ImportPlan({
             được giữ trong lịch sử.
           </p>
         )}
-        <label className="am-field">
+        <label className="cm-upload">
           File kế hoạch (.xlsx, tối đa 5 MB)
           <input
             type="file"
@@ -768,7 +769,7 @@ function ImportPlan({
           disabled={!file || busy}
           onClick={() => void act(false)}
         >
-          {busy ? "Đang xử lý…" : "Xem trước"}
+          <Icon name="eye" /> {busy ? "Đang xử lý…" : "Xem trước"}
         </button>
         {preview && (
           <>
@@ -787,16 +788,16 @@ function ImportPlan({
                 Tôi đã rà soát dữ liệu và các ghi chú, đồng ý lưu kế hoạch này.
               </span>
             </label>
-            <div className="pm-toolbar">
+            <div className="cm-actions cm-dialog-actions">
+              <button className="am-outline" disabled={busy} onClick={onClose}>
+                <Icon name="close" /> Hủy
+              </button>
               <button
                 className="am-primary"
                 disabled={!confirmed || busy}
                 onClick={() => void act(true)}
               >
-                Lưu kế hoạch
-              </button>
-              <button className="am-outline" disabled={busy} onClick={onClose}>
-                Hủy
+                <Icon name="save" /> Lưu kế hoạch
               </button>
             </div>
           </>
@@ -883,7 +884,7 @@ function MetadataEditor({
           </p>
         )}
         <button className="am-primary" disabled={busy}>
-          {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+          <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
         </button>
       </form>
     </Modal>
@@ -943,10 +944,10 @@ function StatusEditor({
               }
             }}
           >
-            {busy ? "Đang lưu…" : "Xác nhận"}
+            <Icon name={plan.isActive ? "lock" : "unlock"} /> {busy ? "Đang lưu…" : "Xác nhận"}
           </button>
           <button className="am-outline" disabled={busy} onClick={onClose}>
-            Hủy
+            <Icon name="close" /> Hủy
           </button>
         </div>
       </div>
@@ -1199,7 +1200,7 @@ function ItemEditor({
                   className="am-primary"
                   disabled={busy}
                 >
-                  {busy ? "Đang lưu…" : "Lưu phân bổ"}
+                  <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phân bổ"}
                 </button>
                 <button
                   type="button"
@@ -1211,7 +1212,7 @@ function ItemEditor({
                     setError("");
                   }}
                 >
-                  Hủy sửa
+                  <Icon name="close" /> Hủy sửa
                 </button>
               </>
             ) : (
@@ -1224,7 +1225,7 @@ function ItemEditor({
                   setEditing(true);
                 }}
               >
-                Chỉnh sửa phân bổ
+                <Icon name="edit" /> Chỉnh sửa phân bổ
               </button>
             )}
           </div>
