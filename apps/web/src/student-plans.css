@@ -32,7 +32,7 @@
 .sp-content .sc-table th:nth-child(5) {
   width: 36%;
 }
-.sp-content .sc-table td:last-child {
+.sp-content .sc-table td:nth-child(5) {
   white-space: normal;
 }
 .sp-content .sc-table td {

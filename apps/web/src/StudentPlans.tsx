@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { PlanData, PlanItem } from "./plan-types";
 import { searchTerm } from "./student-curriculum-types";
 import { useLiveData } from "./use-live-data";
+import type { Transcript } from "./StudentTranscript";
+import { transcriptResults } from "./transcript-results";
 import "./student-curriculum.css";
 import "./student-plans.css";
 
@@ -29,6 +31,10 @@ async function readPlan<T>(response: Response): Promise<T> {
           : "Không thể tải kế hoạch đào tạo. Vui lòng thử lại.",
     );
   return response.json() as Promise<T>;
+}
+async function readTranscript(response: Response): Promise<{ transcript: Transcript | null }> {
+  if (!response.ok) throw new Error("Chưa tải được kết quả bảng điểm. Vui lòng thử lại.");
+  return response.json();
 }
 export default function StudentPlans() {
   const [choice, setChoice] = useState<string | null>(null);
@@ -84,6 +90,11 @@ export default function StudentPlans() {
   );
 }
 function PlanContents({ id }: { id: string }) {
+  const [transcriptRevision, setTranscriptRevision] = useState(0);
+  const transcript = useLiveData<{ transcript: Transcript | null }>(
+    "/api/student/transcript", transcriptRevision, readTranscript,
+  );
+  const results = transcriptResults(transcript.data?.transcript?.data.sections ?? []);
   const remote = useLiveData<Detail>(`/api/student/plans/${id}`, 0, readPlan);
   const [query, setQuery] = useState(""),
     [term, setTerm] = useState("");
@@ -145,6 +156,8 @@ function PlanContents({ id }: { id: string }) {
       <p role="status">
         {rows.length} / {data.items.length} học phần
       </p>
+      {transcript.loading && <p role="status">Đang đối chiếu bảng điểm…</p>}
+      {transcript.error && <p role="alert">{transcript.error} <button className="sw-outline" onClick={() => setTranscriptRevision((n) => n + 1)}>Thử lại</button></p>}
       {data.terms
         .filter((t) => !term || term === t.code)
         .map((t) => {
@@ -168,6 +181,7 @@ function PlanContents({ id }: { id: string }) {
                       <th>TC</th>
                       <th>Loại</th>
                       <th>Điều kiện học</th>
+                      <th className="sc-result-cell">Kết quả</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -192,6 +206,16 @@ function PlanContents({ id }: { id: string }) {
                           )}
                           {item.prior && <div>Học trước: {item.prior}</div>}
                           {!item.prerequisite && !item.prior && "Chưa cung cấp"}
+                        </td>
+                        <td className="sc-result-cell">
+                          {results.has(item.code.trim().toUpperCase()) && (
+                            <span className={`sc-result sc-result-${results.get(item.code.trim().toUpperCase())}`}
+                              role="img"
+                              aria-label={results.get(item.code.trim().toUpperCase()) === "pass" ? "Đạt" : "Chưa đạt"}
+                              title={results.get(item.code.trim().toUpperCase()) === "pass" ? "Đạt" : "Chưa đạt"}>
+                              {results.get(item.code.trim().toUpperCase()) === "pass" ? "✓" : "✗"}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
