@@ -103,7 +103,7 @@
    groups instead of each table sizing itself to its own content. */
 .sg-group .sc-table {
   table-layout: fixed;
-  min-width: 600px;
+  min-width: 850px;
 }
 .sg-group .sc-table th:nth-child(1) {
   width: 150px;
@@ -114,9 +114,17 @@
 .sg-group .sc-table th:nth-child(4) {
   width: 240px;
 }
-.sg-group .sc-table td:last-child {
+.sg-group .sc-table td:nth-child(4) {
   white-space: normal;
 }
+.sg-group .sc-table .sg-result { width: 120px; text-align: center; vertical-align: middle; }
+.sg-status-pass { color: #16804a; }
+.sg-status-fail { color: #c62828; }
+.sg-status-unknown { color: #805900; }
+.sg-assessment { display: grid; gap: 16px; }
+.sg-assessment h2, .sg-assessment p { margin: 0; }
+.sg-verdict { padding: 16px; border: 1px solid currentColor; border-radius: 8px; font-weight: 600; }
+.sg-checks { min-width: 650px; }
 @media (max-width: 1000px) {
   .sg-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));

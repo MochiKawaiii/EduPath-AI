@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { GraduationData } from "./graduation-types";
 import { searchTerm } from "./student-curriculum-types";
 import { useLiveData } from "./use-live-data";
+import type { Transcript } from "./StudentTranscript";
+import { assessGraduation } from "./graduation-assessment";
 import "./student-curriculum.css";
 import "./student-graduation.css";
 
@@ -32,6 +34,10 @@ type Detail = Omit<
   courses: Omit<GraduationData["courses"][number], "sourceRow">[];
 };
 const fmt = (n: number | null) => (n === null ? "Chưa xác định" : String(n));
+async function readTranscript(response: Response): Promise<{ transcript: Transcript | null }> {
+  if (!response.ok) throw new Error("Chưa tải được bảng điểm để xét điều kiện. Vui lòng thử lại.");
+  return response.json();
+}
 const thresholds = [
   ["minimumCredits", "Tín chỉ tích lũy tối thiểu"],
   ["mandatoryCredits", "Tín chỉ bắt buộc"],
@@ -109,11 +115,13 @@ export default function StudentGraduation() {
           </p>
         )}
       </section>
-      {selected && <StandardContents key={selected.id} id={selected.id} />}
+      {selected && <StandardContents key={selected.id} id={selected.id} sameCohort={selected.cohortCode === list.data?.profileCohort} />}
     </div>
   );
 }
-function StandardContents({ id }: { id: string }) {
+function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean }) {
+  const [revision, setRevision] = useState(0);
+  const transcript = useLiveData<{ transcript: Transcript | null }>("/api/student/transcript", revision, readTranscript);
   const remote = useLiveData<Detail>(
     `/api/student/graduation/${id}`,
     0,
@@ -133,6 +141,8 @@ function StandardContents({ id }: { id: string }) {
       </section>
     );
   const data = remote.data!;
+  const assessment = assessGraduation(data, transcript.data?.transcript ?? null);
+  const assessmentReady = !transcript.loading && !transcript.error;
   const needle = searchTerm(query);
   const matches = data.courses.filter((c) =>
     searchTerm(`${c.code} ${c.name}`).includes(needle),
@@ -167,6 +177,28 @@ function StandardContents({ id }: { id: string }) {
             <p className="sc-prewrap">{data.notes}</p>
           </div>
         )}
+      </section>
+      <section className="sw-panel sg-assessment">
+        <h2>Kết quả đối chiếu điều kiện tốt nghiệp</h2>
+        {transcript.loading && <p role="status">Đang đối chiếu bảng điểm…</p>}
+        {transcript.error && <p role="alert">{transcript.error} <button className="sw-outline" onClick={() => setRevision((n) => n + 1)}>Thử lại</button></p>}
+        {assessmentReady && <>
+          <p className={`sg-verdict sg-status-${sameCohort ? assessment.status : "unknown"}`} role="status">
+            {!sameCohort ? "Chưa thể kết luận: tiêu chuẩn đang chọn không cùng khóa trong hồ sơ."
+              : !transcript.data?.transcript ? "Chưa đủ dữ liệu xét tốt nghiệp. Hãy import bảng điểm để đối chiếu."
+              : assessment.status === "pass" ? "Đủ điều kiện xét tốt nghiệp theo bảng điểm và tiêu chuẩn đang chọn."
+              : assessment.status === "fail" ? "Chưa đủ điều kiện xét tốt nghiệp theo bảng điểm đã import."
+              : "Chưa đủ dữ liệu để kết luận điều kiện xét tốt nghiệp."}
+          </p>
+          <p className="sc-muted">Kết quả tham khảo theo ngành/chuyên ngành bạn chọn. MT được tính đạt; môn điều kiện không cộng tín chỉ. Điểm trung bình lấy từ tổng kết tích lũy hệ 4 trong bảng điểm, không tự quy đổi. Kết quả chính thức do nhà trường xác nhận.</p>
+          <div className="sc-table-wrap"><table className="sc-table sg-checks">
+            <thead><tr><th>Điều kiện</th><th>Đã có</th><th>Yêu cầu</th><th>Kết quả</th></tr></thead>
+            <tbody>{assessment.checks.map((check, index) => <tr key={index}>
+              <td>{check.label}</td><td>{transcript.data?.transcript ? fmt(check.actual) : "—"}</td><td>{fmt(check.required)}</td>
+              <td className={`sg-status-${check.status}`}>{check.status === "pass" ? "✓ Đạt" : check.status === "fail" ? "✗ Chưa đạt" : "Chưa đủ dữ liệu"}</td>
+            </tr>)}</tbody>
+          </table></div>
+        </>}
       </section>
       <section className="sw-panel sg-groups">
         <div className="sg-groups-heading">
@@ -213,6 +245,7 @@ function StandardContents({ id }: { id: string }) {
                       <th>Tên học phần</th>
                       <th>TC</th>
                       <th>Môn điều kiện</th>
+                      <th className="sg-result">Kết quả</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -228,11 +261,14 @@ function StandardContents({ id }: { id: string }) {
                             ? "Có (*) · không tính TC/GPA"
                             : "Không"}
                         </td>
+                        <td className={`sg-result sg-status-${!assessmentReady || !transcript.data?.transcript ? "unknown" : assessment.results.get(c.code.trim().toUpperCase()) === "pass" ? "pass" : "fail"}`}>
+                          {!assessmentReady || !transcript.data?.transcript ? "—" : assessment.results.get(c.code.trim().toUpperCase()) === "pass" ? "✓ Đạt" : "✗ Chưa đạt"}
+                        </td>
                       </tr>
                     ))}
                     {!items.length && (
                       <tr>
-                        <td colSpan={4} className="sc-muted">
+                        <td colSpan={5} className="sc-muted">
                           Nhóm chưa có học phần.
                         </td>
                       </tr>
