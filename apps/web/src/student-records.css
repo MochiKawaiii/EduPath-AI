@@ -523,6 +523,40 @@
     }
 }
 
+.sr-import-progress {
+    margin-block: 20px;
+}
+.sr-import-progress p {
+    margin: 0 0 10px;
+    color: #526174;
+    font-size: 13px;
+}
+.sr-progress-track {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e8dbe0;
+}
+.sr-progress-track > span {
+    display: block;
+    width: 35%;
+    height: 100%;
+    border-radius: inherit;
+    background: #ad123e;
+    animation: sr-progress-slide 1.5s ease-in-out infinite alternate;
+}
+.sr-progress-track.is-waiting > span {
+    animation: none;
+    background: #8d7880;
+}
+@keyframes sr-progress-slide {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(285%); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sr-progress-track > span { animation: none; }
+}
+
 .sr-job-steps {
     display: flex;
     flex-wrap: wrap;

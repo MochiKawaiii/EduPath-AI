@@ -426,7 +426,7 @@ function PlanView({
             <div className="cm-tabs" aria-label="Nội dung kế hoạch đào tạo">
               {[
                 ["items", "Phân bổ học phần"],
-                ["warnings", `Ghi chú (${p.data.warnings.length})`],
+                ["warnings", `Cảnh cáo (${p.data.warnings.length})`],
                 ["history", "Lịch sử phiên bản"],
               ].map(([value, label]) => (
                 <button

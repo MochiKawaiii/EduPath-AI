@@ -82,6 +82,12 @@
   height: 20px;
   flex-shrink: 0;
 }
+.cm-block-credits {
+  display: block;
+  font-weight: 400;
+  color: var(--cm-muted);
+}
+
 .cm-group-heading {
   display: flex;
   align-items: start;
@@ -236,7 +242,8 @@
   background: #fdfafb;
 }
 
-.cm-group-row th {
+.cm-group-row th,
+.cm-group-row td {
   background: #f7edf0;
   color: #792840;
   font-size: 13px;

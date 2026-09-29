@@ -87,7 +87,8 @@ export function rebuild(data: CurriculumData): CurriculumData {
     data.warnings.push({ row, message });
   for (const c of data.courses) {
     if (seen.has(c.code))
-      throw new CurriculumError("duplicate_course", 422, [c.code]);
+      warn(c.sourceRow > 0 ? c.sourceRow : null,
+        `${c.code}: môn học xuất hiện nhiều lần (dòng ${data.courses.filter((item) => item.code === c.code).map((item) => item.sourceRow).join(", ")}). Giữ nguyên các dòng; vẫn cho phép import sau khi rà soát.`);
     seen.add(c.code);
     if (!c.semester || !c.studyYear)
       warn(
@@ -129,6 +130,7 @@ export function rebuild(data: CurriculumData): CurriculumData {
         raw,
       );
       const reviewRequired =
+        data.courses.filter((item) => item.code === c.code).length > 1 ||
         conditional ||
         !targetCodes.length ||
         !!unresolvedCodes.length ||
@@ -184,5 +186,57 @@ export function rebuild(data: CurriculumData): CurriculumData {
         null,
         `Nhóm ${group.code}: chưa có số tín chỉ phải chọn ghi rõ trong cột BB/TC; giữ nguyên quy định khối trong Excel.`,
       );
+  reviewCredits(data, warn);
   return data;
+}
+
+function reviewCredits(
+  data: CurriculumData,
+  warn: (row: number | null, message: string) => void,
+) {
+  // Compare direct block requirements, counting each elective requirement once.
+  // Do not add every offered elective or alternative specialty together.
+  const creditsFor = (courses: CurriculumCourse[]): number | null => {
+    const electiveCodes = new Set<string>();
+    let total = 0;
+    for (const course of new Map(courses.map((c) => [c.code, c])).values()) {
+      if (course.type === "BBKTL") continue;
+      const elective = course.type.match(/^(TC\d*)/)?.[1];
+      if (elective) {
+        if (electiveCodes.has(elective)) continue;
+        electiveCodes.add(elective);
+        const required = data.electives.find((g) => g.code === elective)?.requiredCredits;
+        if (required == null) return null;
+        total += required;
+      } else if (course.type === "BB") total += course.credits;
+      else return null;
+    }
+    return total;
+  };
+  for (const group of data.groups) {
+    const courses = data.courses.filter((c) => c.groupId === group.id);
+    if (!courses.length || group.credits === null || courses.some((c) => c.type === "BBKTL")) continue;
+    const calculated = creditsFor(courses);
+    if (calculated !== null && Math.abs(calculated - group.credits) > 0.001)
+      warn(group.sourceRow, `${group.label}: yêu cầu ${group.credits} tín chỉ trong file, nhưng các môn và nhóm tự chọn có ${calculated} tín chỉ. Vẫn cho phép import; cần rà soát.`);
+  }
+  const rootCode = (label: string) => label.replace(/^Khối kiến thức:\s*/i, "")
+    .trim().match(/^([A-Z]+)[.:](?:\s|$)/i)?.[1]?.toUpperCase();
+  const rootCandidates = data.groups.filter((group) => rootCode(group.label));
+  // Some workbooks repeat a parent heading on the first child block (K30).
+  // Prefer its container row over the repeated label with directly attached courses.
+  const roots = rootCandidates.filter((group) =>
+    !data.courses.some((c) => c.groupId === group.id) ||
+    !rootCandidates.some((other) => other.id !== group.id &&
+      rootCode(other.label) === rootCode(group.label) &&
+      !data.courses.some((c) => c.groupId === other.id)),
+  );
+  // Source top-level requirements avoid double-counting nested blocks and specialties.
+  const calculated = roots.length && roots.every((g) => g.credits !== null)
+    ? roots.reduce((sum, g) => sum + g.credits!, 0)
+    : data.courses.some((c) => c.specialty) ? null : creditsFor(data.courses);
+  if (calculated === null)
+    warn(null, "Chưa đủ quy định tín chỉ khối/tự chọn để đối chiếu tổng tín chỉ CTĐT; cần rà soát file nguồn. Vẫn cho phép import.");
+  else if (Math.abs(calculated - data.totalCredits) > 0.001)
+    warn(null, `Tổng tín chỉ CTĐT ghi ${data.totalCredits}, nhưng tổng tín chỉ yêu cầu ${roots.length ? "các khối cấp cao nhất" : "các môn và nhóm tự chọn"} là ${calculated}. Vẫn cho phép import; cần rà soát.`);
 }

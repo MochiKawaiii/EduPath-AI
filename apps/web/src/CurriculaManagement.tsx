@@ -457,7 +457,7 @@ function ImportDialog({
                   </thead>
                   <tbody>
                     {preview.courses.map((c) => (
-                      <tr key={c.code}>
+                      <tr key={`${c.code}-${c.position}-${c.sourceRow}`}>
                         <td>{c.code}</td>
                         <td>{c.name}</td>
                         <td>{c.credits}</td>
@@ -996,9 +996,16 @@ function Courses({
               .map((g) => (
                 <Fragment key={g.id}>
                   <tr className="cm-group-row">
-                    <th colSpan={6}>
+                    <th colSpan={2}>{g.label}</th>
+                    <td colSpan={3}>
+                          <span className="cm-block-credits">
+                            {"credits" in g && g.credits !== null
+                              ? `Yêu cầu: ${g.credits} tín chỉ`
+                              : "Chưa có số tín chỉ yêu cầu trong file"}
+                          </span>
+                    </td>
+                    <td>
                       <div className="cm-group-heading">
-                        <span>{g.label}</span>
                         {onGroupAction &&
                           g.id &&
                           !("isHeading" in g && g.isHeading) && (
@@ -1023,12 +1030,12 @@ function Courses({
                             />
                           )}
                       </div>
-                    </th>
+                    </td>
                   </tr>
                   {rows
                     .filter((c) => c.groupId === g.id)
                     .map((c) => (
-                      <Fragment key={c.code}>
+                      <Fragment key={`${c.code}-${c.position}-${c.sourceRow}`}>
                         <tr>
                           <td>{c.code}</td>
                           <td>

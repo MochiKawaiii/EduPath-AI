@@ -114,7 +114,12 @@ export class CurriculumRepository {
         note,
       ],
     );
-    const courses = JSON.stringify(data.courses);
+    // The revision JSON above preserves every imported row. These lookup tables
+    // have one row per code; keep the first occurrence until duplicates are reviewed.
+    const courses = JSON.stringify(
+      data.courses.filter((course, index, all) =>
+        all.findIndex((candidate) => candidate.code === course.code) === index),
+    );
     await client.query(
       `INSERT INTO course_catalog(code,name) SELECT x->>'code',x->>'name' FROM jsonb_array_elements($1::jsonb) x ORDER BY x->>'code' ON CONFLICT(code) DO NOTHING`,
       [courses],
@@ -129,7 +134,8 @@ export class CurriculumRepository {
       `INSERT INTO curriculum_relations SELECT $1,x->>'courseCode',x->>'kind',x->>'raw',
       ARRAY(SELECT jsonb_array_elements_text(x->'targetCodes')),ARRAY(SELECT jsonb_array_elements_text(x->'unresolvedCodes')),(x->>'reviewRequired')::boolean
       FROM jsonb_array_elements($2::jsonb) x`,
-      [revisionId, JSON.stringify(data.relations)],
+      [revisionId, JSON.stringify(data.relations.filter((relation, index, all) =>
+        all.findIndex((candidate) => candidate.courseCode === relation.courseCode && candidate.kind === relation.kind) === index))],
     );
     await client.query(
       "UPDATE curricula SET current_revision=$2,lock_version=$3,updated_at=now() WHERE id=$1",

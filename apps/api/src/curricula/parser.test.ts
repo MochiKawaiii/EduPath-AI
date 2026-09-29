@@ -15,6 +15,47 @@ beforeAll(async () => {
     ),
   );
 }, 30000);
+
+function creditFixture(
+  totalCredits: number,
+  groups: CurriculumData["groups"],
+  courses: { code: string; type: string; credits: number; groupId: string }[],
+): CurriculumData {
+  const template = k29.courses[0]!;
+  return {
+    ...structuredClone(k29),
+    totalCredits,
+    groups: structuredClone(groups),
+    courses: courses.map((course, index) => ({
+      ...template,
+      position: index + 1,
+      code: course.code,
+      name: course.code,
+      englishName: course.code,
+      credits: course.credits,
+      type: course.type,
+      groupId: course.groupId,
+      specialty: "",
+      semester: 1,
+      studyYear: 1,
+      prerequisite: "",
+      prior: "",
+      sourceRow: index + 100,
+      sourceSheet: "Credit fixture",
+      sourceCells: {},
+    })),
+    electives: [],
+    relations: [],
+    warnings: [],
+    sourceWarnings: [],
+  };
+}
+
+function totalCreditWarnings(data: CurriculumData) {
+  return data.warnings.filter((warning) =>
+    warning.row === null && /ghi \d+/.test(warning.message),
+  );
+}
 describe("real faculty curriculum workbooks", () => {
   it("imports exactly the supplied cohorts, preserving every course and authoritative credits", () => {
     for (const [data, count, year] of [
@@ -41,6 +82,13 @@ describe("real faculty curriculum workbooks", () => {
     expect(k31.courses.reduce((sum, c) => sum + c.credits, 0)).toBeGreaterThan(
       k31.totalCredits,
     );
+  });
+  it("does not report false total-credit warnings for the supplied K29-K31 workbooks", () => {
+    const warningsByCohort = Object.fromEntries([k29, k30, k31].map((data) => [
+      data.cohortCode,
+      totalCreditWarnings(data).map((warning) => warning.message),
+    ]));
+    expect(warningsByCohort).toEqual({ K29: [], K30: [], K31: [] });
   });
   it("retains invalid formula and shifted source cells without inventing semester or department", () => {
     expect(k29.sourceWarnings.some((w) => w.message.includes("#REF!"))).toBe(
@@ -78,10 +126,36 @@ describe("real faculty curriculum workbooks", () => {
     expect(data.cohortCode).toBe("K30");
     expect(data.courses).toHaveLength(89);
   }, 30000);
-  it("rejects duplicate codes rather than overwriting a course", () => {
+  it("warns on duplicate codes while preserving rows and marking their relations for review", () => {
     const data = structuredClone(k29);
-    data.courses.push({ ...data.courses[0]! });
-    expect(() => rebuild(data)).toThrow("duplicate_course");
+    const first = data.courses[0]!;
+    const duplicate = {
+      ...first,
+      position: data.courses.length + 1,
+      sourceRow: 200,
+    };
+    const targetCode = data.courses[1]!.code;
+    first.prerequisite = targetCode;
+    duplicate.prerequisite = targetCode;
+    data.courses.push(duplicate);
+
+    const rebuilt = rebuild(data);
+    const sameCodeRows = rebuilt.courses.filter((course) => course.code === first.code);
+    const duplicateWarning = rebuilt.warnings.find((warning) =>
+      warning.row === duplicate.sourceRow &&
+      warning.message.includes(first.code) &&
+      warning.message.includes(String(first.sourceRow)) &&
+      warning.message.includes(String(duplicate.sourceRow)),
+    );
+    const duplicateRelations = rebuilt.relations.filter((relation) =>
+      relation.courseCode === first.code && relation.kind === "prerequisite",
+    );
+
+    expect(rebuilt.courses).toHaveLength(k29.courses.length + 1);
+    expect(sameCodeRows).toHaveLength(2);
+    expect(duplicateWarning).toBeDefined();
+    expect(duplicateRelations).toHaveLength(2);
+    expect(duplicateRelations.every((relation) => relation.reviewRequired)).toBe(true);
   });
   it("accepts an explicit elective requirement appearing after a bare group code", () => {
     const data = structuredClone(k31);
@@ -90,6 +164,87 @@ describe("real faculty curriculum workbooks", () => {
     expect(
       rebuild(data).electives.find((g) => g.code === "TC002")?.requiredCredits,
     ).toBe(2);
+  });
+  it("warns when required course credits do not match the block declaration", () => {
+    const data = creditFixture(
+      4,
+      [{ id: "a", label: "A. General", credits: 4, sourceRow: 77 }],
+      [{ code: "71ITGEN1001", type: "BB", credits: 3, groupId: "a" }],
+    );
+
+    rebuild(data);
+
+    expect(data.warnings.some((warning) =>
+      warning.row === 77 && warning.message.includes("4") && warning.message.includes("3"),
+    )).toBe(true);
+    expect(totalCreditWarnings(data)).toEqual([]);
+  });
+  it("warns when the top-level declared credit total does not match its blocks", () => {
+    const data = creditFixture(
+      12,
+      [
+        { id: "a", label: "A. General", credits: 3, sourceRow: 10 },
+        { id: "b", label: "B. Major", credits: 6, sourceRow: 20 },
+      ],
+      [
+        { code: "71ITGEN1001", type: "BB", credits: 3, groupId: "a" },
+        { code: "71ITMAJ1001", type: "BB", credits: 6, groupId: "b" },
+      ],
+    );
+
+    rebuild(data);
+
+    expect(totalCreditWarnings(data)).toHaveLength(1);
+    expect(totalCreditWarnings(data)[0]!.message).toContain("12");
+    expect(totalCreditWarnings(data)[0]!.message).toContain("9");
+  });
+  it("accepts matching block and top-level credit totals", () => {
+    const data = creditFixture(
+      9,
+      [
+        { id: "a", label: "A. General", credits: 3, sourceRow: 10 },
+        { id: "b", label: "B. Major", credits: 6, sourceRow: 20 },
+      ],
+      [
+        { code: "71ITGEN1001", type: "BB", credits: 3, groupId: "a" },
+        { code: "71ITMAJ1001", type: "BB", credits: 6, groupId: "b" },
+      ],
+    );
+
+    rebuild(data);
+
+    expect(data.warnings).toEqual([]);
+  });
+  it("counts an elective requirement once instead of summing its offered courses", () => {
+    const data = creditFixture(
+      9,
+      [{ id: "a", label: "A. Program", credits: 9, sourceRow: 10 }],
+      [
+        { code: "71ITGEN1001", type: "BB", credits: 6, groupId: "a" },
+        { code: "71ITELC1001", type: "TC001 (3 TC)", credits: 5, groupId: "a" },
+        { code: "71ITELC1002", type: "TC001 (3 TC)", credits: 4, groupId: "a" },
+      ],
+    );
+
+    rebuild(data);
+
+    expect(data.electives.find((group) => group.code === "TC001")?.requiredCredits).toBe(3);
+    expect(data.warnings).toEqual([]);
+  });
+  it("leaves unknown credit rules unverified instead of reporting a mismatch", () => {
+    const data = creditFixture(
+      3,
+      [{ id: "general", label: "General", credits: 3, sourceRow: 10 }],
+      [{ code: "71ITUNK1001", type: "", credits: 3, groupId: "general" }],
+    );
+
+    rebuild(data);
+
+    expect(data.warnings.some((warning) =>
+      warning.row === null && warning.message.includes("quy \u0111\u1ecbnh t\u00edn ch\u1ec9"),
+    )).toBe(true);
+    expect(totalCreditWarnings(data)).toEqual([]);
+    expect(data.warnings.some((warning) => warning.row === 10)).toBe(false);
   });
   it("marks cyclic dependencies for review", () => {
     const data = structuredClone(k31);

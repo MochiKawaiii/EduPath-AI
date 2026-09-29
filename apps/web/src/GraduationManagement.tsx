@@ -529,7 +529,7 @@ function Conditions({
                             className="am-outline"
                             onClick={() => editCourse(c.id)}
                           >
-                            <Icon name="edit" /> Sửa môn
+                            <Icon name="edit" /> Chỉnh sửa
                           </button>
                         </td>
                       )}
