@@ -1,4 +1,4 @@
-type ResultCourse = { code: string; result: string | null };
+type ResultCourse = { code: string; result: string | null; letter?: string | null };
 export type CourseResult = "pass" | "fail";
 
 export function transcriptResults(sections: { courses: ResultCourse[] }[]) {
@@ -7,7 +7,8 @@ export function transcriptResults(sections: { courses: ResultCourse[] }[]) {
     const code = course.code.trim().toUpperCase();
     const text = (course.result ?? "").trim().toLowerCase();
     const failed = /^(không|khong|chưa|chua|ko)\s*đạt|^(rớt|trượt)|^[✗✘×x]$/.test(text);
-    const passed = !failed && (/^đạt/.test(text) || /^[✓✔v]$/.test(text));
+    const exempt = course.letter?.trim().toUpperCase() === "MT";
+    const passed = exempt || (!failed && (/^đạt/.test(text) || /^[✓✔v]$/.test(text)));
     // Passing any attempt satisfies the course; an unknown result is left blank.
     if (code && passed) results.set(code, "pass");
     else if (code && failed && results.get(code) !== "pass") results.set(code, "fail");
