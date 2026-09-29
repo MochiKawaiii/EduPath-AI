@@ -12,9 +12,15 @@ import {
 } from "./student-curriculum-types";
 import { Icon } from "./student-icons";
 import { useLiveData } from "./use-live-data";
+import type { Transcript } from "./StudentTranscript";
+import { transcriptResults } from "./transcript-results";
 import "./student-curriculum.css";
 
 const endpoint = "/api/student/curricula";
+async function readTranscript(res: Response): Promise<{ transcript: Transcript | null }> {
+  if (!res.ok) throw new Error("Chưa tải được kết quả bảng điểm. Vui lòng thử lại.");
+  return res.json();
+}
 async function readCurriculum<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const message =
@@ -127,6 +133,10 @@ function CurriculumContent({
   revision: number;
   retry: () => void;
 }) {
+  const transcript = useLiveData<{ transcript: Transcript | null }>(
+    "/api/student/transcript", revision, readTranscript,
+  );
+  const results = transcriptResults(transcript.data?.transcript?.data.sections ?? []);
   const remote = useCurriculumRequest<StudentCurriculumData>(
     `${endpoint}/${id}`,
     revision,
@@ -336,6 +346,8 @@ function CurriculumContent({
             Xóa bộ lọc
           </button>
         </div>
+        {transcript.loading && <p className="sc-muted" role="status">Đang đối chiếu bảng điểm…</p>}
+        {transcript.error && <p role="alert">{transcript.error} <button className="sw-outline" onClick={retry}>Thử lại</button></p>}
         <div
           className="sc-table-wrap"
           tabIndex={0}
@@ -351,6 +363,7 @@ function CurriculumContent({
                 <th>Loại môn</th>
                 <th>Năm · Học kỳ</th>
                 <th>Tiên quyết</th>
+                <th className="sc-result-cell">Kết quả</th>
               </tr>
             </thead>
             <tbody>
@@ -358,7 +371,7 @@ function CurriculumContent({
                 <Fragment key={c.code}>
                   {c.groupId !== courses[i - 1]?.groupId && (
                     <tr className="sc-group">
-                      <th colSpan={6} scope="rowgroup">
+                      <th colSpan={7} scope="rowgroup">
                         {groups.get(c.groupId) ?? "Học phần"}
                       </th>
                     </tr>
@@ -396,6 +409,16 @@ function CurriculumContent({
                             Cần xác nhận điều kiện
                           </small>
                         )}
+                    </td>
+                    <td className="sc-result-cell">
+                      {results.has(c.code.trim().toUpperCase()) && (
+                        <span className={`sc-result sc-result-${results.get(c.code.trim().toUpperCase())}`}
+                          role="img"
+                          aria-label={results.get(c.code.trim().toUpperCase()) === "pass" ? "Đạt" : "Chưa đạt"}
+                          title={results.get(c.code.trim().toUpperCase()) === "pass" ? "Đạt" : "Chưa đạt"}>
+                          {results.get(c.code.trim().toUpperCase()) === "pass" ? "✓" : "✗"}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 </Fragment>

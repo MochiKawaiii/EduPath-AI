@@ -207,9 +207,24 @@
 .sc-table td:nth-child(4) {
   min-width: 155px;
 }
-.sc-table td:last-child {
+.sc-table td:nth-child(6) {
   min-width: 170px;
   max-width: 260px;
+}
+.sc-table thead th.sc-result-cell,
+.sc-table tbody td.sc-result-cell {
+  width: 96px;
+  min-width: 72px;
+  padding-inline: 12px;
+  text-align: center;
+  vertical-align: middle;
+}
+.sc-result-cell .sc-result {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
 }
 .sc-table small {
   display: block;
@@ -438,3 +453,7 @@
     padding: 24px;
   }
 }
+.sc-result-cell { text-align: center; }
+.sc-result { font-size: 24px; font-weight: 700; line-height: 1; }
+.sc-result-pass { color: #16804a; }
+.sc-result-fail { color: #c62828; }
