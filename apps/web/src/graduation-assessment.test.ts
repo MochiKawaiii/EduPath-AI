@@ -5,40 +5,31 @@ import { assessGraduation } from "./graduation-assessment";
 
 type TranscriptSection = Transcript["data"]["sections"][number];
 type TranscriptCourse = TranscriptSection["courses"][number];
-type Summary = TranscriptSection["summaries"][number];
-
-const coreCode = "71ITCORE1001";
-const passText = "\u0110\u1ea1t";
-const failText = "Kh\u00f4ng \u0111\u1ea1t";
-const cumulativeGpaLabel = "\u0110i\u1ec3m TB t\u00edch l\u0169y (H\u1ec7 4)";
-const semesterGpaLabel = "\u0110i\u1ec3m TB h\u1ecdc k\u1ef3 (H\u1ec7 4)";
-const gpaCheckLabel = "\u0110i\u1ec3m TB t\u00edch l\u0169y h\u1ec7 4 theo b\u1ea3ng \u0111i\u1ec3m m\u1edbi nh\u1ea5t";
+const passed = "\u0110\u1ea1t";
+const failed = "Kh\u00f4ng \u0111\u1ea1t";
 
 function group(
   id: string,
-  kind: "mandatory" | "elective" = "mandatory",
-  minimumCredits: number | null = 3,
+  kind: "mandatory" | "elective",
+  minimumCredits: number | null,
 ): GraduationData["groups"][number] {
   return { id, name: id, kind, minimumCredits, sourceRow: 1 };
 }
 
 function course(
   code: string,
-  overrides: Partial<GraduationData["courses"][number]> = {},
+  groupId: string,
+  credits: number,
+  conditionOnly = false,
+  id = code,
 ): GraduationData["courses"][number] {
-  return {
-    id: code,
-    groupId: "mandatory",
-    code,
-    name: code,
-    credits: 3,
-    conditionOnly: false,
-    sourceRow: 2,
-    ...overrides,
-  };
+  return { id, groupId, code, name: code, credits, conditionOnly, sourceRow: 2 };
 }
 
-function standard(overrides: Partial<GraduationData> = {}): GraduationData {
+function standard(
+  groups: GraduationData["groups"],
+  courses: GraduationData["courses"],
+): GraduationData {
   return {
     schemaVersion: 1,
     name: "Test standard",
@@ -49,25 +40,24 @@ function standard(overrides: Partial<GraduationData> = {}): GraduationData {
     specialty: "",
     educationSystem: "Standard",
     faculty: "Computing",
-    minimumCredits: 3,
-    mandatoryCredits: 3,
-    electiveCredits: 0,
-    freeElectiveCredits: 0,
-    minimumGpa: 2,
+    minimumCredits: null,
+    mandatoryCredits: null,
+    electiveCredits: null,
+    freeElectiveCredits: null,
+    minimumGpa: null,
     notes: "",
-    groups: [group("mandatory")],
-    courses: [course(coreCode)],
+    groups,
+    courses,
     sourceWorkbook: "test.xlsx",
     sourceSheet: "Standard",
     sourceNotes: [],
-    ...overrides,
   };
 }
 
 function attempt(
   code: string,
-  result: string | null = passText,
-  overrides: Partial<TranscriptCourse> = {},
+  result: string | null = passed,
+  letter: string | null = null,
 ): TranscriptCourse {
   return {
     ordinal: 1,
@@ -76,31 +66,22 @@ function attempt(
     credits: 3,
     score10: 8,
     score4: 3.2,
-    letter: null,
+    letter,
     result,
     conditional: false,
     sourcePage: 1,
-    ...overrides,
   };
 }
 
-function section(
-  academicYear: string,
-  semester: string,
-  courses: TranscriptCourse[],
-  summaries: Summary[] = [],
-): TranscriptSection {
-  return {
-    id: `${academicYear}/${semester}`,
-    label: `${academicYear} ${semester}`,
-    academicYear,
-    semester,
+function transcript(courses: TranscriptCourse[] = []): Transcript {
+  const section: TranscriptSection = {
+    id: "2025-2026/HK01",
+    label: "2025-2026 HK01",
+    academicYear: "2025-2026",
+    semester: "HK01",
     courses,
-    summaries,
+    summaries: [],
   };
-}
-
-function transcript(sections: TranscriptSection[]): Transcript {
   return {
     version: "v1",
     filename: "transcript.pdf",
@@ -111,179 +92,154 @@ function transcript(sections: TranscriptSection[]): Transcript {
       schemaVersion: 1,
       parserVersion: "test",
       pageCount: 1,
-      courseCount: sections.reduce((count, item) => count + item.courses.length, 0),
-      sections,
+      courseCount: courses.length,
+      sections: [section],
       warnings: [],
     },
   };
 }
 
-function gradedTranscript(courses: TranscriptCourse[] = [attempt(coreCode)]) {
-  return transcript([
-    section("2025-2026", "HK01", courses, [
-      { label: cumulativeGpaLabel, value: "3.50" },
-    ]),
-  ]);
+function fiveGroupFixture() {
+  const codes = {
+    GDQP: Array.from({ length: 4 }, (_, index) => `71GDQP${String(index + 1).padStart(4, "0")}`),
+    TC002: Array.from({ length: 3 }, (_, index) => `71TC002${String(index + 1).padStart(4, "0")}`),
+    TC102: Array.from({ length: 14 }, (_, index) => `71TC102${String(index + 1).padStart(4, "0")}`),
+    TC209: Array.from({ length: 3 }, (_, index) => `71TC209${String(index + 1).padStart(4, "0")}`),
+    TC306: Array.from({ length: 2 }, (_, index) => `71TC306${String(index + 1).padStart(4, "0")}`),
+  };
+  const groups = [
+    group("GDQP", "mandatory", null),
+    group("TC002", "elective", 2),
+    group("TC102", "elective", 2),
+    group("TC209", "elective", 9),
+    group("TC306", "elective", 6),
+  ];
+  const courses = [
+    ...codes.GDQP.map((code) => course(code, "GDQP", 2, true)),
+    ...codes.TC002.map((code, index) => course(code, "TC002", 2, index === 0)),
+    ...codes.TC102.map((code) => course(code, "TC102", 2)),
+    ...codes.TC209.map((code) => course(code, "TC209", 3)),
+    ...codes.TC306.map((code) => course(code, "TC306", 3)),
+  ];
+  const passedAttempts = [
+    ...codes.GDQP.map((code) => attempt(code)),
+    attempt(codes.TC002[0]!, null, " MT "),
+    attempt(codes.TC102[0]!),
+    ...codes.TC209.map((code) => attempt(code)),
+    ...codes.TC306.map((code) => attempt(code)),
+  ];
+  return { data: standard(groups, courses), codes, passedAttempts };
 }
 
-function checkByLabel(
+const byGroup = (
   result: ReturnType<typeof assessGraduation>,
-  label: string,
-) {
-  return result.checks.find((check) => check.label === label);
-}
+  id: string,
+) => result.checks.find((check) => check.label === id);
 
-describe("graduation assessment", () => {
-  it("passes when all credit, required-course, and GPA checks are met", () => {
-    const result = assessGraduation(standard(), gradedTranscript());
-
-    expect(result.status).toBe("pass");
-    expect(result.checks.every((check) => check.status === "pass")).toBe(true);
-  });
-
-  it("fails a missed mandatory course even when credit thresholds are met", () => {
-    const secondCode = "71ITCORE1002";
-    const result = assessGraduation(
-      standard({ courses: [course(coreCode), course(secondCode)] }),
-      gradedTranscript([
-        attempt(coreCode, passText),
-        attempt(secondCode, failText),
-      ]),
-    );
-
-    expect(result.status).toBe("fail");
-    expect(result.checks[0]).toMatchObject({ actual: 3, required: 3, status: "pass" });
-    expect(result.checks[1]).toMatchObject({ actual: 3, required: 3, status: "pass" });
-    expect(result.checks.some((check) =>
-      check.label.includes("m\u00f4n ph\u1ea3i \u0111\u1ea1t") && check.status === "fail",
-    )).toBe(true);
-  });
-
-  it("fails a missing conditional course but excludes it from credit totals", () => {
-    const conditionalCode = "71ITCOND1001";
-    const result = assessGraduation(
-      standard({
-        courses: [
-          course(coreCode),
-          course(conditionalCode, { conditionOnly: true, credits: 2 }),
-        ],
-      }),
-      gradedTranscript([attempt(coreCode)]),
-    );
-
-    expect(result.status).toBe("fail");
-    expect(result.checks[0]).toMatchObject({ actual: 3, required: 3, status: "pass" });
-    expect(result.checks[1]).toMatchObject({ actual: 3, required: 3, status: "pass" });
-    expect(result.checks[5]).toMatchObject({ actual: 3, required: 3, status: "pass" });
-    expect(result.checks[6]).toMatchObject({ actual: 1, required: 2, status: "fail" });
-  });
-
-  it("counts an MT exemption as passing", () => {
-    const result = assessGraduation(
-      standard(),
-      gradedTranscript([attempt(coreCode, null, { letter: "MT" })]),
-    );
-
-    expect(result.results.get(coreCode)).toBe("pass");
-    expect(result.status).toBe("pass");
-    expect(result.checks[0]?.actual).toBe(3);
-  });
-
-  it("does not count a repeated transcript attempt as extra standard credits", () => {
-    const result = assessGraduation(
-      standard(),
-      gradedTranscript([attempt(coreCode), attempt(coreCode)]),
-    );
-
-    expect(result.results.size).toBe(1);
-    expect(result.checks[0]?.actual).toBe(3);
-  });
-
-  it("requires only one passed course from an elective alternatives group", () => {
-    const firstElective = "71ITELEC1001";
-    const secondElective = "71ITELEC1002";
-    const result = assessGraduation(
-      standard({
-        minimumCredits: 6,
-        mandatoryCredits: 3,
-        electiveCredits: 3,
-        groups: [group("mandatory", "mandatory", 3), group("elective", "elective", 3)],
-        courses: [
-          course(coreCode),
-          course(firstElective, { groupId: "elective" }),
-          course(secondElective, { groupId: "elective" }),
-        ],
-      }),
-      gradedTranscript([attempt(coreCode), attempt(firstElective)]),
-    );
+describe("graduation group assessment", () => {
+  it("checks exactly the five source groups and applies each elective quota", () => {
+    const fixture = fiveGroupFixture();
+    const result = assessGraduation(fixture.data, transcript(fixture.passedAttempts));
 
     expect(result.status).toBe("pass");
-    expect(result.checks[0]).toMatchObject({ actual: 6, required: 6, status: "pass" });
-    expect(result.checks[2]).toMatchObject({ actual: 3, required: 3, status: "pass" });
-  });
-
-  it("leaves GPA unknown when the transcript has no cumulative GPA", () => {
-    const result = assessGraduation(
-      standard(),
-      transcript([
-        section("2025-2026", "HK01", [attempt(coreCode)], [
-          { label: semesterGpaLabel, value: "3.80" },
-        ]),
-      ]),
-    );
-    const gpaCheck = checkByLabel(result, gpaCheckLabel);
-
-    expect(result.checks.slice(0, 4).every((check) => check.status === "pass")).toBe(true);
-    expect(gpaCheck).toMatchObject({ actual: null, required: 2, status: "unknown" });
-    expect(result.status).toBe("unknown");
-  });
-
-  it("uses the latest cumulative GPA, not semester GPA, when sections are reversed", () => {
-    const latest = section("2025-2026", "HK01", [attempt(coreCode)], [
-      { label: cumulativeGpaLabel, value: "3.40" },
-      { label: semesterGpaLabel, value: "2.10" },
+    expect(result.checks).toHaveLength(5);
+    expect(result.checks.map((check) => check.label)).toEqual([
+      "GDQP", "TC002", "TC102", "TC209", "TC306",
     ]);
-    const older = section("2024-2025", "HK03", [attempt(coreCode)], [
-      { label: cumulativeGpaLabel, value: "2.50" },
-      { label: semesterGpaLabel, value: "4.00" },
+    expect(result.checks.map((check) => check.unit)).toEqual([
+      "môn", "TC", "TC", "TC", "TC",
     ]);
-    const result = assessGraduation(
-      standard({ minimumGpa: 3 }),
-      transcript([latest, older]),
-    );
-
-    expect(checkByLabel(result, gpaCheckLabel)).toMatchObject({
-      actual: 3.4,
-      required: 3,
-      status: "pass",
+    expect(byGroup(result, "GDQP")).toMatchObject({
+      actual: 4, required: 4, unit: "môn", accumulatedCredits: 0, status: "pass",
     });
-    expect(result.status).toBe("pass");
+    expect(byGroup(result, "TC002")).toMatchObject({
+      actual: 2, required: 2, unit: "TC", accumulatedCredits: 0, status: "pass",
+    });
+    expect(byGroup(result, "TC102")).toMatchObject({ actual: 2, required: 2, status: "pass" });
+    expect(byGroup(result, "TC209")).toMatchObject({
+      actual: 9, required: 9, accumulatedCredits: 9, status: "pass",
+    });
+    expect(byGroup(result, "TC306")).toMatchObject({ actual: 6, required: 6, status: "pass" });
+    expect(result.results.get(fixture.codes.TC002[0]!)).toBe("pass");
   });
 
-  it("returns unknown when no transcript is available", () => {
-    const result = assessGraduation(standard(), null);
+  it("requires all four starred GDQP mandatory courses", () => {
+    const fixture = fiveGroupFixture();
+    const attempts = fixture.passedAttempts.filter((item) =>
+      item.code !== fixture.codes.GDQP[3],
+    );
+    const result = assessGraduation(fixture.data, transcript(attempts));
+
+    expect(byGroup(result, "GDQP")).toMatchObject({
+      actual: 3, required: 4, unit: "môn", accumulatedCredits: 0, status: "fail",
+    });
+    expect(result.status).toBe("fail");
+  });
+
+  it("fails a below-quota group while other elective groups still pass", () => {
+    const fixture = fiveGroupFixture();
+    const attempts = fixture.passedAttempts.filter(
+      (item) => item.code !== fixture.codes.TC306[1],
+    );
+    const result = assessGraduation(fixture.data, transcript(attempts));
+
+    expect(byGroup(result, "TC306")).toMatchObject({
+      actual: 3, required: 6, status: "fail",
+    });
+    expect(byGroup(result, "TC002")?.status).toBe("pass");
+    expect(byGroup(result, "TC102")?.status).toBe("pass");
+    expect(result.status).toBe("fail");
+  });
+
+  it("counts a repeated transcript course once and lets any MT or passing attempt satisfy it", () => {
+    const fixture = fiveGroupFixture();
+    const code = fixture.codes.TC002[0]!;
+    const attempts = [
+      ...fixture.passedAttempts.filter((item) => item.code !== code),
+      attempt(code, failed),
+      attempt(` ${code.toLowerCase()} `, null, "mt"),
+    ];
+    const result = assessGraduation(fixture.data, transcript(attempts));
+
+    expect(result.results.get(code)).toBe("pass");
+    expect(byGroup(result, "TC002")).toMatchObject({
+      actual: 2, required: 2, accumulatedCredits: 0, status: "pass",
+    });
+  });
+
+  it("returns unknown for each group when a transcript is missing", () => {
+    const fixture = fiveGroupFixture();
+    const result = assessGraduation(fixture.data, null);
 
     expect(result.status).toBe("unknown");
+    expect(result.checks).toHaveLength(5);
     expect(result.checks.every((check) => check.status === "unknown")).toBe(true);
   });
 
-  it("leaves a positive free-elective requirement unknown without approved course membership", () => {
-    const result = assessGraduation(
-      standard({ freeElectiveCredits: 3 }),
-      gradedTranscript(),
+  it("marks duplicate normalized course codes as a malformed standard", () => {
+    const fixture = fiveGroupFixture();
+    const original = fixture.data.courses[0]!;
+    const malformed = standard(
+      [group("GDQP", "mandatory", null)],
+      [original, course(` ${original.code.toLowerCase()} `, "GDQP", 2, true, "duplicate")],
     );
+    const result = assessGraduation(malformed, transcript([attempt(original.code)]));
 
-    expect(result.checks[3]).toMatchObject({ actual: null, required: 3, status: "unknown" });
     expect(result.status).toBe("unknown");
+    expect(result.checks).toHaveLength(1);
+    expect(result.checks[0]).toMatchObject({
+      actual: 2, required: 2, unit: "môn", status: "unknown",
+    });
   });
 
-  it("does not pass a standard with duplicate course codes", () => {
-    const result = assessGraduation(
-      standard({ courses: [course(coreCode), course(coreCode, { id: "duplicate" })] }),
-      gradedTranscript(),
+  it("marks a course that references no source group as malformed", () => {
+    const malformed = standard(
+      [group("GDQP", "mandatory", null)],
+      [course("71GDQP0001", "missing-group", 2)],
     );
+    const result = assessGraduation(malformed, transcript([attempt("71GDQP0001")]));
 
     expect(result.status).toBe("unknown");
-    expect(result.checks.at(-1)).toMatchObject({ actual: null, required: null, status: "unknown" });
+    expect(result.checks[0]?.status).toBe("unknown");
   });
 });

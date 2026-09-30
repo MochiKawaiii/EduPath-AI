@@ -190,11 +190,11 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
               : assessment.status === "fail" ? "Chưa đủ điều kiện xét tốt nghiệp theo bảng điểm đã import."
               : "Chưa đủ dữ liệu để kết luận điều kiện xét tốt nghiệp."}
           </p>
-          <p className="sc-muted">Kết quả tham khảo theo ngành/chuyên ngành bạn chọn. MT được tính đạt; môn điều kiện không cộng tín chỉ. Điểm trung bình lấy từ tổng kết tích lũy hệ 4 trong bảng điểm, không tự quy đổi. Kết quả chính thức do nhà trường xác nhận.</p>
+          <p className="sc-muted">Nhóm bắt buộc phải đạt toàn bộ môn, kể cả môn (*). Nhóm tự chọn chỉ cần đạt đủ tín chỉ yêu cầu của nhóm, không phải học hết các lựa chọn. Môn (*) được tính để hoàn thành nhóm nhưng không cộng tín chỉ tích lũy. MT được tính đạt. Kết quả chính thức do nhà trường xác nhận.</p>
           <div className="sc-table-wrap"><table className="sc-table sg-checks">
             <thead><tr><th>Điều kiện</th><th>Đã có</th><th>Yêu cầu</th><th>Kết quả</th></tr></thead>
             <tbody>{assessment.checks.map((check, index) => <tr key={index}>
-              <td>{check.label}</td><td>{transcript.data?.transcript ? fmt(check.actual) : "—"}</td><td>{fmt(check.required)}</td>
+              <td>{check.label}</td><td>{transcript.data?.transcript ? `${fmt(check.actual)} ${check.unit}` : "—"}</td><td>{fmt(check.required)} {check.unit}</td>
               <td className={`sg-status-${check.status}`}>{check.status === "pass" ? "✓ Đạt" : check.status === "fail" ? "✗ Chưa đạt" : "Chưa đủ dữ liệu"}</td>
             </tr>)}</tbody>
           </table></div>
@@ -205,8 +205,8 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
           <div>
             <h2>Các nhóm học phần</h2>
             <p className="sc-muted">
-              Môn điều kiện (*) phải đạt nhưng không tính vào tín chỉ tích lũy
-              và điểm trung bình.
+              Môn (*) không cộng tín chỉ tích lũy. Trong nhóm bắt buộc phải đạt từng môn;
+              trong nhóm tự chọn chỉ cần đạt đủ tín chỉ yêu cầu của nhóm.
             </p>
           </div>
           <label className="sg-search">
