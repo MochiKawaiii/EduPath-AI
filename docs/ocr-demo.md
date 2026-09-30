@@ -36,11 +36,28 @@ powershell -ExecutionPolicy Bypass -File services/ocr/start-worker.ps1 -Python C
 
 Máy khác cần Python tương thích và cài `services/ocr/requirements.txt` trong venv riêng. Model F3 được đóng gói tại `services/ocr/models/f3`. Detector mobile tải từ nguồn PaddleOCR lần đầu nếu chưa có cache; nên chạy một PDF trước buổi demo. Không cần chạy FastAPI/uvicorn, mở cổng router hoặc cài tunnel.
 
+### CPU và GPU
+
+`OCR_DEVICE=auto` là mặc định cho worker mới: chỉ khi cần OCR mới kiểm tra Paddle; nếu có bản CUDA và GPU khả dụng thì dùng `gpu:0`, còn lại dùng CPU. Có thể đặt `OCR_DEVICE=cpu` hoặc `OCR_DEVICE=gpu:0` để chọn cố định. Script thiết lập giữ nguyên thiết bị và detector đã cấu hình.
+
+`requirements.txt` cài bản Paddle CPU. Máy NVIDIA muốn chạy GPU cần thay bằng `paddlepaddle-gpu` tương thích. Với môi trường Windows CUDA 12.6 đang dùng Paddle 3.2.2:
+
+```powershell
+python -m pip uninstall paddlepaddle
+python -m pip install paddlepaddle-gpu==3.2.2 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+```
+
+Chọn gói theo [hướng dẫn PaddlePaddle cho Windows](https://www.paddlepaddle.org.cn/documentation/docs/install/pip/windows-pip_en.html). Không cần cài lại nếu venv đã có `paddlepaddle-gpu` hoạt động. GPU tăng tốc nhận dạng ảnh; đọc lớp chữ, dựng bảng, xử lý biểu tượng và truyền dữ liệu vẫn dùng CPU/mạng. PDF có lớp chữ hợp lệ không khởi tạo Paddle, vì vậy không cần GPU để đọc loại PDF này.
+
+Sau mỗi tác vụ thành công, worker in thời gian xử lý, số trang, số trang dùng OCR và thiết bị thực tế; không in nội dung bảng điểm. Thời gian này không bao gồm chờ hàng đợi, tải file hay gửi kết quả. Mỗi PDF vẫn dùng tiến trình riêng với giới hạn 5 phút.
+
 Giữ cửa sổ worker và mạng hoạt động. Ctrl+C dừng worker. Website vẫn hoạt động khi máy tắt, nhưng các PDF mới sẽ chờ. Đổi cấu hình `.env` cần khởi động lại worker; thêm khóa cho backend local cần khởi động lại `npm run dev`.
 
 ## Trạng thái và bảo toàn dữ liệu
 
 - Upload trả 202 và mã tác vụ; trang tự lấy trạng thái, có thể rời trang rồi quay lại.
+- Worker rảnh kiểm tra hàng đợi mỗi 2 giây; trang cập nhật trạng thái mỗi 2 giây trong lúc có tác vụ đang xử lý.
+- Thanh tiến trình hiển thị phần trăm ước lượng tăng dần theo giai đoạn tải file, chờ và đọc dữ liệu. Khi worker mất kết nối, thanh tạm dừng; khi đang xử lý, tối đa 95%. Chỉ phản hồi lưu thành công mới đưa thanh lên 100%; thất bại/hủy không hiển thị hoàn tất. Phần trăm này không phải số trang thực tế đã nhận dạng.
 - Mỗi tài khoản có tối đa một tác vụ đang chờ/xử lý, toàn hàng đợi tối đa 25 tác vụ.
 - Worker nhận lease 10 phút; xử lý mỗi PDF trong tiến trình riêng, timeout 5 phút. Lease hết hạn cho phép nhận lại một lần; phản hồi mang lease cũ bị từ chối.
 - Tác vụ chờ quá 24 giờ thất bại; PDF tạm được xóa khỏi tác vụ khi hoàn tất/thất bại/hủy. Lịch sử trạng thái giữ 7 ngày. Dọn dẹp diễn ra khi trang lấy trạng thái hoặc worker lấy tác vụ.

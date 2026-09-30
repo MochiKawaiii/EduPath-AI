@@ -398,12 +398,14 @@ class Options:
 
 def _ppocr_page(page, is_pdf, options, models, page_dir, log):
     import numpy as np
-    from ppocr_table import create_engine, page_rows, rectify
+    from ppocr_table import create_engine, page_rows, rectify, resolve_device
     if 'ppocr' not in models:
         if not (Path(options.rec_model_dir) / 'inference.pdiparams').exists():
             raise FileNotFoundError(f'Recogniser not found: {options.rec_model_dir}. Train/export it with '
                                     'training/run_experiment.py F3_frozen_lr1e-3 or pass --rec-model-dir.')
-        models['ppocr'] = create_engine(options.rec_model_dir, options.device, det_model=options.det_model)
+        models['device'] = resolve_device(options.device)
+        log(f"OCR device: {models['device']}")
+        models['ppocr'] = create_engine(options.rec_model_dir, models['device'], det_model=options.det_model)
     pix = page.get_pixmap(dpi=options.dpi or DEFAULT_DPI['ppocr'], alpha=False)
     if page_dir:
         pix.save(str(page_dir / 'input.png'))
@@ -490,6 +492,7 @@ def extract_transcript(document, source_name, options=None, catalog=None, output
         'schema_version': '1.1', 'source_file': source_name, 'adapter': 'vlu_8_columns',
         'course_count': len(courses),
         'ocr_settings': {'engine': options.engine, 'det_model': options.det_model,
+                         'device': models.get('device', options.device),
                          'rec_model_dir': str(options.rec_model_dir), 'dpi': options.dpi or DEFAULT_DPI[options.engine]}
         if ocr_used else None,
         'needs_review': not courses or bool(unparsed) or any(c['needs_review'] for c in courses)

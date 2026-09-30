@@ -69,7 +69,7 @@ def parse_pdf(pdf_path,result_path):
                     raise ValueError('ASCII temporary directory required for Paddle on Windows')
                 for name in ('inference.json','inference.pdiparams','inference.yml'):
                     shutil.copyfile(DEFAULT_REC_MODEL/name,model_dir/name)
-            options=Options(device=os.environ.get('OCR_DEVICE','cpu'),det_model=os.environ.get('OCR_DET_MODEL','PP-OCRv5_mobile_det'),rec_model_dir=model_dir)
+            options=Options(device=os.environ.get('OCR_DEVICE','auto'),det_model=os.environ.get('OCR_DET_MODEL','PP-OCRv5_mobile_det'),rec_model_dir=model_dir)
             result={'result':extract_transcript(document,'transcript.pdf',options,log=lambda _:None)}
     except ValueError as error:
         code=str(error)
@@ -79,6 +79,7 @@ def parse_pdf(pdf_path,result_path):
     result_path.write_text(json.dumps(result,ensure_ascii=False),encoding='utf-8')
 
 def process_job(job):
+    started=time.perf_counter()
     with tempfile.TemporaryDirectory(prefix='edupath-ocr-') as directory:
         pdf=Path(directory)/'input.pdf'; result=Path(directory)/'result.json'
         payload=base64.b64decode(job['pdf'],validate=True)
@@ -102,7 +103,13 @@ def process_job(job):
             raise
         if child.returncode or not result.exists() or result.stat().st_size>1_900_000:
             return {'error':'ocr_failed'}
-        return json.loads(result.read_text(encoding='utf-8'))
+        parsed=json.loads(result.read_text(encoding='utf-8'))
+        if 'result' in parsed:
+            pages=parsed['result'].get('pages',[])
+            ocr_pages=sum(page['method']!='pdf_text' for page in pages)
+            device=(parsed['result'].get('ocr_settings') or {}).get('device','cpu (PDF text)')
+            print(f'Parsed in {time.perf_counter()-started:.1f}s; pages={len(pages)}, OCR pages={ocr_pages}, device={device}.',flush=True)
+        return parsed
 
 def run(once=False):
     url,key=read_config()
@@ -134,7 +141,7 @@ def run(once=False):
                             if attempt==2: raise
                             time.sleep(3)
                 if once: break
-                if not job: time.sleep(5)
+                if not job: time.sleep(2)
             except (OSError,ValueError,KeyError) as error:
                 print('Backend unavailable or configuration invalid; retry in 15 seconds. '+
                     (f'HTTP {error.code}.' if isinstance(error,HTTPError) else type(error).__name__),flush=True)

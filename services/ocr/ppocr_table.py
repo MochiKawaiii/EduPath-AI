@@ -17,6 +17,18 @@ TICK, CROSS, UNKNOWN_MARK = '✓', '✗', '?'
 MIN_MARK_PIXELS = 12  # a 12 pt icon has ~40 coloured pixels even at 72 DPI
 
 
+def resolve_device(device):
+    if device != 'auto':
+        return device
+    import paddle
+    try:
+        if paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0:
+            return 'gpu:0'
+    except (OSError, RuntimeError):
+        pass
+    return 'cpu'
+
+
 def create_engine(rec_model_dir=None, device='gpu:0', det_model='PP-OCRv5_server_det'):
     os.environ.setdefault('PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK', 'True')
     from paddleocr import TextDetection, TextRecognition

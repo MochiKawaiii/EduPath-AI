@@ -10,5 +10,10 @@ if(!match) await writeFile(envFile,env.trimEnd()+'\nOCR_WORKER_KEY='+key+'\n','u
 const url=process.argv[2] || 'http://localhost:4000';
 const parsed=new URL(url);
 if(parsed.protocol!=='https:' && !(parsed.protocol==='http:' && ['localhost','127.0.0.1'].includes(parsed.hostname))) throw new Error('Use HTTPS or localhost.');
-await writeFile(new URL('services/ocr/.env',root),`OCR_API_URL=${parsed.origin}\nOCR_WORKER_KEY=${key}\nOCR_DEVICE=cpu\nOCR_DET_MODEL=PP-OCRv5_mobile_det\n`,'utf8');
+const workerFile=new URL('services/ocr/.env',root);
+const workerEnv=await readFile(workerFile,'utf8').catch(()=> '');
+const workerSetting=(name,fallback)=>workerEnv.match(new RegExp(`^${name}=(.*)$`,'m'))?.[1]?.trim().replace(/^['"]|['"]$/g,'') || fallback;
+const device=workerSetting('OCR_DEVICE','auto');
+const detector=workerSetting('OCR_DET_MODEL','PP-OCRv5_mobile_det');
+await writeFile(workerFile,`OCR_API_URL=${parsed.origin}\nOCR_WORKER_KEY=${key}\nOCR_DEVICE=${device}\nOCR_DET_MODEL=${detector}\n`,'utf8');
 console.log('Configured apps/api/.env and services/ocr/.env. Secrets were not printed. Restart the backend after changing its environment.');

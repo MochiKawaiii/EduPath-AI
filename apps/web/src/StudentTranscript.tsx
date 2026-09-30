@@ -50,6 +50,8 @@ export default function StudentTranscript() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [importCompleted, setImportCompleted] = useState(false);
+  const [importAttempt, setImportAttempt] = useState(0);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState("all");
@@ -73,10 +75,10 @@ export default function StudentTranscript() {
         if (!pending.signal.aborted) {
           setJob(data.job ?? null); setWorkerOnline(data.workerOnline ?? false);
           setTranscript(data.transcript ?? null); setError("");
-          if (data.job?.status === "completed") setMessage("Đã lưu bảng điểm. Hãy đối chiếu kết quả bên dưới với PDF gốc.");
+          if (data.job?.status === "completed") { setImportCompleted(true); setMessage("Đã lưu bảng điểm. Hãy đối chiếu kết quả bên dưới với PDF gốc."); }
         }
       } catch (e) { if (!pending.signal.aborted) setError(e instanceof Error ? e.message : "Không lấy được trạng thái xử lý."); }
-      finally { if (!pending.signal.aborted) timer = setTimeout(() => void poll(), 5000); }
+      finally { if (!pending.signal.aborted) timer = setTimeout(() => void poll(), 2000); }
     };
     timer = setTimeout(() => void poll(), 2000);
     return () => { pending.abort(); clearTimeout(timer); };
@@ -93,6 +95,7 @@ export default function StudentTranscript() {
   const [dragging, setDragging] = useState(false);
   const clearFile = () => { setFile(null); setConfirmed(false); if (input.current) input.current.value = ""; };
   const pick = (selected: File | undefined) => {
+    setImportCompleted(false);
     setError(""); setMessage(""); setConfirmed(false);
     if (!selected) { setFile(null); return; }
     if (!selected.name.toLowerCase().endsWith(".pdf") || selected.size > 5 * 1024 * 1024 || !selected.size) { setError("Chọn file PDF không rỗng, tối đa 5 MB."); clearFile(); return; }
@@ -107,13 +110,14 @@ export default function StudentTranscript() {
   };
   const upload = async () => {
     if (!file || !confirmed || !loaded || pendingJob) return;
+    setImportCompleted(false); setImportAttempt(current => current + 1);
     setBusy(true); setUploading(true); setError(""); setMessage("");
     try {
       const headers: Record<string, string> = { "Content-Type": "application/pdf", "X-File-Name": encodeURIComponent(file.name), "X-Confirm-Own-Transcript": "true" };
       if (transcript) headers["X-Transcript-Version"] = transcript.version;
       const data = await read(await fetch("/api/student/transcript", { method: "POST", credentials: "include", headers, body: file }));
       if (data.job) { setJob(data.job); setMessage(""); }
-      else { setTranscript(data.transcript ?? null); setMessage("Đã lưu bảng điểm. Bạn có thể đối chiếu các học phần bên dưới với PDF gốc."); }
+      else { setJob(null); setTranscript(data.transcript ?? null); setImportCompleted(true); setMessage("Đã lưu bảng điểm. Bạn có thể đối chiếu các học phần bên dưới với PDF gốc."); }
       clearFile(); setFilter("all"); setSearch("");
     } catch (e) { setError(e instanceof Error ? e.message : "Không import được bảng điểm."); }
     finally { setBusy(false); setUploading(false); }
@@ -121,7 +125,7 @@ export default function StudentTranscript() {
   const remove = async () => {
     if (!transcript || !window.confirm("Xóa PDF và toàn bộ dữ liệu bảng điểm đã import? Thông tin cá nhân của bạn vẫn được giữ lại.")) return;
     setBusy(true); setError(""); setMessage("");
-    try { await read(await fetch("/api/student/transcript", { method: "DELETE", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version: transcript.version, confirmed: true }) })); setTranscript(null); clearFile(); setFilter("all"); setMessage("Đã xóa PDF và dữ liệu bảng điểm."); }
+    try { await read(await fetch("/api/student/transcript", { method: "DELETE", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version: transcript.version, confirmed: true }) })); setTranscript(null); setImportCompleted(false); clearFile(); setFilter("all"); setMessage("Đã xóa PDF và dữ liệu bảng điểm."); }
     catch (e) { setError(e instanceof Error ? e.message : "Không xóa được bảng điểm."); }
     finally { setBusy(false); }
   };
@@ -135,8 +139,8 @@ export default function StudentTranscript() {
   const count = sections.reduce((n, s) => n + s.courses.filter(matches).length, 0);
   return <section className="sw-panel sr-transcript" aria-labelledby="transcript-title"><div className="sw-section-heading"><div><h2 id="transcript-title">Bảng điểm của tôi</h2><p className="sw-muted">Import PDF từ cổng đào tạo để theo dõi kết quả học tập.</p></div><span className="sw-tag">PDF · tối đa 5 MB</span></div>
     {loading && <p role="status">Đang tải bảng điểm…</p>}{error && <div className="sr-error" role="alert">{error}<button disabled={busy || loading} onClick={() => void load()}>Tải lại</button></div>}{message && <p className="sr-success" role="status">{message}</p>}
-    {uploading && <TranscriptProgress stage="uploading" />}
-    {job && pendingJob && <div className="sr-job"><span className="sr-job-spinner" aria-hidden="true" /><div role="status" aria-live="polite" aria-atomic="true"><strong>{job.status === "queued" ? "Đã nhận PDF · Đang chờ xử lý" : "Đang đọc bảng điểm"}</strong><p>{job.filename}</p><p>{workerOnline ? "Hệ thống đọc lớp chữ trước và nhận dạng tự động nếu cần. Bạn có thể rời trang và quay lại sau." : "Máy xử lý hiện chưa kết nối. PDF đã được giữ trong hàng đợi và sẽ được xử lý khi máy kết nối lại."}</p></div><TranscriptProgress stage={job.status === "queued" ? "queued" : "processing"} workerOnline={workerOnline} /><ol className="sr-job-steps" aria-label="Tiến trình import"><li>1. Đã tải PDF</li><li aria-current="step">2. {job.status === "queued" ? "Chờ đọc bảng điểm" : "Đọc chữ / nhận dạng"}</li><li>3. Lưu kết quả</li></ol><button className="sr-secondary" disabled={busy} onClick={() => void cancelJob()}>Hủy xử lý</button></div>}
+    {(uploading || pendingJob || importCompleted) && <TranscriptProgress key={importAttempt} stage={uploading ? "uploading" : pendingJob ? job?.status === "queued" ? "queued" : "processing" : "completed"} workerOnline={workerOnline} />}
+    {job && pendingJob && <div className="sr-job"><div role="status" aria-live="polite" aria-atomic="true"><strong>{job.status === "queued" ? "Đã nhận PDF · Đang chờ xử lý" : "Đang đọc bảng điểm"}</strong><p>{job.filename}</p><p>{workerOnline ? "Hệ thống đọc lớp chữ trước và nhận dạng tự động nếu cần. Bạn có thể rời trang và quay lại sau." : "Máy xử lý hiện chưa kết nối. PDF đã được giữ trong hàng đợi và sẽ được xử lý khi máy kết nối lại."}</p></div><ol className="sr-job-steps" aria-label="Tiến trình import"><li>1. Đã tải PDF</li><li aria-current="step">2. {job.status === "queued" ? "Chờ đọc bảng điểm" : "Đọc chữ / nhận dạng"}</li><li>3. Lưu kết quả</li></ol><button className="sr-secondary" disabled={busy} onClick={() => void cancelJob()}>Hủy xử lý</button></div>}
     {job?.status === "failed" && <div className="sr-error" role="alert">{errors[job.errorCode ?? ""] ?? "Không xử lý được bảng điểm. Hãy chọn lại PDF để thử lại."} Bảng điểm trước đó vẫn được giữ nguyên.</div>}
     {transcript?.data.parserVersion === "vlu-ocr-1.1" && <div className="sr-review" role="note">{transcript.data.warnings.join(" ")}</div>}
     {loaded && <>{transcript && <div className="sr-upload"><div><strong>Cập nhật bảng điểm mới</strong><p>Dùng PDF rõ, lưu từ cổng đào tạo. Hệ thống đọc chữ trước, tự nhận dạng khi cần.</p></div><label className="sr-file-label">Chọn file PDF<input ref={input} type="file" accept=".pdf,application/pdf" disabled={busy || pendingJob} onChange={e => pick(e.target.files?.[0])} /></label></div>}
