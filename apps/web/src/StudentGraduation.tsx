@@ -225,6 +225,9 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
         )}
         {data.groups.map((group) => {
           const items = matches.filter((c) => c.groupId === group.id);
+          const progress = assessment.checks.find((check) => check.groupId === group.id);
+          const earnedCredits = group.kind === "mandatory"
+            ? progress?.accumulatedCredits : progress?.actual;
           if (query && !items.length) return null;
           return (
             <div key={group.id} className="sg-group">
@@ -233,8 +236,9 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                 <span
                   className={`sc-badge ${group.kind === "elective" ? "sc-elective" : ""}`}
                 >
-                  {group.kind === "mandatory" ? "Bắt buộc" : "Tự chọn"} · Yêu
-                  cầu {fmt(group.minimumCredits)} TC
+                  {group.kind === "mandatory" ? "Bắt buộc" : "Tự chọn"} · Đã đạt:{" "}
+                  {assessmentReady && transcript.data?.transcript ? fmt(earnedCredits ?? null) : "—"} TC
+                  {" · "}Yêu cầu: {fmt(group.minimumCredits)} TC
                 </span>
               </div>
               <div className="sc-table-wrap">
@@ -249,7 +253,10 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((c) => (
+                    {items.map((c) => {
+                      const result = assessmentReady && transcript.data?.transcript
+                        ? assessment.results.get(c.code.trim().toUpperCase()) : undefined;
+                      return (
                       <tr key={c.id}>
                         <td>{c.code}</td>
                         <td>
@@ -261,11 +268,12 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                             ? "Có (*) · không tính TC/GPA"
                             : "Không"}
                         </td>
-                        <td className={`sg-result sg-status-${!assessmentReady || !transcript.data?.transcript ? "unknown" : assessment.results.get(c.code.trim().toUpperCase()) === "pass" ? "pass" : "fail"}`}>
-                          {!assessmentReady || !transcript.data?.transcript ? "—" : assessment.results.get(c.code.trim().toUpperCase()) === "pass" ? "✓ Đạt" : "✗ Chưa đạt"}
+                        <td className={`sg-result ${result ? `sg-status-${result}` : "sc-muted"}`}>
+                          {result === "pass" ? "✓ Đạt" : result === "fail" ? "✗ Chưa đạt" : "—"}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                     {!items.length && (
                       <tr>
                         <td colSpan={5} className="sc-muted">

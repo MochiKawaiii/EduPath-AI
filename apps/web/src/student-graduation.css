@@ -99,6 +99,10 @@
   font-weight: 650;
   line-height: 1.6;
 }
+.sg-group-heading .sc-badge {
+  flex-shrink: 1;
+  max-width: 100%;
+}
 /* One table per course group: fixed widths keep the columns lined up across
    groups instead of each table sizing itself to its own content. */
 .sg-group .sc-table {

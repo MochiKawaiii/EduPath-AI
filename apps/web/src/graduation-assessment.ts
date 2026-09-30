@@ -8,6 +8,7 @@ type Standard = {
 };
 type Status = "pass" | "fail" | "unknown";
 export type GraduationCheck = {
+  groupId: string;
   label: string;
   actual: number | null;
   required: number | null;
@@ -34,6 +35,7 @@ export function assessGraduation(standard: Standard, transcript: Transcript | nu
     const actual = mandatory ? completed.length : sumCredits(completed);
     const required = mandatory ? courses.length : group.minimumCredits;
     return {
+      groupId: group.id,
       label: group.name,
       actual,
       required,
