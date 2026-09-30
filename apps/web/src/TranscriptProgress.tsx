@@ -21,11 +21,11 @@ export default function TranscriptProgress({ stage, workerOnline = true }: Props
     : stage === "queued" ? "PDF đã tải lên · Đang chờ đọc dữ liệu…"
     : "Đang đọc và phân tích bảng điểm…";
   return <div className="sr-import-progress">
-    <div className="sr-progress-heading"><p role="status">{label}</p><span className="sr-progress-percent">{percent}%{!completed && <small>ước lượng</small>}</span></div>
+    <div className="sr-progress-heading"><p role="status">{label}</p><span className="sr-progress-percent">{percent}%</span></div>
     <div className={`sr-progress-track${waiting ? " is-waiting" : ""}${completed ? " is-completed" : ""}`}
       role="progressbar" aria-label="Tiến trình import bảng điểm"
       aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}
-      aria-valuetext={`${percent}%${completed ? "" : " ước lượng"} · ${label}`}>
+      aria-valuetext={`${percent}% · ${label}`}>
       <span style={{ width: `${percent}%` }} />
     </div>
   </div>;

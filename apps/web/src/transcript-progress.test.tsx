@@ -44,7 +44,8 @@ describe("transcript import progress", () => {
     );
     expect(waiting).toContain('role="progressbar"');
     expect(waiting).toContain('aria-valuenow="30"');
-    expect(waiting).toContain('aria-valuetext="30% ước lượng');
+    expect(waiting).toContain('aria-valuetext="30% · ');
+    expect(waiting).not.toContain("ước lượng");
     expect(waiting).toContain("is-waiting");
 
     const completed = renderToStaticMarkup(
@@ -52,6 +53,6 @@ describe("transcript import progress", () => {
     );
     expect(completed).toContain('aria-valuenow="100"');
     expect(completed).toContain('class="sr-progress-track is-completed"');
-    expect(completed).not.toContain("ước lượng</small>");
+    expect(completed).not.toContain("ước lượng");
   });
 });
