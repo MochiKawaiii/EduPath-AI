@@ -96,6 +96,7 @@ type SetupOptions = {
   profileCohort?: string | null;
   listRows?: unknown[];
   detailRows?: unknown[];
+  curriculumRows?: unknown[];
 };
 
 function setup(options: SetupOptions = {}) {
@@ -103,7 +104,8 @@ function setup(options: SetupOptions = {}) {
     options.sessionUser === null ? undefined : options.sessionUser ?? student;
   const listRows = options.listRows ?? [activeListRow];
   const detailRows = options.detailRows ?? [{ id: planId, version: 2, data: plan }];
-  const query = vi.fn(async (sql: string) => {
+  const curriculumRows = options.curriculumRows ?? [];
+  const query = vi.fn(async (sql: string, params?: unknown[]) => {
     if (sql.includes("SELECT id FROM users")) {
       return {
         rowCount: options.active === false ? 0 : 1,
@@ -122,6 +124,8 @@ function setup(options: SetupOptions = {}) {
       return { rowCount: listRows.length, rows: listRows };
     if (sql.includes("SELECT c.id,r.version,r.data"))
       return { rowCount: detailRows.length, rows: detailRows };
+    if (sql.includes("FROM curricula c"))
+      return { rowCount: curriculumRows.length, rows: curriculumRows };
     throw new Error(`Unexpected query: ${sql}`);
   });
   const app = express();
@@ -216,6 +220,49 @@ describe("student plans API", () => {
       expect(response.body.items[0]).not.toHaveProperty(key);
     }
     expect(response.body.sections[0]).not.toHaveProperty("sourceRow");
+  });
+
+  it("returns distinct TC002 and TC102 codes from the active current curriculum for the exact plan identity", async () => {
+    const curriculumRows = [{
+      courses: [
+        { code: "71TC0020001", type: "TC002 - Physical education" },
+        { code: " 71tc0020001 ", type: "TC002 - Physical education" },
+        { code: "71TC0020002", type: "TC002 - Physical education" },
+        { code: "71TC1020001", type: "TC102 - Physical education" },
+        { code: "71TC2090001", type: "TC209 - Other elective" },
+        { code: "71IT000001", type: "BB - Required" },
+      ],
+    }];
+    const { app, query } = setup({ curriculumRows });
+    const response = await request(app).get(`/plans/${planId}`).expect(200);
+
+    expect(response.body.physicalEducationGroups).toEqual({
+      TC002: ["71TC0020001", "71TC0020002"],
+      TC102: ["71TC1020001"],
+    });
+    const curriculumCall = query.mock.calls.find(([sql]) => String(sql).includes("FROM curricula c"));
+    expect(curriculumCall?.[1]).toEqual(["information technology:K29"]);
+    expect(String(curriculumCall?.[0])).toContain(
+      "JOIN curriculum_revisions r ON r.id=c.current_revision",
+    );
+    expect(String(curriculumCall?.[0])).toContain(
+      "WHERE c.identity_key=$1 AND c.is_active",
+    );
+  });
+
+  it("returns empty physical education groups when the matching active curriculum is absent", async () => {
+    const { app, query } = setup({ curriculumRows: [] });
+    const response = await request(app).get(`/plans/${planId}`).expect(200);
+
+    expect(response.body.physicalEducationGroups).toEqual({ TC002: [], TC102: [] });
+    const curriculumCall = query.mock.calls.find(([sql]) => String(sql).includes("FROM curricula c"));
+    expect(curriculumCall?.[1]).toEqual(["information technology:K29"]);
+    expect(String(curriculumCall?.[0])).toContain(
+      "JOIN curriculum_revisions r ON r.id=c.current_revision",
+    );
+    expect(String(curriculumCall?.[0])).toContain(
+      "WHERE c.identity_key=$1 AND c.is_active",
+    );
   });
 
   it.each([lockedId, missingId])(

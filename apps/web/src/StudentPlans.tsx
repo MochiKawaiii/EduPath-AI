@@ -4,6 +4,7 @@ import { searchTerm } from "./student-curriculum-types";
 import { useLiveData } from "./use-live-data";
 import type { Transcript } from "./StudentTranscript";
 import { transcriptResults } from "./transcript-results";
+import { passedPhysicalEducationCourses, studentPlanResult } from "./student-plan-results";
 import "./student-curriculum.css";
 import "./student-plans.css";
 
@@ -16,6 +17,7 @@ type Detail = Pick<
   PlanData,
   "name" | "major" | "cohortCode" | "totalCredits" | "terms" | "sections"
 > & {
+  physicalEducationGroups?: Record<string, string[]>;
   items: Omit<
     PlanItem,
     "position" | "sourceRow" | "sourceSheet" | "sourceCells"
@@ -111,6 +113,10 @@ function PlanContents({ id }: { id: string }) {
       </section>
     );
   const data = remote.data!;
+  const passedPhysicalEducation = passedPhysicalEducationCourses(
+    [...(data.physicalEducationGroups?.TC002 ?? []), ...(data.physicalEducationGroups?.TC102 ?? [])],
+    results,
+  );
   const rows = data.items.filter(
     (item) =>
       (!term || item.termCode === term) &&
@@ -185,7 +191,9 @@ function PlanContents({ id }: { id: string }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((item) => (
+                    {items.map((item) => {
+                      const result = studentPlanResult(item, results, passedPhysicalEducation);
+                      return (
                       <tr key={item.id}>
                         <td>{item.code || "—"}</td>
                         <td>
@@ -208,17 +216,18 @@ function PlanContents({ id }: { id: string }) {
                           {!item.prerequisite && !item.prior && "Chưa cung cấp"}
                         </td>
                         <td className="sc-result-cell">
-                          {results.has(item.code.trim().toUpperCase()) && (
-                            <span className={`sc-result sc-result-${results.get(item.code.trim().toUpperCase())}`}
+                          {result && (
+                            <span className={`sc-result sc-result-${result}`}
                               role="img"
-                              aria-label={results.get(item.code.trim().toUpperCase()) === "pass" ? "Đạt" : "Chưa đạt"}
-                              title={results.get(item.code.trim().toUpperCase()) === "pass" ? "Đạt" : "Chưa đạt"}>
-                              {results.get(item.code.trim().toUpperCase()) === "pass" ? "✓" : "✗"}
+                              aria-label={result === "pass" ? "Đạt" : "Chưa đạt"}
+                              title={result === "pass" ? "Đạt" : "Chưa đạt"}>
+                              {result === "pass" ? "✓" : "✗"}
                             </span>
                           )}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

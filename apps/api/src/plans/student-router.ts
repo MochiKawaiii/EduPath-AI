@@ -2,7 +2,7 @@ import { Router, type ErrorRequestHandler } from "express";
 import { z } from "zod";
 import type { DatabasePool } from "../db/pool.js";
 import { requireAuthentication } from "../middleware/authorization.js";
-import type { PlanData } from "./model.js";
+import { identity, type PlanData } from "./model.js";
 
 export function studentPlanData(data: PlanData) {
   return {
@@ -122,10 +122,24 @@ export function createStudentPlansRouter(pool: DatabasePool | undefined) {
       res.status(404).json({ error: "plan_unavailable" });
       return;
     }
+    const curriculum = await pool!.query<{ courses: { code: string; type: string }[] }>(
+      `SELECT r.data->'courses' AS courses FROM curricula c
+       JOIN curriculum_revisions r ON r.id=c.current_revision
+       WHERE c.identity_key=$1 AND c.is_active`,
+      [identity(current.data)],
+    );
+    const physicalEducationGroups = Object.fromEntries(
+      ["TC002", "TC102"].map((group) => [group,
+        [...new Set((curriculum.rows[0]?.courses ?? [])
+          .filter((course) => course.type.match(/^(TC\d+)\b/)?.[1] === group)
+          .map((course) => course.code.trim().toUpperCase()))],
+      ]),
+    );
     res.json({
       id: current.id,
       version: current.version,
       ...studentPlanData(current.data),
+      physicalEducationGroups,
     });
   });
   const errors: ErrorRequestHandler = (error, _req, res, next) => {
