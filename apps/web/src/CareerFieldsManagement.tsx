@@ -6,10 +6,11 @@ import { searchTerm } from "./student-curriculum-types";
 
 const endpoint = "/api/admin/careers/fields";
 
-export default function CareerFieldsManagement({ canManage, remote, saved }: {
+export default function CareerFieldsManagement({ canManage, remote, saved, onClose }: {
   canManage: boolean;
   remote: { data: { items: CareerField[] } | null; loading: boolean; error: string | null; retry: () => void };
   saved: () => void;
+  onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -18,7 +19,9 @@ export default function CareerFieldsManagement({ canManage, remote, saved }: {
   const close = () => { setMode(null); setSelected(null); };
   const onSaved = () => { close(); saved(); };
   const items = remote.data?.items.filter(field => searchTerm(`${field.code} ${field.name} ${field.description}`).includes(searchTerm(query))) ?? [];
-  return <>
+  if (canManage && mode === "edit") return <FieldEditor current={selected} close={close} saved={onSaved} />;
+  if (canManage && mode === "delete" && selected) return <FieldDelete current={selected} close={close} saved={onSaved} />;
+  return <Modal title="Lĩnh vực nghề nghiệp" onClose={onClose}><div className="cm-dialog-body career-field-dialog">
     <div className="cm-toolbar">
       <p>Quản lý lĩnh vực để phân nhóm các vị trí nghề nghiệp.</p>
       {canManage && <button className="am-primary" onClick={() => { setSelected(null); setMode("edit"); }}><Icon name="plus" /> Thêm lĩnh vực</button>}
@@ -45,9 +48,7 @@ export default function CareerFieldsManagement({ canManage, remote, saved }: {
         <Pagination total={items.length} page={page} setPage={setPage} />
       </>}
     </section>
-    {canManage && mode === "edit" && <FieldEditor current={selected} close={close} saved={onSaved} />}
-    {canManage && mode === "delete" && selected && <FieldDelete current={selected} close={close} saved={onSaved} />}
-  </>;
+  </div></Modal>;
 }
 
 function FieldEditor({ current, close, saved }: { current: CareerField | null; close: () => void; saved: () => void }) {
@@ -68,7 +69,7 @@ function FieldEditor({ current, close, saved }: { current: CareerField | null; c
       finally { setBusy(false); }
     }}>
       <fieldset className="career-fields" disabled={busy}>
-        <label><RequiredLabel>Mã lĩnh vực</RequiredLabel><input required readOnly={Boolean(current)} maxLength={60} pattern="[a-z0-9]+([-_][a-z0-9]+)*" value={form.code} onChange={event => setForm({ ...form, code: event.target.value })} placeholder="Ví dụ: software" /><small>{current ? "Mã được giữ cố định để liên kết các vị trí nghề nghiệp." : "Chữ thường, số, dấu gạch ngang hoặc gạch dưới."}</small></label>
+        <label><RequiredLabel>Mã lĩnh vực</RequiredLabel><input required readOnly={Boolean(current)} maxLength={60} pattern="[a-z0-9]+((-|_)[a-z0-9]+)*" value={form.code} onChange={event => setForm({ ...form, code: event.target.value })} placeholder="Ví dụ: software" /><small>{current ? "Mã được giữ cố định để liên kết các vị trí nghề nghiệp." : "Chữ thường, số, dấu gạch ngang hoặc gạch dưới."}</small></label>
         <label><RequiredLabel>Tên lĩnh vực</RequiredLabel><input required maxLength={160} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
         <label>Mô tả<textarea rows={4} maxLength={2000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
       </fieldset>

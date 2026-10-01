@@ -2,16 +2,15 @@ import { useState } from "react";
 import { Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
-import { careerRequest, requirementLevels, type Career, type CareerField, type CareerRequirement, type CareerSkill } from "./career-types";
+import { careerRequest, requirementLevels, type Career, type CareerRequirement, type CareerSkill } from "./career-types";
 
 const endpoint = "/api/admin/careers/requirements";
-const emptyFilters = { q: "", careerPositionId: "", category: "", skillId: "", level: "", kind: "", priority: "" };
-export default function CareerRequirementsManagement({ canManage, fields, revision, saved, initialCareerId = "" }: {
-  canManage: boolean; fields: CareerField[]; revision: number; saved: () => void; initialCareerId?: string;
+const emptyFilters = { q: "", skillId: "", level: "", kind: "", priority: "" };
+export default function CareerRequirementsManagement({ canManage, career, revision, saved }: {
+  canManage: boolean; career: Career; revision: number; saved: () => void;
 }) {
-  const { draft, setDraft, filters, page, setPage } = useLiveFilters({ ...emptyFilters, careerPositionId: initialCareerId });
-  const remote = useData<{ items: CareerRequirement[] }>(`${endpoint}?${new URLSearchParams(filters)}`, revision);
-  const careers = useData<{ items: Career[] }>("/api/admin/careers", revision);
+  const { draft, setDraft, filters, page, setPage } = useLiveFilters(emptyFilters);
+  const remote = useData<{ items: CareerRequirement[] }>(`${endpoint}?${new URLSearchParams({ ...filters, careerPositionId: career.id })}`, revision);
   const skills = useData<{ items: CareerSkill[] }>(`${endpoint}/skills`, revision);
   const [selected, setSelected] = useState<CareerRequirement | null>(null);
   const [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
@@ -21,7 +20,7 @@ export default function CareerRequirementsManagement({ canManage, fields, revisi
   const start = (next: "skill" | "other") => { setSelected(null); setKind(next); setMode("edit"); };
   return <>
     <div className="cm-toolbar">
-      <p>Quản lý nội dung yêu cầu và kỹ năng liên kết với từng vị trí nghề nghiệp.</p>
+      <div><h3>Yêu cầu và kỹ năng</h3><p>Các yêu cầu áp dụng cho {career.nameVi}.</p></div>
       {canManage && <div className="cm-actions">
         <button className="am-outline" onClick={() => start("other")}><Icon name="plus" /> Thêm yêu cầu</button>
         <button className="am-primary" onClick={() => start("skill")}><Icon name="plus" /> Liên kết kỹ năng</button>
@@ -29,13 +28,7 @@ export default function CareerRequirementsManagement({ canManage, fields, revisi
     </div>
     <section className="cm-panel">
       <div className="cm-filters career-requirement-filters">
-        <label className="cm-search">Tìm yêu cầu<input value={draft.q} maxLength={200} placeholder="Nội dung, nghề nghiệp hoặc kỹ năng…" onChange={event => setDraft({ ...draft, q: event.target.value })} /></label>
-        <label>Vị trí nghề nghiệp<select value={draft.careerPositionId} onChange={event => setDraft({ ...draft, careerPositionId: event.target.value })}>
-          <option value="">Tất cả vị trí</option>{careers.data?.items.map(career => <option key={career.id} value={career.id}>{career.nameVi}</option>)}
-        </select></label>
-        <label>Lĩnh vực<select value={draft.category} onChange={event => setDraft({ ...draft, category: event.target.value })}>
-          <option value="">Tất cả lĩnh vực</option>{fields.map(field => <option key={field.code} value={field.code}>{field.name}</option>)}
-        </select></label>
+        <label className="cm-search">Tìm yêu cầu<input value={draft.q} maxLength={200} placeholder="Nội dung hoặc kỹ năng…" onChange={event => setDraft({ ...draft, q: event.target.value })} /></label>
         <label>Kỹ năng<select value={draft.skillId} onChange={event => setDraft({ ...draft, skillId: event.target.value })}>
           <option value="">Tất cả kỹ năng</option>{skills.data?.items.map(skill => <option key={skill.id} value={skill.id}>{skill.name}</option>)}
         </select></label>
@@ -50,13 +43,12 @@ export default function CareerRequirementsManagement({ canManage, fields, revisi
         </select></label>
         <button className="am-outline" onClick={() => setDraft(emptyFilters)}><Icon name="refresh" /> Xóa bộ lọc</button>
       </div>
-      <Status {...remote} /><Status {...careers} /><Status {...skills} />
+      <Status {...remote} /><Status {...skills} />
       {remote.data && <>
         <div className="cm-table-scroll"><table className="cm-table career-requirement-table">
-          <thead><tr><th>Yêu cầu</th><th>Vị trí nghề nghiệp</th><th>Kỹ năng</th><th>Mức yêu cầu</th><th>Tính chất</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Yêu cầu</th><th>Kỹ năng</th><th>Mức yêu cầu</th><th>Tính chất</th><th>Thao tác</th></tr></thead>
           <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map(item => <tr key={item.id}>
             <td><strong>{item.title}</strong><small className="career-requirement-summary">{item.description || "Chưa bổ sung mô tả"}</small></td>
-            <td>{item.careerName}<small>{fields.find(field => field.code === item.category)?.name ?? item.categoryName}</small></td>
             <td>{item.skillName || "—"}</td><td>{requirementLevels[item.level]}</td><td>{item.isRequired ? "Bắt buộc" : "Ưu tiên"}</td>
             <td><div className="career-row-actions">
               <button className="am-outline" onClick={() => { setSelected(item); setMode("detail"); }}><Icon name="eye" /> Chi tiết</button>
@@ -72,7 +64,7 @@ export default function CareerRequirementsManagement({ canManage, fields, revisi
       </>}
     </section>
     {mode === "detail" && selected && <RequirementDetail id={selected.id} close={close} />}
-    {canManage && mode === "edit" && <RequirementEditor current={selected} kind={kind} careers={careers.data?.items ?? []} skills={skills.data?.items ?? []} careerId={draft.careerPositionId} close={close} saved={onSaved} />}
+    {canManage && mode === "edit" && <RequirementEditor current={selected} kind={kind} career={career} skills={skills.data?.items ?? []} close={close} saved={onSaved} />}
     {canManage && mode === "delete" && selected && <RequirementDelete current={selected} close={close} saved={onSaved} />}
   </>;
 }
@@ -90,12 +82,11 @@ function RequirementDetail({ id, close }: { id: string; close: () => void }) {
   </Modal>;
 }
 
-function RequirementEditor({ current, kind, careers, skills, careerId, close, saved }: {
-  current: CareerRequirement | null; kind: "skill" | "other"; careers: Career[]; skills: CareerSkill[];
-  careerId: string; close: () => void; saved: () => void;
+function RequirementEditor({ current, kind, career, skills, close, saved }: {
+  current: CareerRequirement | null; kind: "skill" | "other"; career: Career; skills: CareerSkill[];
+  close: () => void; saved: () => void;
 }) {
   const [form, setForm] = useState({
-    careerPositionId: current?.careerPositionId ?? careerId,
     title: current?.title ?? "", description: current?.description ?? "",
     skillId: current?.skillId ?? "", skillName: "",
     level: current?.level ?? "unspecified", isRequired: current?.isRequired ?? false,
@@ -116,15 +107,13 @@ function RequirementEditor({ current, kind, careers, skills, careerId, close, sa
       try {
         await careerRequest(current ? `${endpoint}/${current.id}` : endpoint, {
           method: current ? "PATCH" : "POST", headers: { "Content-Type": "application/json", ...(current ? { "x-version": current.version } : {}) },
-          body: JSON.stringify({ ...form, skillId: isSkill && form.skillId !== "new" ? form.skillId : null, skillName: isSkill && form.skillId === "new" ? form.skillName : "" }),
+          body: JSON.stringify({ ...form, careerPositionId: career.id, skillId: isSkill && form.skillId !== "new" ? form.skillId : null, skillName: isSkill && form.skillId === "new" ? form.skillName : "" }),
         }); saved();
       } catch (failure) { setError((failure as Error).message); }
       finally { setBusy(false); }
     }}>
       <fieldset disabled={busy} className="career-fields">
-        <label><RequiredLabel>Vị trí nghề nghiệp</RequiredLabel><select required value={form.careerPositionId} onChange={event => setForm({ ...form, careerPositionId: event.target.value })}>
-          <option value="">Chọn vị trí nghề nghiệp</option>{careers.map(career => <option key={career.id} value={career.id}>{career.nameVi}</option>)}
-        </select></label>
+        <div><strong>Vị trí nghề nghiệp</strong><p>{career.nameVi}</p></div>
         {isSkill && <>
           <label><RequiredLabel>Kỹ năng liên kết</RequiredLabel><select required value={form.skillId} onChange={event => chooseSkill(event.target.value, skills.find(skill => skill.id === event.target.value)?.name ?? "")}>
             <option value="">Chọn kỹ năng</option>{skills.map(skill => <option key={skill.id} value={skill.id}>{skill.name}</option>)}<option value="new">Thêm kỹ năng mới…</option>
@@ -142,11 +131,10 @@ function RequirementEditor({ current, kind, careers, skills, careerId, close, sa
           </select></label>
         </div>
       </fieldset>
-      {!careers.length && <p>Thêm vị trí nghề nghiệp trước khi tạo yêu cầu.</p>}
       {error && <p className="admin-error" role="alert">{error}</p>}
       <div className="cm-actions cm-dialog-actions">
         <button type="button" className="am-outline" disabled={busy} onClick={close}><Icon name="close" /> Hủy</button>
-        <button className="am-primary" disabled={busy || !careers.length}><Icon name="save" /> {busy ? "Đang lưu…" : "Lưu thay đổi"}</button>
+        <button className="am-primary" disabled={busy}><Icon name="save" /> {busy ? "Đang lưu…" : "Lưu thay đổi"}</button>
       </div>
     </form>
   </Modal>;

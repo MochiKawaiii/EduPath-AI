@@ -8,14 +8,6 @@
   align-items: center;
   gap: 8px;
 }
-.career-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.career-tabs button {
-  min-height: 42px;
-}
 .career-row-actions svg,
 .career-workspace .am-primary svg {
   width: 20px;
@@ -38,6 +30,11 @@
   display: grid;
   gap: 16px;
 }
+.career-detail-panel { padding: 24px; }
+.career-detail-panel h2,
+.career-workspace .cm-toolbar h3 { margin: 0 0 8px; }
+.career-detail-panel dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.career-field-dialog { display: grid; gap: 20px; }
 .career-detail dd {
   margin: 6px 0 0;
   font-weight: 600;
@@ -47,11 +44,11 @@
 }
 .cm-filters.career-requirement-filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .cm-filters.career-requirement-filters label { min-width: 0; }
 .career-requirement-table {
-  min-width: 1000px;
+  min-width: 780px;
 }
 .career-requirement-summary {
   display: -webkit-box;
@@ -64,4 +61,6 @@
 }
 @media (max-width: 600px) {
   .cm-filters.career-requirement-filters { grid-template-columns: 1fr; }
+  .career-detail-panel dl { grid-template-columns: 1fr; }
+  .career-detail-panel { padding: 18px; }
 }
