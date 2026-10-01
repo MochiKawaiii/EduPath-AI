@@ -4,6 +4,7 @@ import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import { careerRequest, type Career, type CareerField } from "./career-types";
 import CareerFieldsManagement from "./CareerFieldsManagement";
+import CareerRequirementsManagement from "./CareerRequirementsManagement";
 import "./curricula.css";
 import "./careers.css";
 const endpoint = "/api/admin/careers";
@@ -13,7 +14,8 @@ export default function CareersManagement({
   canManage: boolean;
 }) {
   const [revision, setRevision] = useState(0),
-    [tab, setTab] = useState<"positions" | "fields">("positions"),
+    [tab, setTab] = useState<"positions" | "fields" | "requirements">("positions"),
+    [requirementCareerId, setRequirementCareerId] = useState(""),
     [selected, setSelected] = useState<Career | null>(null),
     [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
   const { draft, setDraft, filters, page, setPage, reset } = useLiveFilters({
@@ -31,7 +33,8 @@ export default function CareersManagement({
       setDraft({ ...draft, category: "" });
     }
   }, [fields.data, draft, setDraft]);
-  const switchTab = (next: "positions" | "fields") => {
+  const switchTab = (next: "positions" | "fields" | "requirements") => {
+    if (next === "requirements") setRequirementCareerId("");
     if (next !== tab) {
       setTab(next);
       setRevision(current => current + 1);
@@ -45,13 +48,20 @@ export default function CareersManagement({
     close();
     setRevision((n) => n + 1);
   };
+  const showRequirements = (id: string) => {
+    close();
+    setRequirementCareerId(id);
+    setTab("requirements");
+    setRevision(current => current + 1);
+  };
   return (
     <section className="cm-workspace career-workspace">
       <div className="career-tabs" role="group" aria-label="Danh mục nghề nghiệp">
         <button className={tab === "positions" ? "am-primary" : "am-outline"} aria-pressed={tab === "positions"} onClick={() => switchTab("positions")}>Vị trí nghề nghiệp</button>
         <button className={tab === "fields" ? "am-primary" : "am-outline"} aria-pressed={tab === "fields"} onClick={() => switchTab("fields")}>Lĩnh vực nghề nghiệp</button>
+        <button className={tab === "requirements" ? "am-primary" : "am-outline"} aria-pressed={tab === "requirements"} onClick={() => switchTab("requirements")}>Yêu cầu nghề nghiệp</button>
       </div>
-      {tab === "fields" ? <CareerFieldsManagement canManage={canManage} remote={fields} saved={() => setRevision(current => current + 1)} /> : <>
+      {tab === "fields" ? <CareerFieldsManagement canManage={canManage} remote={fields} saved={() => setRevision(current => current + 1)} /> : tab === "requirements" ? <CareerRequirementsManagement key={requirementCareerId} canManage={canManage} fields={fields.data?.items ?? []} revision={revision} initialCareerId={requirementCareerId} saved={() => setRevision(current => current + 1)} /> : <>
       <div className="cm-toolbar">
         <p>Danh mục nghề nghiệp song ngữ để sinh viên lựa chọn định hướng.</p>
         {canManage && (
@@ -134,6 +144,7 @@ export default function CareersManagement({
                               <Icon name="eye" />
                               Chi tiết
                             </button>
+                            <button className="am-outline" onClick={() => showRequirements(c.id)}><Icon name="book" /> Yêu cầu</button>
                             {canManage && (
                               <>
                                 <button
@@ -179,7 +190,7 @@ export default function CareersManagement({
         )}
       </section>
       {mode === "detail" && selected && (
-        <Detail id={selected.id} fields={fields.data?.items ?? []} close={close} />
+        <Detail id={selected.id} fields={fields.data?.items ?? []} close={close} showRequirements={() => showRequirements(selected.id)} />
       )}
       {mode === "edit" && (
         <Editor current={selected} fields={fields.data?.items ?? []} close={close} saved={saved} />
@@ -191,7 +202,7 @@ export default function CareersManagement({
     </section>
   );
 }
-function Detail({ id, fields, close }: { id: string; fields: CareerField[]; close: () => void }) {
+function Detail({ id, fields, close, showRequirements }: { id: string; fields: CareerField[]; close: () => void; showRequirements: () => void }) {
   const remote = useData<Career>(`${endpoint}/${id}`);
   return (
     <Modal title="Chi tiết vị trí nghề nghiệp" onClose={close}>
@@ -229,6 +240,7 @@ function Detail({ id, fields, close }: { id: string; fields: CareerField[]; clos
             ) : (
               <p>Chưa bổ sung kỹ năng.</p>
             )}
+            <button className="am-outline" onClick={showRequirements}><Icon name="book" /> Xem yêu cầu nghề nghiệp</button>
           </>
         )}
       </div>
@@ -279,7 +291,7 @@ function Editor({
                 },
                 body: JSON.stringify({
                   ...form,
-                  skills: [
+                  skills: current ? undefined : [
                     ...new Set(
                       form.skills
                         .split("\n")
@@ -359,8 +371,8 @@ function Editor({
               }
             />
           </label>
-          <label>
-            Kỹ năng tham khảo
+          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Thêm, chỉnh sửa hoặc xóa liên kết tại tab Yêu cầu nghề nghiệp.</small></div> : <label>
+            Kỹ năng ban đầu
             <textarea
               rows={4}
               value={form.skills}
@@ -371,7 +383,7 @@ function Editor({
               Mỗi dòng một kỹ năng, tối đa 30 kỹ năng; mỗi kỹ năng tối đa 100 ký
               tự.
             </small>
-          </label>
+          </label>}
         </fieldset>
         {error && (
           <p className="admin-error" role="alert">

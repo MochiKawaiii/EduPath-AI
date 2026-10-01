@@ -112,6 +112,11 @@ function setup(options: SetupOptions = {}) {
     if (sql.includes("UPDATE career_fields SET deleted_at")) return { rowCount: 1, rows: [] };
     if (sql.includes("INSERT INTO career_positions"))
       return { rowCount: 1, rows: [options.createRow ?? career] };
+    if (sql.includes("INSERT INTO career_skills(name)")) {
+      const name = String(params?.[0] ?? "");
+      return { rowCount: 1, rows: [{ id: `skill-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` }] };
+    }
+    if (sql.includes("INSERT INTO career_requirements")) return { rowCount: 1, rows: [] };
     if (sql.includes("UPDATE career_positions SET code"))
       return { rowCount: options.updateRows === undefined ? 1 : options.updateRows.length, rows: options.updateRows ?? [career] };
     return { rowCount: 1, rows: [] };

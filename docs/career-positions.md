@@ -49,6 +49,16 @@ Mỗi lĩnh vực có mã duy nhất, tên và mô tả. Mã gồm chữ thườ
 
 API quản lý gồm `GET/POST /api/admin/careers/fields` và `PATCH/DELETE /api/admin/careers/fields/:id`. Sửa/xóa yêu cầu `x-version`; xóa yêu cầu xác nhận. API kiểm tra quyền quản trị viên, nguồn yêu cầu và liên kết còn sử dụng trước khi thay đổi. Database khóa bản ghi lĩnh vực khi tạo/sửa vị trí và khi xóa lĩnh vực để tránh tạo liên kết đồng thời với thao tác xóa.
 
+## Yêu cầu nghề nghiệp — AD-REQ-01..08
+
+Tab **Yêu cầu nghề nghiệp** quản lý yêu cầu theo vị trí. Nút **Yêu cầu** trên mỗi dòng vị trí mở tab và lọc sẵn theo nghề đó. Người có quyền xem có thể xem danh sách, mở chi tiết, tìm kiếm không dấu và lọc theo nghề, lĩnh vực, kỹ năng, mức yêu cầu, loại và tính chất. Quản trị viên thêm/cập nhật/xóa yêu cầu; tạo/cập nhật/xóa liên kết kỹ năng. Hủy ở trái, lưu/xóa ở phải trong hộp thoại.
+
+Yêu cầu gồm nghề, nội dung, mô tả, mức yêu cầu (chưa xác định/cơ bản/trung cấp/nâng cao) và tính chất bắt buộc/ưu tiên. Khi tạo liên kết, chọn kỹ năng có sẵn hoặc nhập kỹ năng mới. Một kỹ năng có thể liên kết nhiều nghề với mức yêu cầu khác nhau; mỗi nghề chỉ có một liên kết hoạt động với cùng kỹ năng. Chỉnh sửa cho phép đổi nghề và kỹ năng liên kết. Xóa liên kết không xóa kỹ năng dùng chung hoặc các liên kết ở nghề khác.
+
+Migration `016_career_requirements.sql` tạo danh mục kỹ năng và yêu cầu, chuyển kỹ năng tham khảo hiện có thành liên kết với mức chưa xác định và không bắt buộc. Không tự suy đoán trình độ hay yêu cầu tuyển dụng. Các liên kết đồng bộ với danh sách kỹ năng và tìm kiếm ở vị trí nghề nghiệp, gồm danh mục sinh viên. Khi cập nhật nghề qua API cũ có gửi `skills`, các liên kết giữ lại vẫn giữ nguyên mô tả/mức yêu cầu; kỹ năng bỏ khỏi mảng sẽ ngừng liên kết. Nếu không gửi `skills` khi chỉnh sửa nghề, giữ nguyên các liên kết hiện có. Form chỉnh sửa nghề dùng tab yêu cầu để quản lý kỹ năng.
+
+API: `GET/POST /api/admin/careers/requirements`, `GET/PATCH/DELETE /api/admin/careers/requirements/:id`, và `GET /api/admin/careers/requirements/skills`. Sửa/xóa kiểm tra `x-version`, xóa cần xác nhận. Các thao tác ghi kiểm tra quyền quản trị viên trong transaction và khóa nghề liên quan trước khi đổi dữ liệu. Thay đổi yêu cầu cũng đổi phiên bản nghề để ngăn form cũ ghi đè kỹ năng. Nghề đã xóa không hiện yêu cầu và không cho thêm/sửa/xóa yêu cầu qua danh mục hoạt động.
+
 ## Kiểm tra
 
-Test API nằm trong `apps/api/src/careers/router.test.ts` và `apps/api/src/student/career-profile.test.ts`. Sau khi build, chạy `node scripts/verify-careers.mjs` để kiểm tra migration, CRUD, tìm kiếm, quyền truy cập và lựa chọn hồ sơ trên PostgreSQL localhost. Script chỉ ghi vào schema thử nghiệm riêng và dọn schema khi kết thúc; từ chối URL database từ xa. Thêm `--ui` để giữ fixture giao diện, kết thúc bằng Ctrl+C để dọn dữ liệu thử nghiệm.
+Test API nằm trong `apps/api/src/careers/router.test.ts`, `apps/api/src/careers/requirements.test.ts` và `apps/api/src/student/career-profile.test.ts`. Sau khi build, chạy `node scripts/verify-careers.mjs` để kiểm tra migration, CRUD, tìm kiếm, quyền truy cập, đồng bộ yêu cầu/kỹ năng và lựa chọn hồ sơ trên PostgreSQL localhost. Script chỉ ghi vào schema thử nghiệm riêng và dọn schema khi kết thúc; từ chối URL database từ xa. Thêm `--ui` để giữ fixture giao diện, kết thúc bằng Ctrl+C để dọn dữ liệu thử nghiệm.

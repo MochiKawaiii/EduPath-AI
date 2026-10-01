@@ -45,3 +45,23 @@
 .career-description {
   white-space: pre-wrap;
 }
+.cm-filters.career-requirement-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.cm-filters.career-requirement-filters label { min-width: 0; }
+.career-requirement-table {
+  min-width: 1000px;
+}
+.career-requirement-summary {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (max-width: 900px) {
+  .cm-filters.career-requirement-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .cm-filters.career-requirement-filters { grid-template-columns: 1fr; }
+}
