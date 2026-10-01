@@ -1,10 +1,10 @@
-export const careerCategories: Record<string, string> = {
-  software: "Phát triển phần mềm",
-  data_ai: "Dữ liệu & Trí tuệ nhân tạo",
-  security: "An toàn thông tin",
-  infrastructure: "Hạ tầng & Điện toán đám mây",
-  quality: "Kiểm thử & Chất lượng",
-  product: "Nghiệp vụ & Thiết kế",
+export type CareerField = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  version: string;
+  positionCount?: number;
 };
 export type Career = {
   id: string;
@@ -12,6 +12,7 @@ export type Career = {
   nameVi: string;
   nameEn: string;
   category: string;
+  categoryName?: string;
   description: string;
   skills: string[];
   version: string;
@@ -23,6 +24,11 @@ export type CareerSelection = Pick<
   "id" | "nameVi" | "nameEn" | "deletedAt"
 >;
 export const careerFailures: Record<string, string> = {
+  field_exists: "Mã hoặc tên lĩnh vực đã tồn tại. Hãy dùng thông tin khác.",
+  field_changed: "Lĩnh vực đã được cập nhật hoặc xóa. Đóng hộp thoại và tải lại trước khi lưu.",
+  field_in_use: "Lĩnh vực còn vị trí nghề nghiệp đang sử dụng. Hãy chuyển hoặc xóa các vị trí đó trước khi xóa lĩnh vực.",
+  field_unavailable: "Lĩnh vực vừa bị xóa hoặc không còn sử dụng. Hãy tải lại và chọn lĩnh vực khác.",
+  invalid_field: "Thông tin chưa hợp lệ. Kiểm tra mã, tên và mô tả lĩnh vực.",
   career_exists: "Mã hoặc tên song ngữ đã tồn tại. Hãy dùng thông tin khác.",
   career_changed:
     "Vị trí đã được cập nhật hoặc xóa. Đóng hộp thoại và tải lại trước khi lưu.",

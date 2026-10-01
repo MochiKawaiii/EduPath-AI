@@ -1,5 +1,5 @@
 // Integration checks use a disposable schema on the configured LOCAL database only.
-// They exercise migration 014 and the real compiled admin/student routers.
+// They exercise migrations 014-015 and the real compiled admin/student routers.
 import { readFile } from "node:fs/promises";
 import { randomBytes, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
@@ -92,8 +92,10 @@ try {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);
-  const migration = await readFile("apps/api/migrations/014_career_positions.sql", "utf8");
-  await pool.query(migration.replaceAll("public.", `${schema}.`));
+  const careersMigration = await readFile("apps/api/migrations/014_career_positions.sql", "utf8");
+  await pool.query(careersMigration.replaceAll("public.", `${schema}.`));
+  const fieldsMigration = await readFile("apps/api/migrations/015_career_fields.sql", "utf8");
+  await pool.query(fieldsMigration.replaceAll("public.", `${schema}.`));
   await pool.query(
     "INSERT INTO users(id,entra_tenant_id,entra_object_id,entra_subject,display_name,email,username,role) VALUES($1,$2,$3,$4,$5,$6,$7,'admin'),($8,$2,$9,$10,$11,$12,$13,'student')",
     [
@@ -204,6 +206,13 @@ try {
   assert(frontend, "migration must seed the frontend position");
   checks.push("migration seeds exactly 20 bilingual IT career positions across six categories");
 
+  result = await api("/careers", "/fields");
+  assert.equal(result.status, 200);
+  assert.equal(result.body.items.length, 6);
+  assert(result.body.items.every((field) => Number.isInteger(field.positionCount)));
+  const initialProductPositionCount = result.body.items.find((field) => field.code === "product").positionCount;
+  checks.push("migration 015 seeds six active career fields and reports position counts");
+
   result = await api("/careers", "?q=" + encodeURIComponent("Kỹ sư") + "&category=infrastructure");
   assert.equal(result.status, 200);
   assert(result.body.items.length >= 1);
@@ -211,7 +220,10 @@ try {
   result = await api("/careers", "?q=" + encodeURIComponent("DATA ANALYST"));
   assert.equal(result.status, 200);
   assert(result.body.items.some((item) => item.code === "data-analyst"));
-  assert.equal((await api("/careers", "?category=nope")).status, 400);
+  result = await api("/careers", "?category=valid-but-unknown");
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, { items: [] });
+  assert.equal((await api("/careers", "?category=%21invalid")).status, 400);
   checks.push("accent-insensitive Vietnamese/English search and category filtering work");
 
   assert.equal(
@@ -264,6 +276,135 @@ try {
     409,
   );
   checks.push("admin create/detail/update handles duplicate codes and stale optimistic versions");
+
+  const customFieldInput = {
+    code: "integration_robotics",
+    name: "Integration Robotics",
+    description: "Temporary field created only in the disposable verifier schema.",
+  };
+  result = await api("/careers", "/fields", "POST", customFieldInput);
+  assert.equal(result.status, 201);
+  assert.equal(result.body.code, customFieldInput.code);
+  const customFieldId = result.body.id;
+  const customFieldVersion = result.body.version;
+  assert.deepEqual(
+    await api("/careers", "/fields", "POST", customFieldInput),
+    { status: 409, body: { error: "field_exists" } },
+  );
+  const customFieldCareerInput = {
+    code: "integration-robotics-role",
+    nameVi: "Vị trí kiểm thử Robotics",
+    nameEn: "Robotics Test Role",
+    category: customFieldInput.code,
+    description: "Temporary position under a custom career field.",
+    skills: ["Testing"],
+  };
+  result = await api("/careers", "", "POST", customFieldCareerInput);
+  assert.equal(result.status, 201);
+  const customFieldCareerId = result.body.id;
+  let customFieldCareerVersion = result.body.version;
+
+  result = await api("/careers", `?category=${customFieldInput.code}`);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.items.length, 1);
+  assert.equal(result.body.items[0].categoryName, "Integration Robotics");
+  let customFieldCareerDetail = await api("/careers", `/${customFieldCareerId}`, "GET");
+  assert.equal(customFieldCareerDetail.status, 200);
+  assert.equal(customFieldCareerDetail.body.categoryName, "Integration Robotics");
+  result = await api("/student-careers", "/fields", "GET", undefined, { "x-role": "student" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.items.length, 7);
+  assert(result.body.items.some((item) => item.code === customFieldInput.code && item.name === "Integration Robotics"));
+  result = await api("/student-careers", "", "GET", undefined, { "x-role": "student" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.items.length, 22);
+  let studentCustomCareer = result.body.items.find((item) => item.code === customFieldCareerInput.code);
+  assert.equal(studentCustomCareer.category, customFieldInput.code);
+  assert.equal(studentCustomCareer.categoryName, "Integration Robotics");
+
+  const fieldUsage = (await api("/careers", "/fields")).body.items;
+  assert.equal(fieldUsage.find((item) => item.code === customFieldInput.code).positionCount, 1);
+  result = await api("/careers", `/fields/${customFieldId}`, "DELETE", { confirmed: true }, { "x-version": customFieldVersion });
+  assert.deepEqual(result, { status: 409, body: { error: "field_in_use" } });
+
+  result = await api("/careers", `/fields/${customFieldId}`, "PATCH", {
+    name: "Integration Robotics Updated",
+    description: "Updated verifier field description.",
+  }, { "x-version": customFieldVersion });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.code, customFieldInput.code);
+  assert.notEqual(result.body.version, customFieldVersion);
+  const updatedFieldVersion = result.body.version;
+  assert.deepEqual(
+    await api("/careers", `/fields/${customFieldId}`, "PATCH", {
+      name: customFieldInput.name,
+      description: customFieldInput.description,
+    }, { "x-version": customFieldVersion }),
+    { status: 409, body: { error: "field_changed" } },
+  );
+  assert.deepEqual(
+    await api("/careers", `/fields/${customFieldId}`, "PATCH", {
+      code: "renamed_robotics",
+      name: customFieldInput.name,
+      description: customFieldInput.description,
+    }, { "x-version": updatedFieldVersion }),
+    { status: 400, body: { error: "invalid_field" } },
+  );
+  result = await api("/careers", `?category=${customFieldInput.code}`);
+  assert.equal(result.body.items[0].categoryName, "Integration Robotics Updated");
+  customFieldCareerDetail = await api("/careers", `/${customFieldCareerId}`, "GET");
+  assert.equal(customFieldCareerDetail.body.categoryName, "Integration Robotics Updated");
+  result = await api("/student-careers", "/fields", "GET", undefined, { "x-role": "student" });
+  assert(result.body.items.some((item) => item.code === customFieldInput.code && item.name === "Integration Robotics Updated"));
+  result = await api("/student-careers", "", "GET", undefined, { "x-role": "student" });
+  studentCustomCareer = result.body.items.find((item) => item.code === customFieldCareerInput.code);
+  assert.equal(studentCustomCareer.categoryName, "Integration Robotics Updated");
+  assert.equal((await api("/careers", "/fields")).body.items.find((item) => item.code === customFieldInput.code).positionCount, 1);
+  checks.push("renaming a career field after career creation updates admin list/detail and student category names without changing its code or position count");
+
+  assert.deepEqual(
+    await api("/careers", "/fields", "POST", { ...customFieldInput, code: "wrong-origin-field" }, { Origin: "http://evil.local" }),
+    { status: 403, body: { error: "invalid_origin" } },
+  );
+  assert.equal(
+    (await api("/careers", "/fields", "POST", { ...customFieldInput, code: "student-field" }, { "x-role": "student" })).status,
+    403,
+  );
+  const productField = (await api("/careers", "/fields")).body.items.find((item) => item.code === "product");
+  result = await api("/careers", `/${customFieldCareerId}`, "PATCH", {
+    ...customFieldCareerInput,
+    category: "product",
+  }, { "x-version": customFieldCareerVersion });
+  assert.equal(result.status, 200);
+  customFieldCareerVersion = result.body.version;
+  assert.equal(result.body.category, "product");
+  let updatedFields = (await api("/careers", "/fields")).body.items;
+  assert.equal(updatedFields.find((item) => item.code === customFieldInput.code).positionCount, 0);
+  assert.equal(updatedFields.find((item) => item.code === "product").positionCount, initialProductPositionCount + 2);
+  assert.deepEqual((await api("/careers", `?category=${customFieldInput.code}`)).body, { items: [] });
+  result = await api("/careers", "?category=product");
+  const reassignedCareer = result.body.items.find((item) => item.code === customFieldCareerInput.code);
+  assert.equal(reassignedCareer.categoryName, productField.name);
+  customFieldCareerDetail = await api("/careers", `/${customFieldCareerId}`, "GET");
+  assert.equal(customFieldCareerDetail.body.categoryName, productField.name);
+  result = await api("/student-careers", "", "GET", undefined, { "x-role": "student" });
+  studentCustomCareer = result.body.items.find((item) => item.code === customFieldCareerInput.code);
+  assert.equal(studentCustomCareer.category, "product");
+  assert.equal(studentCustomCareer.categoryName, productField.name);
+  result = await api("/careers", `/fields/${customFieldId}`, "DELETE", { confirmed: true }, { "x-version": updatedFieldVersion });
+  assert.deepEqual(result, { status: 200, body: { deleted: true } });
+  result = await api("/careers", `/fields/${productField.id}`, "DELETE", { confirmed: true }, { "x-version": productField.version });
+  assert.deepEqual(result, { status: 409, body: { error: "field_in_use" } });
+  result = await api("/careers", `/${customFieldCareerId}`, "DELETE", { confirmed: true }, { "x-version": customFieldCareerVersion });
+  assert.deepEqual(result, { status: 200, body: { deleted: true } });
+  updatedFields = (await api("/careers", "/fields")).body.items;
+  assert.equal(updatedFields.find((item) => item.code === "product").positionCount, initialProductPositionCount + 1);
+  assert(!updatedFields.some((item) => item.code === customFieldInput.code));
+  result = await api("/student-careers", "/fields", "GET", undefined, { "x-role": "student" });
+  assert.equal(result.body.items.length, 6);
+  assert(!result.body.items.some((item) => item.code === customFieldInput.code));
+  assert.equal((await api("/student-careers", "", "GET", undefined, { "x-role": "student" })).body.items.length, 21);
+  checks.push("career reassignment updates category filters and field counts; deletion is blocked for the occupied destination and succeeds for the unused source");
 
   await pool.query("UPDATE users SET role='faculty_board' WHERE id=$1", [adminId]);
   assert.equal((await api("/careers", "", "GET", undefined, { "x-role": "faculty_board" })).status, 200);

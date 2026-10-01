@@ -8,6 +8,14 @@
   align-items: center;
   gap: 8px;
 }
+.career-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.career-tabs button {
+  min-height: 42px;
+}
 .career-row-actions svg,
 .career-workspace .am-primary svg {
   width: 20px;

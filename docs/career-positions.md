@@ -39,6 +39,16 @@ API admin nằm tại `/api/admin/careers`, danh mục cho sinh viên tại `/ap
 
 Khi deploy với `DATABASE_AUTO_MIGRATE=true`, backend áp dụng migration và khởi tạo danh mục. Không cần tải file hay chạy import cho 20 vị trí ban đầu.
 
+## Lĩnh vực nghề nghiệp — AD-FIELD-01..04
+
+Trong trang **Vị trí nghề nghiệp**, chọn tab **Lĩnh vực nghề nghiệp** để xem danh sách và tìm kiếm. Quản trị viên có thể thêm, chỉnh sửa tên/mô tả và xóa lĩnh vực; các vai trò khoa, bộ môn và giảng viên chỉ xem.
+
+Migration `015_career_fields.sql` chuyển 6 lĩnh vực hiện có thành danh mục trong database và giữ liên kết với các vị trí đã có. Hai tab dùng chung dữ liệu lĩnh vực; lưu thay đổi hoặc chuyển tab sẽ tải lại danh mục và vị trí. Lĩnh vực mới được dùng ngay trong bộ lọc và form vị trí nghề nghiệp; đổi tên cũng cập nhật nhãn lĩnh vực của các vị trí đã liên kết. Chỉ xóa bộ lọc lĩnh vực nếu lĩnh vực đang chọn không còn tồn tại. Tên lĩnh vực cập nhật cũng xuất hiện trong danh sách chọn nghề nghiệp của sinh viên.
+
+Mỗi lĩnh vực có mã duy nhất, tên và mô tả. Mã gồm chữ thường, số, dấu gạch ngang hoặc gạch dưới và được giữ cố định sau khi tạo để bảo toàn liên kết. Không chấp nhận tên trùng trong các lĩnh vực đang hoạt động. Muốn xóa một lĩnh vực, cần chuyển hoặc xóa các vị trí đang liên kết trước. Xóa lĩnh vực là ngừng sử dụng, giữ dữ liệu lịch sử.
+
+API quản lý gồm `GET/POST /api/admin/careers/fields` và `PATCH/DELETE /api/admin/careers/fields/:id`. Sửa/xóa yêu cầu `x-version`; xóa yêu cầu xác nhận. API kiểm tra quyền quản trị viên, nguồn yêu cầu và liên kết còn sử dụng trước khi thay đổi. Database khóa bản ghi lĩnh vực khi tạo/sửa vị trí và khi xóa lĩnh vực để tránh tạo liên kết đồng thời với thao tác xóa.
+
 ## Kiểm tra
 
 Test API nằm trong `apps/api/src/careers/router.test.ts` và `apps/api/src/student/career-profile.test.ts`. Sau khi build, chạy `node scripts/verify-careers.mjs` để kiểm tra migration, CRUD, tìm kiếm, quyền truy cập và lựa chọn hồ sơ trên PostgreSQL localhost. Script chỉ ghi vào schema thử nghiệm riêng và dọn schema khi kết thúc; từ chối URL database từ xa. Thêm `--ui` để giữ fixture giao diện, kết thúc bằng Ctrl+C để dọn dữ liệu thử nghiệm.

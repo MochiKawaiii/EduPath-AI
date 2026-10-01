@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "./student-icons";
 import {
-  careerCategories,
   type Career,
   type CareerSelection,
 } from "./career-types";
@@ -154,7 +153,7 @@ export default function StudentProfileEditor({
                         : ""}
                     </option>
                   )}
-                {Object.entries(careerCategories).map(([category, label]) => (
+                {Object.entries(Object.fromEntries(careers.map(career => [career.category, career.categoryName ?? career.category]))).map(([category, label]) => (
                   <optgroup key={category} label={label}>
                     {careers
                       .filter((c) => c.category === category)

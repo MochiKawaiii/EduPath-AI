@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
-import { careerCategories, careerRequest, type Career } from "./career-types";
+import { careerRequest, type Career, type CareerField } from "./career-types";
+import CareerFieldsManagement from "./CareerFieldsManagement";
 import "./curricula.css";
 import "./careers.css";
 const endpoint = "/api/admin/careers";
@@ -12,6 +13,7 @@ export default function CareersManagement({
   canManage: boolean;
 }) {
   const [revision, setRevision] = useState(0),
+    [tab, setTab] = useState<"positions" | "fields">("positions"),
     [selected, setSelected] = useState<Career | null>(null),
     [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
   const { draft, setDraft, filters, page, setPage, reset } = useLiveFilters({
@@ -22,6 +24,19 @@ export default function CareersManagement({
     `${endpoint}?${new URLSearchParams(filters)}`,
     revision,
   );
+  const fields = useData<{ items: CareerField[] }>(`${endpoint}/fields`, revision);
+  const fieldNames = new Map(fields.data?.items.map(field => [field.code, field.name]));
+  useEffect(() => {
+    if (fields.data && draft.category && !fields.data.items.some(field => field.code === draft.category)) {
+      setDraft({ ...draft, category: "" });
+    }
+  }, [fields.data, draft, setDraft]);
+  const switchTab = (next: "positions" | "fields") => {
+    if (next !== tab) {
+      setTab(next);
+      setRevision(current => current + 1);
+    }
+  };
   const close = () => {
     setMode(null);
     setSelected(null);
@@ -32,6 +47,11 @@ export default function CareersManagement({
   };
   return (
     <section className="cm-workspace career-workspace">
+      <div className="career-tabs" role="group" aria-label="Danh mục nghề nghiệp">
+        <button className={tab === "positions" ? "am-primary" : "am-outline"} aria-pressed={tab === "positions"} onClick={() => switchTab("positions")}>Vị trí nghề nghiệp</button>
+        <button className={tab === "fields" ? "am-primary" : "am-outline"} aria-pressed={tab === "fields"} onClick={() => switchTab("fields")}>Lĩnh vực nghề nghiệp</button>
+      </div>
+      {tab === "fields" ? <CareerFieldsManagement canManage={canManage} remote={fields} saved={() => setRevision(current => current + 1)} /> : <>
       <div className="cm-toolbar">
         <p>Danh mục nghề nghiệp song ngữ để sinh viên lựa chọn định hướng.</p>
         {canManage && (
@@ -64,9 +84,9 @@ export default function CareersManagement({
               onChange={(e) => setDraft({ ...draft, category: e.target.value })}
             >
               <option value="">Tất cả lĩnh vực</option>
-              {Object.entries(careerCategories).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
+              {fields.data?.items.map(field => (
+                <option key={field.code} value={field.code}>
+                  {field.name}
                 </option>
               ))}
             </select>
@@ -76,6 +96,7 @@ export default function CareersManagement({
           </button>
         </div>
         <Status {...list} />
+        <Status {...fields} />
         {list.data && (
           <>
             <div className="cm-table-scroll">
@@ -97,7 +118,7 @@ export default function CareersManagement({
                           <strong>{c.nameVi}</strong>
                           <small>{c.nameEn}</small>
                         </td>
-                        <td>{careerCategories[c.category]}</td>
+                        <td>{fieldNames.get(c.category) ?? c.categoryName ?? c.category}</td>
                         <td>
                           {c.skills.slice(0, 3).join(" · ") || "Chưa bổ sung"}
                         </td>
@@ -158,18 +179,19 @@ export default function CareersManagement({
         )}
       </section>
       {mode === "detail" && selected && (
-        <Detail id={selected.id} close={close} />
+        <Detail id={selected.id} fields={fields.data?.items ?? []} close={close} />
       )}
       {mode === "edit" && (
-        <Editor current={selected} close={close} saved={saved} />
+        <Editor current={selected} fields={fields.data?.items ?? []} close={close} saved={saved} />
       )}
       {mode === "delete" && selected && (
         <Delete current={selected} close={close} saved={saved} />
       )}
+      </>}
     </section>
   );
 }
-function Detail({ id, close }: { id: string; close: () => void }) {
+function Detail({ id, fields, close }: { id: string; fields: CareerField[]; close: () => void }) {
   const remote = useData<Career>(`${endpoint}/${id}`);
   return (
     <Modal title="Chi tiết vị trí nghề nghiệp" onClose={close}>
@@ -186,7 +208,7 @@ function Detail({ id, close }: { id: string; close: () => void }) {
               </div>
               <div>
                 <dt>Lĩnh vực</dt>
-                <dd>{careerCategories[remote.data.category]}</dd>
+                <dd>{fields.find(field => field.code === remote.data?.category)?.name ?? remote.data.categoryName ?? remote.data.category}</dd>
               </div>
               <div>
                 <dt>Sinh viên đang chọn</dt>
@@ -215,10 +237,12 @@ function Detail({ id, close }: { id: string; close: () => void }) {
 }
 function Editor({
   current,
+  fields,
   close,
   saved,
 }: {
   current: Career | null;
+  fields: CareerField[];
   close: () => void;
   saved: () => void;
 }) {
@@ -226,7 +250,7 @@ function Editor({
       code: current?.code ?? "",
       nameVi: current?.nameVi ?? "",
       nameEn: current?.nameEn ?? "",
-      category: current?.category ?? "software",
+      category: current?.category ?? fields[0]?.code ?? "",
       description: current?.description ?? "",
       skills: current?.skills.join("\n") ?? "",
     }),
@@ -310,15 +334,19 @@ function Editor({
           <label>
             Lĩnh vực *
             <select
+              required
+              disabled={!fields.length}
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
             >
-              {Object.entries(careerCategories).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
+              <option value="">Chọn lĩnh vực</option>
+              {fields.map(field => (
+                <option key={field.code} value={field.code}>
+                  {field.name}
                 </option>
               ))}
             </select>
+            {!fields.length && <small>Thêm lĩnh vực nghề nghiệp trước khi thêm vị trí.</small>}
           </label>
           <label>
             Mô tả công việc
@@ -359,7 +387,7 @@ function Editor({
           >
             <Icon name="close" /> Hủy
           </button>
-          <button type="submit" className="am-primary" disabled={busy}>
+          <button type="submit" className="am-primary" disabled={busy || !fields.length}>
             <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu vị trí"}
           </button>
         </div>
