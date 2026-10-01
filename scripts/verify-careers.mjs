@@ -138,7 +138,7 @@ try {
   app.use((req, _res, next) => {
     const role = req.get("x-role") ?? (req.path.startsWith("/api/student") ? "student" : "admin");
     req.session = {
-      user: role === "student" ? studentActor : adminActor(role),
+      user: role === "anonymous" ? undefined : role === "student" ? studentActor : adminActor(role),
     };
     next();
   });
@@ -409,6 +409,47 @@ try {
   assert.deepEqual(result.body.items.map((item) => item.id), [optionalRequirement.body.id]);
   assert.equal((await api("/careers", "/requirements?careerPositionId=" + customId + "&kind=other&priority=required")).body.items.length, 0);
 
+  const studentCareerDetail = await api("/student-careers", `/${customId}`, "GET", undefined, { "x-role": "student" });
+  assert.equal(studentCareerDetail.status, 200);
+  assert.deepEqual(Object.keys(studentCareerDetail.body).sort(), [
+    "category", "categoryName", "code", "description", "id", "nameEn", "nameVi", "requirements",
+  ].sort());
+  assert.equal(studentCareerDetail.body.requirements.length, 4);
+  const canonicalReact = studentCareerDetail.body.requirements.find((item) => item.title === "React fundamentals");
+  assert.deepEqual({
+    title: canonicalReact.title,
+    description: canonicalReact.description,
+    skillName: canonicalReact.skillName,
+    level: canonicalReact.level,
+    isRequired: canonicalReact.isRequired,
+  }, {
+    title: "React fundamentals",
+    description: "Build responsive interfaces.",
+    skillName: "Career Audit React",
+    level: "intermediate",
+    isRequired: true,
+  });
+  const canonicalPlain = studentCareerDetail.body.requirements.find((item) => item.title === "Kỹ năng phối hợp");
+  assert.deepEqual({
+    title: canonicalPlain.title,
+    description: canonicalPlain.description,
+    skillName: canonicalPlain.skillName,
+    level: canonicalPlain.level,
+    isRequired: canonicalPlain.isRequired,
+  }, {
+    title: "Kỹ năng phối hợp",
+    description: "Làm việc cùng nhóm.",
+    skillName: null,
+    level: "unspecified",
+    isRequired: false,
+  });
+  assert(studentCareerDetail.body.requirements.every((item) => !("version" in item) && !("skillId" in item)));
+  assert.deepEqual(await api("/student-careers", `/${customId}`, "GET", undefined, { "x-role": "anonymous" }), {
+    status: 401,
+    body: { error: "authentication_required" },
+  });
+  checks.push("student career detail exposes canonical linked/plain active requirements without admin metadata and requires authentication");
+
   assert.deepEqual(
     await api("/careers", "/requirements", "POST", {
       careerPositionId: customId,
@@ -455,12 +496,28 @@ try {
   const movedReactRequirement = result.body;
   assert(!(await api("/careers", `/${customId}`)).body.skills.includes("Career Audit React"));
   assert((await api("/careers", `/${frontend.id}`)).body.skills.includes("Career Audit React"));
+  const customStudentAfterMove = await api("/student-careers", `/${customId}`, "GET", undefined, { "x-role": "student" });
+  assert.equal(customStudentAfterMove.status, 200);
+  assert(!customStudentAfterMove.body.requirements.some((item) => item.title === "React fundamentals"));
+  const frontendStudentAfterMove = await api("/student-careers", `/${frontend.id}`, "GET", undefined, { "x-role": "student" });
+  assert.equal(frontendStudentAfterMove.status, 200);
+  const movedCanonicalReact = frontendStudentAfterMove.body.requirements.find((item) => item.title === "React fundamentals");
+  assert.deepEqual({ skillName: movedCanonicalReact.skillName, isRequired: movedCanonicalReact.isRequired }, {
+    skillName: "Career Audit React",
+    isRequired: true,
+  });
   result = await api("/student-careers", "", "GET", undefined, { "x-role": "student" });
   assert(!(result.body.items.find((item) => item.id === customId).skills ?? []).includes("Career Audit React"));
   assert(result.body.items.find((item) => item.id === frontend.id).skills.includes("Career Audit React"));
   assert.deepEqual(await api("/careers", `/requirements/${movedReactRequirement.id}`, "DELETE", { confirmed: true }, { "x-version": movedReactRequirement.version }), { status: 200, body: { deleted: true } });
   assert(!(await api("/careers", `/${frontend.id}`)).body.skills.includes("Career Audit React"));
+  const frontendStudentAfterRequirementDelete = await api("/student-careers", `/${frontend.id}`, "GET", undefined, { "x-role": "student" });
+  assert.equal(frontendStudentAfterRequirementDelete.status, 200);
+  assert(!frontendStudentAfterRequirementDelete.body.requirements.some((item) => item.title === "React fundamentals"));
   assert.deepEqual(await api("/careers", `/requirements/${optionalRequirement.body.id}`, "DELETE", { confirmed: true }, { "x-version": optionalRequirement.body.version }), { status: 200, body: { deleted: true } });
+  const customStudentAfterPlainDelete = await api("/student-careers", `/${customId}`, "GET", undefined, { "x-role": "student" });
+  assert.equal(customStudentAfterPlainDelete.status, 200);
+  assert(!customStudentAfterPlainDelete.body.requirements.some((item) => item.title === "Kỹ năng phối hợp"));
   assert.equal((await api("/careers", `/requirements?careerPositionId=${customId}&kind=other`)).body.items.length, 0);
   assert.equal((await api("/careers", `/requirements/${testingRequirement.id}`)).status, 404);
   checks.push("moving and deleting linked and standalone requirements refreshes source/destination legacy and student skill lists");
@@ -638,24 +695,29 @@ try {
   assert.equal(result.status, 200);
   assert.equal(result.body.items.length, 21);
   const frontendId = frontend.id;
-  result = await api("/student", "/profile", "PATCH", {
-    className: "CNTT08",
-    interests: "Data and AI",
-    careerGoal: "Legacy free-text goal",
-    careerPositionId: frontendId,
-    currentSemester: 2,
-  }, { "x-role": "student" });
+  result = await api("/student", "/profile", "PATCH", { careerPositionId: frontendId }, { "x-role": "student" });
   assert.deepEqual(result, { status: 200, body: { saved: true } });
-  let profileRow = (await pool.query("SELECT career_position_id,career_goal FROM student_profiles WHERE user_id=$1", [studentId])).rows[0];
+  let profileRow = (await pool.query("SELECT career_position_id,career_goal,interests FROM student_profiles WHERE user_id=$1", [studentId])).rows[0];
   assert.equal(profileRow.career_position_id, frontendId);
   assert.equal(profileRow.career_goal, "Legacy free-text goal");
-  checks.push("student can select an active career while retaining the previous free-text goal");
+  assert.equal(profileRow.interests, "Data and AI");
+  result = await api("/student", "/profile", "PATCH", { careerPositionId: randomUUID() }, { "x-role": "student" });
+  assert.deepEqual(result, { status: 409, body: { error: "career_unavailable" } });
+  profileRow = (await pool.query("SELECT career_position_id,career_goal,interests FROM student_profiles WHERE user_id=$1", [studentId])).rows[0];
+  assert.equal(profileRow.career_position_id, frontendId);
+  assert.equal(profileRow.career_goal, "Legacy free-text goal");
+  assert.equal(profileRow.interests, "Data and AI");
+  checks.push("career-only student profile PATCH saves immediately, preserves interests/free text, and rolls back unavailable selections");
 
   const customCareerBeforeDelete = await api("/careers", `/${customId}`);
   assert.equal(customCareerBeforeDelete.status, 200);
   result = await api("/careers", `/${customId}`, "DELETE", { confirmed: true }, { "x-version": customCareerBeforeDelete.body.version });
   assert.deepEqual(result, { status: 200, body: { deleted: true } });
   assert.equal((await api("/careers", `/${customId}`, "GET")).status, 404);
+  assert.deepEqual(await api("/student-careers", `/${customId}`, "GET", undefined, { "x-role": "student" }), {
+    status: 404,
+    body: { error: "career_not_found" },
+  });
   assert.equal((await api("/careers", `/requirements?careerPositionId=${customId}`)).body.items.length, 0);
   assert.equal((await api("/student-careers", "", "GET", undefined, { "x-role": "student" })).body.items.length, 20);
   checks.push("soft-deleted careers leave the catalog and remain absent from student choices");
@@ -664,6 +726,10 @@ try {
   assert.equal(frontendDetail.status, 200);
   result = await api("/careers", `/${frontendId}`, "DELETE", { confirmed: true }, { "x-version": frontendDetail.body.version });
   assert.deepEqual(result, { status: 200, body: { deleted: true } });
+  assert.deepEqual(await api("/student-careers", `/${frontendId}`, "GET", undefined, { "x-role": "student" }), {
+    status: 404,
+    body: { error: "career_not_found" },
+  });
   profileRow = (await pool.query("SELECT career_position_id,career_goal FROM student_profiles WHERE user_id=$1", [studentId])).rows[0];
   assert.equal(profileRow.career_position_id, frontendId);
   assert.equal(profileRow.career_goal, "Legacy free-text goal");
@@ -675,14 +741,12 @@ try {
     currentSemester: 2,
   }, { "x-role": "student" });
   assert.equal(result.status, 200);
-  result = await api("/student", "/profile", "PATCH", {
-    className: "CNTT08",
-    interests: "Data and AI",
-    careerGoal: "Legacy free-text goal",
-    careerPositionId: customId,
-    currentSemester: 2,
-  }, { "x-role": "student" });
+  result = await api("/student", "/profile", "PATCH", { careerPositionId: customId }, { "x-role": "student" });
   assert.deepEqual(result, { status: 409, body: { error: "career_unavailable" } });
+  profileRow = (await pool.query("SELECT career_position_id,career_goal,interests FROM student_profiles WHERE user_id=$1", [studentId])).rows[0];
+  assert.equal(profileRow.career_position_id, frontendId);
+  assert.equal(profileRow.career_goal, "Legacy free-text goal");
+  assert.equal(profileRow.interests, "Data and AI");
   result = await api("/student", "/profile", "PATCH", {
     className: "CNTT08",
     interests: "Data and AI",

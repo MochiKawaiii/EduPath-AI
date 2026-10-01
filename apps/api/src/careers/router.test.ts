@@ -76,6 +76,7 @@ type SetupOptions = {
   fieldInUse?: boolean;
   deleteFieldRows?: unknown[];
   fieldInsertError?: boolean;
+  studentCareerRows?: unknown[];
 };
 
 function setup(options: SetupOptions = {}) {
@@ -123,6 +124,10 @@ function setup(options: SetupOptions = {}) {
   });
   const query = vi.fn(async (sql: string, params?: unknown[]) => {
     if (sql.includes("SELECT id FROM users")) return { rowCount: 1, rows: [{ id: adminId }] };
+    if (sql.includes("FROM career_positions c JOIN career_fields f ON f.code=c.category")) {
+      const studentCareerRows = options.studentCareerRows ?? [];
+      return { rowCount: studentCareerRows.length, rows: studentCareerRows };
+    }
     if (sql.includes("FROM career_fields WHERE deleted_at IS NULL ORDER BY name,id"))
       return { rowCount: options.fields?.length ?? 0, rows: options.fields ?? [] };
     if (sql.includes("FROM career_positions WHERE deleted_at IS NULL")) return { rowCount: rows.length, rows };
@@ -180,6 +185,110 @@ describe("career catalog API", () => {
       .post("/student-careers/fields")
       .set("Origin", origin)
       .send(fieldInput)
+      .expect(403, { error: "invalid_origin" });
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  it("lists active fields and careers to authenticated students with dynamic category names", async () => {
+    const fieldRows = [{ ...field, positionCount: 1 }];
+    const studentCareer = { ...career, categoryName: field.name };
+    const { app, query } = setup({ user: student, fields: fieldRows, rows: [studentCareer] });
+
+    await request(app).get("/student-careers/fields").expect(200, { items: fieldRows });
+    await request(app)
+      .get("/student-careers?q=K%C3%BD%20s%C6%B0&category=data_ai")
+      .expect(200, { items: [studentCareer] });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("FROM career_positions WHERE deleted_at IS NULL"),
+      ["ky su", "data_ai"],
+    );
+  });
+
+  it("returns canonical linked and plain requirements without admin-only career fields", async () => {
+    const studentCareer = {
+      id: careerId,
+      code: career.code,
+      nameVi: career.nameVi,
+      nameEn: career.nameEn,
+      category: career.category,
+      categoryName: field.name,
+      description: career.description,
+      requirements: [
+        {
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          title: "SQL query design",
+          description: "Query relational sources.",
+          skillName: "SQL",
+          level: "advanced",
+          isRequired: true,
+        },
+        {
+          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          title: "Portfolio project",
+          description: "Build a small data project.",
+          skillName: null,
+          level: "unspecified",
+          isRequired: false,
+        },
+      ],
+    };
+    const { app, query } = setup({ user: student, studentCareerRows: [studentCareer] });
+
+    await request(app).get(`/student-careers/${careerId}`).expect(200, studentCareer);
+
+    const detailCall = query.mock.calls.find(([sql]) =>
+      String(sql).includes("FROM career_positions c JOIN career_fields f ON f.code=c.category"),
+    );
+    const detailSql = String(detailCall?.[0]);
+    expect(detailCall?.[1]).toEqual([careerId]);
+    expect(detailSql).toContain("r.deleted_at IS NULL");
+    expect(detailSql).toContain("LEFT JOIN career_skills s ON s.id=r.skill_id");
+    expect(detailSql).toContain("'skillName',s.name");
+    expect(detailSql).toContain("c.deleted_at IS NULL AND f.deleted_at IS NULL");
+    expect(detailSql).not.toMatch(/studentCount|version|count\s*\(/i);
+    expect(studentCareer.requirements[0]).toMatchObject({ title: "SQL query design", skillName: "SQL", isRequired: true });
+    expect(studentCareer.requirements[1]).toMatchObject({ title: "Portfolio project", skillName: null, isRequired: false });
+  });
+
+  it("requires authentication and returns safe not-found/validation responses for student detail", async () => {
+    await request(setup({ user: null }).app)
+      .get(`/student-careers/${careerId}`)
+      .expect(401, { error: "authentication_required" });
+
+    const missing = setup({ user: student });
+    await request(missing.app)
+      .get(`/student-careers/${careerId}`)
+      .expect(404, { error: "career_not_found" });
+    const detailSql = String(missing.query.mock.calls.find(([sql]) =>
+      String(sql).includes("FROM career_positions c JOIN career_fields f ON f.code=c.category"),
+    )?.[0]);
+    expect(detailSql).toContain("c.deleted_at IS NULL AND f.deleted_at IS NULL");
+
+    const invalid = setup({ user: student });
+    await request(invalid.app)
+      .get("/student-careers/not-a-uuid")
+      .expect(400, { error: "invalid_career" });
+    await request(invalid.app)
+      .get(`/student-careers/${careerId}?unexpected=1`)
+      .expect(400, { error: "invalid_career" });
+    expect(invalid.query.mock.calls.some(([sql]) =>
+      String(sql).includes("FROM career_positions c JOIN career_fields f ON f.code=c.category"),
+    )).toBe(false);
+  });
+
+  it("denies student career writes even for a valid same-origin request", async () => {
+    const { app, connect } = setup({ user: student });
+    await request(app)
+      .post("/student-careers")
+      .set("Origin", origin)
+      .send(input)
+      .expect(403, { error: "invalid_origin" });
+    await request(app)
+      .patch(`/student-careers/${careerId}`)
+      .set("Origin", origin)
+      .set("x-version", version)
+      .send(input)
       .expect(403, { error: "invalid_origin" });
     expect(connect).not.toHaveBeenCalled();
   });

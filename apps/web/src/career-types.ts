@@ -46,6 +46,9 @@ export type CareerRequirement = {
   isRequired: boolean;
   version: string;
 };
+export type StudentCareerDetail = Pick<Career, "id" | "code" | "nameVi" | "nameEn" | "category" | "categoryName" | "description"> & {
+  requirements: Pick<CareerRequirement, "id" | "title" | "description" | "skillName" | "level" | "isRequired">[];
+};
 export const careerFailures: Record<string, string> = {
   requirement_changed: "Yêu cầu đã được cập nhật hoặc xóa. Đóng hộp thoại và tải lại trước khi lưu.",
   requirement_exists: "Kỹ năng này đã liên kết với vị trí nghề nghiệp. Hãy chỉnh sửa liên kết hiện có.",

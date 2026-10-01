@@ -32,7 +32,7 @@ Migration `014_career_positions.sql` tạo danh mục và thêm liên kết từ
 ## Sử dụng
 
 - Admin: **Quản lý nghề nghiệp** tại `/quantri/vi-tri-nghe-nghiep`, breadcrumb **Nghề nghiệp**. Tìm bằng tên Việt/Anh, mã hoặc kỹ năng; tìm không dấu được hỗ trợ. Bộ lọc lĩnh vực áp dụng ngay khi chọn.
-- Sinh viên: **Hồ sơ & bảng điểm → Thông tin cá nhân → Chỉnh sửa thông tin → Vị trí nghề nghiệp mong muốn**. Chọn một vị trí, rồi lưu thay đổi. Có thể bỏ chọn. Văn bản mục tiêu cũ được giữ trong cơ sở dữ liệu nhưng không hiển thị và không tính vào trạng thái hoàn tất hồ sơ.
+- Sinh viên: **Hồ sơ & bảng điểm → Thông tin cá nhân → Khám phá nghề nghiệp**. Xem lĩnh vực, tìm/lọc vị trí và mở yêu cầu/kỹ năng trước khi chọn mục tiêu. Bấm **Chọn làm mục tiêu nghề nghiệp** để lưu ngay. Có thể bỏ chọn trong form hồ sơ. Văn bản mục tiêu cũ được giữ trong cơ sở dữ liệu nhưng không hiển thị và không tính vào trạng thái hoàn tất hồ sơ.
 - Form tạo vị trí chỉ có mã, tên Việt/Anh, lĩnh vực và mô tả; không nhập kỹ năng tại đây. Lưu thành công tự mở chi tiết vị trí mới. Dùng **Yêu cầu và kỹ năng → Thêm yêu cầu / Liên kết kỹ năng** để quản lý nội dung, mức yêu cầu và tính chất trong một nơi.
 
 API admin nằm tại `/api/admin/careers`, danh mục cho sinh viên tại `/api/student/careers`. Trường hồ sơ `careerPositionId` lưu UUID của vị trí; bỏ trường này trong yêu cầu cập nhật sẽ giữ nguyên lựa chọn cũ, gửi `null` sẽ bỏ chọn. Không chấp nhận lựa chọn mới trỏ đến vị trí đã xóa. Các thao tác sửa/xóa vị trí kiểm tra phiên bản để tránh ghi đè cập nhật đồng thời.
@@ -60,6 +60,16 @@ Migration `016_career_requirements.sql` tạo danh mục kỹ năng và yêu c�
 API: `GET/POST /api/admin/careers/requirements`, `GET/PATCH/DELETE /api/admin/careers/requirements/:id`, và `GET /api/admin/careers/requirements/skills`. Sửa/xóa kiểm tra `x-version`, xóa cần xác nhận. Các thao tác ghi kiểm tra quyền quản trị viên trong transaction và khóa nghề liên quan trước khi đổi dữ liệu. Thay đổi yêu cầu cũng đổi phiên bản nghề để ngăn form cũ ghi đè kỹ năng. Nghề đã xóa không hiện yêu cầu và không cho thêm/sửa/xóa yêu cầu qua danh mục hoạt động.
 
 `career_requirements` cùng liên kết đến `career_skills` là nguồn dữ liệu chuẩn cho yêu cầu của nghề, gồm nội dung, trình độ và tính chất. `career_positions.skills` là mảng tương thích/cache phục vụ tìm kiếm và hiển thị nhanh; không chỉnh sửa trực tiếp trên giao diện. Form tạo và sửa nghề đều không gửi `skills`. API cũ vẫn nhận `skills` để tương thích và đồng bộ các liên kết, không thay đổi metadata của liên kết được giữ lại. Khi xây dựng AI/skill-gap sau này, đọc yêu cầu có cấu trúc từ `career_requirements`, không suy luận yêu cầu/trình độ từ mảng cache.
+
+## Nghề nghiệp trong hồ sơ sinh viên — STU-CAREER-01..04
+
+**Khám phá nghề nghiệp** mở hộp thoại xem danh sách lĩnh vực (tên và mô tả), danh sách vị trí có tìm kiếm/lọc theo lĩnh vực và phân trang. Chọn **Xem yêu cầu** để đọc mô tả công việc cùng nội dung yêu cầu, kỹ năng/công nghệ, mức yêu cầu và tính chất bắt buộc/ưu tiên. **Xem yêu cầu nghề đã chọn** mở trực tiếp nghề mục tiêu hiện có. Nội dung dùng chung dữ liệu đang hoạt động do quản trị viên quản lý, lấy từ `career_requirements`/`career_skills`.
+
+**Chọn làm mục tiêu nghề nghiệp** lưu ngay qua API hồ sơ, chỉ gửi `careerPositionId`; không cần bấm thêm **Lưu thay đổi**. Nút hiện trạng thái đang lưu và chặn thao tác lặp. Khi thành công, hộp thoại đóng, hồ sơ cập nhật và hiện thông báo đã lưu mục tiêu. Nếu thất bại, hộp thoại giữ mở, hiển thị lỗi và cho thử lại. Sở thích đã lưu và bản nháp sở thích đang nhập đều được giữ nguyên. Hủy form sau đó chỉ bỏ các chỉnh sửa chưa lưu, không hoàn tác mục tiêu đã lưu. **Bỏ chọn** trong form vẫn lưu qua **Lưu thay đổi**. Nghề đã ngừng sử dụng vẫn được giữ/hiển thị trong hồ sơ cũ, nhưng không có trong danh sách lựa chọn mới và không mở yêu cầu của nghề đã ngừng sử dụng.
+
+`PATCH /api/student/profile` hỗ trợ cập nhật riêng mục tiêu: bỏ `interests` sẽ giữ nguyên sở thích trong cơ sở dữ liệu; gửi chuỗi hoặc `null` vẫn cập nhật/xóa sở thích như trước. Kiểm tra nghề đang hoạt động và giao dịch giữ nguyên để không ghi thay đổi khi nghề không khả dụng.
+
+API đọc: `GET /api/student/careers/fields`, `GET /api/student/careers?q=...&category=...`, `GET /api/student/careers/:id`. Chi tiết chỉ trả thông tin nghề và các yêu cầu hoạt động, không trả phiên bản quản trị hay số sinh viên. API kiểm tra đăng nhập/tài khoản hoạt động, loại bỏ nghề/lĩnh vực đã xóa và từ chối mọi thao tác ghi vào danh mục qua tuyến sinh viên.
 
 ## Kiểm tra
 

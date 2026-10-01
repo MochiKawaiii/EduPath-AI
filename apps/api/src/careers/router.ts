@@ -143,6 +143,21 @@ export function createCareersRouter(
     );
     res.json({ items: rows.rows });
   });
+  if (student) {
+    router.get("/:id", async (req, res) => {
+      z.object({}).strict().parse(req.query);
+      const result = await pool!.query(`SELECT c.id,c.code,c.name_vi AS "nameVi",c.name_en AS "nameEn",
+        c.category,f.name AS "categoryName",c.description,
+        COALESCE((SELECT json_agg(json_build_object('id',r.id,'title',r.title,'description',r.description,
+          'skillName',s.name,'level',r.level,'isRequired',r.is_required) ORDER BY r.is_required DESC,r.title,r.id)
+          FROM career_requirements r LEFT JOIN career_skills s ON s.id=r.skill_id
+          WHERE r.career_position_id=c.id AND r.deleted_at IS NULL),'[]'::json) AS requirements
+        FROM career_positions c JOIN career_fields f ON f.code=c.category
+        WHERE c.id=$1 AND c.deleted_at IS NULL AND f.deleted_at IS NULL`, [z.uuid().parse(req.params.id)]);
+      if (!result.rowCount) throw new CareerError("career_not_found", 404);
+      res.json(result.rows[0]);
+    });
+  }
   if (!student) {
     router.use("/requirements", createCareerRequirementsRouter(pool!));
     router.get("/:id", async (req, res) => {

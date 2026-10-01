@@ -28,7 +28,7 @@ type SetupOptions = {
 };
 
 function setup(options: SetupOptions = {}) {
-  const clientQuery = vi.fn(async (sql: string) => {
+  const clientQuery = vi.fn(async (sql: string, params?: unknown[]) => {
     if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return { rowCount: 0, rows: [] };
     if (sql.includes("SELECT id FROM users")) return { rowCount: 1, rows: [{ id: studentId }] };
     if (sql.includes("SELECT deleted_at FROM career_positions")) {
@@ -52,7 +52,7 @@ function setup(options: SetupOptions = {}) {
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     res.status(500).json({ error: error instanceof Error ? error.message : "unexpected_error" });
   });
-  return { app, clientQuery };
+  return { app, clientQuery, connect };
 }
 
 const profile = {
@@ -63,6 +63,25 @@ const profile = {
 };
 
 describe("student career selection", () => {
+  it("saves an immediate career-only selection without replacing stored interests", async () => {
+    const { app, clientQuery } = setup({ previousCareer: null });
+    await request(app)
+      .patch("/student/profile")
+      .set("Origin", origin)
+      .send({ careerPositionId: careerId })
+      .expect(200, { saved: true });
+
+    const insertCall = clientQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT INTO student_profiles"));
+    expect(insertCall?.[0]).toContain("interests=student_profiles.interests");
+    expect(insertCall?.[1]).toEqual([studentId, null, null, null, null]);
+    expect(clientQuery).toHaveBeenCalledWith(
+      "UPDATE student_profiles SET career_position_id=$2 WHERE user_id=$1",
+      [studentId, careerId],
+    );
+    expect(clientQuery).toHaveBeenCalledWith("COMMIT");
+    expect(clientQuery).not.toHaveBeenCalledWith("ROLLBACK");
+  });
+
   it("saves a catalog selection while preserving stored class and free-text goal", async () => {
     const { app, clientQuery } = setup({ previousCareer: null });
     await request(app)
@@ -90,14 +109,27 @@ describe("student career selection", () => {
       await request(app)
         .patch("/student/profile")
         .set("Origin", origin)
-        .send({ ...profile, careerPositionId: careerId })
+        .send({ careerPositionId: careerId })
         .expect(409, { error: "career_unavailable" });
+      const insertCall = clientQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT INTO student_profiles"));
+      expect(insertCall?.[0]).toContain("interests=student_profiles.interests");
       expect(clientQuery).toHaveBeenCalledWith("ROLLBACK");
+      expect(clientQuery).not.toHaveBeenCalledWith("COMMIT");
       expect(clientQuery).not.toHaveBeenCalledWith(
         "UPDATE student_profiles SET career_position_id=$2 WHERE user_id=$1",
         [studentId, careerId],
       );
     }
+  });
+
+  it("rejects a malformed career ID before opening a transaction", async () => {
+    const { app, connect } = setup();
+    await request(app)
+      .patch("/student/profile")
+      .set("Origin", origin)
+      .send({ careerPositionId: "not-a-uuid" })
+      .expect(400, { error: "invalid_profile" });
+    expect(connect).not.toHaveBeenCalled();
   });
 
   it("allows the previously selected deleted position and clears a selection explicitly", async () => {

@@ -30,7 +30,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
   router.patch("/profile", async (req, res) => {
     const input = z.object({
       className: z.string().trim().max(32).regex(/^[\p{L}\p{N} _.-]*$/u).nullable().optional(),
-      interests: z.string().trim().max(2000).nullable(),
+      interests: z.string().trim().max(2000).nullable().optional(),
       careerGoal: z.string().trim().max(2000).nullable().optional(),
       careerPositionId: z.uuid().nullable().optional(),
       currentSemester: z.number().int().min(1).max(3).nullable().optional()
@@ -42,7 +42,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       await lockStudent(client, req.session.user!);
       await client.query(`INSERT INTO student_profiles (user_id,class_name,interests,career_goal,current_semester)
         VALUES($1,$2,$3,$4,$5) ON CONFLICT(user_id) DO UPDATE SET
-        interests=EXCLUDED.interests,current_semester=COALESCE(EXCLUDED.current_semester,student_profiles.current_semester),updated_at=CURRENT_TIMESTAMP`,
+        ${input.data.interests === undefined ? "interests=student_profiles.interests" : "interests=EXCLUDED.interests"},current_semester=COALESCE(EXCLUDED.current_semester,student_profiles.current_semester),updated_at=CURRENT_TIMESTAMP`,
         [req.session.user!.userId, null, input.data.interests || null, null, input.data.currentSemester ?? null]);
       if (input.data.careerPositionId !== undefined) {
         const selected = input.data.careerPositionId;
