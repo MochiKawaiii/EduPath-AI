@@ -100,7 +100,7 @@ export default function CareersManagement({
                   <tr>
                     <th>Vị trí nghề nghiệp</th>
                     <th>Lĩnh vực</th>
-                    <th>Kỹ năng tham khảo</th>
+                    <th>Kỹ năng liên kết</th>
                     <th>Thao tác</th>
                   </tr>
                 </thead>
@@ -175,7 +175,7 @@ export default function CareersManagement({
       </>}
       {fieldsOpen && <CareerFieldsManagement canManage={canManage} remote={fields} saved={() => setRevision(current => current + 1)} onClose={() => setFieldsOpen(false)} />}
       {mode === "edit" && (
-        <Editor current={selected} fields={fields.data?.items ?? []} close={close} saved={saved} />
+        <Editor current={selected} fields={fields.data?.items ?? []} close={close} saved={career => { if (!selected) setDetailId(career.id); saved(); }} />
       )}
       {mode === "delete" && selected && (
         <Delete current={selected} close={close} saved={saved} />
@@ -230,7 +230,7 @@ function Editor({
   current: Career | null;
   fields: CareerField[];
   close: () => void;
-  saved: () => void;
+  saved: (career: Career) => void;
 }) {
   const [form, setForm] = useState({
       code: current?.code ?? "",
@@ -238,7 +238,6 @@ function Editor({
       nameEn: current?.nameEn ?? "",
       category: current?.category ?? fields[0]?.code ?? "",
       description: current?.description ?? "",
-      skills: current?.skills.join("\n") ?? "",
     }),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -255,7 +254,7 @@ function Editor({
           setBusy(true);
           setError("");
           try {
-            await careerRequest(
+            const career = await careerRequest<Career>(
               current ? `${endpoint}/${current.id}` : endpoint,
               {
                 method: current ? "PATCH" : "POST",
@@ -263,20 +262,10 @@ function Editor({
                   "Content-Type": "application/json",
                   ...(current ? { "x-version": current.version } : {}),
                 },
-                body: JSON.stringify({
-                  ...form,
-                  skills: current ? undefined : [
-                    ...new Set(
-                      form.skills
-                        .split("\n")
-                        .map((s) => s.trim())
-                        .filter(Boolean),
-                    ),
-                  ],
-                }),
+                body: JSON.stringify(form),
               },
             );
-            saved();
+            saved(career);
           } catch (e) {
             setError((e as Error).message);
           } finally {
@@ -345,19 +334,7 @@ function Editor({
               }
             />
           </label>
-          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng trong phần chi tiết của vị trí này.</small></div> : <label>
-            Kỹ năng ban đầu
-            <textarea
-              rows={4}
-              value={form.skills}
-              maxLength={3030}
-              onChange={(e) => setForm({ ...form, skills: e.target.value })}
-            />
-            <small>
-              Mỗi dòng một kỹ năng, tối đa 30 kỹ năng; mỗi kỹ năng tối đa 100 ký
-              tự.
-            </small>
-          </label>}
+          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng trong phần chi tiết của vị trí này.</small></div> : <p>Sau khi lưu, mở phần chi tiết để thêm yêu cầu và liên kết kỹ năng.</p>}
         </fieldset>
         {error && (
           <p className="admin-error" role="alert">

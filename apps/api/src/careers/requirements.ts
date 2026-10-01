@@ -49,7 +49,7 @@ async function refreshCareerSkills(client: PoolClient, id: string) {
     [id, names, fold([row.code, row.name_vi, row.name_en, row.description, ...names].join(" ")), randomUUID()]);
 }
 
-/** Compatibility for the original career form/API; retained links keep their metadata. */
+/** Legacy API compatibility; the current UI manages links through requirements only. Retained links keep their metadata. */
 export async function syncLegacySkillLinks(client: PoolClient, id: string, names: string[]) {
   const wanted = [...new Map(names.map(name => [name.toLowerCase(), name])).values()]
     .sort((left, right) => left.toLowerCase() < right.toLowerCase() ? -1 : 1);

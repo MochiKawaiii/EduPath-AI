@@ -14,6 +14,7 @@ export type Career = {
   category: string;
   categoryName?: string;
   description: string;
+  /** Display/search cache of active skill links; edit via career requirements. */
   skills: string[];
   version: string;
   deletedAt: string | null;

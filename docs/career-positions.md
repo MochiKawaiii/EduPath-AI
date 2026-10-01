@@ -31,9 +31,9 @@ Migration `014_career_positions.sql` tạo danh mục và thêm liên kết từ
 
 ## Sử dụng
 
-- Admin: **Vị trí nghề nghiệp** tại `/quantri/vi-tri-nghe-nghiep`. Tìm bằng tên Việt/Anh, mã hoặc kỹ năng; tìm không dấu được hỗ trợ. Bộ lọc lĩnh vực áp dụng ngay khi chọn.
+- Admin: **Quản lý nghề nghiệp** tại `/quantri/vi-tri-nghe-nghiep`, breadcrumb **Nghề nghiệp**. Tìm bằng tên Việt/Anh, mã hoặc kỹ năng; tìm không dấu được hỗ trợ. Bộ lọc lĩnh vực áp dụng ngay khi chọn.
 - Sinh viên: **Hồ sơ & bảng điểm → Thông tin cá nhân → Chỉnh sửa thông tin → Vị trí nghề nghiệp mong muốn**. Chọn một vị trí, rồi lưu thay đổi. Có thể bỏ chọn. Văn bản mục tiêu cũ được giữ trong cơ sở dữ liệu nhưng không hiển thị và không tính vào trạng thái hoàn tất hồ sơ.
-- Các vị trí đều có mã, tên Việt/Anh, lĩnh vực, mô tả và danh sách kỹ năng tham khảo. Dữ liệu này có thể tiếp tục được ánh xạ với đánh giá năng lực/lộ trình trong các chức năng sau.
+- Form tạo vị trí chỉ có mã, tên Việt/Anh, lĩnh vực và mô tả; không nhập kỹ năng tại đây. Lưu thành công tự mở chi tiết vị trí mới. Dùng **Yêu cầu và kỹ năng → Thêm yêu cầu / Liên kết kỹ năng** để quản lý nội dung, mức yêu cầu và tính chất trong một nơi.
 
 API admin nằm tại `/api/admin/careers`, danh mục cho sinh viên tại `/api/student/careers`. Trường hồ sơ `careerPositionId` lưu UUID của vị trí; bỏ trường này trong yêu cầu cập nhật sẽ giữ nguyên lựa chọn cũ, gửi `null` sẽ bỏ chọn. Không chấp nhận lựa chọn mới trỏ đến vị trí đã xóa. Các thao tác sửa/xóa vị trí kiểm tra phiên bản để tránh ghi đè cập nhật đồng thời.
 
@@ -58,6 +58,8 @@ Yêu cầu gồm nghề, nội dung, mô tả, mức yêu cầu (chưa xác đ�
 Migration `016_career_requirements.sql` tạo danh mục kỹ năng và yêu cầu, chuyển kỹ năng tham khảo hiện có thành liên kết với mức chưa xác định và không bắt buộc. Không tự suy đoán trình độ hay yêu cầu tuyển dụng. Các liên kết đồng bộ với danh sách kỹ năng và tìm kiếm ở vị trí nghề nghiệp, gồm danh mục sinh viên. Khi cập nhật nghề qua API cũ có gửi `skills`, các liên kết giữ lại vẫn giữ nguyên mô tả/mức yêu cầu; kỹ năng bỏ khỏi mảng sẽ ngừng liên kết. Nếu không gửi `skills` khi chỉnh sửa nghề, giữ nguyên các liên kết hiện có. Form chỉnh sửa nghề giữ nguyên liên kết; quản lý kỹ năng trong phần chi tiết vị trí.
 
 API: `GET/POST /api/admin/careers/requirements`, `GET/PATCH/DELETE /api/admin/careers/requirements/:id`, và `GET /api/admin/careers/requirements/skills`. Sửa/xóa kiểm tra `x-version`, xóa cần xác nhận. Các thao tác ghi kiểm tra quyền quản trị viên trong transaction và khóa nghề liên quan trước khi đổi dữ liệu. Thay đổi yêu cầu cũng đổi phiên bản nghề để ngăn form cũ ghi đè kỹ năng. Nghề đã xóa không hiện yêu cầu và không cho thêm/sửa/xóa yêu cầu qua danh mục hoạt động.
+
+`career_requirements` cùng liên kết đến `career_skills` là nguồn dữ liệu chuẩn cho yêu cầu của nghề, gồm nội dung, trình độ và tính chất. `career_positions.skills` là mảng tương thích/cache phục vụ tìm kiếm và hiển thị nhanh; không chỉnh sửa trực tiếp trên giao diện. Form tạo và sửa nghề đều không gửi `skills`. API cũ vẫn nhận `skills` để tương thích và đồng bộ các liên kết, không thay đổi metadata của liên kết được giữ lại. Khi xây dựng AI/skill-gap sau này, đọc yêu cầu có cấu trúc từ `career_requirements`, không suy luận yêu cầu/trình độ từ mảng cache.
 
 ## Kiểm tra
 
