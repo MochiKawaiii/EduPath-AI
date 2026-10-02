@@ -182,15 +182,15 @@ export function createAdminAccountsRouter(repository: AdminAccountRepository | u
   router.get("/history", async (request, response) => {
     const input = z.object({ q: z.string().trim().max(120).default(""),
       page: z.coerce.number().int().min(1).max(100000).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(10),
-      userId: z.uuid().optional(), outcome: z.enum(["success", "denied"]).optional(), portal: z.enum(["admin", "student"]).optional(),
+      userId: z.guid().optional(), outcome: z.enum(["success", "denied"]).optional(), portal: z.enum(["admin", "student"]).optional(),
       from: z.iso.datetime({ offset: true }).optional(), to: z.iso.datetime({ offset: true }).optional()
     }).strict().refine((value) => !value.from || !value.to || Date.parse(value.from) < Date.parse(value.to)).safeParse(request.query);
     if (!input.success) { response.status(400).json({ error: "invalid_query" }); return; }
     response.json({ ...await repository!.history(request.session.user!, input.data), page: input.data.page, pageSize: input.data.pageSize });
   });
   router.get("/:id", async (request, response) => {
-    const id = z.uuid().safeParse(request.params.id);
-    if (!id.success) { response.status(400).json({ error: "invalid_input" }); return; }
+    const id = z.guid().safeParse(request.params.id);
+    if (!id.success) { response.status(400).json({ error: "invalid_account_id" }); return; }
     response.json({ user: await repository!.detail(request.session.user!, id.data) });
   });
   router.patch("/:id", async (request, response) => {
@@ -198,10 +198,11 @@ export function createAdminAccountsRouter(repository: AdminAccountRepository | u
       response.status(403).json({ error: "insufficient_role" }); return;
     }
     if (request.get("origin") !== webOrigin) { response.status(403).json({ error: "invalid_origin" }); return; }
-    const id = z.uuid().safeParse(request.params.id);
+    const id = z.guid().safeParse(request.params.id);
     const change = z.object({ role: z.enum(["admin", "student", "faculty_board", "department_head", "lecturer"]).optional(), isActive: z.boolean().optional(), confirmed: z.literal(true) })
       .strict().refine((value) => (value.role !== undefined) !== (value.isActive !== undefined)).safeParse(request.body);
-    if (!id.success || !change.success) { response.status(400).json({ error: "invalid_input" }); return; }
+    if (!id.success) { response.status(400).json({ error: "invalid_account_id" }); return; }
+    if (!change.success) { response.status(400).json({ error: "invalid_input" }); return; }
     response.json({ user: await repository!.update(request.session.user!, id.data, change.data) });
   });
   router.post("/", requireRole("admin"), async (request, response) => {

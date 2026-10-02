@@ -1,4 +1,5 @@
 import express from "express";
+import { createHash } from "node:crypto";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import type { AuthenticatedUser } from "../auth/types.js";
@@ -7,12 +8,17 @@ import { AccountError, createAdminAccountsRouter, PostgresAdminAccountRepository
 
 const actor = { userId: "actor-id", tenantId: "tenant-id", role: "admin" } as AuthenticatedUser;
 const target = { id: "target-id", name: "Test account", email: "test@example.edu", role: "student", isActive: true };
+const seedBatch = "edupath-demo-2026-10-02";
+const seedId = (index: number) => createHash("md5").update(`${seedBatch}:${index}`).digest("hex").replace(/^(.{8})(.{4})(.{4})(.{4})(.*)$/, "$1-$2-$3-$4-$5");
+const seedAccountIds = Array.from({ length: 50 }, (_, index) => seedId(index + 1));
 function setup(role: "admin" | "student" | "faculty_board" | "department_head" | "lecturer" | null = "admin", available = true) {
   const repository = {
     canAccessAdmin: vi.fn().mockResolvedValue(true),
     list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    detail: vi.fn().mockResolvedValue({ ...target, id: seedAccountIds[0], createdAt: "", firstLoginAt: "", updatedAt: "" }),
+    history: vi.fn().mockResolvedValue({ items: [], total: 0 }),
     createAdmin: vi.fn().mockResolvedValue({ ...target, role: "admin" }),
-    update: vi.fn().mockResolvedValue({ ...target }),
+    update: vi.fn().mockResolvedValue({ ...target, id: seedAccountIds[0] }),
   };
   const app = express();
   app.use(express.json());
@@ -50,6 +56,30 @@ describe("admin accounts API", () => {
     const result = await request(app).get("/accounts?q=hoa&page=2&pageSize=10").expect(200);
     expect(repository.list).toHaveBeenCalledWith(actor, { q: "hoa", page: 2, pageSize: 10 });
     expect(result.body).toEqual({ items: [], total: 0, page: 2, pageSize: 10 });
+  });
+  it("accepts every deterministic MD5 seed GUID on account detail and routes a seed GUID to history and lock handlers", async () => {
+    const { app, repository } = setup();
+    for (const seedAccountId of seedAccountIds) await request(app).get(`/accounts/${seedAccountId}`).expect(200);
+    expect(repository.detail.mock.calls.map(([, requestedId]) => requestedId)).toEqual(seedAccountIds);
+
+    const selectedId = seedAccountIds[45]!;
+    await request(app).get(`/accounts/history?userId=${selectedId}`).expect(200);
+    expect(repository.history).toHaveBeenCalledWith(actor, expect.objectContaining({ userId: selectedId }));
+    const lockId = seedAccountIds[46]!;
+    await request(app).patch(`/accounts/${lockId}`).set("Origin", "http://localhost:5173").send({ isActive: false, confirmed: true }).expect(200);
+    expect(repository.update).toHaveBeenCalledWith(actor, lockId, { isActive: false, confirmed: true });
+  });
+  it("returns specific errors for malformed account ids without invoking repositories", async () => {
+    const { app, repository } = setup();
+    const detail = await request(app).get("/accounts/not-guid").expect(400);
+    expect(detail.body).toEqual({ error: "invalid_account_id" });
+    const change = await request(app).patch("/accounts/not-guid").set("Origin", "http://localhost:5173").send({ isActive: false, confirmed: true }).expect(400);
+    expect(change.body).toEqual({ error: "invalid_account_id" });
+    const history = await request(app).get("/accounts/history?userId=not-guid").expect(400);
+    expect(history.body).toEqual({ error: "invalid_query" });
+    expect(repository.detail).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
+    expect(repository.history).not.toHaveBeenCalled();
   });
   it.each(["page=0", "page=-2", "page=NaN", "pageSize=100000", "role=owner", "page=1&page=2"])("rejects invalid query %s", async (query) => {
     await request(setup().app).get(`/accounts?${query}`).expect(400);

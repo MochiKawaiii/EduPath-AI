@@ -99,8 +99,9 @@ export function createStudentProfilesRouter(repository: StudentProfileRepository
     response.json({ ...await repository!.list(request.session.user!, input.data), page: input.data.page, pageSize: input.data.pageSize });
   });
   router.get("/:id", async (request, response) => {
-    const id = z.uuid().safeParse(request.params.id);
-    if (!id.success) { response.status(400).json({ error: "invalid_input" }); return; }
+    // PostgreSQL UUID keys may come from imports as well as RFC UUID generators.
+    const id = z.guid().safeParse(request.params.id);
+    if (!id.success) { response.status(400).json({ error: "invalid_student_id" }); return; }
     response.json({ student: await repository!.detail(request.session.user!, id.data) });
   });
   const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {

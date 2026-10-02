@@ -1,4 +1,5 @@
 import express from "express";
+import { createHash } from "node:crypto";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { AccountError } from "./accounts.js";
@@ -6,7 +7,10 @@ import { createStudentProfilesRouter, PostgresStudentProfileRepository } from ".
 import type { AuthenticatedUser, AppRole } from "../auth/types.js";
 import type { DatabasePool } from "../db/pool.js";
 
-const id = "12345678-1234-4234-8234-123456789012";
+const seedBatch = "edupath-demo-2026-10-02";
+const seedId = (index: number) => createHash("md5").update(`${seedBatch}:${index}`).digest("hex").replace(/^(.{8})(.{4})(.{4})(.{4})(.*)$/, "$1-$2-$3-$4-$5");
+const seedStudentIds = Array.from({ length: 45 }, (_, index) => seedId(index + 1));
+const id = seedId(1);
 const actor = { userId: "admin", tenantId: "tenant", role: "admin" } as AuthenticatedUser;
 function setup(role: AppRole | null = "admin", available = true) {
   const repository = { list: vi.fn().mockResolvedValue({ items: [], total: 0, cohortYears: [2023], cohortCodes: ["K29"] }), detail: vi.fn().mockResolvedValue({ id, profileStatus: "missing" }) };
@@ -50,8 +54,15 @@ describe("student profile read API", () => {
     const { app, repository } = setup(); await request(app).get(`/students?${query}`).expect(400); expect(repository.list).not.toHaveBeenCalled();
   });
   it("rejects oversized keywords and malformed ids", async () => {
-    const { app } = setup(); await request(app).get("/students").query({ q: "x".repeat(121) }).expect(400);
-    await request(app).get("/students/not-uuid").expect(400);
+    const { app, repository } = setup(); await request(app).get("/students").query({ q: "x".repeat(121) }).expect(400);
+    const response = await request(app).get("/students/not-uuid").expect(400);
+    expect(response.body).toEqual({ error: "invalid_student_id" });
+    expect(repository.detail).not.toHaveBeenCalled();
+  });
+  it("accepts every deterministic MD5 UUID used by the 45-record demo batch", async () => {
+    const { app, repository } = setup("lecturer");
+    for (const seedStudentId of seedStudentIds) await request(app).get(`/students/${seedStudentId}`).expect(200);
+    expect(repository.detail.mock.calls.map(([, requestedId]) => requestedId)).toEqual(seedStudentIds);
   });
   it("allows a missing profile detail and returns 404 for inaccessible students", async () => {
     const { app, repository } = setup(); const response = await request(app).get(`/students/${id}`).expect(200);

@@ -2,6 +2,8 @@ import type { AppRole } from "./types";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 const failures: Record<string, string> = {
   student_not_found: "Không tìm thấy sinh viên hoặc tài khoản không còn mang vai trò Sinh viên.",
+  invalid_student_id: "Mã hồ sơ sinh viên không hợp lệ. Vui lòng đóng hộp thoại và tải lại danh sách.",
+  invalid_account_id: "Mã tài khoản không hợp lệ. Vui lòng tải lại danh sách tài khoản.",
   self_change_forbidden: "Không thể tự thay đổi quyền hoặc khóa tài khoản đang sử dụng.",
   last_admin_required: "Không thể khóa Quản trị viên đang hoạt động cuối cùng.",
   account_not_found: "Không tìm thấy tài khoản trong hệ thống.",
