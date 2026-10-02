@@ -1,5 +1,6 @@
 export type AppRole = "admin" | "student" | "faculty_board" | "department_head" | "lecturer";
-export const canAccessAdmin = (role: AppRole) => ["admin", "faculty_board", "department_head", "lecturer"].includes(role);
+export const adminRoles: readonly AppRole[] = ["admin", "faculty_board", "department_head", "lecturer"];
+export const canAccessAdmin = (role: AppRole) => adminRoles.includes(role);
 
 export interface AuthTransaction {
   state: string;

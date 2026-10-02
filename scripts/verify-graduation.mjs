@@ -297,21 +297,45 @@ try {
   assert.equal(result.body.history.length, 3);
   checks.push("status changes use optimistic tokens and do not create duplicate data revisions");
 
-  await pool.query("UPDATE users SET role='faculty_board' WHERE id=$1", [userId]);
-  assert.equal((await api(`/${id}`, "GET", undefined, { "x-role": "faculty_board" })).status, 200);
-  assert.equal(
-    (
-      await api(`/${id}/status`, "PATCH", { isActive: false }, {
-        "x-role": "faculty_board",
-        "x-version": result.body.token,
-      })
-    ).status,
-    403,
-  );
+  let latestToken = result.body.token;
+  let latestFingerprint = fingerprint;
+  for (const role of ["faculty_board", "department_head", "lecturer"]) {
+    await pool.query("UPDATE users SET role=$2 WHERE id=$1", [userId, role]);
+    assert.equal((await api(`/${id}`, "GET", undefined, { "x-role": role })).status, 200);
+    const preview = await api("/preview", "POST", sourceFile, {
+      "x-role": role,
+      "x-filename": encodeURIComponent(sourceName),
+    });
+    assert.equal(preview.status, 200);
+    latestFingerprint = preview.body.fingerprint;
+    result = await api(`/${id}/replace`, "POST", sourceFile, {
+      "x-role": role,
+      "x-filename": encodeURIComponent(sourceName),
+      "x-preview": latestFingerprint,
+      "x-sheet": "0",
+      "x-version": latestToken,
+    });
+    assert.equal(result.status, 200, `${role} should be able to import graduation data`);
+    latestToken = result.body.token;
+  }
+  assert.equal((await api(`/${id}/replace`, "POST", sourceFile, {
+    "x-role": "student",
+    "x-filename": encodeURIComponent(sourceName),
+    "x-preview": latestFingerprint,
+    "x-sheet": "0",
+    "x-version": latestToken,
+  })).status, 403);
   await pool.query("UPDATE users SET role='student' WHERE id=$1", [userId]);
-  assert.equal((await api(`/${id}`, "GET", undefined, { "x-role": "student" })).status, 403);
+  assert.equal((await api(`/${id}/replace`, "POST", sourceFile, {
+    "x-role": "lecturer",
+    "x-filename": encodeURIComponent(sourceName),
+    "x-preview": latestFingerprint,
+    "x-sheet": "0",
+    "x-version": latestToken,
+  })).status, 403);
   await pool.query("UPDATE users SET role='admin' WHERE id=$1", [userId]);
-  checks.push("faculty-board is read-only and student access is denied");
+  assert.equal((await api(`/${id}`, "GET", undefined, { "x-role": "student" })).status, 403);
+  checks.push("all staff roles can replace/import graduation data while student and revoked staff roles are denied");
 
   const publicAfter = await publicSnapshot();
   assert.deepEqual(publicAfter, publicBefore);

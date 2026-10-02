@@ -2,7 +2,7 @@ import { parentGroupIds } from "./course-mutations.js";
 import { randomUUID, createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
-import type { AuthenticatedUser } from "../auth/types.js";
+import { adminRoles, type AuthenticatedUser } from "../auth/types.js";
 import { CurriculumError, rebuild, type CurriculumData } from "./model.js";
 
 export const identity = (data: CurriculumData) =>
@@ -16,16 +16,14 @@ export const identity = (data: CurriculumData) =>
 const columns = `c.id,c.is_active AS "isActive",c.lock_version AS token,c.updated_at AS "updatedAt",r.id AS "revisionId",r.version,r.data,r.source_filename AS "sourceFilename"`;
 export class CurriculumRepository {
   constructor(readonly pool: DatabasePool) {}
-  async access(actor: AuthenticatedUser, write = false, client?: PoolClient) {
+  async access(actor: AuthenticatedUser, _write = false, client?: PoolClient) {
     const result = await (client ?? this.pool).query(
       `SELECT id FROM users WHERE id=$1 AND entra_tenant_id=$2 AND is_active
       AND COALESCE(role_override,role)=ANY($3::text[]) ${client ? "FOR SHARE" : ""}`,
       [
         actor.userId,
         actor.tenantId,
-        write
-          ? ["admin"]
-          : ["admin", "faculty_board", "department_head", "lecturer"],
+        adminRoles,
       ],
     );
     if (!result.rowCount) throw new CurriculumError("insufficient_role", 403);

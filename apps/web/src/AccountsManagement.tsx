@@ -54,17 +54,17 @@ function ChangeAccount({ account, mode, onClose, onSaved }: { account: Account; 
   </form></Modal>;
 }
 type MenuAction = "detail" | "history" | "role" | "lock";
-function RowMenu({ account, self, canManage, onPick }: { account: Account; self: boolean; canManage: boolean; onPick: (mode: MenuAction) => void }) {
+function RowMenu({ account, self, canManage, canAssignRoles, onPick }: { account: Account; self: boolean; canManage: boolean; canAssignRoles: boolean; onPick: (mode: MenuAction) => void }) {
   const items: MenuEntry[] = [{ key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => onPick("detail") }];
   if (canManage) items.push(
     { key: "history", icon: "clock", label: "Lịch sử đăng nhập", onSelect: () => onPick("history") },
-    { key: "role", icon: "shield", label: "Phân quyền", disabled: self, onSelect: () => onPick("role") },
+    ...(canAssignRoles ? [{ key: "role", icon: "shield", label: "Phân quyền", disabled: self, onSelect: () => onPick("role") }] : []),
     account.isActive
       ? { key: "lock", icon: "lock", danger: true, label: "Khóa tài khoản", disabled: self, onSelect: () => onPick("lock") }
       : { key: "lock", icon: "unlock", label: "Mở khóa tài khoản", disabled: self, onSelect: () => onPick("lock") });
   return <ActionMenu label={`Thao tác với ${account.name}`} items={items} note={canManage && self ? "Bạn không thể tự đổi vai trò hoặc khóa tài khoản đang sử dụng." : undefined} />;
 }
-export default function AccountsManagement({ actorId, canManage = false }: { actorId: string; canManage?: boolean }) {
+export default function AccountsManagement({ actorId, canManage = false, canAssignRoles = false }: { actorId: string; canManage?: boolean; canAssignRoles?: boolean }) {
   const { draft, setDraft, filters, page, setPage, flush, reset } = useLiveFilters({ q: "", role: "", active: "" });
   const [revision, setRevision] = useState(0);
   const [tab, setTab] = useState<"accounts" | "history">("accounts");
@@ -77,7 +77,7 @@ export default function AccountsManagement({ actorId, canManage = false }: { act
   if (filters.active) params.set("active", filters.active);
   const state = useData<AccountPage>(`/api/admin/accounts?${params}`, revision);
   function refreshed() { setRevision((n) => n + 1); }
-  return <><section className="am-card"><div className="am-card-heading"><div><h2>Tài khoản người dùng {state.data && <span className="am-count">{state.data.total}</span>}</h2><p>Tài khoản, phân quyền và lịch sử đăng nhập trong cùng một nơi.</p></div>{canManage && <button className="am-primary" onClick={() => setCreating(true)}><Icon name="add" />Tạo tài khoản quản trị</button>}</div>
+  return <><section className="am-card"><div className="am-card-heading"><div><h2>Tài khoản người dùng {state.data && <span className="am-count">{state.data.total}</span>}</h2><p>Tài khoản, phân quyền và lịch sử đăng nhập trong cùng một nơi.</p></div>{canAssignRoles && <button className="am-primary" onClick={() => setCreating(true)}><Icon name="add" />Tạo tài khoản quản trị</button>}</div>
     <div className="am-view-switch" role="group" aria-label="Chế độ xem"><button aria-pressed={tab === "accounts"} onClick={() => setTab("accounts")}>Danh sách tài khoản</button>{canManage && <button aria-pressed={tab === "history"} onClick={() => setTab("history")}>Lịch sử đăng nhập</button>}</div>
     {notice && <p className="am-notice" role="status">{notice}</p>}
     {tab === "history" ? <History /> : <><form className="am-filters" onSubmit={(event) => { event.preventDefault(); flush(); }}>
@@ -85,11 +85,11 @@ export default function AccountsManagement({ actorId, canManage = false }: { act
       <label>Vai trò<select value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })}><option value="">Tất cả vai trò</option>{Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label>Trạng thái<select value={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.value })}><option value="">Tất cả trạng thái</option><option value="true">Đang hoạt động</option><option value="false">Đã khóa</option></select></label>
       <button className="am-quiet" type="button" onClick={reset}>Xóa bộ lọc</button>
-    </form><Status {...state} />{state.data && <><div className="am-table-scroll" tabIndex={0} role="region" aria-label="Bảng tài khoản người dùng"><table className="am-table"><thead><tr><th>STT</th><th>Người dùng</th><th>Vai trò</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th><th>Thao tác</th></tr></thead><tbody>{state.data.items.map((account, index) => <tr key={account.id}><td>{(page - 1) * 10 + index + 1}</td><td><div className="am-person"><span className="am-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span><div><button className="am-name-link" onClick={() => setModal({ mode: "detail", account })}>{account.name}</button><small>{account.email ?? account.username}</small></div></div></td><td><span className={`am-badge ${account.role === "admin" ? "am-badge-admin" : ""}`}>{roleName(account.role)}</span></td><td><span className={`am-state ${account.isActive ? "" : "am-state-locked"}`}>{account.isActive ? "Đang hoạt động" : "Đã khóa"}</span></td><td>{date(account.lastLoginAt)}</td><td><RowMenu account={account} self={account.id === actorId} canManage={canManage} onPick={(mode) => setModal({ mode, account })} /></td></tr>)}</tbody></table></div>{!state.data.items.length && <p className="am-empty">Không tìm thấy tài khoản phù hợp.</p>}<Pagination total={state.data.total} page={page} setPage={setPage} /></>}
+    </form><Status {...state} />{state.data && <><div className="am-table-scroll" tabIndex={0} role="region" aria-label="Bảng tài khoản người dùng"><table className="am-table"><thead><tr><th>STT</th><th>Người dùng</th><th>Vai trò</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th><th>Thao tác</th></tr></thead><tbody>{state.data.items.map((account, index) => <tr key={account.id}><td>{(page - 1) * 10 + index + 1}</td><td><div className="am-person"><span className="am-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span><div><button className="am-name-link" onClick={() => setModal({ mode: "detail", account })}>{account.name}</button><small>{account.email ?? account.username}</small></div></div></td><td><span className={`am-badge ${account.role === "admin" ? "am-badge-admin" : ""}`}>{roleName(account.role)}</span></td><td><span className={`am-state ${account.isActive ? "" : "am-state-locked"}`}>{account.isActive ? "Đang hoạt động" : "Đã khóa"}</span></td><td>{date(account.lastLoginAt)}</td><td><RowMenu account={account} self={account.id === actorId} canManage={canManage} canAssignRoles={canAssignRoles} onPick={(mode) => setModal({ mode, account })} /></td></tr>)}</tbody></table></div>{!state.data.items.length && <p className="am-empty">Không tìm thấy tài khoản phù hợp.</p>}<Pagination total={state.data.total} page={page} setPage={setPage} /></>}
       <p className="am-table-note"></p></>}
   </section>
-    {creating && <Modal title="Tạo tài khoản quản trị" busy={creatingBusy} onClose={() => { setCreating(false); refreshed(); }}><CreateAccount onBusy={setCreatingBusy} onList={() => { setCreating(false); refreshed(); }} /></Modal>}
-    {modal && (modal.mode === "role" || modal.mode === "lock") && <ChangeAccount account={modal.account} mode={modal.mode} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshed(); setNotice("Đã cập nhật tài khoản và thu hồi các phiên đăng nhập cũ."); }} />}
+    {canAssignRoles && creating && <Modal title="Tạo tài khoản quản trị" busy={creatingBusy} onClose={() => { setCreating(false); refreshed(); }}><CreateAccount onBusy={setCreatingBusy} onList={() => { setCreating(false); refreshed(); }} /></Modal>}
+    {modal && ((canAssignRoles && modal.mode === "role") || (canManage && modal.mode === "lock")) && <ChangeAccount account={modal.account} mode={modal.mode} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshed(); setNotice("Đã cập nhật tài khoản và thu hồi các phiên đăng nhập cũ."); }} />}
     {modal && (modal.mode === "detail" || modal.mode === "history") && <Modal title={`${modal.mode === "detail" ? "Chi tiết tài khoản" : "Lịch sử đăng nhập"} — ${modal.account.name}`} onClose={() => setModal(null)}>{modal.mode === "detail" ? <AccountDetails id={modal.account.id} /> : <History userId={modal.account.id} />}</Modal>}
   </>;
 }

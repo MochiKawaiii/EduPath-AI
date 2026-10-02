@@ -271,14 +271,7 @@ try {
       (await planApi(`/${k29Id}`, "GET", undefined, { "x-user": key })).status,
       200,
     );
-    const readOnlyWrite = await planApi(
-      `/${k29Id}`,
-      "PATCH",
-      { name: k29Detail.data.name, totalCredits: 126, notes: "blocked" },
-      { "x-user": key, "x-version": k29Detail.token },
-    );
-    assert.equal(readOnlyWrite.status, 403);
-    assert.equal(readOnlyWrite.body.error, "insufficient_role");
+    assert.equal((await planApi("/preview", "POST", k29, { "x-user": key })).status, 200);
   }
   assert.equal(
     (await planApi("", "GET", undefined, { "x-user": "student" })).status,
@@ -475,6 +468,35 @@ try {
   assert.equal(result.status, 200);
   assert.equal((await planApi("?active=true")).body.total, 3);
   checks.push("concurrent optimistic status writes, lock filtering, and seed preservation of a locked plan");
+
+  k29Detail = (await planApi(`/${k29Id}`)).body;
+  let latestPreview;
+  for (const key of ["faculty", "department", "lecturer"]) {
+    latestPreview = await planApi("/preview", "POST", k29, { "x-user": key });
+    assert.equal(latestPreview.status, 200);
+    result = await planApi(`/${k29Id}/import`, "PUT", k29, {
+      "x-user": key,
+      "x-version": k29Detail.token,
+      "x-preview-hash": latestPreview.body.previewHash,
+      "x-confirm-warnings": "true",
+    });
+    assert.equal(result.status, 200, `${key} should be able to import a training plan`);
+    k29Detail = result.body;
+  }
+  assert.equal((await planApi(`/${k29Id}/import`, "PUT", k29, {
+    "x-user": "student",
+    "x-version": k29Detail.token,
+    "x-preview-hash": latestPreview.body.previewHash,
+    "x-confirm-warnings": "true",
+  })).status, 403);
+  await pool.query("UPDATE users SET role='student' WHERE id=$1", [users.lecturer.userId]);
+  assert.equal((await planApi(`/${k29Id}/import`, "PUT", k29, {
+    "x-user": "lecturer",
+    "x-version": k29Detail.token,
+    "x-preview-hash": latestPreview.body.previewHash,
+    "x-confirm-warnings": "true",
+  })).status, 403);
+  checks.push("all staff roles can import training plans; student and revoked staff sessions cannot");
 
   const publicAfter = await snapshotPublicPlans();
   assert.deepEqual(publicAfter, publicBefore);

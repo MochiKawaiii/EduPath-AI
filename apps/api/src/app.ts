@@ -27,7 +27,7 @@ import { createStudentProfilesRouter, type StudentProfileRepository } from "./ad
 import { createAdminAccountsRouter, type AdminAccountRepository } from "./admin/accounts.js";
 import {
   requireAuthentication,
-  requireRole, requireAdminAccess
+  requireAdminAccess
 } from "./middleware/authorization.js";
 
 export interface CreateAppDependencies {
@@ -142,7 +142,7 @@ export function createApp({
     }
   );
 
-  app.get("/api/admin/summary", requireRole("admin"), (request, response) => {
+  app.get("/api/admin/summary", requireAdminAccess, (request, response) => {
     response.json({
       message: `Xin chào quản trị viên ${request.session.user?.name ?? ""}`.trim(),
       role: request.session.user?.role

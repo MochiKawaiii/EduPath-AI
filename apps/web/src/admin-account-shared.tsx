@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 const failures: Record<string, string> = {
   student_not_found: "Không tìm thấy sinh viên hoặc tài khoản không còn mang vai trò Sinh viên.",
   self_change_forbidden: "Không thể tự thay đổi quyền hoặc khóa tài khoản đang sử dụng.",
+  last_admin_required: "Không thể khóa Quản trị viên đang hoạt động cuối cùng.",
   account_not_found: "Không tìm thấy tài khoản trong hệ thống.",
   invalid_query: "Bộ lọc hoặc khoảng ngày chưa hợp lệ.",
   account_not_registered: "Chưa tìm thấy tài khoản. Người dùng cần đăng nhập EduPath bằng Microsoft ít nhất một lần trước khi được thêm làm quản trị viên.",

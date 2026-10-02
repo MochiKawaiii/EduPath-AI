@@ -28,6 +28,7 @@ const admin = {
   signedInAt: new Date(0).toISOString(),
 } satisfies AuthenticatedUser;
 const faculty = { ...admin, role: "faculty_board" } satisfies AuthenticatedUser;
+const staffRoles = ["faculty_board", "department_head", "lecturer"] as const;
 
 type Requirement = {
   id: string;
@@ -85,7 +86,8 @@ function setup(options: Options = {}) {
   const clientQuery = vi.fn(async (sql: string, params?: unknown[]) => {
     if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return { rowCount: 0, rows: [] };
     if (sql.includes("SELECT id FROM users")) {
-      const allowed = user?.role === "admin" && !options.revokedInTransaction;
+      const allowedRoles = (params?.[2] as string[] | undefined) ?? ["admin"];
+      const allowed = !!user && allowedRoles.includes(user.role) && !options.revokedInTransaction;
       return { rowCount: allowed ? 1 : 0, rows: allowed ? [{ id: adminId }] : [] };
     }
     if (sql.includes("SELECT career_position_id FROM career_requirements")) {
@@ -247,19 +249,30 @@ describe("career requirements API", () => {
     expect(requirements.get(created.body.id)?.deleted_at).toBeInstanceOf(Date);
   });
 
-  it("protects admin writes with authentication, origin, transaction recheck, validation, and optimistic versions", async () => {
+  it.each(staffRoles)("allows %s to add requirements after the transaction recheck", async (role) => {
+    const staff = { ...admin, role } as AuthenticatedUser;
+    const allowed = setup({ user: staff });
+    await request(allowed.app)
+      .post("/careers/requirements")
+      .set("Origin", origin)
+      .send(requirementInput)
+      .expect(201);
+    expect(allowed.clientQuery.mock.calls.find(([sql]) => String(sql).includes("SELECT id FROM users"))?.[1]?.[2])
+      .toEqual(["admin", "faculty_board", "department_head", "lecturer"]);
+    expect(allowed.clientQuery).toHaveBeenCalledWith("COMMIT");
+  });
+
+  it("protects requirement writes with authentication, origin, revoked-role recheck, validation, and optimistic versions", async () => {
     await request(setup({ user: null }).app).get("/careers/requirements").expect(401);
     const facultyRead = setup({ user: faculty });
     await request(facultyRead.app).get("/careers/requirements").expect(200);
-    await request(facultyRead.app).post("/careers/requirements").set("Origin", origin).send(requirementInput).expect(403);
+    const revoked = setup({ user: faculty, revokedInTransaction: true });
+    await request(revoked.app).post("/careers/requirements").set("Origin", origin).send(requirementInput).expect(403, { error: "insufficient_role" });
+    expect(revoked.clientQuery).toHaveBeenCalledWith("ROLLBACK");
 
     const crossOrigin = setup();
     await request(crossOrigin.app).post("/careers/requirements").set("Origin", "https://evil.example").send(requirementInput).expect(403, { error: "invalid_origin" });
     expect(crossOrigin.connect).not.toHaveBeenCalled();
-    const revoked = setup({ revokedInTransaction: true });
-    await request(revoked.app).post("/careers/requirements").set("Origin", origin).send(requirementInput).expect(403, { error: "insufficient_role" });
-    expect(revoked.clientQuery).toHaveBeenCalledWith("ROLLBACK");
-
     const invalid = setup();
     await request(invalid.app).post("/careers/requirements").set("Origin", origin).send({ ...requirementInput, level: "expert" }).expect(400, { error: "invalid_requirement" });
     expect(invalid.connect).not.toHaveBeenCalled();

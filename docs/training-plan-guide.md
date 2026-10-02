@@ -2,7 +2,7 @@
 
 Trang quản trị: `/quantri/ke-hoach`.
 
-Quản trị viên có thể import, tìm kiếm, xem chi tiết, cập nhật và mở/khóa kế hoạch. Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng viên chỉ được xem. Quyền được kiểm tra lại ở API theo tài khoản hiện tại trong database.
+Quản trị viên, Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng viên đều có thể import, thêm/sửa/xóa dữ liệu, tìm kiếm, xem chi tiết và mở/khóa kế hoạch. Chỉ Quản trị viên được phân quyền tài khoản. Quyền được kiểm tra lại ở API theo tài khoản hiện tại trong database.
 
 ## Nguồn và cấu trúc
 

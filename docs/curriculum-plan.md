@@ -11,7 +11,7 @@ Function list Excel đảo thứ tự mã 01–04 và lặp nhóm kế hoạch �
 1. Đọc cấu trúc và kiểm tra dữ liệu nguồn; xác định môn bắt buộc, nhóm tự chọn, chuyên ngành, học kỳ/năm học và quan hệ học phần.
 2. Tạo chương trình theo ngành + khóa, danh mục mã học phần, phiên bản bất biến, học phần từng phiên bản và quan hệ có nguồn gốc. Lưu Excel gốc và cảnh báo.
 3. Import có xem trước, xác nhận cảnh báo và kiểm tra trùng. Cập nhật tạo phiên bản mới, kiểm tra version để tránh ghi đè thay đổi khác phiên. Mở/khóa là trạng thái chương trình, không xóa lịch sử.
-4. Giao diện quản trị: danh sách/tìm kiếm/lọc tức thời, chi tiết theo khối và học kỳ, sửa thông tin/môn học, thay khung bằng Excel mới, mở/khóa. Chỉ admin được sửa; các vai trò khoa/bộ môn/giảng viên được xem.
+4. Giao diện quản trị: danh sách/tìm kiếm/lọc tức thời, chi tiết theo khối và học kỳ, sửa thông tin/môn học, thay khung bằng Excel mới, mở/khóa. Admin và các vai trò khoa/bộ môn/giảng viên đều được quản lý dữ liệu; chỉ admin được phân quyền tài khoản.
 5. Đồng bộ ba nguồn vào database local và Render/Supabase qua bước khởi tạo idempotent; không ghi đè chương trình đã tồn tại hoặc tự mở lại khung đã khóa.
 6. Kiểm tra đủ số học phần và quan hệ, lỗi nguồn, quyền hạn, phiên bản, rollback và giao diện; build/test rồi đẩy GitHub.
 

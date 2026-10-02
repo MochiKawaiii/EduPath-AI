@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { DatabasePool } from "../db/pool.js";
-import type { AuthenticatedUser, AppRole } from "../auth/types.js";
+import { adminRoles, type AuthenticatedUser, type AppRole } from "../auth/types.js";
 import { requireRole, requireAdminAccess } from "../middleware/authorization.js";
 
 export interface Account {
@@ -118,8 +118,16 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["edupath:admin-account-management"]);
       const activeActor = await client.query(`SELECT id FROM users WHERE id = $1 AND entra_tenant_id = $2
-        AND is_active AND COALESCE(role_override, role) = 'admin' FOR SHARE`, [actor.userId, actor.tenantId]);
+        AND is_active AND COALESCE(role_override, role) = ANY($3::text[]) FOR SHARE`,
+        [actor.userId, actor.tenantId, change.role !== undefined ? ["admin"] : adminRoles]);
       if (!activeActor.rows.length) throw new AccountError("insufficient_role", 403);
+      if (change.isActive === false) {
+        const lastAdmin = await client.query(`SELECT id FROM users WHERE id=$1 AND is_active
+          AND COALESCE(role_override, role)='admin' AND NOT EXISTS
+          (SELECT 1 FROM users WHERE id<>$1 AND entra_tenant_id=$2 AND is_active AND COALESCE(role_override, role)='admin')`,
+          [id, actor.tenantId]);
+        if (lastAdmin.rows.length) throw new AccountError("last_admin_required", 409);
+      }
       const result = await client.query<Account>(`UPDATE users SET
         is_student = is_student OR COALESCE(role_override, role) = 'student' OR COALESCE($2::varchar = 'student', FALSE),
         role = COALESCE($2, role), role_override = COALESCE($2, role_override),
@@ -171,7 +179,7 @@ export function createAdminAccountsRouter(repository: AdminAccountRepository | u
     if (!input.success) { response.status(400).json({ error: "invalid_query" }); return; }
     response.json({ ...await repository!.list(request.session.user!, input.data), page: input.data.page, pageSize: input.data.pageSize });
   });
-  router.get("/history", requireRole("admin"), async (request, response) => {
+  router.get("/history", async (request, response) => {
     const input = z.object({ q: z.string().trim().max(120).default(""),
       page: z.coerce.number().int().min(1).max(100000).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(10),
       userId: z.uuid().optional(), outcome: z.enum(["success", "denied"]).optional(), portal: z.enum(["admin", "student"]).optional(),
@@ -185,7 +193,10 @@ export function createAdminAccountsRouter(repository: AdminAccountRepository | u
     if (!id.success) { response.status(400).json({ error: "invalid_input" }); return; }
     response.json({ user: await repository!.detail(request.session.user!, id.data) });
   });
-  router.patch("/:id", requireRole("admin"), async (request, response) => {
+  router.patch("/:id", async (request, response) => {
+    if (request.body?.role !== undefined && request.session.user!.role !== "admin") {
+      response.status(403).json({ error: "insufficient_role" }); return;
+    }
     if (request.get("origin") !== webOrigin) { response.status(403).json({ error: "invalid_origin" }); return; }
     const id = z.uuid().safeParse(request.params.id);
     const change = z.object({ role: z.enum(["admin", "student", "faculty_board", "department_head", "lecturer"]).optional(), isActive: z.boolean().optional(), confirmed: z.literal(true) })

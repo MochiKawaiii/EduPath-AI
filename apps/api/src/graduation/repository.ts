@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
-import type { AuthenticatedUser } from "../auth/types.js";
+import { adminRoles, type AuthenticatedUser } from "../auth/types.js";
 import {
   GraduationError,
   identity,
@@ -13,7 +13,7 @@ export class GraduationRepository {
   constructor(readonly pool: DatabasePool) {}
   async access(
     actor: AuthenticatedUser,
-    write: boolean,
+    _write: boolean,
     client: DatabasePool | PoolClient = this.pool,
   ) {
     const found = await client.query(
@@ -21,9 +21,7 @@ export class GraduationRepository {
       [
         actor.userId,
         actor.tenantId,
-        write
-          ? ["admin"]
-          : ["admin", "faculty_board", "department_head", "lecturer"],
+        adminRoles,
       ],
     );
     if (!found.rowCount) throw new GraduationError("insufficient_role", 403);

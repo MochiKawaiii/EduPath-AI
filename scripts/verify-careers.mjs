@@ -9,6 +9,7 @@ import dotenv from "dotenv";
 import express from "express";
 import { createCareersRouter } from "../apps/api/dist/careers/router.js";
 import { createStudentDataRouter } from "../apps/api/dist/student/router.js";
+import { createAdminAccountsRouter, PostgresAdminAccountRepository } from "../apps/api/dist/admin/accounts.js";
 
 const env = dotenv.parse(await readFile("apps/api/.env", "utf8"));
 assert(env.DATABASE_URL, "apps/api/.env must define DATABASE_URL for integration checks");
@@ -98,7 +99,7 @@ try {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE TABLE student_profiles(
-      user_id UUID PRIMARY KEY REFERENCES users(id), student_code TEXT, cohort_year SMALLINT,
+      user_id UUID PRIMARY KEY REFERENCES users(id), student_code TEXT, full_name TEXT, cohort_year SMALLINT,
       class_name TEXT, current_semester SMALLINT, career_goal TEXT, interests TEXT,
       onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -153,11 +154,14 @@ try {
   await new Promise((done) => server.once("listening", done));
   const origin = `http://127.0.0.1:${server.address().port}`;
   if (process.argv.includes("--ui")) {
+    const uiRole = process.argv.find((argument) => argument.startsWith("--ui-role="))?.slice("--ui-role=".length) ?? "admin";
+    assert(["admin", "faculty_board", "department_head", "lecturer"].includes(uiRole), "unsupported UI fixture role");
+    await pool.query("UPDATE users SET role=$2 WHERE id=$1", [adminId, uiRole]);
     app.get("/api/auth/me", (_req, res) =>
       res.json({ authenticated: true, user: studentActor, studentPortal: true }),
     );
     app.get("/api/admin/me", (_req, res) =>
-      res.json({ authenticated: true, user: adminActor() }),
+      res.json({ authenticated: true, user: adminActor(uiRole) }),
     );
     app.get("/api/student/profile", async (_req, res) => {
       const row = (await pool.query(
@@ -184,6 +188,7 @@ try {
       res.json({ transcript: null, job: null, workerOnline: false, ocrEnabled: false }),
     );
     app.use("/api/admin/careers", createCareersRouter(pool, origin));
+    app.use("/api/admin/accounts", createAdminAccountsRouter(new PostgresAdminAccountRepository(pool), origin));
     app.use("/api/student/careers", createCareersRouter(pool, origin, true));
     app.use("/api/student", createStudentDataRouter(pool, origin));
     app.use(express.static(resolve("apps/web/dist")));
@@ -531,19 +536,26 @@ try {
     level: "unspecified",
     isRequired: false,
   }, { Origin: "http://evil.local" }), { status: 403, body: { error: "invalid_origin" } });
-  await pool.query("UPDATE users SET role='faculty_board' WHERE id=$1", [adminId]);
-  assert.equal((await api("/careers", "/requirements", "GET", undefined, { "x-role": "faculty_board" })).status, 200);
-  assert.equal((await api("/careers", "/requirements", "POST", {
-    careerPositionId: customId,
-    title: "Faculty write guard",
-    description: "",
-    skillId: null,
-    skillName: "",
-    level: "unspecified",
-    isRequired: false,
-  }, { "x-role": "faculty_board" })).status, 403);
+  for (const role of ["faculty_board", "department_head", "lecturer"]) {
+    await pool.query("UPDATE users SET role=$2 WHERE id=$1", [adminId, role]);
+    assert.equal((await api("/careers", "/requirements", "GET", undefined, { "x-role": role })).status, 200);
+    const staffRequirement = await api("/careers", "/requirements", "POST", {
+      careerPositionId: customId,
+      title: `${role} write permission check`,
+      description: "Temporary requirement removed by the verifier.",
+      skillId: null,
+      skillName: "",
+      level: "unspecified",
+      isRequired: false,
+    }, { "x-role": role });
+    assert.equal(staffRequirement.status, 201);
+    assert.equal((await api("/careers", `/requirements/${staffRequirement.body.id}`, "DELETE", { confirmed: true }, {
+      "x-role": role,
+      "x-version": staffRequirement.body.version,
+    })).status, 200);
+  }
   await pool.query("UPDATE users SET role='admin' WHERE id=$1", [adminId]);
-  checks.push("requirements writes enforce origin and admin-only authorization while permitted staff retain read access");
+  checks.push("all staff roles can create and delete requirements; origin and revoked-role checks remain enforced");
 
   // Keep these references in scope for the legacy-sync invariants above.
   assert(structuredSqlVersion);
@@ -607,7 +619,7 @@ try {
   assert.equal(result.status, 200);
   assert.equal(result.body.code, customFieldInput.code);
   assert.notEqual(result.body.version, customFieldVersion);
-  const updatedFieldVersion = result.body.version;
+  let updatedFieldVersion = result.body.version;
   assert.deepEqual(
     await api("/careers", `/fields/${customFieldId}`, "PATCH", {
       name: customFieldInput.name,
@@ -643,6 +655,27 @@ try {
     (await api("/careers", "/fields", "POST", { ...customFieldInput, code: "student-field" }, { "x-role": "student" })).status,
     403,
   );
+  for (const role of ["faculty_board", "department_head", "lecturer"]) {
+    await pool.query("UPDATE users SET role=$2 WHERE id=$1", [adminId, role]);
+    const staffField = await api("/careers", "/fields", "POST", {
+      code: `${role}_permission_check`,
+      name: `${role} permission check`,
+      description: "Temporary field created and deleted by the verifier.",
+    }, { "x-role": role });
+    assert.equal(staffField.status, 201);
+    assert.equal((await api("/careers", `/fields/${staffField.body.id}`, "DELETE", { confirmed: true }, {
+      "x-role": role,
+      "x-version": staffField.body.version,
+    })).status, 200);
+    result = await api("/careers", `/fields/${customFieldId}`, "PATCH", {
+      name: "Integration Robotics Updated",
+      description: `Updated by ${role} in the disposable verifier.`,
+    }, { "x-role": role, "x-version": updatedFieldVersion });
+    assert.equal(result.status, 200);
+    updatedFieldVersion = result.body.version;
+  }
+  await pool.query("UPDATE users SET role='admin' WHERE id=$1", [adminId]);
+  checks.push("faculty board, department head and lecturer can edit active career fields; students cannot");
   const productField = (await api("/careers", "/fields")).body.items.find((item) => item.code === "product");
   result = await api("/careers", `/${customFieldCareerId}`, "PATCH", {
     ...customFieldCareerInput,
@@ -679,17 +712,47 @@ try {
   assert.equal((await api("/student-careers", "", "GET", undefined, { "x-role": "student" })).body.items.length, 21);
   checks.push("career reassignment updates category filters and field counts; deletion is blocked for the occupied destination and succeeds for the unused source");
 
-  await pool.query("UPDATE users SET role='faculty_board' WHERE id=$1", [adminId]);
-  assert.equal((await api("/careers", "", "GET", undefined, { "x-role": "faculty_board" })).status, 200);
-  assert.equal(
-    (await api("/careers", `/${customId}`, "PATCH", customInput, {
-      "x-role": "faculty_board",
-      "x-version": updatedCustomVersion,
-    })).status,
-    403,
-  );
+  let finalCustomVersion = (await api("/careers", `/${customId}`, "GET")).body.version;
+  for (const role of ["faculty_board", "department_head", "lecturer"]) {
+    await pool.query("UPDATE users SET role=$2 WHERE id=$1", [adminId, role]);
+    assert.equal((await api("/careers", "", "GET", undefined, { "x-role": role })).status, 200);
+    const staffCareer = await api("/careers", "", "POST", {
+      code: `${role.replaceAll("_", "-")}-permission-check`,
+      nameVi: `${role} permission check`,
+      nameEn: `${role} permission check`,
+      category: "product",
+      description: "Temporary career created and deleted by the verifier.",
+      skills: [],
+    }, { "x-role": role });
+    assert.equal(staffCareer.status, 201);
+    assert.equal((await api("/careers", `/${staffCareer.body.id}`, "DELETE", { confirmed: true }, {
+      "x-role": role,
+      "x-version": staffCareer.body.version,
+    })).status, 200);
+    result = await api("/careers", `/${customId}`, "PATCH", customInput, {
+      "x-role": role,
+      "x-version": finalCustomVersion,
+    });
+    assert.equal(result.status, 200);
+    finalCustomVersion = result.body.version;
+  }
+  await pool.query("UPDATE users SET role='student' WHERE id=$1", [adminId]);
+  assert.equal((await api("/careers", `/${customId}`, "PATCH", customInput, {
+    "x-role": "student",
+    "x-version": finalCustomVersion,
+  })).status, 403);
+  const revokedRequirement = await api("/careers", "/requirements", "POST", {
+    careerPositionId: customId,
+    title: "Revoked role transaction check",
+    description: "This must not persist after access is revoked.",
+    skillId: null,
+    skillName: "",
+    level: "unspecified",
+    isRequired: false,
+  }, { "x-role": "lecturer" });
+  assert.equal(revokedRequirement.status, 403);
   await pool.query("UPDATE users SET role='admin' WHERE id=$1", [adminId]);
-  checks.push("faculty-board can read the catalog but cannot mutate it");
+  checks.push("all staff roles can update careers; students and a revoked staff actor cannot write");
 
   result = await api("/student-careers", "", "GET", undefined, { "x-role": "student" });
   assert.equal(result.status, 200);

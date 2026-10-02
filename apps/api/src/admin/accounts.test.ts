@@ -7,8 +7,13 @@ import { AccountError, createAdminAccountsRouter, PostgresAdminAccountRepository
 
 const actor = { userId: "actor-id", tenantId: "tenant-id", role: "admin" } as AuthenticatedUser;
 const target = { id: "target-id", name: "Test account", email: "test@example.edu", role: "student", isActive: true };
-function setup(role: "admin" | "student" | null = "admin", available = true) {
-  const repository = { canAccessAdmin: vi.fn().mockResolvedValue(true), list: vi.fn().mockResolvedValue({ items: [], total: 0 }), createAdmin: vi.fn().mockResolvedValue({ ...target, role: "admin" }) };
+function setup(role: "admin" | "student" | "faculty_board" | "department_head" | "lecturer" | null = "admin", available = true) {
+  const repository = {
+    canAccessAdmin: vi.fn().mockResolvedValue(true),
+    list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    createAdmin: vi.fn().mockResolvedValue({ ...target, role: "admin" }),
+    update: vi.fn().mockResolvedValue({ ...target }),
+  };
   const app = express();
   app.use(express.json());
   // Test-only sessions; production uses the Microsoft session middleware.
@@ -29,6 +34,12 @@ describe("admin accounts API", () => {
     const { app, repository } = setup(); repository.canAccessAdmin.mockResolvedValue(false);
     await request(app).get("/accounts").expect(403);
     await request(app).post("/accounts").expect(403);
+    expect(repository.createAdmin).not.toHaveBeenCalled();
+  });
+  it.each(["faculty_board", "department_head", "lecturer"] as const)("lets %s manage accounts but reserves admin grants for admins", async (role) => {
+    const { app, repository } = setup(role);
+    await request(app).get("/accounts").expect(200);
+    await request(app).post("/accounts").set("Origin", "http://localhost:5173").send({ email: target.email, confirmAdmin: true }).expect(403);
     expect(repository.createAdmin).not.toHaveBeenCalled();
   });
   it("reports preview storage as unavailable, not an empty real database", async () => {

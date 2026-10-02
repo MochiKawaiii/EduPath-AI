@@ -1,22 +1,20 @@
 import { randomUUID, createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
-import type { AuthenticatedUser } from "../auth/types.js";
+import { adminRoles, type AuthenticatedUser } from "../auth/types.js";
 import { PlanError, reviewPlan, identity, type PlanData } from "./model.js";
 import type { CurriculumData } from "../curricula/model.js";
 const columns = `c.id,c.is_active AS "isActive",c.lock_version AS token,c.updated_at AS "updatedAt",r.id AS "revisionId",r.version,r.data,r.source_filename AS "sourceFilename"`;
 export class PlanRepository {
   constructor(readonly pool: DatabasePool) { }
-  async access(actor: AuthenticatedUser, write = false, client?: PoolClient) {
+  async access(actor: AuthenticatedUser, _write = false, client?: PoolClient) {
     const result = await (client ?? this.pool).query(
       `SELECT id FROM users WHERE id=$1 AND entra_tenant_id=$2 AND is_active
       AND COALESCE(role_override,role)=ANY($3::text[]) ${client ? "FOR SHARE" : ""}`,
       [
         actor.userId,
         actor.tenantId,
-        write
-          ? ["admin"]
-          : ["admin", "faculty_board", "department_head", "lecturer"],
+        adminRoles,
       ],
     );
     if (!result.rowCount) throw new PlanError("insufficient_role", 403);

@@ -1,6 +1,6 @@
 # Quản lý tiêu chuẩn xét tốt nghiệp — AD-GRAD-01..05
 
-Vào **Quản trị → Tiêu chuẩn xét tốt nghiệp** (`/quantri/tieu-chuan-tot-nghiep`). Quản trị viên được import, chỉnh sửa, mở/khóa. Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng viên chỉ xem danh sách, chi tiết, lịch sử và nguồn.
+Vào **Quản trị → Tiêu chuẩn xét tốt nghiệp** (`/quantri/tieu-chuan-tot-nghiep`). Quản trị viên, Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng viên đều được import, thêm/sửa/xóa dữ liệu, mở/khóa và xem danh sách, chi tiết, lịch sử, nguồn. Chỉ Quản trị viên được phân quyền tài khoản.
 
 ## Import biểu mẫu
 

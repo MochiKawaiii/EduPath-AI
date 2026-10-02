@@ -27,7 +27,7 @@ Phạm vi triển khai lần này:
 - Bố cục hai cột đỏ trầm/trắng, nhận diện Văn Lang; responsive, trạng thái tải/lỗi/thử lại.
 - Quyền được ưu tiên từ `users.role_override` trong PostgreSQL (gắn với cặp tenant/object ID đã được Microsoft xác thực). Nếu NULL, backend ánh xạ app role Microsoft hoặc vai trò mặc định. Không cấp quyền dựa trên URL hoặc chỉ dựa vào đuôi email.
 - Luồng đăng nhập `/quantri` kiểm tra quyền trước khi lưu người dùng và tạo session mới. Student bị từ chối; phiên Student sẵn có không bị nâng quyền.
-- `GET /api/admin/me` và `/api/admin/summary` được bảo vệ bằng `requireRole("admin")`: chưa đăng nhập trả 401; không đủ quyền trả 403.
+- `GET /api/admin/me` và `/api/admin/summary` cho phép bốn vai trò Quản trị viên, Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng viên: chưa đăng nhập trả 401; Sinh viên không có quyền truy cập và nhận 403.
 - `POST /api/auth/logout?portal=admin` chỉ chọn đích cố định `/quantri`, không nhận URL tùy ý; vẫn kiểm tra Origin, hủy session và xóa cookie.
 - API xác thực/quản trị không được cache. Trang quản trị kiểm tra lại phiên khi được khôi phục từ browser back/forward cache.
 - Admin đăng nhập qua màn hình sinh viên cũng được điều hướng về `/quantri`.
@@ -48,9 +48,9 @@ Phạm vi triển khai lần này:
 - AD-AUTH-04 hiển thị danh sách thật từ PostgreSQL: họ tên, email, vai trò hiệu lực, trạng thái và lần đăng nhập gần nhất; hỗ trợ tìm kiếm, phân trang, trạng thái tải/lỗi/thử lại/rỗng.
 - `GET /api/admin/accounts` giới hạn dữ liệu cùng tenant, kiểm tra tham số tìm kiếm và phân trang; truy vấn SQL có tham số.
 - `POST /api/admin/accounts` yêu cầu đúng Origin, email hợp lệ và xác nhận cấp quyền. Giao dịch kiểm tra lại quyền người thao tác, từ chối tài khoản bị khóa, email không tồn tại/không xác định duy nhất, khác tenant hoặc đã là quản trị viên.
-- API quản lý tài khoản kiểm tra lại quyền Admin đang hoạt động trong database mỗi lần gọi, kể cả khi session cũ còn quyền. Khi không cấu hình database, trả lỗi rõ ràng thay vì giả lập lưu thành công.
+- API quản lý tài khoản kiểm tra vai trò quản lý đang hoạt động trong database mỗi lần gọi, kể cả khi session cũ còn quyền. Quản trị viên, Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng viên đều được quản lý dữ liệu, xem lịch sử và khóa/mở tài khoản. Chỉ Quản trị viên được đổi vai trò và tạo/cấp tài khoản quản trị. Khi không cấu hình database, trả lỗi rõ ràng thay vì giả lập lưu thành công.
 - `GET /api/admin/accounts/:id` lấy chi tiết; `PATCH /api/admin/accounts/:id` nhận đúng một thay đổi `role` hoặc `isActive`, kèm `confirmed=true` và Origin hợp lệ. Không nhận thay đổi tenant hay trường ngoài hợp đồng.
-- Không tự đổi vai trò/khóa/mở tài khoản đang sử dụng. Các thay đổi trong tenant được tuần tự hóa bằng transaction advisory lock, kiểm tra lại actor đang hoạt động trước khi sửa đích. Vì actor phải còn Admin và không thể sửa chính mình, các thao tác này không loại bỏ quản trị viên hoạt động cuối cùng.
+- Không tự đổi vai trò/khóa/mở tài khoản đang sử dụng. Các thay đổi trong tenant được tuần tự hóa bằng transaction advisory lock, kiểm tra lại actor đang hoạt động trước khi sửa đích. Không cho khóa Quản trị viên đang hoạt động cuối cùng. Thao tác đổi vai trò luôn kiểm tra riêng quyền Admin trong giao dịch; thao tác khóa/mở cho phép cả bốn vai trò quản lý.
 - `GET /api/admin/accounts/history` nhận `q`, `userId`, `outcome`, `portal`, `from`, `to`, `page`, `pageSize`. `from` bao gồm, `to` không bao gồm; UI chuyển ngày Việt Nam UTC+7 sang ISO và bao gồm toàn bộ ngày kết thúc. Giới hạn 50 dòng/trang; không trả token, mật khẩu hoặc nội dung phiên.
 - `login_events` chỉ lưu sự kiện đăng nhập EduPath từ lúc bật tính năng: thành công hoặc từ chối sau khi xác minh danh tính Microsoft được phép và tìm được người dùng trong database. Không lấy lịch sử Entra trước đây, không tạo lại sự kiện quá khứ; callback chưa xác định tài khoản (hủy Microsoft, sai state, sai tenant) không được gán tùy tiện cho người dùng.
 - Nếu lưu lịch sử thành công bị lỗi, phiên vừa tạo bị hủy và đăng nhập báo lỗi; không âm thầm bỏ mất sự kiện đăng nhập thành công.

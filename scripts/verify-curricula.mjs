@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import express from "express";
 import { createCurriculaRouter } from "../apps/api/dist/curricula/router.js";
 import { seedCurricula } from "../apps/api/dist/curricula/seed.js";
+import { parentGroupIds } from "../apps/api/dist/curricula/course-mutations.js";
 const env = dotenv.parse(await readFile("apps/api/.env", "utf8"));
 assert(
   ["localhost", "127.0.0.1"].includes(new URL(env.DATABASE_URL).hostname),
@@ -146,21 +147,12 @@ try {
       200,
     );
     assert.equal(
-      (
-        await api(
-          `/${id}/status`,
-          "PATCH",
-          { isActive: false },
-          { "x-role": role, "x-version": detail.token },
-        )
-      ).status,
-      403,
+      (await api("/preview", "POST", workbook, { "x-role": role })).status,
+      200,
     );
-    // A stale admin session is still rejected by the current database role.
-    assert.equal((await api("/preview", "POST", workbook)).status, 403);
   }
   await pool.query("UPDATE users SET role='admin' WHERE id=$1", [uid]);
-  checks.push("staff read-only roles and fresh database authorization");
+  checks.push("staff roles can read curricula and preview workbook imports; student access remains denied");
   const change = {
     name: detail.data.name + " updated",
     totalCredits: 126,
@@ -300,8 +292,10 @@ try {
   // Course CRUD is exercised after the seed/status checks so the disposable
   // revision chain remains easy to inspect and the public seed assertions
   // above stay independent of manual course edits.
-  const addGroup = detail.data.groups[0]?.id;
-  const moveGroup = detail.data.groups.find((group) => group.id !== addGroup)?.id;
+  const parentIds = parentGroupIds(detail.data.groups);
+  const leafGroups = detail.data.groups.filter((group) => !parentIds.has(group.id));
+  const addGroup = leafGroups[0]?.id;
+  const moveGroup = leafGroups.find((group) => group.id !== addGroup)?.id;
   assert(addGroup && moveGroup, "fixture must contain two course groups");
   const base = detail.data.courses[0];
   assert(base, "fixture must contain a course");
@@ -418,42 +412,34 @@ try {
     true,
   );
 
-  await pool.query("UPDATE users SET role='faculty_board' WHERE id=$1", [uid]);
-  assert.equal((await api(`/${id}`, "GET", undefined, { "x-role": "faculty_board" })).status, 200);
-  const viewerCourse = detail.data.courses[0];
-  assert(viewerCourse);
-  const {
-    position: _viewerPosition,
-    sourceRow: _viewerSourceRow,
-    sourceSheet: _viewerSourceSheet,
-    sourceCells: _viewerSourceCells,
-    ...viewerChange
-  } = viewerCourse;
-  assert.equal(
-    (
-      await api(
-        `/${id}/courses/${viewerCourse.code}`,
-        "PATCH",
-        viewerChange,
-        { "x-role": "faculty_board", "x-version": detail.token },
-      )
-    ).status,
-    403,
-  );
+  for (const role of ["faculty_board", "department_head", "lecturer"]) {
+    await pool.query("UPDATE users SET role=$2 WHERE id=$1", [uid, role]);
+    const staffDetail = await api(`/${id}`, "GET", undefined, { "x-role": role });
+    assert.equal(staffDetail.status, 200);
+    result = await api(`/${id}/import`, "PUT", workbook, {
+      "x-role": role,
+      "x-version": detail.token,
+      "x-confirm-warnings": "true",
+    });
+    assert.equal(result.status, 200, `${role} should be able to import a curriculum`);
+    detail = result.body;
+  }
   await pool.query("UPDATE users SET role='student' WHERE id=$1", [uid]);
-  assert.equal((await api(`/${id}`, "GET", undefined, { "x-role": "student" })).status, 403);
-  assert.equal(
-    (
-      await api(`/${id}/courses/${viewerCourse.code}`, "DELETE", undefined, {
-        "x-role": "student",
-        "x-version": detail.token,
-      })
-    ).status,
-    403,
-  );
+  assert.equal((await api(`/${id}/import`, "PUT", workbook, {
+    "x-role": "student",
+    "x-version": detail.token,
+    "x-confirm-warnings": "true",
+  })).status, 403);
+  // The session still claims lecturer while the current database row has revoked that role.
+  assert.equal((await api(`/${id}/import`, "PUT", workbook, {
+    "x-role": "lecturer",
+    "x-version": detail.token,
+    "x-confirm-warnings": "true",
+  })).status, 403);
   await pool.query("UPDATE users SET role='admin' WHERE id=$1", [uid]);
+  assert.equal((await api(`/${id}`, "GET", undefined, { "x-role": "student" })).status, 403);
   checks.push(
-    "course CRUD: duplicate/invalid-group rejection, group move ordering, deleted-reference warning, immutable revision, stale token and viewer/student authorization",
+    "course CRUD: duplicate/invalid-group rejection, group move ordering, deleted-reference warning, immutable revision, stale token; all staff roles can import, student/revoked roles are denied",
   );
 
   console.log(JSON.stringify({ passed: true, checks }, null, 2));

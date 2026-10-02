@@ -16,29 +16,37 @@ function setup(role: string | null = "admin") {
   return { app, repository };
 }
 describe("account management authorization and validation", () => {
-  it.each(["faculty_board", "department_head", "lecturer"])("allows %s to read but never grant roles, lock accounts or read history", async role => {
+  it.each(["faculty_board", "department_head", "lecturer"])("allows %s to manage account status and read history, but not grant roles", async role => {
     const { app, repository } = setup(role);
+    const staffActor = { ...actor, role };
     await request(app).get("/accounts").expect(200);
     await request(app).get(`/accounts/${id}`).expect(200);
     await request(app).post("/accounts").set("Origin", origin).send({ email: "test@example.com", confirmAdmin: true }).expect(403);
     await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ role: "admin", confirmed: true }).expect(403);
-    await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ isActive: false, confirmed: true }).expect(403);
-    await request(app).get("/accounts/history").expect(403);
+    await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ isActive: false, confirmed: true }).expect(200);
+    await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ isActive: true, confirmed: true }).expect(200);
+    await request(app).get("/accounts/history").expect(200);
     expect(repository.createAdmin).not.toHaveBeenCalled();
-    expect(repository.update).not.toHaveBeenCalled();
-    expect(repository.history).not.toHaveBeenCalled();
+    expect(repository.update).toHaveBeenCalledTimes(2);
+    expect(repository.update).toHaveBeenNthCalledWith(1, staffActor, id, { isActive: false, confirmed: true });
+    expect(repository.update).toHaveBeenNthCalledWith(2, staffActor, id, { isActive: true, confirmed: true });
+    expect(repository.history).toHaveBeenCalledOnce();
   });
   it.each(["faculty_board", "department_head", "lecturer"])("lets an admin assign %s", async role => {
     const { app, repository } = setup();
     await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ role, confirmed: true }).expect(200);
     expect(repository.update).toHaveBeenCalledWith(actor, id, { role, confirmed: true });
   });
-  it.each([null, "student"])("blocks %s on all new endpoints", async (role) => {
+  it.each([null, "student"])("blocks %s on account mutations/history", async (role) => {
     const { app, repository } = setup(role); const status = role ? 403 : 401;
     await request(app).get(`/accounts/${id}`).expect(status);
     await request(app).get("/accounts/history").expect(status);
+    await request(app).post("/accounts").set("Origin", origin).send({ email: "test@example.com", confirmAdmin: true }).expect(status);
     await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ role: "admin", confirmed: true }).expect(status);
+    await request(app).patch(`/accounts/${id}`).set("Origin", origin).send({ isActive: false, confirmed: true }).expect(status);
     expect(repository.update).not.toHaveBeenCalled();
+    expect(repository.createAdmin).not.toHaveBeenCalled();
+    expect(repository.history).not.toHaveBeenCalled();
   });
   it("reads detail and handles an absent account", async () => {
     const { app, repository } = setup();
@@ -72,8 +80,15 @@ describe("account management authorization and validation", () => {
   });
 });
 describe("transactional role and lock changes", () => {
-  function setupRepository(activeActor = true, targetFound = true) {
-    const query = vi.fn(async (sql: string, _values?: unknown[]) => ({ rows: sql.includes("FOR SHARE") ? activeActor ? [{ id: actor.userId }] : [] : sql.startsWith("UPDATE users") ? targetFound ? [{ id }] : [] : [] }));
+  function setupRepository(activeActor = true, targetFound = true, actorRole: string = "admin", lastAdmin = false) {
+    const query = vi.fn(async (sql: string, values?: unknown[]) => {
+      if (sql.includes("FOR SHARE")) {
+        const permitted = (values?.[2] as string[] | undefined) ?? ["admin"];
+        return { rows: activeActor && permitted.includes(actorRole) ? [{ id: actor.userId }] : [] };
+      }
+      if (sql.includes("NOT EXISTS")) return { rows: lastAdmin ? [{ id }] : [] };
+      return { rows: sql.startsWith("UPDATE users") && targetFound ? [{ id }] : [] };
+    });
     const release = vi.fn(); const pool = { connect: vi.fn().mockResolvedValue({ query, release }) };
     return { repository: new PostgresAdminAccountRepository(pool as unknown as DatabasePool), query, release, pool };
   }
@@ -88,6 +103,40 @@ describe("transactional role and lock changes", () => {
     expect(query).toHaveBeenCalledWith(expect.stringContaining("auth_version = auth_version + 1"), [id, "student", null]);
     expect(query).toHaveBeenCalledWith("DELETE FROM user_sessions WHERE sess->'user'->>'userId' = $1", [id]);
     expect(query).toHaveBeenCalledWith("COMMIT"); expect(release).toHaveBeenCalled();
+  });
+  it("allows staff to lock/unlock accounts but rechecks role changes against admin-only access", async () => {
+    const staffActor = { ...actor, role: "lecturer" } as AuthenticatedUser;
+    const statusChange = setupRepository(true, true, "lecturer");
+    await statusChange.repository.update(staffActor, id, { isActive: false });
+    const statusActorCheck = statusChange.query.mock.calls.find(([sql]) => String(sql).includes("FOR SHARE"));
+    expect(statusActorCheck?.[1]?.[2]).toEqual(["admin", "faculty_board", "department_head", "lecturer"]);
+    expect(statusChange.query).toHaveBeenCalledWith("COMMIT");
+
+    const roleChange = setupRepository(true, true, "lecturer");
+    await expect(roleChange.repository.update(staffActor, id, { role: "student" })).rejects.toMatchObject({ code: "insufficient_role" });
+    const roleActorCheck = roleChange.query.mock.calls.find(([sql]) => String(sql).includes("FOR SHARE"));
+    expect(roleActorCheck?.[1]?.[2]).toEqual(["admin"]);
+    expect(roleChange.query).toHaveBeenCalledWith("ROLLBACK");
+    expect(roleChange.query.mock.calls.some(([sql]) => String(sql).startsWith("UPDATE users"))).toBe(false);
+  });
+  it("blocks a revoked staff actor inside the status-change transaction", async () => {
+    const staffActor = { ...actor, role: "department_head" } as AuthenticatedUser;
+    const { repository, query, release } = setupRepository(false, true, "department_head");
+    await expect(repository.update(staffActor, id, { isActive: false })).rejects.toMatchObject({ code: "insufficient_role" });
+    expect(query).toHaveBeenCalledWith("ROLLBACK");
+    expect(query).not.toHaveBeenCalledWith("COMMIT");
+    expect(query.mock.calls.some(([sql]) => String(sql).startsWith("UPDATE users"))).toBe(false);
+    expect(release).toHaveBeenCalled();
+  });
+  it("preserves the last active administrator when a staff member tries to lock that account", async () => {
+    const staffActor = { ...actor, role: "faculty_board" } as AuthenticatedUser;
+    const { repository, query, release } = setupRepository(true, true, "faculty_board", true);
+    await expect(repository.update(staffActor, id, { isActive: false })).rejects.toMatchObject({ code: "last_admin_required" });
+    expect(query).toHaveBeenCalledWith("ROLLBACK");
+    expect(query).not.toHaveBeenCalledWith("COMMIT");
+    expect(query.mock.calls.some(([sql]) => String(sql).startsWith("UPDATE users"))).toBe(false);
+    expect(query.mock.calls.some(([sql]) => String(sql).startsWith("DELETE FROM user_sessions"))).toBe(false);
+    expect(release).toHaveBeenCalled();
   });
   it.each([[false, true, "insufficient_role"], [true, false, "account_not_found"]] as const)("rolls back rejected change", async (activeActor, targetFound, code) => {
     const { repository, query, release } = setupRepository(activeActor, targetFound);
