@@ -642,8 +642,15 @@
 
 .am-form-actions {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  width: 100%;
   gap: 12px;
 }
+
+.am-form-actions > .am-primary { margin-inline-start: auto; }
+.am-dialog-footer { padding: 0 28px 28px; }
 
 .am-create-note {
   padding: 28px;

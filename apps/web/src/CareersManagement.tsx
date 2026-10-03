@@ -384,7 +384,7 @@ function Delete({
             {error}
           </p>
         )}
-        <div className="cm-actions">
+        <div className="cm-actions cm-dialog-actions">
           <button className="am-outline" disabled={busy} onClick={close}>
             <Icon name="close" /> Hủy
           </button>

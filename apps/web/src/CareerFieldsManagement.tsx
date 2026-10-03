@@ -48,6 +48,7 @@ export default function CareerFieldsManagement({ canManage, remote, saved, onClo
         <Pagination total={items.length} page={page} setPage={setPage} />
       </>}
     </section>
+    <div className="cm-actions cm-dialog-actions"><button type="button" className="am-outline" onClick={onClose}><Icon name="close" /> Đóng</button></div>
   </div></Modal>;
 }
 

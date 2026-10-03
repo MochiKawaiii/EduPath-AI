@@ -392,7 +392,7 @@ function PlanView({
                 className="am-outline am-tone-brand"
                 href={`${endpoint}/${id}/source/${p.revisionId}`}
               >
-                <Icon name="download" /> Tải Excel nguồn
+                <Icon name="download" /> Tải xuống định dạng Excel
               </a>
               {editable && (
                 <>
@@ -764,13 +764,16 @@ function ImportPlan({
             {error}
           </p>
         )}
-        <button
-          className="am-outline"
-          disabled={!file || busy}
-          onClick={() => void act(false)}
-        >
-          <Icon name="eye" /> {busy ? "Đang xử lý…" : "Xem trước"}
-        </button>
+        {!preview && (
+          <div className="cm-actions cm-dialog-actions">
+            <button type="button" className="am-outline" disabled={busy} onClick={onClose}>
+              <Icon name="close" /> Hủy
+            </button>
+            <button type="button" className="am-primary" disabled={!file || busy} onClick={() => void act(false)}>
+              <Icon name="eye" /> {busy ? "Đang xử lý…" : "Xem trước"}
+            </button>
+          </div>
+        )}
         {preview && (
           <>
             <h3>{preview.data.name}</h3>
@@ -883,9 +886,14 @@ function MetadataEditor({
             {error}
           </p>
         )}
-        <button className="am-primary" disabled={busy}>
-          <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
-        </button>
+        <div className="cm-actions cm-dialog-actions">
+          <button type="button" className="am-outline" disabled={busy} onClick={onClose}>
+            <Icon name="close" /> Hủy
+          </button>
+          <button type="submit" className="am-primary" disabled={busy}>
+            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+          </button>
+        </div>
       </form>
     </Modal>
   );
@@ -920,7 +928,10 @@ function StatusEditor({
             {error}
           </p>
         )}
-        <div className="pm-toolbar">
+        <div className="cm-actions cm-dialog-actions">
+          <button type="button" className="am-outline" disabled={busy} onClick={onClose}>
+            <Icon name="close" /> Hủy
+          </button>
           <button
             className={plan.isActive ? "am-primary am-warning" : "am-primary"}
             disabled={busy}
@@ -945,9 +956,6 @@ function StatusEditor({
             }}
           >
             <Icon name={plan.isActive ? "lock" : "unlock"} /> {busy ? "Đang lưu…" : "Xác nhận"}
-          </button>
-          <button className="am-outline" disabled={busy} onClick={onClose}>
-            <Icon name="close" /> Hủy
           </button>
         </div>
       </div>
@@ -1190,46 +1198,46 @@ function ItemEditor({
             {error}
           </p>
         )}
-        {canManage && (
-          <div className="pm-toolbar">
-            {editing ? (
-              <>
-                <button
-                  key="save-allocation"
-                  type="submit"
-                  className="am-primary"
-                  disabled={busy}
-                >
-                  <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phân bổ"}
-                </button>
-                <button
-                  type="button"
-                  className="am-outline"
-                  disabled={busy}
-                  onClick={() => {
-                    setForm(item);
-                    setEditing(false);
-                    setError("");
-                  }}
-                >
-                  <Icon name="close" /> Hủy sửa
-                </button>
-              </>
-            ) : (
-              <button
-                key="edit-allocation"
-                type="button"
-                className="am-primary"
-                onClick={(event) => {
-                  event.preventDefault();
-                  setEditing(true);
-                }}
-              >
-                <Icon name="edit" /> Chỉnh sửa phân bổ
-              </button>
-            )}
-          </div>
-        )}
+        <div className="cm-actions cm-dialog-actions">
+          <button
+            type="button"
+            className="am-outline"
+            disabled={busy}
+            onClick={() => {
+              if (editing) {
+                setForm(item);
+                setEditing(false);
+                setError("");
+              } else {
+                onClose();
+              }
+            }}
+          >
+            <Icon name="close" /> {editing ? "Hủy sửa" : "Đóng"}
+          </button>
+          {canManage && (editing ? (
+            <button
+              key="save-allocation"
+              type="submit"
+              className="am-primary"
+              disabled={busy}
+            >
+              <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phân bổ"}
+            </button>
+          ) : (
+            <button
+              key="edit-allocation"
+              type="button"
+              className="am-primary"
+              onClick={(event) => {
+                event.preventDefault();
+                setEditing(true);
+              }}
+            >
+              <Icon name="edit" /> Chỉnh sửa phân bổ
+            </button>
+          ))}
+        </div>
       </form>
     </Modal>
   );

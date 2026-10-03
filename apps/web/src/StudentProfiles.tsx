@@ -55,5 +55,5 @@ export default function StudentProfiles() {
       {!state.data.items.length && <div className="am-empty"><h3>{filtered ? "Không tìm thấy hồ sơ phù hợp" : "Chưa có sinh viên trong danh sách"}</h3><p>{filtered ? "Thử từ khóa khác hoặc xóa bộ lọc." : "Danh sách sẽ hiển thị khi có tài khoản mang vai trò Sinh viên trong hệ thống."}</p></div>}
       <Pagination total={state.data.total} page={page} setPage={setPage} /></>}
     <p className="am-table-note"></p>
-  </section>{selected && <Modal title="Chi tiết hồ sơ sinh viên" onClose={() => setSelected(null)}><StudentDetails id={selected.id} /></Modal>}</>;
+  </section>{selected && <Modal title="Chi tiết hồ sơ sinh viên" onClose={() => setSelected(null)}><StudentDetails id={selected.id} /><div className="am-form-actions am-dialog-footer"><button className="am-outline" type="button" onClick={() => setSelected(null)}><Icon name="close" /> Đóng</button></div></Modal>}</>;
 }

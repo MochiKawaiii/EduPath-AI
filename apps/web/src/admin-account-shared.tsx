@@ -94,7 +94,7 @@ export function CreateAccount({ onList, onBusy }: { onList: () => void; onBusy?:
         <p id="new-admin-help" className="am-field-help">Tài khoản phải từng đăng nhập EduPath bằng Microsoft.</p>
         <label className="am-field">Vai trò được cấp<input readOnly value="Quản trị viên" /></label>
         <label className="am-confirm"><input type="checkbox" required checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} disabled={busy} /><span>Tôi xác nhận cấp quyền quản trị EduPath AI cho tài khoản trên.</span></label>
-        <div className="am-form-actions"><button className="am-primary" type="submit" disabled={busy}>{busy ? "Đang tạo…" : "Tạo tài khoản quản trị"}</button><button className="am-quiet" type="button" onClick={onList} disabled={busy}>Hủy</button></div>
+        <div className="am-form-actions"><button className="am-quiet" type="button" onClick={onList} disabled={busy}>Hủy</button><button className="am-primary" type="submit" disabled={busy}>{busy ? "Đang tạo…" : "Tạo tài khoản quản trị"}</button></div>
       </form>}
   </section><aside className="am-create-note"><Icon name="shield" /><h3>Cấp đúng quyền.<br />Đúng người dùng.</h3><p>Quản trị viên có thể truy cập khu vực quản trị và thêm quản trị viên khác.</p><hr /><h4>Không cần tạo mật khẩu</h4><p>Người dùng tiếp tục đăng nhập bằng Microsoft. Thao tác này không tạo hộp thư hay tài khoản mới trên hệ thống của trường.</p><h4>Email chưa có trong hệ thống?</h4><p>Nhờ người dùng đăng nhập EduPath một lần trước, rồi quay lại thêm quyền quản trị.</p></aside></div>;
 }

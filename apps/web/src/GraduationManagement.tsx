@@ -313,13 +313,6 @@ function ImportDialog({
             }}
           />
         </label>
-        <button
-          className="am-outline"
-          disabled={!file || busy}
-          onClick={() => void read()}
-        >
-          <Icon name="eye" /> {busy ? "Đang xử lý…" : "Đọc và xem trước"}
-        </button>
         {preview && (
           <>
             <p>
@@ -396,6 +389,16 @@ function ImportDialog({
           <p className="admin-error" role="alert">
             {error}
           </p>
+        )}
+        {!preview && (
+          <div className="cm-actions cm-dialog-actions">
+            <button type="button" className="am-outline" disabled={busy} onClick={close}>
+              <Icon name="close" /> Hủy
+            </button>
+            <button type="button" className="am-primary" disabled={!file || busy} onClick={() => void read()}>
+              <Icon name="eye" /> {busy ? "Đang xử lý…" : "Đọc và xem trước"}
+            </button>
+          </div>
         )}
         {preview && (
           <div className="cm-actions cm-dialog-actions">
@@ -499,7 +502,7 @@ function Conditions({
                   className="am-outline"
                   onClick={() => editGroup(group.id)}
                 >
-                  <Icon name="edit" /> Sửa nhóm
+                  <Icon name="edit" /> Cập nhập
                 </button>
               )}
             </div>
@@ -608,7 +611,7 @@ function Standard({
                 className="am-outline am-tone-brand"
                 href={`${endpoint}/${id}/source/${data.revisionId}`}
               >
-                <Icon name="download" /> Tải tệp nguồn
+                <Icon name="download" /> Tải xuống định dạng Excel
               </a>
               {editable && (
                 <>
@@ -920,7 +923,7 @@ function EditDialog({
             {error}
           </p>
         )}
-        <div className="cm-actions">
+        <div className="cm-actions cm-dialog-actions">
           <button
             type="button"
             className="am-outline"
@@ -994,7 +997,7 @@ function StatusDialog({
             {error}
           </p>
         )}
-        <div className="cm-actions">
+        <div className="cm-actions cm-dialog-actions">
           <button className="am-outline" disabled={busy} onClick={close}>
             <Icon name="close" /> Hủy
           </button>

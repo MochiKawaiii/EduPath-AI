@@ -592,6 +592,7 @@ function CourseDetail({
             <p className="sc-prewrap">{course.notes}</p>
           </section>
         )}
+        <div className="sr-actions sr-form-actions"><button className="sw-outline" type="button" onClick={onClose}>Đóng</button></div>
       </div>
     </dialog>
   );

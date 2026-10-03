@@ -325,6 +325,15 @@
   margin-inline-start: auto;
 }
 
+.cm-dialog-actions-main {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-inline-start: auto;
+}
+
 .cm-actions a {
   text-decoration: none;
   display: inline-flex;

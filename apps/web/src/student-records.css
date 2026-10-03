@@ -52,6 +52,31 @@
     margin: 0
 }
 
+.sr-actions.sr-form-actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.sr-actions.sr-form-actions > .sw-primary { margin-inline-start: auto; }
+
+.sr-confirm-dialog {
+    width: min(540px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+    border: 1px solid #dddfe6;
+    border-radius: 12px;
+    padding: 24px;
+    color: #252b38;
+    background: #fff;
+    font: inherit;
+}
+
+.sr-confirm-dialog::backdrop { background: rgb(20 24 35 / 50%); }
+.sr-confirm-dialog h2 { margin: 0 0 16px; font-size: 20px; }
+.sr-confirm-dialog p { font-size: 14px; line-height: 1.7; }
+.sr-confirm-dialog .sr-delete-confirm { background: #b6153f; }
+
 .sr-secondary {
     background: #f3f4f7;
     color: #555d6e;

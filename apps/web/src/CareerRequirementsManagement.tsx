@@ -78,7 +78,7 @@ function RequirementDetail({ id, close }: { id: string; close: () => void }) {
         <div><dt>Kỹ năng liên kết</dt><dd>{remote.data.skillName || "Không liên kết kỹ năng"}</dd></div>
         <div><dt>Mức yêu cầu</dt><dd>{requirementLevels[remote.data.level]}</dd></div>
         <div><dt>Tính chất</dt><dd>{remote.data.isRequired ? "Bắt buộc" : "Ưu tiên"}</dd></div></dl>
-    </>}</div>
+    </>}<div className="cm-actions cm-dialog-actions"><button type="button" className="am-outline" onClick={close}><Icon name="close" /> Đóng</button></div></div>
   </Modal>;
 }
 

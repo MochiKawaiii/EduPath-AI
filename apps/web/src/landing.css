@@ -1277,19 +1277,6 @@
   color: #b4a7ae;
 }
 
-.lp-footer .lp-footer-policies {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 16px 32px;
-  padding-block: 20px;
-  border-top: 1px solid #493b43;
-}
-
-.lp-footer .lp-footer-policies a {
-  margin: 0;
-  font-size: 12px;
-}
-
 /* Existing login navigation now links back to the public overview. */
 .login-brand {
   text-decoration: none;

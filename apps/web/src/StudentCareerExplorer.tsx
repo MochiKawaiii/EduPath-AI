@@ -57,7 +57,7 @@ export default function StudentCareerExplorer({ selectedId, initialCareerId, onS
     <div className="sr-career-content">
       {detailId ? <>
         <button type="button" className="sr-secondary" disabled={saving} onClick={() => { setSaveError(""); setDetailId(""); }}>← Danh sách vị trí</button>
-        <CareerDetail key={detailId} id={detailId} selectedId={selectedId} saving={saving} saveError={saveError} onSelect={career => void selectCareer(career)} />
+        <CareerDetail key={detailId} id={detailId} selectedId={selectedId} saving={saving} saveError={saveError} onSelect={career => void selectCareer(career)} onClose={onClose} />
       </> : <>
         <p>Xem lĩnh vực, vị trí và các yêu cầu để chọn mục tiêu nghề nghiệp phù hợp với bạn.</p>
         <details className="sr-career-fields">
@@ -88,6 +88,7 @@ export default function StudentCareerExplorer({ selectedId, initialCareerId, onS
           {!careers.data.items.length && <p>Không có vị trí phù hợp với bộ lọc.</p>}
           {pages > 1 && <div className="sr-career-pagination"><button type="button" className="sr-secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>Trước</button><span>Trang {page} / {pages}</span><button type="button" className="sr-secondary" disabled={page >= pages} onClick={() => setPage(page + 1)}>Sau</button></div>}
         </>}
+        <div className="sr-actions sr-form-actions"><button type="button" className="sr-secondary" onClick={onClose}>Đóng</button></div>
       </>}
     </div>
   </dialog>;
@@ -97,7 +98,7 @@ function CareerStatus({ loading, error, retry }: { loading: boolean; error: stri
   return loading ? <p role="status">Đang tải nghề nghiệp…</p> : error ? <div className="sr-error" role="alert"><p>{error}</p><button type="button" onClick={retry}>Tải lại</button></div> : null;
 }
 
-function CareerDetail({ id, selectedId, saving, saveError, onSelect }: { id: string; selectedId: string; saving: boolean; saveError: string; onSelect: (career: StudentCareerDetail) => void }) {
+function CareerDetail({ id, selectedId, saving, saveError, onSelect, onClose }: { id: string; selectedId: string; saving: boolean; saveError: string; onSelect: (career: StudentCareerDetail) => void; onClose: () => void }) {
   const remote = useCareerData<StudentCareerDetail>(`${endpoint}/${id}`);
   const career = remote.data;
   const heading = useRef<HTMLHeadingElement>(null);
@@ -112,8 +113,11 @@ function CareerDetail({ id, selectedId, saving, saveError, onSelect }: { id: str
         </table></div> : <p>Chưa có yêu cầu hoặc kỹ năng được cập nhật cho vị trí này.</p>}
       </section>
       {saveError && <p className="sr-error" role="alert">{saveError}</p>}
-      <div className="sr-actions"><button type="button" className="sw-primary" disabled={saving || selectedId === career.id} onClick={() => onSelect(career)}>{saving ? "Đang lưu mục tiêu…" : selectedId === career.id ? "Đã chọn mục tiêu này" : "Chọn làm mục tiêu nghề nghiệp"}</button></div>
       <p className="sw-muted">Bấm chọn để lưu ngay mục tiêu nghề nghiệp. Sở thích của bạn được giữ nguyên.</p>
     </>}
+    <div className="sr-actions sr-form-actions">
+      <button type="button" className="sr-secondary" disabled={saving} onClick={onClose}>Hủy</button>
+      {career && <button type="button" className="sw-primary" disabled={saving || selectedId === career.id} onClick={() => onSelect(career)}>{saving ? "Đang lưu mục tiêu…" : selectedId === career.id ? "Đã chọn mục tiêu này" : "Chọn làm mục tiêu nghề nghiệp"}</button>}
+    </div>
   </>;
 }

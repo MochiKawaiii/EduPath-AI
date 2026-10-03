@@ -50,7 +50,7 @@ function ChangeAccount({ account, mode, onClose, onSaved }: { account: Account; 
     {mode === "role" && <label className="am-field">Vai trò mới<select value={role} disabled={busy} onChange={(e) => setRole(e.target.value as Account["role"])}>{Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
     <p>Thao tác chỉ áp dụng trong EduPath, không thay đổi tài khoản Microsoft. Các phiên EduPath hiện tại của người dùng sẽ bị thu hồi; người dùng cần đăng nhập lại.</p>
     <label className="am-confirm"><input type="checkbox" required checked={confirmed} disabled={busy} onChange={(e) => setConfirmed(e.target.checked)} /><span>Tôi xác nhận {title.toLowerCase()} cho tài khoản này.</span></label>
-    <div className="am-form-actions"><button className={mode === "role" || !account.isActive ? "am-primary" : "am-primary am-warning"} disabled={busy || (mode === "role" && role === account.role)}>{busy ? "Đang lưu…" : "Xác nhận"}</button><button className="am-quiet" type="button" onClick={onClose} disabled={busy}>Hủy</button></div>
+    <div className="am-form-actions"><button className="am-quiet" type="button" onClick={onClose} disabled={busy}>Hủy</button><button className={mode === "role" || !account.isActive ? "am-primary" : "am-primary am-warning"} disabled={busy || (mode === "role" && role === account.role)}>{busy ? "Đang lưu…" : "Xác nhận"}</button></div>
   </form></Modal>;
 }
 type MenuAction = "detail" | "history" | "role" | "lock";
@@ -90,6 +90,6 @@ export default function AccountsManagement({ actorId, canManage = false, canAssi
   </section>
     {canAssignRoles && creating && <Modal title="Tạo tài khoản quản trị" busy={creatingBusy} onClose={() => { setCreating(false); refreshed(); }}><CreateAccount onBusy={setCreatingBusy} onList={() => { setCreating(false); refreshed(); }} /></Modal>}
     {modal && ((canAssignRoles && modal.mode === "role") || (canManage && modal.mode === "lock")) && <ChangeAccount account={modal.account} mode={modal.mode} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshed(); setNotice("Đã cập nhật tài khoản và thu hồi các phiên đăng nhập cũ."); }} />}
-    {modal && (modal.mode === "detail" || modal.mode === "history") && <Modal title={`${modal.mode === "detail" ? "Chi tiết tài khoản" : "Lịch sử đăng nhập"} — ${modal.account.name}`} onClose={() => setModal(null)}>{modal.mode === "detail" ? <AccountDetails id={modal.account.id} /> : <History userId={modal.account.id} />}</Modal>}
+    {modal && (modal.mode === "detail" || modal.mode === "history") && <Modal title={`${modal.mode === "detail" ? "Chi tiết tài khoản" : "Lịch sử đăng nhập"} — ${modal.account.name}`} onClose={() => setModal(null)}>{modal.mode === "detail" ? <AccountDetails id={modal.account.id} /> : <History userId={modal.account.id} />}<div className="am-form-actions am-dialog-footer"><button className="am-outline" type="button" onClick={() => setModal(null)}><Icon name="close" /> Đóng</button></div></Modal>}
   </>;
 }

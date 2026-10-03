@@ -418,14 +418,6 @@ function ImportDialog({
           Dùng mẫu Khoa gồm mã và tên học phần, tín chỉ, BB/TC, tiên quyết, học
           trước, khối kiến thức, chuyên ngành, học kỳ và năm học.
         </p>
-        <button
-          type="button"
-          className="am-outline cm-preview-button"
-          disabled={!file || busy}
-          onClick={() => void inspect(file)}
-        >
-          <Icon name="eye" /> {busy ? "Đang xử lý…" : "Xem trước"}
-        </button>
         {busy && <p role="status">Đang xử lý khung CTĐT…</p>}
         {error && (
           <p
@@ -489,6 +481,16 @@ function ImportDialog({
               </p>
             )}
           </>
+        )}
+        {!preview && (
+          <div className="cm-actions cm-dialog-actions">
+            <button type="button" className="am-outline" disabled={busy} onClick={onClose}>
+              <Icon name="close" /> Hủy
+            </button>
+            <button type="button" className="am-primary" disabled={!file || busy} onClick={() => void inspect(file)}>
+              <Icon name="eye" /> {busy ? "Đang xử lý…" : "Xem trước"}
+            </button>
+          </div>
         )}
         {preview && (
           <div className="cm-actions cm-dialog-actions">
@@ -1119,7 +1121,7 @@ function GroupCoursePicker({
           </select>
         </label>
         {!courses.length && <p>Khối chưa có môn học.</p>}
-        <div className="cm-actions">
+        <div className="cm-actions cm-dialog-actions">
           <button type="button" className="am-outline" onClick={onClose}>
             <Icon name="close" /> Hủy
           </button>
@@ -1178,7 +1180,7 @@ function DeleteCourseDialog({
             {error}
           </p>
         )}
-        <div className="cm-actions">
+        <div className="cm-actions cm-dialog-actions">
           <button
             type="button"
             className="am-outline"
@@ -1297,7 +1299,7 @@ function MetadataDialog({
             {error}
           </p>
         )}
-        <div className="cm-actions">
+        <div className="cm-actions cm-dialog-actions">
           <button
             type="button"
             className="am-outline"
@@ -1348,7 +1350,7 @@ function StatusDialog({
             {error}
           </p>
         )}
-        <div className="cm-actions">
+        <div className="cm-actions cm-dialog-actions">
           <button className="am-outline" onClick={onClose} disabled={busy}>
             <Icon name="close" /> Hủy
           </button>
@@ -1690,7 +1692,7 @@ function CourseDialog({
             {error}
           </p>
         )}
-        <div className="cm-actions">
+        <div className="cm-actions cm-dialog-actions">
           <button
             className="am-outline"
             type="button"
@@ -1699,40 +1701,42 @@ function CourseDialog({
           >
             <Icon name="close" /> Đóng
           </button>
-          {canManage && mode !== "add" && (
-            <button
-              type="button"
-              className="am-outline am-tone-danger cm-delete"
-              disabled={busy}
-              onClick={onDelete}
-            >
-              <Icon name="trash" />
-              Xóa môn học
-            </button>
-          )}
-          {canManage &&
-            (editing ? (
+          <div className="cm-dialog-actions-main">
+            {canManage && mode !== "add" && (
               <button
-                key="save-course"
-                type="submit"
-                className="am-primary"
-                disabled={busy}
-              >
-                <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
-              </button>
-            ) : (
-              <button
-                key="edit-course"
-                className="am-primary"
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setEditing(true);
-                }}
+                className="am-outline am-tone-danger cm-delete"
+                disabled={busy}
+                onClick={onDelete}
               >
-                <Icon name="edit" /> Chỉnh sửa học phần
+                <Icon name="trash" />
+                Xóa môn học
               </button>
-            ))}
+            )}
+            {canManage &&
+              (editing ? (
+                <button
+                  key="save-course"
+                  type="submit"
+                  className="am-primary"
+                  disabled={busy}
+                >
+                  <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+                </button>
+              ) : (
+                <button
+                  key="edit-course"
+                  className="am-primary"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setEditing(true);
+                  }}
+                >
+                  <Icon name="edit" /> Chỉnh sửa học phần
+                </button>
+              ))}
+          </div>
         </div>
       </form>
     </Modal>
