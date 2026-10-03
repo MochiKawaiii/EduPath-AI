@@ -58,7 +58,7 @@ function PolicyContent() {
   return (
     <>
       <section className="pi-policy-banner" aria-labelledby="information-heading">
-        <img src="/vlu-information-campus.jpg" width="2048" height="1536" alt="" fetchPriority="high" />
+        <img src="/vlu-information-campus.jpg" width="2048" height="1365" alt="" fetchPriority="high" />
         <div className="pi-policy-container"><h1 id="information-heading">Chính sách & Điều khoản</h1></div>
       </section>
       <div className="pi-policy-container pi-policy-layout">

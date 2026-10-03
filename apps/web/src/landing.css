@@ -1203,7 +1203,7 @@
   display: grid;
   grid-template-columns: 1.5fr 0.7fr 1fr;
   gap: 70px;
-  padding-bottom: 48px;
+  padding-bottom: 24px;
 }
 
 .lp-brand-light {
@@ -2020,7 +2020,7 @@
   .lp-footer-main {
     grid-template-columns: 0.8fr 1.2fr;
     gap: 33px 25px;
-    padding-bottom: 31px;
+    padding-bottom: 20px;
   }
 
   .lp-footer-main>div:first-child {

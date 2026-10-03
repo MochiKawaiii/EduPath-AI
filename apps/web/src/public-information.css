@@ -40,9 +40,9 @@
 .pi-page-policy { font-family: "Manrope", "Segoe UI", system-ui, sans-serif; }
 .pi-policy-container { width: min(1800px, calc(100% - 96px)); margin-inline: auto; }
 .pi-policy-banner { position: relative; display: grid; place-items: center; min-height: 340px; isolation: isolate; overflow: hidden; background: #753d42; }
-.pi-policy-banner > img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center 42%; }
-.pi-policy-banner::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(100deg, #8d102cb3, #762b4880 55%, #3b355a85); }
-.pi-policy-banner h1 { margin: 0; padding-block: 50px; color: #fff; text-align: center; text-transform: uppercase; font-size: clamp(36px, 3.5vw, 64px); line-height: 1.35; letter-spacing: -1px; font-weight: 800; }
+.pi-policy-banner > img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center 52%; }
+.pi-policy-banner::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(100deg, #8d102c2e, #762b481f 55%, #3b355a33); }
+.pi-policy-banner h1 { margin: 0; padding-block: 50px; color: #fff; text-align: center; text-transform: uppercase; font-size: clamp(36px, 3.5vw, 64px); line-height: 1.35; letter-spacing: -1px; font-weight: 800; text-shadow: 0 2px 6px #16203380, 0 0 22px #16203340; }
 .pi-policy-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.05fr); gap: 36px; padding-block: 72px 80px; align-items: start; }
 .pi-page-policy .pi-policy-column-heading { margin: 0 12px 8px; padding-bottom: 14px; color: var(--pi-red); font-size: 27px; line-height: 1.4; text-align: center; text-transform: uppercase; font-weight: 800; }
 .pi-policy-menu { border: 1px solid #d9d9d9; border-radius: 5px; overflow: hidden; }
