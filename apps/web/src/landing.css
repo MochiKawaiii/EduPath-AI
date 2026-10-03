@@ -1117,11 +1117,30 @@
   transform: rotate(45deg);
 }
 
-.lp-faq details>p {
+.lp-faq .pi-faq-answer {
   color: var(--lp-muted);
   font-size: 12px;
   line-height: 1.95;
   margin: -2px 24px 22px 0;
+}
+
+.lp-faq .pi-faq-answer p {
+  margin: 0 0 12px;
+  color: inherit;
+}
+
+.lp-faq .pi-faq-answer p:last-child {
+  margin-bottom: 0;
+}
+
+.lp-faq .pi-faq-answer ol {
+  padding-left: 22px;
+  margin: 14px 0;
+}
+
+.lp-faq .pi-faq-answer li {
+  padding-left: 4px;
+  margin-bottom: 9px;
 }
 
 .lp-cta {
@@ -1256,6 +1275,19 @@
   border-top: 1px solid #493b43;
   font-size: 9px;
   color: #b4a7ae;
+}
+
+.lp-footer .lp-footer-policies {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  padding-block: 20px;
+  border-top: 1px solid #493b43;
+}
+
+.lp-footer .lp-footer-policies a {
+  margin: 0;
+  font-size: 12px;
 }
 
 /* Existing login navigation now links back to the public overview. */
@@ -1965,7 +1997,7 @@
     padding-block: 18px;
   }
 
-  .lp-faq details>p {
+  .lp-faq .pi-faq-answer {
     font-size: 11px;
   }
 

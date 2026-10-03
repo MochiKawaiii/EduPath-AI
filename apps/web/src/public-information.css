@@ -1,0 +1,130 @@
+@import url("https://fonts.googleapis.com/css2?family=Pacifico&display=swap");
+
+.pi-page {
+  --pi-red: #db1429;
+  min-height: calc(100 * var(--ep-vh));
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #25242a;
+}
+
+.pi-page > main { flex: 1; }
+.pi-container { width: min(1600px, calc(100% - 96px)); margin-inline: auto; }
+.pi-header-inner { min-height: 92px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+.pi-navigation { display: flex; align-items: center; gap: 30px; flex-wrap: wrap; }
+.pi-navigation a { padding: 14px 0; font-size: 15px; font-weight: 700; }
+.pi-navigation a:hover, .pi-navigation a[aria-current="page"] { color: var(--pi-red); }
+.pi-login { flex-shrink: 0; }
+
+.pi-faq { padding: 48px 0 70px; background: #cbc7c7; }
+.pi-faq h1 { margin: 0 0 54px; text-align: center; color: var(--pi-red); font-family: "Pacifico", "Newsreader", serif; font-size: clamp(36px, 4vw, 56px); font-weight: 400; line-height: 1.5; }
+.pi-faq h1::after { content: ""; display: block; width: 174px; height: 2px; background: var(--pi-red); margin: 14px auto 0; }
+.pi-faq-list { display: grid; gap: 22px; }
+.pi-faq-detail { background: #fff; border-radius: 6px; box-shadow: 0 12px 28px #342b2b1a; }
+.pi-faq-detail summary { display: flex; align-items: center; gap: 14px; min-height: 94px; padding: 26px 32px; list-style: none; cursor: pointer; color: #151515; font-size: 24px; font-weight: 800; line-height: 1.5; }
+.pi-faq-detail summary > span { flex: 1; }
+.pi-faq-detail summary::-webkit-details-marker { display: none; }
+.pi-question-icon { width: 28px; height: 28px; flex: 0 0 auto; color: var(--pi-red); }
+.pi-chevron { width: 24px; height: 24px; flex: 0 0 auto; }
+.pi-faq-detail[open] summary { border-bottom: 1px solid #eee5e5; }
+.pi-faq-detail[open] summary .pi-chevron { transform: rotate(180deg); }
+.pi-faq-detail .pi-faq-answer { padding: 24px 74px 30px; font-size: 20px; line-height: 1.8; color: #4e4848; }
+.pi-faq-answer p { margin: 0 0 18px; color: inherit; }
+.pi-faq-answer p:last-child { margin-bottom: 0; }
+.pi-faq-answer ol { padding-left: 26px; margin: 20px 0; }
+.pi-faq-answer li { padding-left: 6px; margin-bottom: 12px; }
+.pi-faq-answer li::marker { color: var(--lp-red); font-weight: 700; }
+.pi-faq-help { margin: 38px 0 0; text-align: center; color: #514848; font-size: 17px; }
+
+.pi-page-policy { font-family: "Manrope", "Segoe UI", system-ui, sans-serif; }
+.pi-policy-container { width: min(1800px, calc(100% - 96px)); margin-inline: auto; }
+.pi-policy-banner { position: relative; display: grid; place-items: center; min-height: 340px; isolation: isolate; overflow: hidden; background: #753d42; }
+.pi-policy-banner > img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center 42%; }
+.pi-policy-banner::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(100deg, #8d102cb3, #762b4880 55%, #3b355a85); }
+.pi-policy-banner h1 { margin: 0; padding-block: 50px; color: #fff; text-align: center; text-transform: uppercase; font-size: clamp(36px, 3.5vw, 64px); line-height: 1.35; letter-spacing: -1px; font-weight: 800; }
+.pi-policy-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.05fr); gap: 36px; padding-block: 72px 80px; align-items: start; }
+.pi-page-policy .pi-policy-column-heading { margin: 0 12px 8px; padding-bottom: 14px; color: var(--pi-red); font-size: 27px; line-height: 1.4; text-align: center; text-transform: uppercase; font-weight: 800; }
+.pi-policy-menu { border: 1px solid #d9d9d9; border-radius: 5px; overflow: hidden; }
+.pi-policy-menu-group h3 { margin: 0; padding: 15px 28px; color: #6b6264; background: #f5f3f3; font-size: 15px; line-height: 1.5; font-weight: 700; }
+.pi-page-policy .pi-policy-menu button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 28px; border: 0; border-top: 1px solid #e4e0e0; border-radius: 0; background: #fff; color: var(--lp-ink); font-size: 21px; line-height: 1.55; font-weight: 600; text-align: left; cursor: pointer; }
+.pi-policy-menu button .pi-chevron { transform: rotate(-90deg); width: 22px; height: 22px; }
+.pi-page-policy .pi-policy-menu button:hover { color: var(--pi-red); background: #fff4f4; }
+.pi-page-policy .pi-policy-menu button[aria-current="true"] { color: #fff; background: var(--pi-red); border-color: var(--pi-red); }
+.pi-page-policy .pi-policy-menu button:focus-visible { outline-offset: -5px; }
+.pi-policy-menu-group + .pi-policy-menu-group { border-top: 1px solid #d9d9d9; }
+.pi-policy-content { min-width: 0; }
+.pi-policy-category-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.pi-policy-accordions { display: grid; gap: 20px; }
+.pi-policy-detail { border: 1px solid #d9d9d9; border-radius: 28px; overflow: hidden; }
+.pi-policy-detail summary { display: flex; align-items: center; min-height: 88px; padding: 24px 32px; background: var(--pi-red); color: #fff; font-size: 23px; font-weight: 700; line-height: 1.5; list-style: none; cursor: pointer; }
+.pi-policy-detail summary::-webkit-details-marker { display: none; }
+.pi-policy-detail summary:focus-visible { outline-offset: -5px; }
+.pi-policy-text { padding: 27px 28px 30px; }
+.pi-policy-text p { margin: 0 0 18px; color: #29262a; font-size: 22px; line-height: 1.85; }
+.pi-policy-text p:last-child { margin-bottom: 0; }
+.pi-policy-help { margin: 24px 0 0; color: #6b6264; font-size: 15px; line-height: 1.8; }
+.pi-policy-help a { color: var(--pi-red); font-weight: 700; }
+.pi-policy-help a:hover { text-decoration: underline; }
+.pi-page-policy section[id], .pi-page-policy .pi-policy-menu-group[id] { scroll-margin-top: 124px; }
+
+@media (max-width: 1150px) {
+  .pi-header-inner { gap: 20px; }
+  .pi-navigation { gap: 18px; }
+  .pi-navigation a { font-size: 13px; }
+  .pi-policy-layout { gap: 26px; }
+  .pi-page-policy .pi-policy-column-heading { font-size: 22px; }
+  .pi-page-policy .pi-policy-menu button { padding: 20px; font-size: 17px; }
+  .pi-policy-menu-group h3 { padding-inline: 20px; font-size: 13px; }
+  .pi-policy-detail summary { padding: 22px 24px; font-size: 20px; min-height: 76px; }
+  .pi-policy-text { padding: 24px; }
+  .pi-policy-text p { font-size: 18px; }
+  .pi-faq-detail summary { font-size: 21px; }
+}
+
+@media (max-width: 900px) {
+  .pi-header-inner { flex-wrap: wrap; gap: 0 20px; padding-block: 12px; }
+  .pi-navigation { order: 3; width: 100%; justify-content: center; gap: 12px 24px; }
+  .pi-container, .pi-policy-container { width: calc(100% - 48px); }
+  .pi-policy-banner { min-height: 270px; }
+  .pi-policy-banner h1 { font-size: 40px; }
+  .pi-policy-layout { grid-template-columns: 1fr; gap: 36px; padding-block: 40px 48px; }
+  .pi-policy-menu { display: grid; grid-template-columns: 1fr 1fr; }
+  .pi-policy-menu-group + .pi-policy-menu-group { border-top: 0; border-left: 1px solid #d9d9d9; }
+  .pi-policy-menu-group h3 { font-size: 14px; }
+  .pi-faq-detail summary { min-height: 86px; padding: 23px; font-size: 19px; }
+  .pi-faq-detail .pi-faq-answer { padding: 22px 23px 28px; font-size: 17px; }
+}
+
+@media (max-width: 600px) {
+  .pi-container, .pi-policy-container { width: calc(100% - 32px); }
+  .pi-header-inner { min-height: 80px; }
+  .pi-login { padding-inline: 16px; font-size: 12px; }
+  .pi-navigation { gap: 2px 16px; justify-content: flex-start; }
+  .pi-navigation a { font-size: 11px; padding-block: 7px; }
+  .pi-policy-banner { min-height: 220px; }
+  .pi-policy-banner h1 { font-size: clamp(27px, 7vw, 38px); letter-spacing: -.6px; }
+  .pi-policy-menu { grid-template-columns: 1fr; }
+  .pi-policy-menu-group + .pi-policy-menu-group { border-top: 1px solid #d9d9d9; border-left: 0; }
+  .pi-page-policy .pi-policy-column-heading { font-size: 21px; }
+  .pi-page-policy .pi-policy-menu button { font-size: 15px; padding: 17px 20px; }
+  .pi-policy-detail { border-radius: 22px; }
+  .pi-policy-detail summary { min-height: 70px; padding: 18px 20px; font-size: 17px; }
+  .pi-policy-text { padding: 22px 20px; }
+  .pi-policy-text p { font-size: 16px; line-height: 1.85; }
+  .pi-policy-help { font-size: 14px; }
+  .pi-page-policy section[id], .pi-page-policy .pi-policy-menu-group[id] { scroll-margin-top: 180px; }
+  .pi-faq { padding: 32px 0 44px; }
+  .pi-faq h1 { font-size: 34px; margin-bottom: 32px; }
+  .pi-faq h1::after { width: 120px; margin-top: 10px; }
+  .pi-faq-list { gap: 16px; }
+  .pi-faq-detail summary { padding: 20px 16px; gap: 11px; font-size: 16px; }
+  .pi-question-icon { width: 23px; height: 23px; }
+  .pi-chevron { width: 20px; height: 20px; }
+  .pi-faq-detail .pi-faq-answer { padding: 18px 18px 22px; font-size: 15px; }
+  .pi-faq-help { font-size: 14px; margin-top: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pi-page *, .pi-page *::before, .pi-page *::after { scroll-behavior: auto; transition: none; }
+}

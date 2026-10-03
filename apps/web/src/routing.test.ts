@@ -14,6 +14,31 @@ describe("public and authenticated routes", () => {
     expect(resolveAppRoute("/", "?utm_source=vlu")).toBe("landing");
   });
 
+  it.each([
+    ["/chinh-sach-va-dieu-khoan", "policy"],
+    ["/chinh-sach-bao-mat", "policy"],
+    ["/dieu-khoan-su-dung", "policy"],
+    ["/cau-hoi-thuong-gap", "faq"],
+  ] as const)("keeps public information route %s public with slash and query variants", (path, route) => {
+    expect(resolveAppRoute(path, "")).toBe(route);
+    expect(resolveAppRoute(`${path}/`, "?source=footer")).toBe(route);
+    expect(resolveAppRoute(`${path}///`, "?authError=invalid_state&source=footer")).toBe(route);
+  });
+
+  it.each([
+    "/chinh-sach-va-dieu-khoan-extra",
+    "/chinh-sach-va-dieu-khoan/chi-tiet",
+    "/chinh-sach-bao-mat-extra",
+    "/chinh-sach-bao-mat/chi-tiet",
+    "/dieu-khoan-su-dung-moi",
+    "/dieu-khoan-su-dung/chi-tiet",
+    "/cau-hoi-thuong-gap-extra",
+    "/cau-hoi-thuong-gap/chi-tiet",
+  ])("keeps nearby unsupported path %s behind authentication", (path) => {
+    expect(resolveAppRoute(path, "")).toBe("authenticated");
+    expect(resolveAppRoute(path, "?authError=invalid_state")).toBe("authenticated");
+  });
+
   it("keeps legacy home-page authentication errors visible on login", () => {
     expect(resolveAppRoute("/", "?authError=invalid_state")).toBe("login");
   });

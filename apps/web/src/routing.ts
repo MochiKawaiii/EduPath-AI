@@ -1,7 +1,9 @@
-export type AppRoute = "landing" | "login" | "authenticated" | "admin";
+export type AppRoute = "landing" | "policy" | "faq" | "login" | "authenticated" | "admin";
 
 export function resolveAppRoute(pathname: string, search: string): AppRoute {
   const path = pathname.replace(/\/+$/, "") || "/";
+  if (["/chinh-sach-va-dieu-khoan", "/chinh-sach-bao-mat", "/dieu-khoan-su-dung"].includes(path)) return "policy";
+  if (path === "/cau-hoi-thuong-gap") return "faq";
   if (path === "/quantri" || path.startsWith("/quantri/")) return "admin";
   if (path === "/") {
     // Older deployments sent authentication failures to the home page.

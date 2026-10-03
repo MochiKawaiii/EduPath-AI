@@ -3,6 +3,9 @@ import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import "./landing.css";
 import { getCurrentUser } from "./auth-api";
 import EduPathBrand from "./EduPathBrand";
+import PublicFooter from "./PublicFooter";
+import { frequentlyAskedQuestions } from "./public-information";
+import FaqAnswer from "./FaqAnswer";
 
 type IconName =
   | "arrow"
@@ -626,36 +629,16 @@ export default function LandingPage() {
               <em>trước khi bắt đầu.</em>
             </h2>
             <p>Hiểu thêm về EduPath AI và cách tham gia.</p>
+            <a className="lp-button lp-button-small" href="/cau-hoi-thuong-gap">Xem tất cả câu hỏi <Icon name="arrow" /></a>
           </div>
           <div className="lp-faq-list">
-            {[
-              {
-                question: "EduPath AI dành cho ai?",
-                answer:
-                  "Đồ án hướng đến sinh viên Công nghệ Thông tin tại Trường Đại học Văn Lang, đặc biệt là sinh viên năm 2–3 muốn đánh giá năng lực và chủ động chuẩn bị lộ trình học tập, nghề nghiệp."
-              },
-              {
-                question: "Tôi cần tài khoản nào để đăng nhập?",
-                answer:
-                  "Bạn sử dụng tài khoản Microsoft do Trường Đại học Văn Lang cấp. Nhấn Đăng nhập để đến cổng xác thực Microsoft. EduPath AI không yêu cầu bạn tạo mật khẩu riêng."
-              },
-              {
-                question: "Hiện tại tôi có thể sử dụng những gì?",
-                answer:
-                  "Hiện hệ thống đã có chức năng đăng nhập Microsoft và nhận diện người dùng. Các nội dung đánh giá năng lực, tư vấn lộ trình và định hướng nghề nghiệp trên trang này mô tả mục tiêu phát triển của đồ án; các hình xem trước sử dụng dữ liệu minh họa."
-              },
-              {
-                question: "Lộ trình AI có thay thế tư vấn của giảng viên không?",
-                answer:
-                  "Lộ trình dự kiến đóng vai trò tham khảo, hỗ trợ sinh viên chuẩn bị kế hoạch. Bạn vẫn cần đối chiếu chương trình đào tạo, thông báo đăng ký học phần và trao đổi với cố vấn học tập trước khi quyết định."
-              }
-            ].map((faq) => (
+            {frequentlyAskedQuestions.slice(0, 4).map((faq) => (
               <details key={faq.question}>
                 <summary>
                   {faq.question}
                   <span aria-hidden="true">+</span>
                 </summary>
-                <p>{faq.answer}</p>
+                <FaqAnswer faq={faq} />
               </details>
             ))}
           </div>
@@ -681,43 +664,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="lp-footer">
-        <div className="lp-container">
-          <div className="lp-footer-main">
-            <div>
-              <Brand light />
-              <p>
-                Hệ thống đánh giá năng lực và tư vấn lộ trình học tập cho sinh viên Công nghệ Thông
-                tin với AI.
-              </p>
-            </div>
-            <nav aria-label="Liên kết cuối trang">
-              <h2>Khám phá</h2>
-              {navigation.map((item) => (
-                <a key={item.id} href={`#${item.id}`}>
-                  {item.label}
-                </a>
-              ))}
-              <a href="#cau-hoi">Câu hỏi thường gặp</a>
-            </nav>
-            <div className="lp-footer-university">
-              <h2>Trường Đại học Văn Lang · Khoa Công nghệ Thông tin</h2>
-              <a href="https://www.vlu.edu.vn/" target="_blank" rel="noreferrer">
-                Website trường <span aria-hidden="true">↗</span>
-                <span className="sr-only"> (mở trong tab mới)</span>
-              </a>
-              <a href={portal ?? "/login"}>
-                {portal ? portalLabel : "Đăng nhập hệ thống"} <Icon name="arrow" />
-              </a>
-            </div>
-          </div>
-          <div className="lp-footer-bottom">
-            <span>© {new Date().getFullYear()} · Bản Quyền Thuộc Khoa Công nghệ Thông tin · Trường Đại Học Văn Lang.</span>
-            <span>AI đồng hành · Học tập bứt phá</span>
-            <a href="#noi-dung">Về đầu trang ↑</a>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter home portal={portal} />
     </div>
   );
 }

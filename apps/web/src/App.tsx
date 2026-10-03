@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { beginMicrosoftLogin, getCurrentUser, logout } from "./auth-api";
 import LandingPage from "./LandingPage";
+import PublicInformationPage from "./PublicInformationPage";
 import EduPathBrand from "./EduPathBrand";
 import AdminPortal from "./AdminPortal";
 import { resolveAppRoute, safeReturnTo } from "./routing";
@@ -339,6 +340,9 @@ export default function App() {
 
   // The overview is public and renders even when the API is unavailable.
   // The landing page checks the session separately to update its portal links.
+  if (route === "policy" || route === "faq") {
+    return <PublicInformationPage page={route} />;
+  }
   return route === "landing"
     ? <LandingPage />
     : route === "admin" ? <AdminPortal />
