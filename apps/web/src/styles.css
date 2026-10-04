@@ -386,6 +386,21 @@ a {
   line-height: 1.5;
 }
 
+.login-legal {
+  max-width: 480px;
+  margin: 6px auto 0;
+  color: #6e6770;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.login-legal a {
+  color: #b21936;
+  font-weight: 700;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
 .link-button {
   padding: 0;
   border: 0;
@@ -851,6 +866,10 @@ a {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 11px;
+  }
+
+  .login-legal {
     font-size: 11px;
   }
 

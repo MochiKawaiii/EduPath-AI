@@ -49,7 +49,7 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
     steps: [
       "Đăng nhập EduPath AI và mở Hồ sơ và bảng điểm.",
       "Ở phần Bảng điểm của tôi, chọn hoặc kéo thả tệp PDF bảng điểm của bạn vào vùng tải lên.",
-      "Tích ô Tôi xác nhận đây là bảng điểm của mình, bấm Import bảng điểm (hoặc Cập nhật bảng điểm nếu đã có bản cũ) và theo dõi thanh tiến trình cho đến khi có thông báo đã lưu.",
+      "Tích ô xác nhận đây là bảng điểm của bạn và đồng ý để EduPath AI xử lý bảng điểm, bấm Import bảng điểm (hoặc Cập nhật bảng điểm nếu đã có bản cũ) và theo dõi thanh tiến trình cho đến khi có thông báo đã lưu.",
       "Đối chiếu mã môn, tên môn, tín chỉ, điểm và kết quả từng học kỳ với PDF gốc."
     ],
     note: "Nếu xuất hiện thông báo không đọc được tệp, hãy xuất lại bảng điểm từ cổng đào tạo rồi thử với bản PDF đó. Khi cập nhật, bảng điểm mới sẽ thay thế toàn bộ PDF và dữ liệu cũ sau khi đọc thành công, vì vậy nên dùng bản đầy đủ tất cả học kỳ."
@@ -100,7 +100,7 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
   {
     question: "Vì sao hồ sơ đã có sẵn họ tên, mã sinh viên, khóa và lớp?",
     answer: [
-      "Khi bạn đăng nhập lần đầu, EduPath AI đọc tên hiển thị của tài khoản Microsoft trường. Với tài khoản sinh viên có dạng mã sinh viên – họ tên – lớp, hệ thống tự điền họ tên, mã sinh viên, khóa, lớp và năm nhập học vào hồ sơ để bạn không phải nhập lại.",
+      "Khi bạn đăng nhập lần đầu, EduPath AI lấy họ tên, mã sinh viên, khóa, lớp và năm nhập học từ tài khoản Microsoft do trường cấp rồi điền sẵn vào hồ sơ, để bạn không phải nhập lại.",
       "Những thông tin này gắn với tài khoản trường nên chỉ hiển thị để bạn kiểm tra, không chỉnh sửa trực tiếp trên EduPath AI. Điều này giúp tránh việc nhập nhầm mã sinh viên hoặc dùng mã của người khác."
     ],
     note: "Nếu họ tên, mã sinh viên, khóa hoặc lớp bị sai hay để trống, hãy liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin để được kiểm tra."
@@ -109,36 +109,55 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
     question: "Tôi có thể chỉnh sửa hoặc xóa dữ liệu đã nhập không?",
     answer: [
       "Bạn có thể mở Thông tin cá nhân, chọn Chỉnh sửa thông tin để cập nhật Sở thích và Vị trí nghề nghiệp mong muốn, rồi bấm Lưu thay đổi. Lớp học và các thông tin định danh lấy từ tài khoản trường chỉ để xem.",
-      "Để xóa bảng điểm, mở Hồ sơ và bảng điểm, bấm Xóa bảng điểm và xác nhận. Việc này xóa PDF cùng toàn bộ dữ liệu môn học đã import và hủy lần import đang chờ nếu có; thông tin cá nhân vẫn được giữ lại. Sau đó bạn có thể tải một bảng điểm mới lên."
+      "Để xóa bảng điểm, mở Hồ sơ và bảng điểm, bấm Xóa bảng điểm và xác nhận. Việc này xóa PDF cùng toàn bộ dữ liệu môn học đã import; thông tin cá nhân vẫn được giữ lại. Sau đó bạn có thể tải một bảng điểm mới lên."
     ],
-    note: "Sau khi xóa bảng điểm, cột Kết quả và phần xét tốt nghiệp sẽ không còn dấu đạt hoặc chưa đạt cho đến khi bạn import lại. Nếu cần xóa toàn bộ tài khoản EduPath AI, hãy liên hệ cán bộ phụ trách của khoa."
+    note: "Sau khi xóa bảng điểm, cột Kết quả và phần xét tốt nghiệp sẽ không còn dấu đạt hoặc chưa đạt cho đến khi bạn import lại. Nếu muốn xóa toàn bộ tài khoản EduPath AI hoặc nhận bản sao dữ liệu của mình, hãy liên hệ cán bộ phụ trách của Khoa."
   },
   {
     question: "Ai có thể xem bảng điểm và thông tin cá nhân của tôi?",
     answer: [
-      "Tệp PDF, điểm và kết quả từng môn trong bảng điểm chỉ hiển thị trong cổng sinh viên khi bạn đăng nhập bằng chính tài khoản của mình. Sinh viên khác không thể xem hồ sơ hay bảng điểm của bạn.",
-      "Cán bộ, giảng viên được nhà trường cấp quyền trên cổng quản lý có thể xem thông tin hồ sơ như họ tên, email trường, mã sinh viên, khóa, lớp, sở thích, mục tiêu nghề nghiệp, thời điểm đăng nhập và tình trạng đã có bảng điểm hay chưa. Thông tin này chỉ dùng để hỗ trợ sinh viên và quản lý đào tạo."
+      "Chỉ bạn xem được tệp bảng điểm, điểm và kết quả từng môn khi đăng nhập bằng tài khoản của mình. Sinh viên khác không xem được hồ sơ hay bảng điểm của bạn.",
+      "Trong nhà trường, chỉ cán bộ, giảng viên có nhiệm vụ liên quan mới được xem những thông tin hồ sơ cần thiết để hỗ trợ học tập và quản lý đào tạo. Những thông tin này không bao gồm điểm số của bạn."
     ],
-    note: "EduPath AI không bán, không dùng cho quảng cáo và không cung cấp dữ liệu học tập của bạn cho bên ngoài nhà trường vì mục đích thương mại. Chi tiết xem tại trang Chính sách & Điều khoản."
+    note: "EduPath AI không bán dữ liệu, không dùng thông tin của bạn để quảng cáo và không cung cấp cho bên ngoài nhà trường vì mục đích thương mại. Chi tiết xem mục Chia sẻ thông tin trong Chính sách bảo mật."
   },
   {
     question: "Bảng điểm PDF của tôi được lưu và xử lý như thế nào?",
     answer: [
-      "Sau khi tải lên, PDF được giữ trong hàng chờ để bộ đọc bảng điểm của EduPath AI xử lý. Bộ đọc ưu tiên lớp chữ có sẵn trong PDF và chỉ nhận dạng ký tự (OCR) với những trang không có lớp chữ. Tệp không được gửi tới dịch vụ AI hoặc dịch vụ nhận dạng của bên thứ ba.",
-      "Khi đọc xong, hệ thống lưu một bảng điểm hiện tại cho mỗi sinh viên, gồm PDF gốc và dữ liệu môn học đã đọc; bản sao tạm trong hàng chờ được xóa ngay khi xử lý xong, gặp lỗi hoặc bị hủy. Bảng điểm được giữ đến khi bạn cập nhật bằng bản mới hoặc bấm Xóa bảng điểm."
-    ]
+      "Sau khi bạn tải lên, EduPath AI tự động đọc tệp PDF để lấy danh sách môn học, tín chỉ, điểm và kết quả theo từng học kỳ. Tệp chỉ dùng để tạo bảng điểm trong tài khoản của bạn và không được gửi cho dịch vụ AI hay đơn vị nào bên ngoài.",
+      "Mỗi tài khoản lưu một bảng điểm. Bảng điểm được giữ đến khi bạn thay bằng bản mới, bấm Xóa bảng điểm hoặc khi tài khoản được xóa."
+    ],
+    note: "Việc đọc tự động có thể nhầm, nhất là với ảnh chụp hoặc bản scan. Hãy đối chiếu kết quả với bảng điểm gốc và luôn tự giữ bản PDF của mình."
   },
   {
     question: "Vì sao tôi bị đăng xuất hoặc không vào được cổng sinh viên?",
     answer: [
-      "Phiên đăng nhập tự hết hạn sau khoảng 8 giờ không sử dụng để bảo vệ tài khoản trên máy dùng chung. Phiên cũng kết thúc khi tài khoản bị tạm khóa hoặc vai trò được thay đổi; khi đó bạn chỉ cần đăng nhập lại.",
-      "Mỗi tài khoản chỉ dùng một cổng theo vai trò được cấp. Nếu thấy thông báo tài khoản thuộc cổng Quản trị, tài khoản của bạn đang được cấp vai trò cán bộ nên không vào được cổng sinh viên."
+      "Để bảo vệ tài khoản, phiên đăng nhập tự kết thúc sau một thời gian không sử dụng. Khi đó bạn chỉ cần đăng nhập lại bằng tài khoản trường.",
+      "Nếu thấy thông báo trang này dành riêng cho sinh viên, tài khoản bạn vừa dùng không phải tài khoản sinh viên. Hãy chọn Đăng nhập bằng tài khoản sinh viên khác và dùng email @vanlanguni.vn của bạn."
     ],
-    note: "Nếu đã đăng nhập lại mà vẫn không vào được hoặc vai trò hiển thị không đúng, hãy liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin."
+    note: "Nếu đã đăng nhập lại mà vẫn không vào được, hãy liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin."
+  },
+  {
+    question: "Tôi có thể dùng EduPath AI trên điện thoại không?",
+    answer: ["Có. EduPath AI là trang web, bạn mở bằng trình duyệt trên máy tính hoặc điện thoại mà không cần cài thêm ứng dụng. Với các bảng dài như bảng điểm hay chương trình đào tạo, màn hình máy tính sẽ dễ theo dõi hơn."],
+    note: "Nếu dùng điện thoại hoặc máy tính chung, hãy bấm Đăng xuất sau khi sử dụng."
+  },
+  {
+    question: "Sau khi tốt nghiệp, dữ liệu của tôi trên EduPath AI sẽ ra sao?",
+    answer: ["Dữ liệu của bạn được giữ cho đến khi bạn tự xóa bảng điểm hoặc đề nghị Khoa xóa tài khoản. Nếu không còn sử dụng EduPath AI, bạn nên xóa bảng điểm và liên hệ cán bộ phụ trách của Khoa để xóa tài khoản."],
+    note: "Bảng điểm đã xóa không khôi phục được, vì vậy hãy tự giữ bản PDF gốc trước khi xóa."
+  },
+  {
+    question: "Tôi muốn góp ý hoặc báo lỗi thì liên hệ ở đâu?",
+    answer: ["Hãy liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin bằng email trường. Mô tả ngắn gọn bạn đang dùng chức năng nào, đã làm những bước gì và thông báo lỗi hiển thị trên màn hình."],
+    note: "Nếu gửi kèm ảnh chụp màn hình, hãy che các thông tin không cần thiết và không chụp thông tin của người khác."
   }
 ];
 
-type InformationSection = { title: string; paragraphs: string[] };
+export const policyUpdatedAt = "04/10/2026";
+
+// A string renders as a paragraph; a string array renders as a bullet list.
+type InformationSection = { title: string; paragraphs: (string | string[])[] };
 type InformationCategory = { id: string; label: string; sections: InformationSection[] };
 export type PolicyKind = "privacy" | "terms";
 
@@ -147,89 +166,269 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
     title: "Chính sách bảo mật",
     categories: [
       {
-        id: "du-lieu",
-        label: "Thu thập và sử dụng dữ liệu",
+        id: "tong-quan",
+        label: "Giới thiệu chung",
         sections: [
           {
-            title: "Thông tin tài khoản và hồ sơ",
+            title: "Chính sách này dành cho ai?",
             paragraphs: [
-              "Khi bạn đăng nhập, EduPath AI nhận từ tài khoản Microsoft của trường tên hiển thị, email trường, tên đăng nhập và mã định danh tài khoản. Với tài khoản sinh viên, hệ thống tự điền họ tên, mã sinh viên, khóa, lớp và năm nhập học từ tên hiển thị.",
-              "Hồ sơ còn lưu những thông tin bạn chủ động cung cấp như sở thích và vị trí nghề nghiệp mong muốn. Hãy chỉ nhập nội dung phục vụ việc học; không ghi số điện thoại, số căn cước, địa chỉ hoặc thông tin sức khỏe vào ô Sở thích."
+              "Chính sách bảo mật này dành cho sinh viên sử dụng EduPath AI, công cụ hỗ trợ học tập và định hướng nghề nghiệp do Khoa Công nghệ Thông tin, Trường Đại học Văn Lang (gọi tắt là Khoa) vận hành.",
+              "Chính sách cho bạn biết EduPath AI thu thập những thông tin nào, dùng vào việc gì, ai được xem, lưu trữ trong bao lâu và bạn có những quyền gì đối với dữ liệu của mình."
             ]
           },
           {
-            title: "Bảng điểm và kết quả học tập",
-            paragraphs: ["Khi bạn import bảng điểm, hệ thống lưu tệp PDF gốc, tên và dung lượng tệp cùng dữ liệu đọc được: mã và tên học phần, số tín chỉ, điểm hệ 10, hệ 4, điểm chữ, kết quả đạt hoặc chưa đạt, năm học, học kỳ, điểm bảo lưu và các dòng tổng kết học kỳ."]
+            title: "Những điểm chính",
+            paragraphs: [[
+              "Bạn đăng nhập bằng tài khoản Microsoft của trường. EduPath AI không biết và không lưu mật khẩu của bạn.",
+              "Chỉ bạn xem được bảng điểm và điểm từng môn của mình.",
+              "Sở thích, mục tiêu nghề nghiệp và bảng điểm do bạn tự nguyện cung cấp, và bạn có thể sửa hoặc xóa bất cứ lúc nào.",
+              "EduPath AI không bán dữ liệu, không hiển thị quảng cáo và không theo dõi bạn trên các trang web khác.",
+              "Dữ liệu được lưu trên dịch vụ lưu trữ đám mây, máy chủ có thể đặt ngoài Việt Nam."
+            ]]
           },
           {
-            title: "Mục đích sử dụng",
+            title: "Căn cứ pháp lý",
             paragraphs: [
-              "Dữ liệu được dùng để hiển thị bảng điểm, đánh dấu kết quả trong chương trình và kế hoạch đào tạo, đối chiếu tiêu chuẩn xét tốt nghiệp, gợi ý định hướng nghề nghiệp và hỗ trợ Khoa Công nghệ Thông tin quản lý đào tạo.",
-              "EduPath AI không bán, không dùng cho quảng cáo và không cung cấp dữ liệu học tập của sinh viên cho tổ chức bên ngoài nhà trường vì mục đích thương mại."
+              "Chính sách được xây dựng theo Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15 và Nghị định số 356/2025/NĐ-CP quy định chi tiết luật này, cùng có hiệu lực từ ngày 01/01/2026.",
+              "Chính sách chỉ áp dụng cho EduPath AI. Tài khoản Microsoft của trường và các hệ thống khác của nhà trường, như cổng đào tạo, thực hiện theo quy định riêng của từng hệ thống."
+            ]
+          }
+        ]
+      },
+      {
+        id: "thong-tin",
+        label: "Thông tin được thu thập",
+        sections: [
+          {
+            title: "Thông tin từ tài khoản trường",
+            paragraphs: ["Khi bạn đăng nhập, EduPath AI nhận từ tài khoản Microsoft do trường cấp các thông tin: họ tên, email trường, mã số sinh viên, khóa, lớp và năm nhập học. Những thông tin này được điền sẵn vào hồ sơ để bạn không phải nhập lại."]
+          },
+          {
+            title: "Thông tin bạn tự cung cấp",
+            paragraphs: [
+              [
+                "Sở thích và vị trí nghề nghiệp mong muốn mà bạn nhập hoặc chọn trong hồ sơ.",
+                "Bảng điểm PDF bạn tải lên, cùng các thông tin đọc được từ đó: môn học, số tín chỉ, điểm, kết quả và học kỳ."
+              ],
+              "Các thông tin này không bắt buộc. Khi chưa tải bảng điểm lên, bạn vẫn dùng được các chức năng khác, chỉ chưa thấy kết quả đạt hay chưa đạt của từng môn."
             ]
           },
           {
-            title: "Nhật ký đăng nhập",
-            paragraphs: ["Hệ thống ghi lại thời điểm đăng nhập lần đầu, lần gần nhất và từng lượt đăng nhập (thành công hoặc bị từ chối, cổng đã sử dụng) để bảo vệ tài khoản và hỗ trợ kiểm tra khi có sự cố."]
+            title: "Thông tin ghi nhận khi bạn sử dụng",
+            paragraphs: ["EduPath AI ghi lại thời điểm và kết quả các lần đăng nhập để bảo vệ tài khoản và hỗ trợ bạn khi gặp sự cố đăng nhập."]
+          },
+          {
+            title: "Thông tin không thu thập",
+            paragraphs: [
+              "EduPath AI không yêu cầu bạn cung cấp:",
+              [
+                "Mật khẩu tài khoản trường.",
+                "Số căn cước, số điện thoại, địa chỉ nhà hay thông tin tài khoản ngân hàng.",
+                "Thông tin sức khỏe, tôn giáo, quan điểm chính trị hay vị trí của bạn."
+              ],
+              "Vì vậy, bạn cũng không nên ghi những thông tin này vào ô Sở thích."
+            ]
+          }
+        ]
+      },
+      {
+        id: "muc-dich",
+        label: "Mục đích sử dụng",
+        sections: [
+          {
+            title: "Thông tin của bạn được dùng để làm gì?",
+            paragraphs: [[
+              "Đăng nhập và hiển thị hồ sơ của bạn.",
+              "Hiển thị bảng điểm và đánh dấu các môn đã đạt, chưa đạt trong chương trình và kế hoạch đào tạo.",
+              "Giúp bạn tự kiểm tra tiến độ so với điều kiện xét tốt nghiệp.",
+              "Giúp bạn tìm hiểu các vị trí nghề nghiệp và lưu mục tiêu của mình.",
+              "Giúp Khoa hỗ trợ, tư vấn học tập và quản lý đào tạo.",
+              "Bảo vệ tài khoản và xử lý khi có sự cố."
+            ]]
+          },
+          {
+            title: "Sự đồng ý của bạn",
+            paragraphs: [
+              "Thông tin từ tài khoản trường là cần thiết để bạn đăng nhập và sử dụng EduPath AI. Sở thích, mục tiêu nghề nghiệp và bảng điểm chỉ được xử lý khi chính bạn nhập hoặc tải lên.",
+              "Trước khi tải bảng điểm lên, bạn cần tích ô xác nhận đây là bảng điểm của mình và đồng ý để EduPath AI xử lý bảng điểm theo chính sách này. Ô này không được chọn sẵn; nếu bạn không tích, bảng điểm sẽ không được tải lên.",
+              "Bạn có thể rút lại sự đồng ý bất cứ lúc nào bằng cách xóa bảng điểm hoặc xóa thông tin đã nhập. Việc rút lại không ảnh hưởng đến những gì đã được xử lý trước đó."
+            ]
+          },
+          {
+            title: "Những điều EduPath AI không làm",
+            paragraphs: [[
+              "Không bán, cho thuê hay trao đổi dữ liệu cá nhân của bạn.",
+              "Không dùng dữ liệu của bạn để quảng cáo.",
+              "Không gửi bảng điểm của bạn cho dịch vụ AI hay đơn vị nào bên ngoài để đọc hoặc phân tích.",
+              "Không dùng dữ liệu của bạn cho mục đích khác khi chưa thông báo cho bạn."
+            ]]
+          },
+          {
+            title: "Về các tính năng AI",
+            paragraphs: [
+              "Hiện EduPath AI chưa dùng AI để phân tích dữ liệu của bạn. Khi các tính năng như đánh giá năng lực hay gợi ý lộ trình học tập bằng AI được đưa vào sử dụng, Khoa sẽ cập nhật chính sách này và thông báo cho bạn trước.",
+              "Kết quả do AI đưa ra chỉ mang tính gợi ý. Quyết định học tập vẫn thuộc về bạn, cùng với giảng viên và cố vấn học tập."
+            ]
           }
         ]
       },
       {
         id: "bang-diem",
-        label: "Xử lý và lưu trữ bảng điểm",
+        label: "Bảng điểm của bạn",
         sections: [
           {
-            title: "Cách bảng điểm được đọc",
-            paragraphs: ["PDF bạn tải lên được giữ trong hàng chờ để bộ đọc bảng điểm của EduPath AI xử lý. Bộ đọc ưu tiên lớp chữ có sẵn trong PDF và chỉ nhận dạng ký tự (OCR) với những trang không có lớp chữ. Bảng điểm không được gửi tới dịch vụ AI, chatbot hoặc dịch vụ nhận dạng của bên thứ ba."]
-          },
-          {
-            title: "Thời gian lưu trữ",
+            title: "Bảng điểm được đọc như thế nào?",
             paragraphs: [
-              "Bản sao tạm trong hàng chờ được xóa ngay khi xử lý xong, gặp lỗi hoặc khi bạn bấm Hủy xử lý. Mỗi sinh viên chỉ có một bảng điểm hiện tại; khi bạn cập nhật bằng bản mới và việc đọc thành công, PDF và dữ liệu cũ được thay thế hoàn toàn.",
-              "Bảng điểm được lưu trên cơ sở dữ liệu của hệ thống cho đến khi bạn xóa, thay thế hoặc khi tài khoản EduPath AI bị xóa. Cơ sở dữ liệu chỉ cho phép máy chủ ứng dụng truy cập, không mở cho truy cập công khai."
+              "Sau khi bạn tải lên, EduPath AI tự động đọc tệp PDF để lấy danh sách môn học, số tín chỉ, điểm và kết quả theo từng học kỳ. Tệp chỉ được dùng để tạo bảng điểm trong tài khoản của bạn.",
+              "Việc đọc tự động có thể nhầm, nhất là với ảnh chụp hoặc bản scan. Hãy đối chiếu kết quả với bảng điểm gốc sau mỗi lần tải lên."
             ]
           },
           {
-            title: "Xóa bảng điểm",
-            paragraphs: ["Khi bạn bấm Xóa bảng điểm và xác nhận, hệ thống xóa PDF cùng toàn bộ dữ liệu môn học đã import và hủy lần import đang chờ nếu có. Thông tin cá nhân trong hồ sơ vẫn được giữ lại để bạn tiếp tục sử dụng."]
+            title: "Ai xem được bảng điểm của bạn?",
+            paragraphs: ["Chỉ bạn xem được tệp bảng điểm, điểm và kết quả từng môn khi đăng nhập bằng tài khoản của mình. Sinh viên khác không xem được bảng điểm của bạn."]
+          },
+          {
+            title: "Lưu, thay thế và xóa bảng điểm",
+            paragraphs: [
+              [
+                "Mỗi tài khoản chỉ lưu một bảng điểm. Khi bạn tải bản mới lên và đọc thành công, bản cũ được thay thế.",
+                "Bảng điểm được giữ đến khi bạn xóa, thay bằng bản mới hoặc khi tài khoản được xóa.",
+                "Khi bạn bấm Xóa bảng điểm, tệp PDF và toàn bộ điểm đã đọc bị xóa; thông tin hồ sơ vẫn được giữ."
+              ],
+              "Bảng điểm đã xóa không khôi phục được, vì vậy hãy luôn tự giữ bản PDF gốc."
+            ]
           }
         ]
       },
       {
-        id: "quyen-truy-cap",
-        label: "Quyền truy cập và quyền của bạn",
+        id: "chia-se",
+        label: "Chia sẻ thông tin",
         sections: [
           {
             title: "Ai có thể xem thông tin của bạn?",
             paragraphs: [
-              "Tệp PDF, điểm và kết quả từng môn chỉ hiển thị trong cổng sinh viên khi bạn đăng nhập bằng chính tài khoản của mình. Máy chủ chỉ trả về dữ liệu của tài khoản đang đăng nhập, vì vậy sinh viên khác không thể xem hồ sơ hay bảng điểm của bạn.",
-              "Cán bộ, giảng viên được nhà trường cấp quyền trên cổng quản lý có thể xem thông tin hồ sơ gồm họ tên, email trường, mã sinh viên, khóa, lớp, sở thích, mục tiêu nghề nghiệp, thời điểm đăng nhập và tình trạng đã có bảng điểm hay chưa, nhằm hỗ trợ sinh viên và quản lý đào tạo."
+              "Bạn xem được toàn bộ thông tin của mình. Sinh viên khác không xem được hồ sơ hay bảng điểm của bạn.",
+              "Trong nhà trường, chỉ cán bộ, giảng viên có nhiệm vụ liên quan mới được xem những thông tin hồ sơ cần thiết để hỗ trợ học tập và quản lý đào tạo, không bao gồm điểm số của bạn, và không được chia sẻ ra ngoài."
             ]
           },
           {
-            title: "Quyền của bạn đối với dữ liệu",
+            title: "Đối tác cung cấp dịch vụ",
             paragraphs: [
-              "Bạn có thể xem hồ sơ và bảng điểm của mình bất cứ lúc nào, cập nhật sở thích, chọn hoặc bỏ chọn mục tiêu nghề nghiệp, thay thế hoặc xóa bảng điểm đã import tại phần Hồ sơ và bảng điểm.",
-              "Thông tin định danh gắn với tài khoản trường không chỉnh sửa trực tiếp trên EduPath AI. Nếu phát hiện thông tin không chính xác, muốn xóa tài khoản hoặc cần hỗ trợ về dữ liệu cá nhân, hãy liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin."
+              "Để EduPath AI hoạt động, nhà trường sử dụng dịch vụ của:",
+              [
+                "Microsoft: dịch vụ đăng nhập bằng tài khoản trường.",
+                "Nhà cung cấp dịch vụ lưu trữ đám mây: nơi vận hành EduPath AI và lưu trữ dữ liệu."
+              ],
+              "Các đối tác này chỉ được xử lý dữ liệu trong phạm vi cần thiết để cung cấp dịch vụ cho nhà trường."
+            ]
+          },
+          {
+            title: "Khi pháp luật yêu cầu",
+            paragraphs: ["Ngoài các trường hợp trên, thông tin của bạn chỉ được cung cấp cho cơ quan nhà nước có thẩm quyền khi pháp luật quy định, hoặc cho bên khác khi có sự đồng ý của bạn."]
+          }
+        ]
+      },
+      {
+        id: "luu-tru",
+        label: "Lưu trữ và bảo mật",
+        sections: [
+          {
+            title: "Dữ liệu được lưu ở đâu?",
+            paragraphs: ["Dữ liệu của bạn được lưu trên dịch vụ lưu trữ đám mây, và máy chủ có thể đặt ngoài lãnh thổ Việt Nam. Dù dữ liệu được lưu ở đâu, các cam kết và quyền của bạn trong chính sách này vẫn được giữ nguyên."]
+          },
+          {
+            title: "Dữ liệu được giữ trong bao lâu?",
+            paragraphs: [
+              [
+                "Thông tin hồ sơ: trong thời gian tài khoản EduPath AI của bạn còn tồn tại.",
+                "Bảng điểm: đến khi bạn xóa, thay bằng bản mới hoặc khi tài khoản được xóa.",
+                "Lịch sử đăng nhập: trong thời gian tài khoản còn tồn tại, để phục vụ việc bảo vệ tài khoản."
+              ],
+              "Khi không còn sử dụng EduPath AI, chẳng hạn sau khi tốt nghiệp, bạn có thể tự xóa bảng điểm và đề nghị Khoa xóa tài khoản."
+            ]
+          },
+          {
+            title: "Dữ liệu được bảo vệ thế nào?",
+            paragraphs: [
+              [
+                "Chỉ tài khoản Microsoft của Trường Đại học Văn Lang mới đăng nhập được.",
+                "Kết nối giữa trình duyệt và EduPath AI được mã hóa.",
+                "Mỗi người chỉ được xem những thông tin phù hợp với nhiệm vụ của mình.",
+                "Phiên đăng nhập tự kết thúc sau một thời gian không sử dụng.",
+                "EduPath AI chỉ dùng cookie cần thiết để giữ đăng nhập, không dùng cookie quảng cáo hay công cụ theo dõi."
+              ],
+              "Không hệ thống nào an toàn tuyệt đối. Nếu xảy ra sự cố làm lộ hoặc mất dữ liệu, nhà trường sẽ khắc phục và thông báo theo quy định của pháp luật."
             ]
           }
         ]
       },
       {
-        id: "bao-ve",
-        label: "Bảo vệ tài khoản và phiên đăng nhập",
+        id: "quyen-cua-ban",
+        label: "Quyền của bạn",
         sections: [
           {
-            title: "Đăng nhập Microsoft",
-            paragraphs: ["Việc nhập mật khẩu được thực hiện trên trang xác thực của Microsoft và chỉ tài khoản thuộc Trường Đại học Văn Lang được chấp nhận. EduPath AI không cung cấp ô nhập hoặc lưu mật khẩu Microsoft của bạn. Không chia sẻ tài khoản, mã xác thực hoặc phiên đăng nhập với người khác."]
+            title: "Bạn có những quyền gì?",
+            paragraphs: [
+              "Theo Luật Bảo vệ dữ liệu cá nhân, bạn có quyền:",
+              [
+                "Được biết dữ liệu của mình được xử lý như thế nào.",
+                "Đồng ý, không đồng ý hoặc rút lại sự đồng ý.",
+                "Xem và chỉnh sửa dữ liệu của mình, hoặc yêu cầu chỉnh sửa.",
+                "Yêu cầu cung cấp, xóa hoặc hạn chế xử lý dữ liệu, và phản đối việc xử lý.",
+                "Khiếu nại, tố cáo, khởi kiện và yêu cầu bồi thường theo quy định của pháp luật.",
+                "Yêu cầu áp dụng các biện pháp bảo vệ dữ liệu của mình."
+              ]
+            ]
           },
           {
-            title: "Phiên đăng nhập",
-            paragraphs: ["Phiên đăng nhập được lưu bằng cookie bảo mật mà mã trên trang web không đọc được, và tự hết hạn sau khoảng 8 giờ không sử dụng. Khi tài khoản bị tạm khóa hoặc vai trò thay đổi, các phiên đang mở sẽ kết thúc và bạn cần đăng nhập lại."]
+            title: "Bạn tự thực hiện trên EduPath AI",
+            paragraphs: [[
+              "Xem hồ sơ và bảng điểm tại Hồ sơ và bảng điểm.",
+              "Sửa sở thích hoặc đổi mục tiêu nghề nghiệp trong Thông tin cá nhân.",
+              "Thay bảng điểm bằng bản mới hoặc bấm Xóa bảng điểm.",
+              "Bấm Đăng xuất để kết thúc phiên đăng nhập trên thiết bị."
+            ]]
           },
           {
-            title: "Sử dụng thiết bị chung",
-            paragraphs: ["Sau khi sử dụng trên máy tính chung, hãy đăng xuất và đóng các cửa sổ đang hiển thị hồ sơ hoặc bảng điểm của bạn. Không lưu tệp bảng điểm trên máy dùng chung sau khi đã import xong."]
+            title: "Gửi yêu cầu cho Khoa",
+            paragraphs: [
+              "Với các yêu cầu chưa tự làm được trên EduPath AI, bạn liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin, ví dụ:",
+              [
+                "Sửa họ tên, mã số sinh viên, khóa hoặc lớp bị sai.",
+                "Nhận bản sao dữ liệu EduPath AI đang lưu về bạn.",
+                "Xóa tài khoản cùng toàn bộ hồ sơ và bảng điểm.",
+                "Hạn chế hoặc phản đối việc xử lý dữ liệu."
+              ],
+              "Hãy gửi từ email trường và ghi rõ họ tên, mã số sinh viên. Yêu cầu của bạn được xử lý trong thời hạn pháp luật quy định; nếu chưa thể thực hiện, Khoa sẽ cho bạn biết lý do."
+            ]
+          },
+          {
+            title: "Trách nhiệm của bạn",
+            paragraphs: [[
+              "Giữ bí mật mật khẩu và không cho người khác dùng tài khoản của mình.",
+              "Cung cấp thông tin chính xác và chỉ tải lên bảng điểm của chính bạn.",
+              "Tôn trọng dữ liệu của người khác: không tải lên, không ghi lại và không chia sẻ thông tin của sinh viên khác."
+            ]]
+          }
+        ]
+      },
+      {
+        id: "lien-he",
+        label: "Liên hệ và cập nhật",
+        sections: [
+          {
+            title: "Liên hệ và khiếu nại",
+            paragraphs: [
+              "Nếu có câu hỏi về dữ liệu cá nhân hoặc cho rằng quyền của mình chưa được bảo đảm, hãy liên hệ cán bộ phụ trách tại Văn phòng Khoa Công nghệ Thông tin, Trường Đại học Văn Lang để được giải đáp.",
+              "Bạn cũng có quyền khiếu nại, tố cáo đến cơ quan nhà nước có thẩm quyền theo quy định của pháp luật."
+            ]
+          },
+          {
+            title: "Cập nhật chính sách",
+            paragraphs: [
+              "Chính sách có thể được cập nhật khi EduPath AI thay đổi chức năng hoặc khi quy định pháp luật thay đổi. Nội dung mới được đăng tại trang này cùng ngày cập nhật.",
+              "Nếu thay đổi ảnh hưởng đến cách dữ liệu của bạn được sử dụng, chẳng hạn khi có tính năng AI mới, Khoa sẽ thông báo trước khi áp dụng."
+            ]
           }
         ]
       }
@@ -239,73 +438,162 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
     title: "Điều khoản sử dụng",
     categories: [
       {
-        id: "tai-khoan",
-        label: "Tài khoản và phạm vi sử dụng",
+        id: "gioi-thieu",
+        label: "Giới thiệu chung",
         sections: [
           {
-            title: "Mục đích của EduPath AI",
-            paragraphs: ["EduPath AI hỗ trợ theo dõi học tập và định hướng nghề nghiệp cho sinh viên Công nghệ Thông tin Trường Đại học Văn Lang. Bạn có thể xem các trang giới thiệu, hướng dẫn và chính sách mà không cần đăng nhập; các chức năng hồ sơ và quản lý yêu cầu tài khoản được cấp quyền."]
-          },
-          {
-            title: "Trách nhiệm với tài khoản",
-            paragraphs: ["Sử dụng tài khoản Microsoft của chính bạn và bảo vệ thông tin đăng nhập. Mỗi tài khoản chỉ sử dụng cổng tương ứng với vai trò được cấp. Không dùng tài khoản của người khác hoặc tìm cách truy cập dữ liệu, chức năng ngoài quyền được cấp."]
-          }
-        ]
-      },
-      {
-        id: "noi-dung",
-        label: "Bảng điểm và thông tin bạn cung cấp",
-        sections: [
-          {
-            title: "Bảng điểm bạn tải lên",
+            title: "EduPath AI là gì?",
             paragraphs: [
-              "Chỉ tải lên bảng điểm của chính bạn, xuất từ cổng đào tạo của trường và giữ nguyên nội dung. Không chỉnh sửa điểm, ghép trang hoặc tạo tệp giả mạo. Khi tích ô xác nhận trước lúc import, bạn cam kết đây là bảng điểm của mình; hệ thống không xác minh chủ sở hữu từ nội dung PDF.",
-              "Bạn chịu trách nhiệm đối chiếu mã môn, điểm và kết quả đã đọc với PDF gốc. Nếu phát hiện sai sót, hãy xuất lại bảng điểm và import lại, hoặc liên hệ cán bộ phụ trách nếu lỗi vẫn còn."
+              "EduPath AI là công cụ hỗ trợ học tập do Khoa Công nghệ Thông tin, Trường Đại học Văn Lang vận hành cho sinh viên ngành Công nghệ Thông tin. Bạn có thể theo dõi kết quả học tập, đối chiếu chương trình và kế hoạch đào tạo, tự kiểm tra điều kiện xét tốt nghiệp và tìm hiểu các vị trí nghề nghiệp.",
+              "EduPath AI giúp bạn chủ động hơn trong việc học, nhưng không thay thế cổng đào tạo, cố vấn học tập hay các thông báo chính thức của nhà trường."
             ]
           },
           {
-            title: "Giá trị của bảng điểm trên EduPath AI",
-            paragraphs: ["Bảng điểm trên EduPath AI là bản do sinh viên tải lên, chưa được nhà trường xác minh. Bảng điểm này chỉ dùng để tự theo dõi học tập trong hệ thống, không thay thế bảng điểm chính thức và không dùng làm minh chứng với nhà trường hoặc bên thứ ba."]
+            title: "Ai được sử dụng?",
+            paragraphs: ["Sinh viên Trường Đại học Văn Lang đăng nhập bằng tài khoản Microsoft do trường cấp (email @vanlanguni.vn). Trang giới thiệu, Câu hỏi thường gặp và trang Chính sách & Điều khoản được xem mà không cần đăng nhập."]
           },
           {
-            title: "Thông tin hồ sơ",
-            paragraphs: ["Sở thích và mục tiêu nghề nghiệp cần phản ánh đúng định hướng của bạn. Không nhập dữ liệu cá nhân của người khác, nội dung xúc phạm hoặc thông tin nhạy cảm không cần thiết như số căn cước, số điện thoại, địa chỉ hay thông tin sức khỏe."]
-          },
-          {
-            title: "Dữ liệu đào tạo và nghề nghiệp",
-            paragraphs: ["Chương trình đào tạo, kế hoạch đào tạo, tiêu chuẩn xét tốt nghiệp và yêu cầu nghề nghiệp được quản lý trên hệ thống theo từng phiên bản. Khi sử dụng, hãy đối chiếu đúng khóa, ngành và chuyên ngành; ưu tiên thông báo và tài liệu chính thức của nhà trường nếu có khác biệt."]
+            title: "Chấp nhận điều khoản",
+            paragraphs: [
+              "Khi đăng nhập và sử dụng EduPath AI, bạn đồng ý tuân theo các điều khoản này, cùng với quy chế của nhà trường và quy định của pháp luật.",
+              "Cách EduPath AI thu thập và bảo vệ dữ liệu của bạn được trình bày trong Chính sách bảo mật."
+            ]
           }
         ]
       },
       {
-        id: "du-lieu-sinh-vien",
-        label: "Sử dụng dữ liệu sinh viên",
+        id: "tai-khoan",
+        label: "Tài khoản của bạn",
         sections: [
           {
-            title: "Trách nhiệm của cán bộ và giảng viên",
-            paragraphs: ["Cán bộ, giảng viên được cấp quyền trên cổng quản lý chỉ xem và sử dụng thông tin sinh viên trong phạm vi công việc được giao như hỗ trợ học tập, tư vấn và quản lý đào tạo. Không sao chép, chụp màn hình, xuất hoặc chia sẻ thông tin sinh viên ra ngoài khi không có căn cứ công việc, và tuân thủ quy định của nhà trường cũng như pháp luật về bảo vệ dữ liệu cá nhân."]
+            title: "Đăng nhập bằng tài khoản trường",
+            paragraphs: ["Bạn không cần đăng ký hay tạo mật khẩu riêng. Hồ sơ EduPath AI được tạo tự động ở lần đăng nhập đầu tiên. Việc đổi hoặc khôi phục mật khẩu thực hiện qua Microsoft và bộ phận hỗ trợ tài khoản của trường."]
           },
           {
-            title: "Hành vi không được phép",
-            paragraphs: ["Không truy cập hoặc tìm cách xem hồ sơ, bảng điểm của người khác; không dùng công cụ tự động để thu thập dữ liệu; không tải lên tệp chứa mã độc hoặc can thiệp vào hoạt động của hệ thống."]
+            title: "Giữ an toàn tài khoản",
+            paragraphs: [
+              [
+                "Giữ bí mật mật khẩu và mã xác thực; không đưa cho người khác, kể cả khi nhờ tải bảng điểm giúp.",
+                "Không dùng tài khoản của người khác và không cho người khác dùng tài khoản của bạn.",
+                "Đăng xuất sau khi dùng máy tính chung ở phòng thực hành hay thư viện.",
+                "Báo ngay cho Khoa nếu nghi ngờ tài khoản của mình bị người khác sử dụng."
+              ],
+              "Nếu bạn để người khác dùng tài khoản của mình, bạn chịu trách nhiệm về những gì họ làm bằng tài khoản đó."
+            ]
+          },
+          {
+            title: "Thông tin trong hồ sơ",
+            paragraphs: ["Họ tên, mã số sinh viên, khóa và lớp được lấy từ tài khoản trường nên bạn không sửa trực tiếp được. Nếu thông tin bị sai hoặc thiếu, hãy liên hệ cán bộ phụ trách của Khoa để được kiểm tra."]
+          }
+        ]
+      },
+      {
+        id: "bang-diem",
+        label: "Bảng điểm bạn tải lên",
+        sections: [
+          {
+            title: "Yêu cầu đối với bảng điểm",
+            paragraphs: [[
+              "Là bảng điểm của chính bạn.",
+              "Được xuất từ cổng đào tạo của trường và giữ nguyên nội dung.",
+              "Là tệp PDF, tối đa 5 MB, không quá 20 trang và không đặt mật khẩu."
+            ]]
+          },
+          {
+            title: "Cam kết của bạn",
+            paragraphs: ["Khi tích ô xác nhận trước lúc tải lên, bạn cam kết bảng điểm là của mình và chưa bị chỉnh sửa. Tải lên bảng điểm của người khác là xâm phạm dữ liệu cá nhân của họ; làm giả hoặc sửa bảng điểm có thể bị xử lý theo quy chế của nhà trường và pháp luật."]
+          },
+          {
+            title: "Bảng điểm trên EduPath AI",
+            paragraphs: [
+              "Bảng điểm do bạn tự tải lên và chưa được nhà trường xác minh. Bảng điểm này chỉ dùng để bạn tự theo dõi việc học, không thay thế bảng điểm chính thức và không dùng làm minh chứng với nhà trường hay đơn vị khác.",
+              "Bảng điểm và thông tin bạn cung cấp vẫn thuộc về bạn; bạn có thể thay thế hoặc xóa bất cứ lúc nào."
+            ]
+          }
+        ]
+      },
+      {
+        id: "quy-tac",
+        label: "Quy tắc sử dụng",
+        sections: [
+          {
+            title: "Những việc không được làm",
+            paragraphs: [[
+              "Tìm cách đăng nhập bằng tài khoản của người khác hoặc xem dữ liệu không thuộc về bạn.",
+              "Tấn công, dò tìm lỗ hổng, làm quá tải hoặc làm gián đoạn EduPath AI.",
+              "Dùng công cụ tự động để thu thập dữ liệu hàng loạt.",
+              "Tải lên tệp chứa mã độc, tệp giả mạo hoặc bảng điểm đã bị chỉnh sửa.",
+              "Mạo danh sinh viên, giảng viên hay nhà trường.",
+              "Ghi vào hồ sơ thông tin của người khác hoặc nội dung xúc phạm, sai sự thật.",
+              "Dùng kết quả trên EduPath AI như văn bản xác nhận chính thức của nhà trường."
+            ]]
+          },
+          {
+            title: "Khi phát hiện lỗi",
+            paragraphs: ["Nếu phát hiện lỗi, nhất là lỗi có thể làm lộ thông tin của người khác, hãy dừng lại, không khai thác hay chia sẻ và báo ngay cho cán bộ phụ trách của Khoa. Mọi hoạt động kiểm thử bảo mật cần được Khoa cho phép trước bằng văn bản."]
           }
         ]
       },
       {
         id: "ket-qua",
-        label: "Kết quả phân tích và hỗ trợ",
+        label: "Giá trị của kết quả",
         sections: [
           {
-            title: "Kết quả học tập và xét điều kiện",
-            paragraphs: ["Các dấu đạt, chưa đạt và thông báo xét điều kiện được tạo từ bảng điểm bạn tải lên và tiêu chuẩn đang có trên hệ thống. Kết quả có thể thay đổi khi bạn cập nhật bảng điểm hoặc khi tiêu chuẩn được điều chỉnh. Thông báo trên EduPath AI hỗ trợ bạn tự đối chiếu; kết quả xét tốt nghiệp chính thức do nhà trường công bố."]
+            title: "Kết quả chỉ để tham khảo",
+            paragraphs: [
+              "Dấu đạt, chưa đạt trong chương trình và kế hoạch đào tạo, kết quả tự kiểm tra điều kiện xét tốt nghiệp và thông tin nghề nghiệp giúp bạn tự theo dõi và định hướng. Đây không phải kết quả chính thức của nhà trường.",
+              "Kết quả có thể chưa chính xác nếu bảng điểm thiếu học kỳ, bị đọc sai hoặc bạn chọn chưa đúng chương trình của khóa và ngành mình. Kết quả xét tốt nghiệp chính thức do nhà trường công bố."
+            ]
           },
           {
-            title: "Định hướng và trợ giúp",
-            paragraphs: ["Mục tiêu nghề nghiệp và các gợi ý học tập là thông tin tham khảo để bạn chủ động chuẩn bị. Trao đổi với giảng viên hoặc cố vấn học tập trước những quyết định quan trọng. Nếu gặp vấn đề khi sử dụng, xem Câu hỏi thường gặp hoặc liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin."]
+            title: "Trước những quyết định quan trọng",
+            paragraphs: ["Trước khi đăng ký học phần, thay đổi kế hoạch học tập hay nộp hồ sơ xét tốt nghiệp, hãy đối chiếu với thông báo chính thức của trường và trao đổi với giảng viên hoặc cố vấn học tập. Khi thông tin trên EduPath AI khác với văn bản chính thức, văn bản chính thức được áp dụng."]
           },
           {
-            title: "Vi phạm và cập nhật điều khoản",
-            paragraphs: ["Tài khoản vi phạm điều khoản có thể bị tạm khóa quyền truy cập và được xử lý theo quy định của nhà trường. Chính sách và điều khoản có thể được cập nhật khi hệ thống bổ sung chức năng; nội dung mới được đăng tại trang này và áp dụng từ lần sử dụng tiếp theo."]
+            title: "Gợi ý từ AI",
+            paragraphs: ["Khi các tính năng AI như đánh giá năng lực hay gợi ý lộ trình học tập được đưa vào sử dụng, kết quả của chúng cũng chỉ là gợi ý, không thay thế quyết định của bạn, của giảng viên hay của nhà trường."]
+          }
+        ]
+      },
+      {
+        id: "dich-vu",
+        label: "Dịch vụ và trách nhiệm",
+        sections: [
+          {
+            title: "Cung cấp dịch vụ",
+            paragraphs: [
+              "Khoa cố gắng duy trì EduPath AI ổn định, nhưng dịch vụ có thể tạm gián đoạn để bảo trì, nâng cấp hoặc khắc phục sự cố. Một số chức năng có thể được bổ sung, thay đổi hoặc ngừng cung cấp.",
+              "EduPath AI không phải nơi lưu trữ tài liệu lâu dài, vì vậy hãy tự giữ bản PDF bảng điểm gốc của bạn."
+            ]
+          },
+          {
+            title: "Quyền sở hữu nội dung",
+            paragraphs: ["Giao diện và nội dung do Khoa biên soạn, như chương trình đào tạo, kế hoạch đào tạo và thông tin nghề nghiệp, thuộc Khoa Công nghệ Thông tin, Trường Đại học Văn Lang. Bạn được sử dụng cho việc học tập của bản thân, nhưng không sao chép hàng loạt hay dùng vào mục đích thương mại."]
+          },
+          {
+            title: "Giới hạn trách nhiệm",
+            paragraphs: ["Khoa sẽ kiểm tra và sửa lỗi khi được thông báo. Khoa không chịu trách nhiệm về quyết định bạn đưa ra chỉ dựa trên kết quả tham khảo mà không đối chiếu nguồn chính thức, hoặc về hậu quả từ việc tải lên bảng điểm không phải của mình, bảng điểm đã bị chỉnh sửa hay để lộ tài khoản."]
+          }
+        ]
+      },
+      {
+        id: "vi-pham",
+        label: "Vi phạm và thay đổi",
+        sections: [
+          {
+            title: "Xử lý vi phạm",
+            paragraphs: ["Nếu vi phạm các điều khoản này, tài khoản của bạn có thể bị tạm khóa và hành vi vi phạm được xử lý theo quy chế của nhà trường và pháp luật. Nếu cho rằng tài khoản bị khóa nhầm, hãy liên hệ cán bộ phụ trách của Khoa để được xem xét."]
+          },
+          {
+            title: "Thay đổi điều khoản",
+            paragraphs: ["Điều khoản có thể được cập nhật khi EduPath AI thay đổi chức năng. Nội dung mới được đăng tại trang này cùng ngày cập nhật; với thay đổi quan trọng, Khoa sẽ thông báo trước khi áp dụng."]
+          },
+          {
+            title: "Luật áp dụng và liên hệ",
+            paragraphs: [
+              "Các điều khoản này được điều chỉnh theo pháp luật Việt Nam. Khi có vướng mắc, hãy trao đổi với Khoa trước; nếu không giải quyết được, bạn có quyền đề nghị cơ quan nhà nước có thẩm quyền giải quyết.",
+              "Nếu có câu hỏi, hãy xem Câu hỏi thường gặp hoặc liên hệ cán bộ phụ trách tại Văn phòng Khoa Công nghệ Thông tin."
+            ]
           }
         ]
       }

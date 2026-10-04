@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import EduPathBrand from "./EduPathBrand";
 import PublicFooter from "./PublicFooter";
 import FaqAnswer from "./FaqAnswer";
-import { frequentlyAskedQuestions, informationPolicies, publicInformationLinks, type PolicyKind } from "./public-information";
+import { frequentlyAskedQuestions, informationPolicies, policyUpdatedAt, publicInformationLinks, type PolicyKind } from "./public-information";
 import "./landing.css";
 import "./public-information.css";
 
@@ -86,12 +86,17 @@ function PolicyContent() {
                 {activeCategory.sections.map((section) => (
                   <details className="pi-policy-detail" key={section.title} open>
                     <summary>{section.title}</summary>
-                    <div className="pi-policy-text">{section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
+                    <div className="pi-policy-text">
+                      {section.paragraphs.map((block, index) => typeof block === "string"
+                        ? <p key={index}>{block}</p>
+                        : <ul key={index}>{block.map((item) => <li key={item}>{item}</li>)}</ul>)}
+                    </div>
                   </details>
                 ))}
               </div>
             </section>
           </div>
+          <p className="pi-policy-updated">Cập nhật lần cuối: {policyUpdatedAt}</p>
           <p className="pi-policy-help">Cần hướng dẫn sử dụng EduPath AI? <a href="/cau-hoi-thuong-gap">Xem câu hỏi thường gặp <span aria-hidden="true">→</span></a></p>
         </section>
       </div>

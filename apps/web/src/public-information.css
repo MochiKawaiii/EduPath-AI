@@ -46,7 +46,7 @@
 .pi-policy-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.05fr); gap: 36px; padding-block: 72px 80px; align-items: start; }
 .pi-page-policy .pi-policy-column-heading { margin: 0 12px 8px; padding-bottom: 14px; color: var(--pi-red); font-size: 27px; line-height: 1.4; text-align: center; text-transform: uppercase; font-weight: 800; }
 .pi-policy-menu { border: 1px solid #d9d9d9; border-radius: 5px; overflow: hidden; }
-.pi-policy-menu-group h3 { margin: 0; padding: 15px 28px; color: #6b6264; background: #f5f3f3; font-size: 15px; line-height: 1.5; font-weight: 700; }
+.pi-policy-menu-group h3 { margin: 0; padding: 22px 28px 22px 22px; border-left: 6px solid var(--pi-red); color: var(--lp-ink); background: #f5f3f3; font-size: 25px; line-height: 1.4; font-weight: 800; }
 .pi-page-policy .pi-policy-menu button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 28px; border: 0; border-top: 1px solid #e4e0e0; border-radius: 0; background: #fff; color: var(--lp-ink); font-size: 21px; line-height: 1.55; font-weight: 600; text-align: left; cursor: pointer; }
 .pi-policy-menu button .pi-chevron { transform: rotate(-90deg); width: 22px; height: 22px; }
 .pi-page-policy .pi-policy-menu button:hover { color: var(--pi-red); background: #fff4f4; }
@@ -62,8 +62,12 @@
 .pi-policy-detail summary:focus-visible { outline-offset: -5px; }
 .pi-policy-text { padding: 27px 28px 30px; }
 .pi-policy-text p { margin: 0 0 18px; color: #29262a; font-size: 22px; line-height: 1.85; }
-.pi-policy-text p:last-child { margin-bottom: 0; }
-.pi-policy-help { margin: 24px 0 0; color: #6b6264; font-size: 15px; line-height: 1.8; }
+.pi-policy-text ul { margin: 0 0 18px; padding-left: 30px; color: #29262a; font-size: 22px; line-height: 1.85; }
+.pi-policy-text li { padding-left: 6px; margin-bottom: 8px; }
+.pi-policy-text li::marker { color: var(--pi-red); }
+.pi-policy-text > :last-child { margin-bottom: 0; }
+.pi-policy-updated { margin: 28px 0 0; color: #4e4848; font-size: 16px; font-weight: 600; }
+.pi-policy-help { margin: 8px 0 0; color: #6b6264; font-size: 15px; line-height: 1.8; }
 .pi-policy-help a { color: var(--pi-red); font-weight: 700; }
 .pi-policy-help a:hover { text-decoration: underline; }
 .pi-page-policy section[id], .pi-page-policy .pi-policy-menu-group[id] { scroll-margin-top: 124px; }
@@ -75,10 +79,10 @@
   .pi-policy-layout { gap: 26px; }
   .pi-page-policy .pi-policy-column-heading { font-size: 22px; }
   .pi-page-policy .pi-policy-menu button { padding: 20px; font-size: 17px; }
-  .pi-policy-menu-group h3 { padding-inline: 20px; font-size: 13px; }
+  .pi-policy-menu-group h3 { padding: 18px 20px 18px 16px; font-size: 21px; }
   .pi-policy-detail summary { padding: 22px 24px; font-size: 20px; min-height: 76px; }
   .pi-policy-text { padding: 24px; }
-  .pi-policy-text p { font-size: 18px; }
+  .pi-policy-text p, .pi-policy-text ul { font-size: 18px; }
   .pi-faq-detail summary { font-size: 21px; }
 }
 
@@ -91,7 +95,7 @@
   .pi-policy-layout { grid-template-columns: 1fr; gap: 36px; padding-block: 40px 48px; }
   .pi-policy-menu { display: grid; grid-template-columns: 1fr 1fr; }
   .pi-policy-menu-group + .pi-policy-menu-group { border-top: 0; border-left: 1px solid #d9d9d9; }
-  .pi-policy-menu-group h3 { font-size: 14px; }
+  .pi-policy-menu-group h3 { font-size: 20px; }
   .pi-faq-detail summary { min-height: 86px; padding: 23px; font-size: 19px; }
   .pi-faq-detail .pi-faq-answer { padding: 22px 23px 28px; font-size: 17px; }
 }
@@ -111,8 +115,10 @@
   .pi-policy-detail { border-radius: 22px; }
   .pi-policy-detail summary { min-height: 70px; padding: 18px 20px; font-size: 17px; }
   .pi-policy-text { padding: 22px 20px; }
-  .pi-policy-text p { font-size: 16px; line-height: 1.85; }
-  .pi-policy-help { font-size: 14px; }
+  .pi-policy-menu-group h3 { padding: 16px 20px 16px 15px; font-size: 19px; }
+  .pi-policy-text p, .pi-policy-text ul { font-size: 16px; line-height: 1.85; }
+  .pi-policy-text ul { padding-left: 24px; }
+  .pi-policy-updated, .pi-policy-help { font-size: 14px; }
   .pi-page-policy section[id], .pi-page-policy .pi-policy-menu-group[id] { scroll-margin-top: 180px; }
   .pi-faq { padding: 32px 0 44px; }
   .pi-faq h1 { font-size: 34px; margin-bottom: 32px; }

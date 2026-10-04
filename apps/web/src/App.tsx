@@ -160,6 +160,10 @@ function LoginPage({ error, portalRestricted }: { error: string | null; portalRe
             <p id="login-help" className="login-help">
               Sử dụng tài khoản Microsoft do Trường Đại học Văn Lang cấp
             </p>
+            <p className="login-legal">
+              Khi đăng nhập, bạn đồng ý với <a href="/dieu-khoan-su-dung">Điều khoản sử dụng</a>
+              <br className="desktop-break" /> và xác nhận đã đọc <a href="/chinh-sach-bao-mat">Chính sách bảo mật</a>.
+            </p>
           </section>}
           <p id="login-security" className="sr-only">
             EduPath AI không nhận hoặc lưu mật khẩu Microsoft của bạn.
