@@ -12,6 +12,8 @@ export function Icon({ name }: { name: string }) {
     bell: "M5 17h14l-2-3V8A5 5 0 0 0 7 8v6l-2 3ZM10 21h4",
     arrow: "M4 12h16m-6-6 6 6-6 6",
     search: "M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Zm-2 5 6 6",
+    eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
+    close: "M6 6l12 12M6 18 18 6",
     logout: "M9 3H3v18h6m1-9h12m-5-5 5 5-5 5",
     menu: "M3 6h18M3 12h18M3 18h18",
     help: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0ZM9 8a3 3 0 0 1 6 0c0 2-3 2-3 5m0 3v1",

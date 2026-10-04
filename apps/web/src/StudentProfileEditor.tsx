@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "./student-icons";
-import { type CareerSelection, type StudentCareerDetail } from "./career-types";
+import { type CareerSelection } from "./career-types";
 import StudentCareerExplorer from "./StudentCareerExplorer";
 import "./student-records.css";
 export type EditableStudentProfile = {
@@ -57,7 +57,7 @@ export default function StudentProfileEditor({
       setDraftCareer(profile.careerPosition ?? null);
     }
   }, [profile, editing]);
-  const chooseCareer = async (career: StudentCareerDetail) => {
+  const chooseCareer = async (career: Pick<CareerSelection, "id" | "nameVi" | "nameEn">) => {
     setBusy(true);
     try {
       await updateProfile({ careerPositionId: career.id });
@@ -124,13 +124,15 @@ export default function StudentProfileEditor({
             <label>Lớp học<input value={profile.className ?? "Chưa cập nhật"} readOnly /></label>
             <div className="sr-wide sr-career-target">
               <strong>Vị trí nghề nghiệp mong muốn</strong>
-              <span>{draftCareer ? `${draftCareer.nameVi} — ${draftCareer.nameEn}${draftCareer.deletedAt ? " (đã ngừng sử dụng)" : ""}` : "Chưa chọn vị trí nghề nghiệp."}</span>
-              <div className="sr-actions">
-                <button type="button" className="sr-secondary" onClick={() => setExplorer({})}>Khám phá và chọn nghề nghiệp</button>
+              <div className="sr-career-selection">
+                <span>{draftCareer ? `${draftCareer.nameVi} — ${draftCareer.nameEn}${draftCareer.deletedAt ? " (đã ngừng sử dụng)" : ""}` : "Chưa chọn vị trí nghề nghiệp."}</span>
                 {draft.careerPositionId && <>
-                  {!draftCareer?.deletedAt && <button type="button" className="sr-secondary" onClick={() => setExplorer({ initialCareerId: draft.careerPositionId })}>Xem yêu cầu</button>}
-                  <button type="button" className="sr-secondary" onClick={() => { setDraft({ ...draft, careerPositionId: "" }); setDraftCareer(null); }}>Bỏ chọn</button>
+                  {!draftCareer?.deletedAt && <button type="button" className="sr-career-icon" aria-label="Xem yêu cầu nghề nghiệp" title="Xem yêu cầu" onClick={() => setExplorer({ initialCareerId: draft.careerPositionId })}><Icon name="eye" /></button>}
+                  <button type="button" className="sr-career-icon sr-career-clear" aria-label="Bỏ chọn nghề nghiệp" title="Bỏ chọn" onClick={() => { setDraft({ ...draft, careerPositionId: "" }); setDraftCareer(null); }}><Icon name="close" /></button>
                 </>}
+              </div>
+              <div className="sr-actions">
+                <button type="button" className="sr-secondary sr-career-choose" onClick={() => setExplorer({})}>Chọn nghề nghiệp</button>
               </div>
             </div>
             <label className="sr-wide">
@@ -167,8 +169,8 @@ export default function StudentProfileEditor({
         <dl className="sr-personal">
           <div>
             <dt>Vị trí nghề nghiệp mong muốn</dt>
-            <dd>
-              {profile.careerPosition ? (
+            <dd className="sr-career-selection">
+              <span>{profile.careerPosition ? (
                 <>
                   {profile.careerPosition.nameVi} —{" "}
                   {profile.careerPosition.nameEn}
@@ -181,11 +183,11 @@ export default function StudentProfileEditor({
                 </>
               ) : (
                 "Chưa chọn vị trí nghề nghiệp."
-              )}
+              )}</span>
+              {profile.careerPositionId && !profile.careerPosition?.deletedAt && <button type="button" className="sr-career-icon" aria-label="Xem yêu cầu nghề nghiệp" title="Xem yêu cầu" onClick={() => setExplorer({ initialCareerId: profile.careerPositionId! })}><Icon name="eye" /></button>}
             </dd>
             <div className="sr-actions">
-              <button type="button" className="sr-secondary" onClick={() => setExplorer({})}>Khám phá nghề nghiệp</button>
-              {profile.careerPositionId && !profile.careerPosition?.deletedAt && <button type="button" className="sr-secondary" onClick={() => setExplorer({ initialCareerId: profile.careerPositionId! })}>Xem yêu cầu nghề đã chọn</button>}
+              <button type="button" className="sr-secondary sr-career-choose" onClick={() => setExplorer({})}>Chọn nghề nghiệp</button>
             </div>
           </div>
           <div>

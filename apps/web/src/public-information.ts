@@ -92,8 +92,8 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
     steps: [
       "Mở Hồ sơ và bảng điểm, tìm dòng Vị trí nghề nghiệp mong muốn trong phần Thông tin cá nhân và bấm Chọn nghề nghiệp.",
       "Chọn một lĩnh vực hoặc nhập tên vị trí, mã hay kỹ năng vào ô Tìm vị trí.",
-      "Mở một vị trí để đọc mô tả và các yêu cầu của nghề đó.",
-      "Bấm Chọn làm mục tiêu nghề nghiệp. Mục tiêu được lưu ngay và hiển thị lại trong hồ sơ."
+      "Bấm Xem yêu cầu ở một vị trí nếu muốn đọc mô tả và các yêu cầu của nghề đó.",
+      "Chọn vị trí trong danh sách rồi bấm Lưu, hoặc bấm Chọn làm mục tiêu nghề nghiệp khi đang xem yêu cầu. Mục tiêu được lưu ngay và hiển thị lại trong hồ sơ."
     ],
     note: "Bạn có thể chọn một mục tiêu khác khi định hướng thay đổi. Dùng nút Xem yêu cầu cạnh mục tiêu để đọc lại yêu cầu của nghề đang chọn. Nếu muốn bỏ chọn, bấm Chỉnh sửa thông tin, bấm nút Bỏ chọn cạnh mục tiêu rồi bấm Lưu thay đổi."
   },

@@ -210,7 +210,7 @@
 .am-outline {
   background: #fff;
   color: #595561;
-  border: 1px solid #d9d6de;
+  border: 1px solid #f4a2a2;
 }
 
 .am-outline:hover {
@@ -649,8 +649,13 @@
   gap: 12px;
 }
 
-.am-form-actions > .am-primary { margin-inline-start: auto; }
-.am-dialog-footer { padding: 0 28px 28px; }
+.am-form-actions>.am-primary {
+  margin-inline-start: auto;
+}
+
+.am-dialog-footer {
+  padding: 0 28px 28px;
+}
 
 .am-create-note {
   padding: 28px;
@@ -1165,12 +1170,40 @@
 
 /* Save and confirm buttons use the plain brand-red .am-primary; these variants
    mark the actions that lock or delete. */
-.am-primary.am-warning { background: #fff1d6; border-color: #dfba76; color: #754707; }
-.am-primary.am-warning:hover:not(:disabled) { background: #ffe5b3; }
-.am-primary.am-delete { background: #b42318; border-color: #b42318; color: #fff; }
-.am-primary.am-delete:hover:not(:disabled) { background: #912018; }
-.am-icon-btn.am-delete-icon { color: #b42318; }
-.am-icon-btn.am-delete-icon:hover:not(:disabled) { background: #fff0ee; }
+.am-primary.am-warning {
+  background: #fff1d6;
+  border-color: #dfba76;
+  color: #754707;
+}
 
-.am-outline.am-tone-danger { color: #b42318; border-color: #efc3bf; background: #fff5f4; }
-.am-outline.am-tone-danger:hover:not(:disabled) { background: #ffe5e2; }
+.am-primary.am-warning:hover:not(:disabled) {
+  background: #ffe5b3;
+}
+
+.am-primary.am-delete {
+  background: #b42318;
+  border-color: #b42318;
+  color: #fff;
+}
+
+.am-primary.am-delete:hover:not(:disabled) {
+  background: #912018;
+}
+
+.am-icon-btn.am-delete-icon {
+  color: #b42318;
+}
+
+.am-icon-btn.am-delete-icon:hover:not(:disabled) {
+  background: #fff0ee;
+}
+
+.am-outline.am-tone-danger {
+  color: #b42318;
+  border-color: #efc3bf;
+  background: #fff5f4;
+}
+
+.am-outline.am-tone-danger:hover:not(:disabled) {
+  background: #ffe5e2;
+}

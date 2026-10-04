@@ -5,6 +5,7 @@ import { careerFailures, requirementLevels, type Career, type CareerField, type 
 import "./student-careers.css";
 
 const endpoint = "/api/student/careers";
+type CareerChoice = Pick<Career, "id" | "nameVi" | "nameEn">;
 async function readCareerResponse<T>(response: Response): Promise<T> {
   const body = await response.json();
   if (!response.ok) {
@@ -19,13 +20,15 @@ function useCareerData<T>(url: string) {
 }
 
 export default function StudentCareerExplorer({ selectedId, initialCareerId, onSelect, onClose }: {
-  selectedId: string; initialCareerId?: string; onSelect: (career: StudentCareerDetail) => Promise<void>; onClose: () => void;
+  selectedId: string; initialCareerId?: string; onSelect: (career: CareerChoice) => Promise<void>; onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const selectCareer = async (career: StudentCareerDetail) => {
+  const [pendingCareer, setPendingCareer] = useState<CareerChoice | null>(null);
+  const highlightedId = pendingCareer?.id ?? selectedId;
+  const selectCareer = async (career: CareerChoice) => {
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
@@ -59,36 +62,42 @@ export default function StudentCareerExplorer({ selectedId, initialCareerId, onS
         <button type="button" className="sr-secondary" disabled={saving} onClick={() => { setSaveError(""); setDetailId(""); }}>← Danh sách vị trí</button>
         <CareerDetail key={detailId} id={detailId} selectedId={selectedId} saving={saving} saveError={saveError} onSelect={career => void selectCareer(career)} onClose={onClose} />
       </> : <>
-        <p>Xem lĩnh vực, vị trí và các yêu cầu để chọn mục tiêu nghề nghiệp phù hợp với bạn.</p>
+        <p>Chọn một vị trí trong danh sách rồi bấm Lưu để đặt mục tiêu nghề nghiệp. Bạn có thể xem yêu cầu để tìm hiểu thêm trước khi chọn.</p>
         <details className="sr-career-fields">
           <summary>Lĩnh vực nghề nghiệp</summary>
           {fields.data && <div className="sr-career-field-grid">{fields.data.items.map(field => <article key={field.id}>
             <h3>{field.name}</h3><p>{field.description || "Khám phá các vị trí trong lĩnh vực này."}</p>
-            <button type="button" className="sr-secondary" aria-label={`Xem vị trí thuộc ${field.name}`} onClick={() => setDraft({ q: "", category: field.code })}>Xem vị trí</button>
+            <button type="button" className="sr-secondary" disabled={saving} aria-label={`Xem vị trí thuộc ${field.name}`} onClick={() => setDraft({ q: "", category: field.code })}>Xem vị trí</button>
           </article>)}</div>}
           {fields.data && !fields.data.items.length && <p>Chưa có lĩnh vực nghề nghiệp.</p>}
         </details>
         <div className="sr-table-filters sr-career-filters">
-          <label>Tìm vị trí<input value={draft.q} maxLength={200} placeholder="Tên Việt/Anh, mã hoặc kỹ năng…" onChange={event => setDraft({ ...draft, q: event.target.value })} /></label>
-          <label>Lĩnh vực<select value={draft.category} onChange={event => setDraft({ ...draft, category: event.target.value })}>
+          <label>Tìm vị trí<input value={draft.q} disabled={saving} maxLength={200} placeholder="Tên Việt/Anh, mã hoặc kỹ năng…" onChange={event => setDraft({ ...draft, q: event.target.value })} /></label>
+          <label>Lĩnh vực<select value={draft.category} disabled={saving} onChange={event => setDraft({ ...draft, category: event.target.value })}>
             <option value="">Tất cả lĩnh vực</option>{fields.data?.items.map(field => <option key={field.id} value={field.code}>{field.name}</option>)}
           </select></label>
-          <button type="button" className="sr-secondary" onClick={reset}>Xóa bộ lọc</button>
+          <button type="button" className="sr-secondary" disabled={saving} onClick={reset}>Xóa bộ lọc</button>
         </div>
         {!fields.data && <CareerStatus {...fields} />}
         <CareerStatus {...careers} />
         {careers.data && <>
           <p className="sw-muted" role="status">{careers.data.items.length} vị trí nghề nghiệp</p>
-          <div className="sr-career-list">{careers.data.items.slice((page - 1) * 10, page * 10).map(career => <article key={career.id}>
-            <div><h3>{career.nameVi}</h3><p>{career.nameEn}</p><small>{fields.data?.items.find(field => field.code === career.category)?.name ?? career.categoryName ?? career.category}</small>
-              {career.id === selectedId && <span className="sr-career-selected">Mục tiêu đã chọn</span>}
-            </div>
-            <button type="button" className="sr-secondary" onClick={() => setDetailId(career.id)}>Xem yêu cầu</button>
+          <div className="sr-career-list" role="radiogroup" aria-label="Chọn mục tiêu nghề nghiệp">{careers.data.items.slice((page - 1) * 10, page * 10).map(career => <article key={career.id} className={career.id === highlightedId ? "sr-career-card-selected" : undefined}>
+            <label className="sr-career-option">
+              <input type="radio" name="student-career-choice" value={career.id} checked={career.id === highlightedId} disabled={saving} aria-label={`${career.nameVi} — ${career.nameEn}`} onChange={() => { setPendingCareer(career); setSaveError(""); }} />
+              <span className="sr-career-option-info"><strong>{career.nameVi}</strong><span>{career.nameEn}</span><small>{fields.data?.items.find(field => field.code === career.category)?.name ?? career.categoryName ?? career.category}</small>
+                {career.id === selectedId && <span className="sr-career-selected">Mục tiêu đã lưu</span>}
+                {career.id === pendingCareer?.id && career.id !== selectedId && <span className="sr-career-staged">Đang chọn</span>}
+              </span>
+            </label>
+            <button type="button" className="sr-secondary" disabled={saving} onClick={() => setDetailId(career.id)}>Xem yêu cầu</button>
           </article>)}</div>
           {!careers.data.items.length && <p>Không có vị trí phù hợp với bộ lọc.</p>}
-          {pages > 1 && <div className="sr-career-pagination"><button type="button" className="sr-secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>Trước</button><span>Trang {page} / {pages}</span><button type="button" className="sr-secondary" disabled={page >= pages} onClick={() => setPage(page + 1)}>Sau</button></div>}
+          {pages > 1 && <div className="sr-career-pagination"><button type="button" className="sr-secondary" disabled={saving || page <= 1} onClick={() => setPage(page - 1)}>Trước</button><span>Trang {page} / {pages}</span><button type="button" className="sr-secondary" disabled={saving || page >= pages} onClick={() => setPage(page + 1)}>Sau</button></div>}
         </>}
-        <div className="sr-actions sr-form-actions"><button type="button" className="sr-secondary" onClick={onClose}>Đóng</button></div>
+        {pendingCareer && <p className="sr-career-choice-summary" role="status">Đang chọn: <strong>{pendingCareer.nameVi} — {pendingCareer.nameEn}</strong></p>}
+        {saveError && <p className="sr-error" role="alert">{saveError}</p>}
+        <div className="sr-actions sr-form-actions"><button type="button" className="sr-secondary" disabled={saving} onClick={onClose}>Hủy</button><button type="button" className="sw-primary" disabled={saving || !pendingCareer || pendingCareer.id === selectedId} onClick={() => { if (pendingCareer) void selectCareer(pendingCareer); }}>{saving ? "Đang lưu…" : "Lưu"}</button></div>
       </>}
     </div>
   </dialog>;
