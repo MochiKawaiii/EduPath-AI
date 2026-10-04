@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, Pagination, Status, useData } from "./admin-ui";
+import { ActionMenu, Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import { careerRequest, requirementLevels, type Career, type CareerRequirement, type CareerSkill } from "./career-types";
@@ -23,7 +23,7 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
       <div><h3>Yêu cầu và kỹ năng</h3><p>Các yêu cầu áp dụng cho {career.nameVi}.</p></div>
       {canManage && <div className="cm-actions">
         <button className="am-outline" onClick={() => start("other")}><Icon name="plus" /> Thêm yêu cầu</button>
-        <button className="am-primary" onClick={() => start("skill")}><Icon name="plus" /> Liên kết kỹ năng</button>
+        <button className="am-primary" onClick={() => start("skill")}><Icon name="plus" /> Thêm kỹ năng liên kết</button>
       </div>}
     </div>
     <section className="cm-panel">
@@ -50,13 +50,13 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
           <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map(item => <tr key={item.id}>
             <td><strong>{item.title}</strong><small className="career-requirement-summary">{item.description || "Chưa bổ sung mô tả"}</small></td>
             <td>{item.skillName || "—"}</td><td>{requirementLevels[item.level]}</td><td>{item.isRequired ? "Bắt buộc" : "Ưu tiên"}</td>
-            <td><div className="career-row-actions">
-              <button className="am-outline" onClick={() => { setSelected(item); setMode("detail"); }}><Icon name="eye" /> Chi tiết</button>
-              {canManage && <>
-                <button className="am-icon-btn" title="Chỉnh sửa" aria-label={`Chỉnh sửa ${item.title}`} onClick={() => { setSelected(item); setKind(item.skillId ? "skill" : "other"); setMode("edit"); }}><Icon name="edit" /></button>
-                <button className="am-icon-btn am-delete-icon" title="Xóa" aria-label={`Xóa ${item.title}`} onClick={() => { setSelected(item); setMode("delete"); }}><Icon name="trash" /></button>
-              </>}
-            </div></td>
+            <td><ActionMenu label={`Thao tác với yêu cầu ${item.title}`} items={[
+              { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => { setSelected(item); setMode("detail"); } },
+              ...(canManage ? [
+                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(item); setKind(item.skillId ? "skill" : "other"); setMode("edit"); } },
+                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(item); setMode("delete"); } },
+              ] : []),
+            ]} /></td>
           </tr>)}</tbody>
         </table></div>
         {!remote.data.items.length && <p className="am-empty">Không có yêu cầu phù hợp với bộ lọc.</p>}

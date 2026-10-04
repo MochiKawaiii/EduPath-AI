@@ -1,27 +1,24 @@
 import { useState } from "react";
-import { Modal, Pagination, Status } from "./admin-ui";
+import { ActionMenu, Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { careerRequest, type CareerField } from "./career-types";
 import { searchTerm } from "./student-curriculum-types";
+import "./curricula.css";
+import "./careers.css";
 
 const endpoint = "/api/admin/careers/fields";
 
-export default function CareerFieldsManagement({ canManage, remote, saved, onClose }: {
-  canManage: boolean;
-  remote: { data: { items: CareerField[] } | null; loading: boolean; error: string | null; retry: () => void };
-  saved: () => void;
-  onClose: () => void;
-}) {
+export default function CareerFieldsManagement({ canManage }: { canManage: boolean }) {
+  const [revision, setRevision] = useState(0);
+  const remote = useData<{ items: CareerField[] }>(endpoint, revision);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<CareerField | null>(null);
-  const [mode, setMode] = useState<"edit" | "delete" | null>(null);
+  const [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
   const close = () => { setMode(null); setSelected(null); };
-  const onSaved = () => { close(); saved(); };
+  const onSaved = () => { close(); setRevision(value => value + 1); };
   const items = remote.data?.items.filter(field => searchTerm(`${field.code} ${field.name} ${field.description}`).includes(searchTerm(query))) ?? [];
-  if (canManage && mode === "edit") return <FieldEditor current={selected} close={close} saved={onSaved} />;
-  if (canManage && mode === "delete" && selected) return <FieldDelete current={selected} close={close} saved={onSaved} />;
-  return <Modal title="Lĩnh vực nghề nghiệp" onClose={onClose}><div className="cm-dialog-body career-field-dialog">
+  return <section className="cm-workspace career-workspace">
     <div className="cm-toolbar">
       <p>Quản lý lĩnh vực để phân nhóm các vị trí nghề nghiệp.</p>
       {canManage && <button className="am-primary" onClick={() => { setSelected(null); setMode("edit"); }}><Icon name="plus" /> Thêm lĩnh vực</button>}
@@ -34,22 +31,39 @@ export default function CareerFieldsManagement({ canManage, remote, saved, onClo
       <Status {...remote} />
       {remote.data && <>
         <div className="cm-table-scroll"><table className="cm-table">
-          <thead><tr><th>Lĩnh vực nghề nghiệp</th><th>Mô tả</th>{canManage && <th>Thao tác</th>}</tr></thead>
+          <thead><tr><th>Lĩnh vực nghề nghiệp</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
           <tbody>{items.slice((page - 1) * 10, page * 10).map(field => <tr key={field.id}>
             <td><strong>{field.name}</strong><small>{field.code}</small></td>
             <td className="career-description">{field.description || "Chưa bổ sung"}</td>
-            {canManage && <td><div className="career-row-actions">
-              <button className="am-outline" onClick={() => { setSelected(field); setMode("edit"); }}><Icon name="edit" /> Chỉnh sửa</button>
-              <button className="am-icon-btn am-delete-icon" aria-label={`Xóa lĩnh vực ${field.name}`} title="Xóa lĩnh vực" onClick={() => { setSelected(field); setMode("delete"); }}><Icon name="trash" /></button>
-            </div></td>}
+            <td><ActionMenu label={`Thao tác với lĩnh vực ${field.name}`} items={[
+              { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => { setSelected(field); setMode("detail"); } },
+              ...(canManage ? [
+                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(field); setMode("edit"); } },
+                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(field); setMode("delete"); } },
+              ] : []),
+            ]} /></td>
           </tr>)}</tbody>
         </table></div>
         {!items.length && <p className="am-empty">Không có lĩnh vực phù hợp.</p>}
         <Pagination total={items.length} page={page} setPage={setPage} />
       </>}
     </section>
-    <div className="cm-actions cm-dialog-actions"><button type="button" className="am-outline" onClick={onClose}><Icon name="close" /> Đóng</button></div>
-  </div></Modal>;
+    {mode === "detail" && selected && <Modal title="Chi tiết lĩnh vực nghề nghiệp" onClose={close}>
+      <div className="cm-dialog-body cm-form career-detail">
+        <dl>
+          <div><dt>Mã lĩnh vực</dt><dd>{selected.code}</dd></div>
+          <div><dt>Tên lĩnh vực</dt><dd>{selected.name}</dd></div>
+          <div><dt>Mô tả</dt><dd className="career-description">{selected.description || "Chưa bổ sung mô tả."}</dd></div>
+        </dl>
+        <div className="cm-actions cm-dialog-actions">
+          <button className="am-outline" onClick={close}><Icon name="close" /> Đóng</button>
+          {canManage && <button className="am-primary" onClick={() => setMode("edit")}><Icon name="edit" /> Chỉnh sửa</button>}
+        </div>
+      </div>
+    </Modal>}
+    {canManage && mode === "edit" && <FieldEditor current={selected} close={close} saved={onSaved} />}
+    {canManage && mode === "delete" && selected && <FieldDelete current={selected} close={close} saved={onSaved} />}
+  </section>;
 }
 
 function FieldEditor({ current, close, saved }: { current: CareerField | null; close: () => void; saved: () => void }) {

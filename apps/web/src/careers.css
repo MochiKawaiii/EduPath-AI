@@ -34,7 +34,6 @@
 .career-detail-panel h2,
 .career-workspace .cm-toolbar h3 { margin: 0 0 8px; }
 .career-detail-panel dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.career-field-dialog { display: grid; gap: 20px; }
 .career-detail dd {
   margin: 6px 0 0;
   font-weight: 600;

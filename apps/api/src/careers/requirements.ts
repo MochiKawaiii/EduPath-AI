@@ -3,7 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
-import { access, CareerError, fold } from "./shared.js";
+import { access, CareerError, fold, lockSkillCatalog } from "./shared.js";
 
 const levels = ["unspecified", "basic", "intermediate", "advanced"] as const;
 const input = z.object({
@@ -29,20 +29,20 @@ async function lockCareers(client: PoolClient, ids: string[]) {
 }
 async function skillFor(client: PoolClient, data: { skillId: string | null; skillName: string }) {
   if (data.skillId) {
-    const found = await client.query("SELECT id FROM career_skills WHERE id=$1", [data.skillId]);
+    const found = await client.query("SELECT id FROM career_skills WHERE id=$1 AND deleted_at IS NULL FOR SHARE", [data.skillId]);
     if (!found.rowCount) throw new CareerError("skill_not_found", 404);
     return data.skillId;
   }
   if (!data.skillName) return null;
   const skill = await client.query<{ id: string }>(`INSERT INTO career_skills(name) VALUES($1)
-    ON CONFLICT ((lower(name))) DO UPDATE SET name=career_skills.name RETURNING id`, [data.skillName]);
+    ON CONFLICT ((lower(name))) WHERE deleted_at IS NULL DO UPDATE SET name=career_skills.name RETURNING id`, [data.skillName]);
   return skill.rows[0]!.id;
 }
-async function refreshCareerSkills(client: PoolClient, id: string) {
+export async function refreshCareerSkills(client: PoolClient, id: string) {
   const career = await client.query<{ code: string; name_vi: string; name_en: string; description: string }>(
     "SELECT code,name_vi,name_en,description FROM career_positions WHERE id=$1", [id]);
   const skills = await client.query<{ name: string }>(`SELECT s.name FROM career_requirements r JOIN career_skills s ON s.id=r.skill_id
-    WHERE r.career_position_id=$1 AND r.deleted_at IS NULL ORDER BY s.name,s.id`, [id]);
+    WHERE r.career_position_id=$1 AND r.deleted_at IS NULL AND s.deleted_at IS NULL ORDER BY s.name,s.id`, [id]);
   const row = career.rows[0]!;
   const names = skills.rows.map(skill => skill.name);
   await client.query("UPDATE career_positions SET skills=$2,search_text=$3,version=$4,updated_at=now() WHERE id=$1",
@@ -67,7 +67,7 @@ export function createCareerRequirementsRouter(pool: DatabasePool) {
   const router = Router();
   router.get("/skills", async (req, res) => {
     z.object({}).strict().parse(req.query);
-    const skills = await pool.query("SELECT id,name FROM career_skills ORDER BY name,id");
+    const skills = await pool.query("SELECT id,name FROM career_skills WHERE deleted_at IS NULL ORDER BY name,id");
     res.json({ items: skills.rows });
   });
   router.get("/", async (req, res) => {
@@ -106,6 +106,7 @@ export function createCareerRequirementsRouter(pool: DatabasePool) {
       try {
         await client.query("BEGIN");
         await access(client, req.session.user!, true, false, true);
+        await lockSkillCatalog(client);
         const existing = method === "post" ? null : (await client.query<{ career_position_id: string }>(
           "SELECT career_position_id FROM career_requirements WHERE id=$1 AND version=$2 AND deleted_at IS NULL", [id, version])).rows[0];
         if (method !== "post" && !existing) throw new CareerError("requirement_changed", 409);

@@ -6,6 +6,10 @@ export const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\
 export class CareerError extends Error {
   constructor(readonly code: string, readonly status = 400) { super(code); }
 }
+/** Serialize skill renames/deletions with link writes before taking career row locks. */
+export async function lockSkillCatalog(client: PoolClient) {
+  await client.query("SELECT pg_advisory_xact_lock(1946032027)");
+}
 export async function access(client: DatabasePool | PoolClient, actor: AuthenticatedUser, _write: boolean, student = false, lock = false) {
   const row = await client.query(
     `SELECT id FROM users WHERE id=$1 AND entra_tenant_id=$2 AND is_active

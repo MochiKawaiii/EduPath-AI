@@ -7,8 +7,9 @@ import {
   requireAdminAccess,
   requireAuthentication,
 } from "../middleware/authorization.js";
-import { access, CareerError, fold } from "./shared.js";
+import { access, CareerError, fold, lockSkillCatalog } from "./shared.js";
 import { createCareerRequirementsRouter, syncLegacySkillLinks } from "./requirements.js";
+import { createCareerSkillsRouter } from "./skills.js";
 export { fold } from "./shared.js";
 const fieldCode = z.string().trim().min(1).max(60).regex(/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/);
 const fieldDetails = z.object({
@@ -160,6 +161,7 @@ export function createCareersRouter(
   }
   if (!student) {
     router.use("/requirements", createCareerRequirementsRouter(pool!));
+    router.use("/skills", createCareerSkillsRouter(pool!));
     router.get("/:id", async (req, res) => {
       const row = await pool!.query(
         `SELECT ${columns},(SELECT f.name FROM career_fields f WHERE f.code=c.category) AS "categoryName",
@@ -176,6 +178,7 @@ export function createCareersRouter(
       try {
         await client.query("BEGIN");
         await access(client, req.session.user!, true, false, true);
+        await lockSkillCatalog(client);
         await requireField(client, data.category);
         const row = await client.query(
           `INSERT INTO career_positions(code,name_vi,name_en,category,description,skills,search_text) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING ${columns}`,
@@ -215,6 +218,7 @@ export function createCareersRouter(
       try {
         await client.query("BEGIN");
         await access(client, req.session.user!, true, false, true);
+        await lockSkillCatalog(client);
         await requireField(client, data.category);
         const row = await client.query(
           `UPDATE career_positions SET code=$3,name_vi=$4,name_en=$5,category=$6,description=$7,skills=COALESCE($8::text[],skills),search_text=$9,version=$10,updated_at=now() WHERE id=$1 AND version=$2 AND deleted_at IS NULL RETURNING ${columns}`,
@@ -283,11 +287,11 @@ export function createCareersRouter(
       return;
     }
     if (e instanceof z.ZodError) {
-      res.status(400).json({ error: _req.path.startsWith("/requirements") ? "invalid_requirement" : _req.path.startsWith("/fields") ? "invalid_field" : "invalid_career" });
+      res.status(400).json({ error: _req.path.startsWith("/skills") ? "invalid_skill" : _req.path.startsWith("/requirements") ? "invalid_requirement" : _req.path.startsWith("/fields") ? "invalid_field" : "invalid_career" });
       return;
     }
     if (e.code === "23505") {
-      res.status(409).json({ error: _req.path.startsWith("/requirements") ? "requirement_exists" : _req.path.startsWith("/fields") ? "field_exists" : "career_exists" });
+      res.status(409).json({ error: _req.path.startsWith("/skills") ? "skill_exists" : _req.path.startsWith("/requirements") ? "requirement_exists" : _req.path.startsWith("/fields") ? "field_exists" : "career_exists" });
       return;
     }
     next(e);

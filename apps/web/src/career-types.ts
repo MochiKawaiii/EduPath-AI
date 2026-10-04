@@ -31,6 +31,7 @@ export const requirementLevels = {
   advanced: "Nâng cao",
 };
 export type CareerSkill = { id: string; name: string };
+export type ManagedCareerSkill = CareerSkill & { description: string; version: string; careerCount: number };
 export type CareerRequirement = {
   id: string;
   careerPositionId: string;
@@ -55,6 +56,10 @@ export const careerFailures: Record<string, string> = {
   requirement_not_found: "Yêu cầu không còn trong danh mục.",
   invalid_requirement: "Thông tin chưa hợp lệ. Kiểm tra nghề nghiệp, nội dung, kỹ năng và mức yêu cầu.",
   skill_not_found: "Kỹ năng không còn trong danh mục. Hãy tải lại và chọn lại.",
+  skill_exists: "Tên kỹ năng đã tồn tại. Hãy dùng tên khác.",
+  skill_changed: "Kỹ năng đã được cập nhật hoặc xóa. Đóng hộp thoại và tải lại trước khi lưu.",
+  skill_in_use: "Kỹ năng còn liên kết với nghề nghiệp. Hãy gỡ các liên kết trước khi xóa kỹ năng.",
+  invalid_skill: "Thông tin chưa hợp lệ. Kiểm tra tên và mô tả kỹ năng.",
   field_exists: "Mã hoặc tên lĩnh vực đã tồn tại. Hãy dùng thông tin khác.",
   field_changed: "Lĩnh vực đã được cập nhật hoặc xóa. Đóng hộp thoại và tải lại trước khi lưu.",
   field_in_use: "Lĩnh vực còn vị trí nghề nghiệp đang sử dụng. Hãy chuyển hoặc xóa các vị trí đó trước khi xóa lĩnh vực.",

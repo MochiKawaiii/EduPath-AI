@@ -1,5 +1,5 @@
 // Integration checks use a disposable schema on the configured LOCAL database only.
-// They exercise migrations 014-016 and the real compiled admin/student routers.
+// They exercise career migrations and the real compiled admin/student routers.
 import { readFile } from "node:fs/promises";
 import { randomBytes, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
@@ -111,6 +111,8 @@ try {
   await pool.query(fieldsMigration.replaceAll("public.", `${schema}.`));
   const requirementsMigration = await readFile("apps/api/migrations/016_career_requirements.sql", "utf8");
   await pool.query(requirementsMigration.replaceAll("public.", `${schema}.`));
+  const skillsMigration = await readFile("apps/api/migrations/019_career_skill_management.sql", "utf8");
+  await pool.query(skillsMigration.replaceAll("public.", `${schema}.`));
   await pool.query(
     "INSERT INTO users(id,entra_tenant_id,entra_object_id,entra_subject,display_name,email,username,role) VALUES($1,$2,$3,$4,$5,$6,$7,'admin'),($8,$2,$9,$10,$11,$12,$13,'student')",
     [
@@ -822,6 +824,72 @@ try {
   assert.equal(profileRow.career_position_id, null);
   assert.equal(profileRow.career_goal, "Legacy free-text goal");
   checks.push("student may retain a previously selected deleted career, rejects a newly deleted one, and can clear it without losing free text");
+
+  // Skill catalog CRUD, shared-name synchronization, and safe deletion on real PostgreSQL.
+  result = await api("/careers", "/skills", "POST", { name: "Audit kỹ năng", description: "Kỹ năng quản lý riêng." });
+  assert.equal(result.status, 201);
+  let managedSkill = result.body;
+  assert.equal(managedSkill.careerCount, 0);
+  assert.equal((await api("/careers", "/skills?q=audit%20ky%20nang")).body.items[0].id, managedSkill.id);
+  assert.equal((await api("/careers", "/skills", "POST", { name: "AUDIT KỸ NĂNG", description: "" })).body.error, "skill_exists");
+  const skillCareer = (await api("/careers")).body.items[0];
+  const linkedInput = { careerPositionId: skillCareer.id, title: managedSkill.name, description: "Keep link metadata", skillId: managedSkill.id, skillName: "", level: "advanced", isRequired: true };
+  const managedLink = await api("/careers", "/requirements", "POST", linkedInput);
+  assert.equal(managedLink.status, 201);
+  assert.equal((await api("/careers", `/skills/${managedSkill.id}`, "DELETE", { confirmed: true }, { "x-version": managedSkill.version })).body.error, "skill_in_use");
+  const oldVersion = managedSkill.version;
+  result = await api("/careers", `/skills/${managedSkill.id}`, "PATCH", { name: "Audit kỹ năng mới", description: "Đã cập nhật" }, { "x-version": oldVersion });
+  assert.equal(result.status, 200);
+  managedSkill = result.body;
+  assert.equal(managedSkill.careerCount, 1);
+  assert.notEqual(managedSkill.version, oldVersion);
+  assert.equal((await api("/careers", `/skills/${managedSkill.id}`, "PATCH", { name: "Stale", description: "" }, { "x-version": oldVersion })).body.error, "skill_changed");
+  result = await api("/careers", `/requirements/${managedLink.body.id}`);
+  assert.equal(result.body.skillName, managedSkill.name);
+  assert.equal(result.body.title, managedSkill.name);
+  assert.equal(result.body.level, "advanced");
+  assert.equal(result.body.isRequired, true);
+  assert.equal(result.body.description, "Keep link metadata");
+  assert.notEqual(result.body.version, managedLink.body.version);
+  const latestLink = result.body;
+  assert((await api("/careers", `/${skillCareer.id}`)).body.skills.includes(managedSkill.name));
+  assert((await api("/careers", "?q=" + encodeURIComponent(managedSkill.name))).body.items.some(c => c.id === skillCareer.id));
+  assert((await api("/student-careers", `/${skillCareer.id}`, "GET", undefined, { "x-role": "student" })).body.requirements.some(r => r.skillName === managedSkill.name));
+  assert((await api("/careers", "/requirements/skills")).body.items.some(s => s.id === managedSkill.id && s.name === managedSkill.name));
+  result = await api("/careers", `/requirements/${latestLink.id}`, "PATCH", { ...linkedInput, title: "Custom requirement title" }, { "x-version": latestLink.version });
+  assert.equal(result.status, 200);
+  result = await api("/careers", `/skills/${managedSkill.id}`, "PATCH", { name: "Audit renamed again", description: "" }, { "x-version": managedSkill.version });
+  assert.equal(result.status, 200);
+  managedSkill = result.body;
+  const customLink = (await api("/careers", `/requirements/${latestLink.id}`)).body;
+  assert.equal(customLink.title, "Custom requirement title", "rename preserves custom requirement titles");
+  assert.equal(customLink.skillName, managedSkill.name);
+  assert.equal((await api("/careers", `/requirements/${customLink.id}`, "DELETE", { confirmed: true }, { "x-version": customLink.version })).status, 200);
+  assert.equal((await api("/careers", `/skills/${managedSkill.id}`, "DELETE", { confirmed: true }, { "x-version": managedSkill.version })).status, 200);
+  assert(!(await api("/careers", "/requirements/skills")).body.items.some(s => s.id === managedSkill.id));
+  assert(!(await api("/careers", "/skills")).body.items.some(s => s.id === managedSkill.id));
+  assert((await pool.query("SELECT deleted_at FROM career_skills WHERE id=$1", [managedSkill.id])).rows[0].deleted_at);
+  assert.equal((await api("/careers", "/requirements", "POST", linkedInput)).body.error, "skill_not_found");
+  assert.equal((await api("/careers", "/skills", "POST", { name: managedSkill.name, description: "New active skill" })).status, 201);
+  checks.push("skill catalog CRUD preserves existing seeds, rejects duplicates and stale writes, synchronizes names/search/cache/student requirements, preserves custom titles and levels, blocks occupied deletion and retains history");
+
+  const raceSkill = (await api("/careers", "/skills", "POST", { name: "Audit concurrent skill", description: "" })).body;
+  const raceInput = { ...linkedInput, skillId: raceSkill.id, title: "Concurrent link" };
+  const [raceLink, raceDelete] = await Promise.all([
+    api("/careers", "/requirements", "POST", raceInput),
+    api("/careers", `/skills/${raceSkill.id}`, "DELETE", { confirmed: true }, { "x-version": raceSkill.version }),
+  ]);
+  assert((raceLink.status === 201 && raceDelete.status === 409) || (raceLink.status === 404 && raceDelete.status === 200), "concurrent delete/link must never leave an active link to a deleted skill");
+  const renameSkill = (await api("/careers", "/skills", "POST", { name: "Audit concurrent rename", description: "" })).body;
+  const [raceRename, renameLink] = await Promise.all([
+    api("/careers", `/skills/${renameSkill.id}`, "PATCH", { name: "Audit concurrent renamed", description: "" }, { "x-version": renameSkill.version }),
+    api("/careers", "/requirements", "POST", { ...linkedInput, skillId: renameSkill.id, title: "Concurrent rename link" }),
+  ]);
+  assert.equal(raceRename.status, 200);
+  assert.equal(renameLink.status, 201);
+  assert((await api("/careers", `/${skillCareer.id}`)).body.skills.includes("Audit concurrent renamed"));
+  assert(!(await api("/careers", `/${skillCareer.id}`)).body.skills.includes("Audit concurrent rename"));
+  checks.push("concurrent skill deletion/linking and renaming/linking preserve references and career cache consistency");
 
   const publicAfter = await publicSnapshot();
   assert.deepEqual(publicAfter, publicBefore);

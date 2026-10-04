@@ -32,6 +32,7 @@ export type MenuEntry = { key: string; icon: string; label: string; danger?: boo
 export function ActionMenu({ label, items, note }: { label: string; items: MenuEntry[]; note?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
+  const positioned = place !== null;
   const trigger = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -57,8 +58,11 @@ export function ActionMenu({ label, items, note }: { label: string; items: MenuE
     return () => { window.removeEventListener("resize", position); window.removeEventListener("scroll", position, true); };
   }, [open]);
   useEffect(() => {
+    // Wait until the measured menu is visible before focusing an item.
+    if (open && positioned) popup.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus();
+  }, [open, positioned]);
+  useEffect(() => {
     if (!open) return;
-    popup.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus();
     const away = (event: Event) => { const target = event.target as Node; if (!popup.current?.contains(target) && !trigger.current?.contains(target)) setOpen(false); };
     const keyed = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); trigger.current?.focus(); } };
     document.addEventListener("pointerdown", away, true);

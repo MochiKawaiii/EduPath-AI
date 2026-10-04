@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Modal, Pagination, Status, useData } from "./admin-ui";
+import { ActionMenu, Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import { careerRequest, type Career, type CareerField } from "./career-types";
-import CareerFieldsManagement from "./CareerFieldsManagement";
 import CareerRequirementsManagement from "./CareerRequirementsManagement";
+import CareerLinksManagement from "./CareerLinksManagement";
 import "./curricula.css";
 import "./careers.css";
 const endpoint = "/api/admin/careers";
@@ -14,7 +14,7 @@ export default function CareersManagement({
   canManage: boolean;
 }) {
   const [revision, setRevision] = useState(0),
-    [fieldsOpen, setFieldsOpen] = useState(false),
+    [linksOpen, setLinksOpen] = useState(false),
     [detailId, setDetailId] = useState<string | null>(null),
     [selected, setSelected] = useState<Career | null>(null),
     [mode, setMode] = useState<"edit" | "delete" | null>(null);
@@ -43,11 +43,11 @@ export default function CareersManagement({
   };
   return (
     <section className="cm-workspace career-workspace">
-      {detailId ? <Detail key={detailId} id={detailId} fields={fields.data?.items ?? []} revision={revision} canManage={canManage} close={() => setDetailId(null)} saved={() => setRevision(current => current + 1)} edit={career => { setSelected(career); setMode("edit"); }} /> : <>
+      {linksOpen ? <CareerLinksManagement canManage={canManage} revision={revision} saved={() => setRevision(current => current + 1)} close={() => setLinksOpen(false)} /> : detailId ? <Detail key={detailId} id={detailId} fields={fields.data?.items ?? []} revision={revision} close={() => setDetailId(null)} /> : <>
       <div className="cm-toolbar">
         <p>Danh mục nghề nghiệp song ngữ để sinh viên lựa chọn định hướng.</p>
         <div className="cm-actions">
-          <button className="am-outline" onClick={() => setFieldsOpen(true)}><Icon name="book" /> {canManage ? "Quản lý lĩnh vực" : "Xem lĩnh vực"}</button>
+        {canManage && <button className="am-primary" onClick={() => setLinksOpen(true)}><Icon name="plus" /> Kỹ năng liên kết</button>}
         {canManage && (
           <button
             className="am-primary"
@@ -118,43 +118,16 @@ export default function CareersManagement({
                           {c.skills.slice(0, 3).join(" · ") || "Chưa bổ sung"}
                         </td>
                         <td>
-                          <div className="career-row-actions">
-                            <button
-                              className="am-outline"
-                              onClick={() => {
-                                setDetailId(c.id);
-                              }}
-                            >
-                              <Icon name="eye" />
-                              Chi tiết
-                            </button>
-                            {canManage && (
-                              <>
-                                <button
-                                  className="am-icon-btn"
-                                  aria-label={`Sửa ${c.nameVi}`}
-                                  title="Sửa vị trí"
-                                  onClick={() => {
-                                    setSelected(c);
-                                    setMode("edit");
-                                  }}
-                                >
-                                  <Icon name="edit" />
-                                </button>
-                                <button
-                                  className="am-icon-btn am-delete-icon"
-                                  aria-label={`Xóa ${c.nameVi}`}
-                                  title="Xóa vị trí"
-                                  onClick={() => {
-                                    setSelected(c);
-                                    setMode("delete");
-                                  }}
-                                >
-                                  <Icon name="trash" />
-                                </button>
-                              </>
-                            )}
-                          </div>
+                          <ActionMenu
+                            label={`Thao tác với ${c.nameVi}`}
+                            items={[
+                              { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => setDetailId(c.id) },
+                              ...(canManage ? [
+                                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(c); setMode("edit"); } },
+                                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(c); setMode("delete"); } },
+                              ] : []),
+                            ]}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -173,9 +146,8 @@ export default function CareersManagement({
         )}
       </section>
       </>}
-      {fieldsOpen && <CareerFieldsManagement canManage={canManage} remote={fields} saved={() => setRevision(current => current + 1)} onClose={() => setFieldsOpen(false)} />}
       {mode === "edit" && (
-        <Editor current={selected} fields={fields.data?.items ?? []} close={close} saved={career => { if (!selected) setDetailId(career.id); saved(); }} />
+        <Editor current={selected} fields={fields.data?.items ?? []} close={close} saved={saved} />
       )}
       {mode === "delete" && selected && (
         <Delete current={selected} close={close} saved={saved} />
@@ -183,7 +155,7 @@ export default function CareersManagement({
     </section>
   );
 }
-function Detail({ id, fields, close, revision, saved, canManage, edit }: { id: string; fields: CareerField[]; close: () => void; revision: number; saved: () => void; canManage: boolean; edit: (career: Career) => void }) {
+function Detail({ id, fields, close, revision }: { id: string; fields: CareerField[]; close: () => void; revision: number }) {
   const remote = useData<Career>(`${endpoint}/${id}`, revision);
   const [lastCareer, setLastCareer] = useState<Career | null>(null);
   useEffect(() => { if (remote.data) setLastCareer(remote.data); }, [remote.data]);
@@ -195,7 +167,7 @@ function Detail({ id, fields, close, revision, saved, canManage, edit }: { id: s
         <Status {...remote} />
         {remote.data && (
           <>
-            <div className="cm-toolbar"><div><h2>{remote.data.nameVi}</h2><p>{remote.data.nameEn}</p></div>{canManage && <button className="am-outline" onClick={() => edit(remote.data!)}><Icon name="edit" /> Chỉnh sửa vị trí</button>}</div>
+            <div className="cm-toolbar"><div><h2>{remote.data.nameVi}</h2><p>{remote.data.nameEn}</p></div></div>
             <dl>
               <div>
                 <dt>Mã vị trí</dt>
@@ -217,7 +189,7 @@ function Detail({ id, fields, close, revision, saved, canManage, edit }: { id: s
           </>
         )}
       </section>
-      {career && !remote.error && <CareerRequirementsManagement canManage={canManage} career={career} revision={revision} saved={saved} />}
+      {career && !remote.error && <CareerRequirementsManagement canManage={false} career={career} revision={revision} saved={() => {}} />}
     </>
   );
 }
@@ -334,7 +306,7 @@ function Editor({
               }
             />
           </label>
-          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng trong phần chi tiết của vị trí này.</small></div> : <p>Sau khi lưu, mở phần chi tiết để thêm yêu cầu và liên kết kỹ năng.</p>}
+          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng bằng nút Kỹ năng liên kết trên danh sách vị trí.</small></div> : <p>Sau khi lưu, dùng nút Kỹ năng liên kết trên danh sách vị trí để thêm yêu cầu và liên kết kỹ năng.</p>}
         </fieldset>
         {error && (
           <p className="admin-error" role="alert">
