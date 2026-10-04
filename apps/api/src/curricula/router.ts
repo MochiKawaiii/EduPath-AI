@@ -6,6 +6,7 @@ import { CurriculumError, courseSchema } from "./model.js";
 import { parseCurriculum } from "./parser.js";
 import { CurriculumRepository } from "./repository.js";
 import { courseInput, putCourse, removeCourse } from "./course-mutations.js";
+import { courseCode } from "./course-codes.js";
 
 const uuid = z.string().uuid();
 const metadata = z
@@ -153,7 +154,7 @@ export function createCurriculaRouter(
   });
   router.patch("/:id/courses/:code", async (req, res) => {
     const change = editableCourse.parse(req.body),
-      code = z.string().max(100).parse(req.params.code);
+      code = courseCode.parse(req.params.code);
     res.json(
       await repository!.update(
         uuid.parse(req.params.id),
@@ -189,7 +190,7 @@ export function createCurriculaRouter(
       );
   });
   router.delete("/:id/courses/:code", async (req, res) => {
-    const code = z.string().max(100).parse(req.params.code);
+    const code = courseCode.parse(req.params.code);
     res.json(
       await repository!.update(
         uuid.parse(req.params.id),

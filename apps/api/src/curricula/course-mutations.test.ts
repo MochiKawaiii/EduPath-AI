@@ -176,6 +176,43 @@ describe("curriculum course mutations", () => {
     expect(() => putCourse(fixture(), minimalInput({ type: "not-a-type" }))).toThrow();
   });
 
+  it("adds and edits a flexible identifier, rejecting duplicates after normalization", () => {
+    const data = fixture();
+    putCourse(data, minimalInput({ code: "  module/2027.01  " }));
+    expect(data.courses.find((item) => item.code === "MODULE/2027.01")).toBeDefined();
+    expectCurriculumError(
+      () => putCourse(data, minimalInput({ code: "module/2027.01" })),
+      "duplicate_course",
+      409,
+    );
+
+    putCourse(data, minimalInput({ code: "môn a+b" }), "MODULE/2027.01");
+    expect(data.courses.some((item) => item.code === "MODULE/2027.01")).toBe(false);
+    expect(data.courses.find((item) => item.code === "MÔN A+B")).toMatchObject({
+      sourceSheet: "Thêm trực tiếp",
+      sourceCells: {},
+    });
+  });
+
+  it("keeps flexible prerequisite codes visible when their course is renamed or deleted", () => {
+    const data = fixture();
+    putCourse(data, minimalInput({ code: "MÔN A+B" }));
+    data.courses[0]!.prerequisite = "[môn a+b]";
+    rebuild(data);
+    expect(data.relations[0]).toMatchObject({
+      targetCodes: ["MÔN A+B"], unresolvedCodes: [], reviewRequired: false,
+    });
+
+    putCourse(data, minimalInput({ code: "MÔN C" }), "MÔN A+B");
+    data.courses[1]!.prior = "[môn c]";
+    removeCourse(data, "MÔN C");
+    rebuild(data);
+    expect(data.relations).toMatchObject([
+      { raw: "[môn a+b]", targetCodes: ["MÔN A+B"], unresolvedCodes: ["MÔN A+B"], reviewRequired: true },
+      { raw: "[môn c]", targetCodes: ["MÔN C"], unresolvedCodes: ["MÔN C"], reviewRequired: true },
+    ]);
+  });
+
   it("adds a course to a valid group with direct-edit provenance and a stable order", () => {
     const data = fixture();
 

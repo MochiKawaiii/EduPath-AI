@@ -3,7 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
-import { graduationSchema, type GraduationData } from "./model.js";
+import { graduationSchema, validateData, warnings, type GraduationData } from "./model.js";
 import { parseGraduation, parseSheet } from "./parser.js";
 
 const sourceDirectory = fileURLToPath(
@@ -304,6 +304,7 @@ describe("graduation synthetic parser cases", () => {
       electiveCredits: 21,
       freeElectiveCredits: 0,
       minimumGpa: 2,
+      gpaScale: null,
     });
     expect(parsed.groups).toHaveLength(1);
     expect(parsed.groups[0]).toMatchObject({ kind: "mandatory", minimumCredits: 3 });
@@ -329,5 +330,25 @@ describe("graduation synthetic parser cases", () => {
     await expect(
       parseGraduation(Buffer.alloc(5 * 1024 * 1024 + 1), "large.xlsx"),
     ).rejects.toMatchObject({ code: "invalid_workbook" });
+  });
+
+  it.each([4, 10] as const)("reads an explicit GPA scale %s from the source label", (gpaScale) => {
+    const rows = syntheticRows.map((row) => [...row]);
+    rows[10]![1] = `Điểm trung bình tích lũy tối thiểu (Hệ ${gpaScale})`;
+    rows[10]![8] = gpaScale === 4 ? "2" : "5.5";
+    expect(parseSheet({ workbook: "synthetic.xlsx", sheet: "Sheet", rows }))
+      .toMatchObject({ gpaScale, minimumGpa: gpaScale === 4 ? 2 : 5.5 });
+  });
+
+  it("accepts legacy standards without guessing a scale and validates explicit scales", () => {
+    const data = parseSheet({ workbook: "synthetic.xlsx", sheet: "Sheet", rows: syntheticRows })!;
+    expect(data.gpaScale).toBeNull();
+    expect(warnings(data).some((warning) => warning.includes("thang điểm"))).toBe(true);
+    const { gpaScale, ...legacy } = data;
+    void gpaScale;
+    expect(validateData(legacy).minimumGpa).toBe(2);
+    expect(validateData({ ...data, minimumGpa: 5.5, gpaScale: 10 }).gpaScale).toBe(10);
+    expect(() => validateData({ ...data, minimumGpa: 5.5, gpaScale: 4 })).toThrow();
+    expect(() => validateData({ ...data, gpaScale: 100 })).toThrow();
   });
 });

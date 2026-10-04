@@ -238,12 +238,16 @@ try {
 
   const changed = structuredClone(result.body.data);
   changed.notes = "Integration revision";
+  changed.gpaScale = 10;
+  changed.minimumGpa = 5.5;
   changed.groups[0].minimumCredits = (changed.groups[0].minimumCredits ?? 0) + 1;
   changed.courses[0].credits = 1;
   result = await api(`/${id}`, "PATCH", changed, { "x-version": originalToken });
   assert.equal(result.status, 200);
   assert.equal(result.body.version, 2);
   assert.equal(result.body.data.notes, "Integration revision");
+  assert.equal(result.body.data.gpaScale, 10);
+  assert.equal(result.body.data.minimumGpa, 5.5);
   assert.equal(result.body.data.groups[0].minimumCredits, changed.groups[0].minimumCredits);
   assert.equal(result.body.data.courses[0].credits, 1);
   assert.equal(result.body.data.sourceWorkbook, originalSourceWorkbook);
@@ -252,6 +256,8 @@ try {
   assert.equal(result.body.history.length, 2);
   const currentToken = result.body.token;
   const currentRevision = result.body.revisionId;
+  assert.equal((await api(`/${id}`, "PATCH", { ...changed, gpaScale: 4 }, { "x-version": currentToken })).status, 400);
+  assert.equal((await api(`/${id}`)).body.token, currentToken);
   assert.equal(
     (await api(`/${id}`, "PATCH", changed, { "x-version": originalToken })).status,
     409,

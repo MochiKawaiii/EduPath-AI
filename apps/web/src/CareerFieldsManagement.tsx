@@ -25,15 +25,15 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
     </div>
     <section className="cm-panel">
       <div className="cm-filters">
-        <label className="cm-search">Tìm lĩnh vực<input value={query} maxLength={200} placeholder="Mã hoặc tên lĩnh vực…" onChange={event => { setQuery(event.target.value); setPage(1); }} /></label>
+        <label className="cm-search">Tìm lĩnh vực<input value={query} maxLength={200} placeholder="Số thứ tự hoặc tên lĩnh vực…" onChange={event => { setQuery(event.target.value); setPage(1); }} /></label>
         <button className="am-outline" onClick={() => { setQuery(""); setPage(1); }}><Icon name="refresh" /> Xóa bộ lọc</button>
       </div>
       <Status {...remote} />
       {remote.data && <>
         <div className="cm-table-scroll"><table className="cm-table">
-          <thead><tr><th>Lĩnh vực nghề nghiệp</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>STT</th><th>Lĩnh vực nghề nghiệp</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
           <tbody>{items.slice((page - 1) * 10, page * 10).map(field => <tr key={field.id}>
-            <td><strong>{field.name}</strong><small>{field.code}</small></td>
+            <td>{field.code}</td><td><strong>{field.name}</strong></td>
             <td className="career-description">{field.description || "Chưa bổ sung"}</td>
             <td><ActionMenu label={`Thao tác với lĩnh vực ${field.name}`} items={[
               { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => { setSelected(field); setMode("detail"); } },
@@ -51,7 +51,7 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
     {mode === "detail" && selected && <Modal title="Chi tiết lĩnh vực nghề nghiệp" onClose={close}>
       <div className="cm-dialog-body cm-form career-detail">
         <dl>
-          <div><dt>Mã lĩnh vực</dt><dd>{selected.code}</dd></div>
+          <div><dt>Số thứ tự</dt><dd>{selected.code}</dd></div>
           <div><dt>Tên lĩnh vực</dt><dd>{selected.name}</dd></div>
           <div><dt>Mô tả</dt><dd className="career-description">{selected.description || "Chưa bổ sung mô tả."}</dd></div>
         </dl>
@@ -67,7 +67,7 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
 }
 
 function FieldEditor({ current, close, saved }: { current: CareerField | null; close: () => void; saved: () => void }) {
-  const [form, setForm] = useState({ code: current?.code ?? "", name: current?.name ?? "", description: current?.description ?? "" });
+  const [form, setForm] = useState({ name: current?.name ?? "", description: current?.description ?? "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return <Modal title={current ? "Chỉnh sửa lĩnh vực nghề nghiệp" : "Thêm lĩnh vực nghề nghiệp"} onClose={close} busy={busy}>
@@ -77,14 +77,14 @@ function FieldEditor({ current, close, saved }: { current: CareerField | null; c
         await careerRequest(current ? `${endpoint}/${current.id}` : endpoint, {
           method: current ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json", ...(current ? { "x-version": current.version } : {}) },
-          body: JSON.stringify(current ? { name: form.name, description: form.description } : form),
+          body: JSON.stringify(form),
         });
         saved();
       } catch (failure) { setError((failure as Error).message); }
       finally { setBusy(false); }
     }}>
       <fieldset className="career-fields" disabled={busy}>
-        <label><RequiredLabel>Mã lĩnh vực</RequiredLabel><input required readOnly={Boolean(current)} maxLength={60} pattern="[a-z0-9]+((-|_)[a-z0-9]+)*" value={form.code} onChange={event => setForm({ ...form, code: event.target.value })} placeholder="Ví dụ: software" /><small>{current ? "Mã được giữ cố định để liên kết các vị trí nghề nghiệp." : "Chữ thường, số, dấu gạch ngang hoặc gạch dưới."}</small></label>
+        <p>{current ? `Số thứ tự: ${current.code}` : "Số thứ tự được cấp tự động khi lưu."}</p>
         <label><RequiredLabel>Tên lĩnh vực</RequiredLabel><input required maxLength={160} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
         <label>Mô tả<textarea rows={4} maxLength={2000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
       </fieldset>

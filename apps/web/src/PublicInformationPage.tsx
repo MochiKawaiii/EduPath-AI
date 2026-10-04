@@ -2,16 +2,17 @@ import { useEffect, useState } from "react";
 import EduPathBrand from "./EduPathBrand";
 import PublicFooter from "./PublicFooter";
 import FaqAnswer, { withEmailLinks } from "./FaqAnswer";
+import { Icon } from "./ui-icon";
 import { frequentlyAskedQuestions, informationPolicies, policyUpdatedAt, publicInformationLinks, supportEmail, type PolicyKind } from "./public-information";
 import "./landing.css";
 import "./public-information.css";
 
 function Chevron({ className = "" }: { className?: string }) {
-  return <svg className={`pi-chevron ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>;
+  return <Icon name="chevronDown" className={`pi-chevron ${className}`} />;
 }
 
 function QuestionIcon() {
-  return <svg className="pi-question-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M9.4 8.5a2.7 2.7 0 0 1 5.2 1c0 1.7-2.6 2-2.6 3.8" /><path d="M12 17h.01" /></svg>;
+  return <Icon name="help" className="pi-question-icon" />;
 }
 
 const policyGroups: { kind: PolicyKind; id: string; title: string }[] = [
@@ -97,7 +98,7 @@ function PolicyContent() {
             </section>
           </div>
           <p className="pi-policy-updated">Cập nhật lần cuối: {policyUpdatedAt}</p>
-          <p className="pi-policy-help">Cần hướng dẫn sử dụng EduPath AI? <a href="/cau-hoi-thuong-gap">Xem câu hỏi thường gặp <span aria-hidden="true">→</span></a></p>
+          <p className="pi-policy-help">Cần hướng dẫn sử dụng EduPath AI? <a href="/cau-hoi-thuong-gap">Xem câu hỏi thường gặp <Icon name="arrow" /></a></p>
         </section>
       </div>
     </>
@@ -148,7 +149,7 @@ export default function PublicInformationPage({ page }: { page: "policy" | "faq"
             <a href="/">Trang chủ</a>
             {publicInformationLinks.map((link) => <a key={link.href} href={link.href} aria-current={link.href === currentHref ? "page" : undefined}>{link.label}</a>)}
           </nav>
-          <a className="lp-button lp-button-small pi-login" href="/login">Đăng nhập <span aria-hidden="true">→</span></a>
+          <a className="lp-button lp-button-small pi-login" href="/login">Đăng nhập <Icon name="arrow" /></a>
         </div>
       </header>
       <main id="noi-dung">

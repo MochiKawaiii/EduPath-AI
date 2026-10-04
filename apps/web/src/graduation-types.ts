@@ -13,6 +13,7 @@ export interface GraduationData {
   electiveCredits: number | null;
   freeElectiveCredits: number | null;
   minimumGpa: number | null;
+  gpaScale?: 4 | 10 | null;
   notes: string;
   groups: {
     id: string;

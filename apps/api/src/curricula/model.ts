@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { courseCode, referencedCourseCodes } from "./course-codes.js";
 export class CurriculumError extends Error {
   constructor(
     public code: string,
@@ -12,14 +13,7 @@ const short = z.string().trim().max(500),
   text = z.string().trim().max(12000);
 export const courseSchema = z.object({
   position: z.number().int().min(1).max(2000),
-  code: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(
-      /^\d{2}[A-Z]{2,12}\d{4,10}$/,
-      "Mã học phần phải gồm 2 chữ số đầu, tiếp theo 2–12 chữ cái và 4–10 chữ số cuối, không có khoảng trắng. Ví dụ: 71ITSE30503.",
-    ),
+  code: courseCode,
   name: short.min(1),
   englishName: short,
   description: text.optional(),
@@ -122,9 +116,7 @@ export function rebuild(data: CurriculumData): CurriculumData {
     for (const kind of ["prerequisite", "prior"] as const) {
       const raw = c[kind].trim();
       if (!raw || /^(không|khong|none|-|0)$/i.test(raw)) continue;
-      const targetCodes = [
-        ...new Set(raw.match(/\b\d{2}[A-Z]{2,12}\d{4,10}\b/g) ?? []),
-      ];
+      const targetCodes = referencedCourseCodes(raw, seen);
       const unresolvedCodes = targetCodes.filter((code) => !seen.has(code));
       const conditional = /chuyên ngành|quy định|\bhoặc\b|\bor\b|\bSV\b/i.test(
         raw,

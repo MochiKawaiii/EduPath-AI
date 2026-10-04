@@ -4,6 +4,10 @@ Truy cập **Quản trị → Chương trình đào tạo** tại `/quantri/chuo
 
 ## Sáu chức năng
 
+Đầu trang chi tiết và màn hình xem trước import hiển thị **Tổng tín chỉ**, **TC bắt buộc**, **TC tự chọn**. TC bắt buộc tính một chuyên ngành, không cộng các phương án chuyên ngành thay thế; các khối giáo dục thể chất/quốc phòng và môn `BBKTL` được thể hiện riêng, không cộng vào tín chỉ tích lũy. TC tự chọn là phần còn lại của tổng CTĐT sau khi trừ TC bắt buộc, đồng thời đối chiếu các yêu cầu tự chọn đã biết; dữ liệu mâu thuẫn hoặc loại môn/chuyên ngành chưa xác định được sẽ hiển thị **Chưa xác định**.
+
+Thông tin từng khối kiến thức trong bảng học phần hiển thị **TC bắt buộc** và **TC tự chọn**, tính theo toàn khối dù đang lọc học phần. Khi mã nhóm không có yêu cầu riêng, có thể xác định yêu cầu chung từ tổng tín chỉ khối trừ các môn bắt buộc; không tự chia số này cho từng mã nhóm, không cộng tất cả học phần tự chọn được cung cấp. Khối nguồn thiếu hoặc mâu thuẫn số tín chỉ hiển thị **Chưa xác định**.
+
 - **Import:** chọn `.xlsx` không quá 5 MB, xem trước, đọc và xác nhận cảnh báo rồi lưu. Định dạng xác định bằng nội dung; tên tệp bất kỳ. Khung cùng ngành và khóa không được tạo trùng.
 - **Danh sách và tìm kiếm:** tìm theo tên, ngành/chuyên ngành hoặc khóa. Gõ tìm kiếm cập nhật sau 300 ms; chọn khóa/trạng thái lọc ngay. Danh sách phân trang 10 khung.
 - **Chi tiết:** xem các khối, học phần, nhóm tự chọn, học kỳ/năm học, tiên quyết/học trước và các điểm cần rà soát. Nút **Chi tiết** ở học phần có toàn bộ trường và các ô Excel gốc.
@@ -15,6 +19,8 @@ Quản trị viên, Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng
 Xóa môn cần xác nhận và chỉ xóa khỏi phiên bản mới của khung đang mở, không xóa danh mục môn toàn hệ thống, khung khác hoặc lịch sử. Nếu môn bị xóa/đổi mã còn nằm trong điều kiện tiên quyết/học trước của môn khác, hệ thống giữ nguyên điều kiện đó và đánh dấu trong tab **Cảnh báo** để quản trị viên sửa. Tổng tín chỉ quy định không tự cộng/trừ khi thêm hoặc xóa môn vì có các nhóm tự chọn và chuyên ngành. Khối trống vẫn hiển thị để thêm môn lại.
 
 **Tải khung CTĐT** tải Excel nguồn để đối chiếu; tệp này không bao gồm chỉnh sửa trực tiếp sau import. Những chỉnh sửa được lưu trong JSON và bảng học phần của phiên bản mới. Kế hoạch đào tạo đã liên kết với phiên bản CTĐT cũ vẫn giữ nguyên liên kết; trang sinh viên đọc phiên bản hiện hành của khung đang mở.
+
+**Mã học phần:** thêm/sửa và nhập Excel cùng nhận mã theo chương trình, không bắt buộc số đầu, số chữ hay độ dài theo mẫu mã VLU cũ. Mã phải có nội dung, tối đa 100 ký tự và không chứa ký tự điều khiển; khoảng trắng đầu/cuối được bỏ và mã được chuẩn hóa thành chữ hoa để tra cứu nhất quán. Mã có dấu gạch, chấm, gạch chéo hoặc khoảng trắng vẫn được chấp nhận. Không cho tạo trùng mã trong một khung. Trong tiên quyết/học trước, dùng `[mã học phần]` để tham chiếu rõ ràng, kể cả mã có khoảng trắng; mã thiếu trong khung vẫn được giữ và đánh dấu cần rà soát.
 
 ## Đồng bộ local và Render/Supabase
 

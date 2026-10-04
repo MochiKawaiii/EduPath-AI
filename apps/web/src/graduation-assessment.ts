@@ -1,8 +1,9 @@
 import type { GraduationData } from "./graduation-types";
 import type { Transcript } from "./StudentTranscript";
 import { transcriptResults } from "./transcript-results";
+import { assessGraduationGpa, graduationCourseScores } from "./graduation-scores";
 
-type Standard = {
+type Standard = Pick<GraduationData, "minimumGpa" | "gpaScale"> & {
   groups: Omit<GraduationData["groups"][number], "sourceRow">[];
   courses: Omit<GraduationData["courses"][number], "sourceRow">[];
 };
@@ -45,7 +46,13 @@ export function assessGraduation(standard: Standard, transcript: Transcript | nu
         ? "unknown" : actual >= required ? "pass" : "fail",
     };
   });
-  const status: Status = checks.some((check) => check.status === "fail") ? "fail"
+  const groupStatus: Status = checks.some((check) => check.status === "fail") ? "fail"
     : !checks.length || checks.some((check) => check.status === "unknown") ? "unknown" : "pass";
-  return { results, checks, status };
+  const gpa = assessGraduationGpa(standard, transcript);
+  const status: Status = groupStatus === "fail" || gpa.status === "fail" ? "fail"
+    : groupStatus === "unknown" || gpa.status === "unknown" ? "unknown" : "pass";
+  return {
+    results, scores: graduationCourseScores(transcript), checks, groupStatus, gpa, status,
+    needsImprovement: groupStatus === "pass" && gpa.status === "fail",
+  };
 }

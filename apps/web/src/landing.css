@@ -1,6 +1,6 @@
 .lp-page {
-  --lp-red: lab(39.66% 60.37 25.37);
-  --lp-red-dark: #85172d;
+  --lp-red: var(--ep-action);
+  --lp-red-dark: var(--ep-action-hover);
   --lp-ink: #25242a;
   --lp-muted: #68666c;
   --lp-paper: #faf6ef;
@@ -151,42 +151,6 @@
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.lp-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  min-height: 56px;
-  padding: 15px 25px;
-  border: 1px solid var(--lp-red);
-  border-radius: 7px;
-  color: #fff;
-  background: var(--lp-red);
-  font-weight: 700;
-  font-size: 13px;
-  transition:
-    background 0.18s,
-    transform 0.18s;
-}
-
-.lp-button:hover {
-  background: var(--lp-red-dark);
-  border-color: var(--lp-red-dark);
-  transform: translateY(-2px);
-}
-
-.lp-button .lp-icon {
-  width: 19px;
-  height: 19px;
-}
-
-.lp-button-small {
-  min-height: 43px;
-  padding: 10px 17px;
-  gap: 17px;
-  font-size: 12px;
 }
 
 .lp-menu-toggle {
@@ -1173,17 +1137,6 @@
 .lp-cta-action {
   text-align: center;
   flex: 0 0 auto;
-}
-
-.lp-button-white {
-  color: var(--lp-red);
-  background: #fffaf5;
-  border-color: #fffaf5;
-}
-
-.lp-button-white:hover {
-  background: #f4e1d5;
-  border-color: #f4e1d5;
 }
 
 .lp-cta-action>span {

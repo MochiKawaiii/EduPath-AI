@@ -306,10 +306,10 @@ try {
     sourceCells: _sourceCells,
     ...editable
   } = base;
-  const addedCode = "71ITNEW1001";
+  const addedCode = "MODULE.2027/A-01";
   const newCourse = {
     ...editable,
-    code: addedCode,
+    code: addedCode.toLowerCase(),
     name: "Integration-only course",
     englishName: "Integration-only course",
     groupId: addGroup,
@@ -345,7 +345,7 @@ try {
   assert.equal((await api(`/${id}`)).body.token, afterCreateToken);
 
   result = await api(
-    `/${id}/courses/${addedCode}`,
+    `/${id}/courses/${encodeURIComponent(addedCode)}`,
     "PATCH",
     { ...newCourse, groupId: moveGroup },
     { "x-version": afterCreateToken },
@@ -360,7 +360,7 @@ try {
   assert.equal(
     (
       await api(
-        `/${id}/courses/${addedCode}`,
+        `/${id}/courses/${encodeURIComponent(addedCode)}`,
         "PATCH",
         { ...newCourse, groupId: addGroup },
         { "x-version": afterCreateToken },
@@ -379,7 +379,7 @@ try {
     ...dependentChange
   } = dependent;
   result = await api(
-    `/${id}/courses/${dependent.code}`,
+    `/${id}/courses/${encodeURIComponent(dependent.code)}`,
     "PATCH",
     { ...dependentChange, prerequisite: addedCode },
     { "x-version": detail.token },
@@ -396,7 +396,7 @@ try {
     ),
   );
   const deleteToken = detail.token;
-  result = await api(`/${id}/courses/${addedCode}`, "DELETE", undefined, {
+  result = await api(`/${id}/courses/${encodeURIComponent(addedCode)}`, "DELETE", undefined, {
     "x-version": deleteToken,
   });
   assert.equal(result.status, 200);

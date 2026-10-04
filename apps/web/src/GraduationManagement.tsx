@@ -425,7 +425,8 @@ function DataSummary({ data }: { data: GraduationData }) {
         {thresholdFields.map(([key, label]) => (
           <div key={key}>
             <small>{label}</small>
-            <strong>{fmt(data[key])}</strong>
+            <strong>{fmt(data[key])}{key === "minimumGpa" && data.gpaScale ? ` / ${data.gpaScale}` : ""}</strong>
+            {key === "minimumGpa" && !data.gpaScale && <small>Chưa chọn thang điểm</small>}
           </div>
         ))}
       </div>
@@ -608,7 +609,7 @@ function Standard({
             <DataSummary data={data.data} />
             <div className="cm-actions">
               <a
-                className="am-outline am-tone-brand"
+                className="am-outline"
                 href={`${endpoint}/${id}/source/${data.revisionId}`}
               >
                 <Icon name="download" /> Tải xuống định dạng Excel
@@ -616,13 +617,13 @@ function Standard({
               {editable && (
                 <>
                   <button
-                    className="am-outline am-tone-green"
+                    className="am-outline"
                     onClick={() => setDialog("import")}
                   >
                     <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className={data.isActive ? "am-outline am-tone-amber" : "am-outline am-tone-green"}
+                    className="am-outline"
                     onClick={() => setDialog("status")}
                   >
                     <Icon name={data.isActive ? "lock" : "unlock"} />
@@ -903,10 +904,22 @@ function EditDialog({
                   key={key}
                   label={label}
                   value={form[key]}
-                  max={key === "minimumGpa" ? 10 : 500}
+                  max={key === "minimumGpa" ? (form.gpaScale ?? 10) : 500}
                   change={(n) => setForm({ ...form, [key]: n })}
                 />
               ))}
+              <label>
+                Thang điểm trung bình
+                <select
+                  required={form.minimumGpa !== null}
+                  value={form.gpaScale ?? ""}
+                  onChange={(e) => setForm({ ...form, gpaScale: e.target.value ? Number(e.target.value) as 4 | 10 : null })}
+                >
+                  <option value="">Chọn thang điểm</option>
+                  <option value="4">Hệ 4</option>
+                  <option value="10">Hệ 10</option>
+                </select>
+              </label>
             </div>
             <label>
               Ghi chú điều kiện
@@ -1002,7 +1015,7 @@ function StatusDialog({
             <Icon name="close" /> Hủy
           </button>
           <button
-            className={current.isActive ? "am-primary am-warning" : "am-primary"}
+            className="am-primary"
             disabled={busy}
             onClick={async () => {
               setBusy(true);

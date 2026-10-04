@@ -44,7 +44,8 @@ function standard(
     mandatoryCredits: null,
     electiveCredits: null,
     freeElectiveCredits: null,
-    minimumGpa: null,
+    minimumGpa: 2,
+    gpaScale: 4,
     notes: "",
     groups,
     courses,
@@ -241,5 +242,38 @@ describe("graduation group assessment", () => {
 
     expect(result.status).toBe("unknown");
     expect(result.checks[0]?.status).toBe("unknown");
+  });
+
+  it("reminds students to improve grades even after every required course passed", () => {
+    const data = standard([group("BB", "mandatory", 3)], [course("CS-101", "BB", 3)]);
+    data.minimumGpa = 5.5;
+    data.gpaScale = 10;
+    const result = assessGraduation(data, transcript([{ ...attempt("CS-101"), score10: 5, score4: 1 }]));
+    expect(result.groupStatus).toBe("pass");
+    expect(result.results.get("CS-101")).toBe("pass");
+    expect(result.scores.get("CS-101")?.score10).toBe(5);
+    expect(result.gpa).toMatchObject({ actual: 5, required: 5.5, scale: 10, status: "fail" });
+    expect(result.status).toBe("fail");
+    expect(result.needsImprovement).toBe(true);
+  });
+
+  it("accepts GPA equal to the configured threshold and follows subsequent threshold changes", () => {
+    const data = standard([group("BB", "mandatory", 3)], [course("CS-101", "BB", 3)]);
+    data.minimumGpa = 5.5;
+    data.gpaScale = 10;
+    const grades = transcript([{ ...attempt("CS-101"), score10: 5.5 }]);
+    expect(assessGraduation(data, grades)).toMatchObject({ status: "pass", needsImprovement: false });
+    data.minimumGpa = 6;
+    expect(assessGraduation(data, grades)).toMatchObject({ status: "fail", needsImprovement: true });
+  });
+
+  it("does not conclude eligibility or recommend improvement when GPA configuration is missing", () => {
+    const data = standard([group("BB", "mandatory", 3)], [course("CS-101", "BB", 3)]);
+    const grades = transcript([attempt("CS-101")]);
+    data.gpaScale = null;
+    expect(assessGraduation(data, grades)).toMatchObject({ groupStatus: "pass", status: "unknown", needsImprovement: false });
+    data.gpaScale = 4;
+    data.minimumGpa = null;
+    expect(assessGraduation(data, grades).status).toBe("unknown");
   });
 });

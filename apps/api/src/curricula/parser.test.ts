@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import ExcelJS from "exceljs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { checkArchive, parseCurriculum, readWorkbook } from "./parser.js";
 import { courseSchema, rebuild, type CurriculumData } from "./model.js";
@@ -70,6 +71,30 @@ describe("real faculty curriculum workbooks", () => {
         expect(courseSchema.safeParse(course).success, course.code).toBe(true);
       expect(new Set(data.courses.map((c) => c.code)).size).toBe(count);
     }
+  });
+  it("imports changed code formats without changing the course data or source values", async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await readFile(new URL("../../data/curricula/K31.xlsx", import.meta.url)) as never);
+    const sourceCodes = ["module/2027.01", "môn a+b", "BACKEND", "101"];
+    for (const [index, sourceCode] of sourceCodes.entries()) {
+      const original = k31.courses[index]!;
+      workbook.getWorksheet(original.sourceSheet)!.getCell(original.sourceRow, 2).value = sourceCode;
+    }
+    const first = k31.courses[0]!;
+    workbook.getWorksheet(first.sourceSheet)!.getCell(first.sourceRow, 12).value = "[môn a+b]";
+
+    const data = await readWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()));
+    expect(data.courses).toHaveLength(k31.courses.length);
+    for (const [index, sourceCode] of sourceCodes.entries()) {
+      expect(data.courses[index]).toMatchObject({
+        code: sourceCode.toUpperCase(),
+        name: k31.courses[index]!.name,
+        credits: k31.courses[index]!.credits,
+        sourceCells: { B: sourceCode },
+      });
+    }
+    expect(data.relations.find((relation) => relation.courseCode === "MODULE/2027.01" && relation.kind === "prior"))
+      .toMatchObject({ targetCodes: ["MÔN A+B"], unresolvedCodes: [], reviewRequired: false });
   });
   it("preserves BBKTL and separates elective requirements from the offered course credits", () => {
     expect(k30.courses.filter((c) => c.type === "BBKTL")).toHaveLength(4);

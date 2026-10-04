@@ -158,10 +158,10 @@ export default function StudentProfileEditor({
                 setError("");
               }}
             >
-              Hủy
+              <Icon name="close" /> Hủy
             </button>
             <button className="sw-primary" disabled={busy}>
-              {busy ? "Đang lưu…" : "Lưu thay đổi"}
+              <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu thay đổi"}
             </button>
           </div>
         </form>

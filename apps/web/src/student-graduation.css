@@ -107,7 +107,7 @@
    groups instead of each table sizing itself to its own content. */
 .sg-group .sc-table {
   table-layout: fixed;
-  min-width: 850px;
+  min-width: 980px;
 }
 .sg-group .sc-table th:nth-child(1) {
   width: 150px;
@@ -121,7 +121,15 @@
 .sg-group .sc-table td:nth-child(4) {
   white-space: normal;
 }
-.sg-group .sc-table .sg-result { width: 120px; text-align: center; vertical-align: middle; }
+.sg-group .sc-table .sg-result { width: 120px; min-width: 120px; text-align: center; vertical-align: middle; }
+.sg-group .sc-table .sg-score { width: 140px; text-align: center; vertical-align: middle; white-space: normal; }
+.sg-score strong, .sg-score small { display: block; }
+.sg-score small { margin-top: 4px; font-size: 11px; color: var(--sw-muted); }
+.sg-course-improve { background: #fffaf0; }
+.sg-score .sg-score-hint { color: #805900; }
+.sg-improvement { padding: 16px 20px; border: 1px solid #e9d39b; border-radius: 8px; background: #fff8e8; color: #775014; }
+.sg-improvement h3 { margin: 0 0 8px; font-size: 15px; }
+.sg-improvement p + p { margin-top: 8px; }
 .sg-status-pass { color: #16804a; }
 .sg-status-fail { color: #c62828; }
 .sg-status-unknown { color: #805900; }

@@ -75,14 +75,6 @@
 .sr-confirm-dialog::backdrop { background: rgb(20 24 35 / 50%); }
 .sr-confirm-dialog h2 { margin: 0 0 16px; font-size: 20px; }
 .sr-confirm-dialog p { font-size: 14px; line-height: 1.7; }
-.sr-confirm-dialog .sr-delete-confirm { background: #b6153f; }
-
-.sr-secondary {
-    background: #f3f4f7;
-    color: #555d6e;
-    padding: 11px 16px;
-    border-radius: 6px
-}
 
 .sr-success,
 .sr-error {
@@ -489,13 +481,9 @@
     color: #647081;
 }
 
-.sr-dropzone .sw-primary.sr-drop-button {
+.sr-dropzone .sr-drop-button {
     margin-top: 8px;
     min-width: 140px;
-    padding: 10px 28px;
-    border-radius: 999px;
-    font-size: 14px;
-    font-weight: 700;
 }
 
 .sr-dropzone.is-dragging * {

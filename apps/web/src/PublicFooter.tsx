@@ -1,5 +1,6 @@
 import EduPathBrand from "./EduPathBrand";
 import { publicInformationLinks } from "./public-information";
+import { Icon } from "./ui-icon";
 
 export default function PublicFooter({ home = false, portal }: { home?: boolean; portal?: string | null }) {
   const homePrefix = home ? "" : "/";
@@ -21,18 +22,18 @@ export default function PublicFooter({ home = false, portal }: { home?: boolean;
           <div className="lp-footer-university">
             <h2>Trường Đại học Văn Lang · Khoa Công nghệ Thông tin</h2>
             <a href="https://www.vlu.edu.vn/" target="_blank" rel="noreferrer">
-              Website trường <span aria-hidden="true">↗</span>
+              Website trường <Icon name="arrowUpRight" />
               <span className="sr-only"> (mở trong tab mới)</span>
             </a>
             <a href={portal ?? "/login"}>
-              {portal ? "Quay lại cổng quản lý học tập" : "Đăng nhập hệ thống"} <span aria-hidden="true">→</span>
+              {portal ? "Quay lại cổng quản lý học tập" : "Đăng nhập hệ thống"} <Icon name="arrow" />
             </a>
           </div>
         </div>
         <div className="lp-footer-bottom">
           <span>© {new Date().getFullYear()} · Bản Quyền Thuộc Khoa Công nghệ Thông tin · Trường Đại Học Văn Lang.</span>
           <span>AI đồng hành · Học tập bứt phá</span>
-          <a href="#noi-dung">Về đầu trang ↑</a>
+          <a href="#noi-dung">Về đầu trang <Icon name="arrowUp" /></a>
         </div>
       </div>
     </footer>

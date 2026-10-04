@@ -33,7 +33,7 @@ type Detail = Omit<
   groups: Omit<GraduationData["groups"][number], "sourceRow">[];
   courses: Omit<GraduationData["courses"][number], "sourceRow">[];
 };
-const fmt = (n: number | null) => (n === null ? "Chưa xác định" : String(n));
+const fmt = (n: number | null) => (n === null ? "Chưa xác định" : n.toLocaleString("vi-VN", { maximumFractionDigits: 4 }));
 async function readTranscript(response: Response): Promise<{ transcript: Transcript | null }> {
   if (!response.ok) throw new Error("Chưa tải được bảng điểm để xét điều kiện. Vui lòng thử lại.");
   return response.json();
@@ -143,6 +143,14 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
   const data = remote.data!;
   const assessment = assessGraduation(data, transcript.data?.transcript ?? null);
   const assessmentReady = !transcript.loading && !transcript.error;
+  const improvementCodes = new Set(data.courses.filter((course) => {
+    const code = course.code.trim().toUpperCase();
+    const grade = assessment.scores.get(code);
+    const score = data.gpaScale === 4 ? grade?.score4 : grade?.score10;
+    return assessment.gpa.status === "fail" && !course.conditionOnly && !grade?.conditional &&
+      grade?.letter?.trim().toUpperCase() !== "MT" && assessment.results.get(code) === "pass" &&
+      score !== null && score !== undefined && data.minimumGpa !== null && score < data.minimumGpa;
+  }).map((course) => course.code.trim().toUpperCase()));
   const needle = searchTerm(query);
   const matches = data.courses.filter((c) =>
     searchTerm(`${c.code} ${c.name}`).includes(needle),
@@ -167,7 +175,9 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
               <dt>{label}</dt>
               <dd className={data[key] === null ? "sg-unknown" : undefined}>
                 {fmt(data[key])}
+                {key === "minimumGpa" && data.gpaScale ? ` / ${data.gpaScale}` : ""}
               </dd>
+              {key === "minimumGpa" && !data.gpaScale && <small className="sc-muted">Chưa chọn thang điểm</small>}
             </div>
           ))}
         </dl>
@@ -186,18 +196,33 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
           <p className={`sg-verdict sg-status-${sameCohort ? assessment.status : "unknown"}`} role="status">
             {!sameCohort ? "Chưa thể kết luận: tiêu chuẩn đang chọn không cùng khóa trong hồ sơ."
               : !transcript.data?.transcript ? "Chưa đủ dữ liệu xét tốt nghiệp. Hãy import bảng điểm để đối chiếu."
-              : assessment.status === "pass" ? "Đủ điều kiện xét tốt nghiệp theo bảng điểm và tiêu chuẩn đang chọn."
+              : assessment.status === "pass" ? "Đã đạt các nhóm học phần và yêu cầu điểm trung bình theo tiêu chuẩn đang chọn."
               : assessment.status === "fail" ? "Chưa đủ điều kiện xét tốt nghiệp theo bảng điểm đã import."
               : "Chưa đủ dữ liệu để kết luận điều kiện xét tốt nghiệp."}
           </p>
           <p className="sc-muted">Nhóm bắt buộc phải đạt toàn bộ môn, kể cả môn (*). Nhóm tự chọn chỉ cần đạt đủ tín chỉ yêu cầu của nhóm, không phải học hết các lựa chọn. Môn (*) được tính để hoàn thành nhóm nhưng không cộng tín chỉ tích lũy. MT được tính đạt. Kết quả chính thức do nhà trường xác nhận.</p>
+          {sameCohort && assessment.needsImprovement && <div className="sg-improvement" role="alert">
+            <h3>Cần học cải thiện để nâng điểm trung bình</h3>
+            <p>Bạn đã hoàn thành các nhóm học phần, nhưng điểm trung bình tích lũy hiện là <strong>{fmt(assessment.gpa.actual)} / {assessment.gpa.scale}</strong>, thấp hơn mức tối thiểu <strong>{fmt(assessment.gpa.required)} / {assessment.gpa.scale}</strong>. Bạn cần đăng ký học cải thiện hoặc học bổ sung các học phần được tính điểm trung bình theo quy định của trường.</p>
+            <p>Xem điểm từng môn bên dưới để chọn môn cần cải thiện; ưu tiên những môn điểm thấp và có nhiều tín chỉ. Môn (*) và môn miễn thi (MT) không giúp nâng điểm trung bình.</p>
+          </div>}
+          {transcript.data?.transcript && assessment.gpa.status === "unknown" && <p className="sg-status-unknown">{assessment.gpa.reason}</p>}
           <div className="sc-table-wrap"><table className="sc-table sg-checks">
             <thead><tr><th>Điều kiện</th><th>Đã có</th><th>Yêu cầu</th><th>Kết quả</th></tr></thead>
             <tbody>{assessment.checks.map((check, index) => <tr key={index}>
               <td>{check.label}</td><td>{transcript.data?.transcript ? `${fmt(check.actual)} ${check.unit}` : "—"}</td><td>{fmt(check.required)} {check.unit}</td>
               <td className={`sg-status-${check.status}`}>{check.status === "pass" ? "✓ Đạt" : check.status === "fail" ? "✗ Chưa đạt" : "Chưa đủ dữ liệu"}</td>
-            </tr>)}</tbody>
+            </tr>)}
+              <tr>
+                <td>Điểm trung bình tích lũy{assessment.gpa.scale ? ` (hệ ${assessment.gpa.scale})` : ""}</td>
+                <td>{assessment.gpa.actual === null ? "—" : fmt(assessment.gpa.actual)}</td>
+                <td>{fmt(assessment.gpa.required)}{assessment.gpa.scale ? ` / ${assessment.gpa.scale}` : ""}</td>
+                <td className={`sg-status-${assessment.gpa.status}`}>{assessment.gpa.status === "pass" ? "✓ Đạt" : assessment.gpa.status === "fail" ? "✗ Chưa đạt" : "Chưa đủ dữ liệu"}</td>
+              </tr>
+            </tbody>
           </table></div>
+          {assessment.gpa.source === "printed" && <p className="sc-muted">Điểm trung bình lấy từ dòng tích lũy trong bảng điểm của học kỳ có kết quả gần nhất.</p>}
+          {assessment.gpa.source === "calculated" && <p className="sc-muted">Bảng điểm chưa có điểm trung bình tích lũy hệ {assessment.gpa.scale}. Điểm trên được tính tham khảo theo tín chỉ, lấy điểm cao nhất của mỗi mã môn một lần và bỏ môn (*)/MT. Không quy đổi giữa hệ 4 và hệ 10. Hãy đối chiếu với kết quả chính thức của trường.</p>}
         </>}
       </section>
       <section className="sw-panel sg-groups">
@@ -208,6 +233,7 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
               Môn (*) không cộng tín chỉ tích lũy. Trong nhóm bắt buộc phải đạt từng môn;
               trong nhóm tự chọn chỉ cần đạt đủ tín chỉ yêu cầu của nhóm.
             </p>
+            <p className="sc-muted">Điểm hiển thị là điểm cao nhất trong các lần đạt; môn chưa đạt hiển thị điểm đã có. MT là miễn thi, không có điểm số để tính trung bình.</p>
           </div>
           <label className="sg-search">
             Tìm môn học
@@ -249,6 +275,7 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                       <th>Tên học phần</th>
                       <th>TC</th>
                       <th>Môn điều kiện</th>
+                      <th className="sg-score">Điểm</th>
                       <th className="sg-result">Kết quả</th>
                     </tr>
                   </thead>
@@ -256,8 +283,11 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                     {items.map((c) => {
                       const result = assessmentReady && transcript.data?.transcript
                         ? assessment.results.get(c.code.trim().toUpperCase()) : undefined;
+                      const grade = assessmentReady && transcript.data?.transcript
+                        ? assessment.scores.get(c.code.trim().toUpperCase()) : undefined;
+                      const improve = sameCohort && assessmentReady && improvementCodes.has(c.code.trim().toUpperCase());
                       return (
-                      <tr key={c.id}>
+                      <tr key={c.id} className={improve ? "sg-course-improve" : undefined}>
                         <td>{c.code}</td>
                         <td>
                           <strong>{c.name}</strong>
@@ -268,6 +298,14 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                             ? "Có (*) · không tính TC/GPA"
                             : "Không"}
                         </td>
+                        <td className="sg-score">
+                          {grade?.letter?.trim().toUpperCase() === "MT" ? <span>MT · Miễn thi</span>
+                            : grade ? <>
+                              <strong>{grade.score10 !== null ? `${fmt(grade.score10)} / 10` : grade.score4 !== null ? `${fmt(grade.score4)} / 4` : "Chưa có điểm"}</strong>
+                              <small>{[grade.score10 !== null && grade.score4 !== null ? `${fmt(grade.score4)} / 4` : "", grade.letter].filter(Boolean).join(" · ")}</small>
+                              {improve && <small className="sg-score-hint">Có thể học cải thiện</small>}
+                            </> : "—"}
+                        </td>
                         <td className={`sg-result ${result ? `sg-status-${result}` : "sc-muted"}`}>
                           {result === "pass" ? "✓ Đạt" : result === "fail" ? "✗ Chưa đạt" : "—"}
                         </td>
@@ -276,7 +314,7 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                     })}
                     {!items.length && (
                       <tr>
-                        <td colSpan={5} className="sc-muted">
+                        <td colSpan={6} className="sc-muted">
                           Nhóm chưa có học phần.
                         </td>
                       </tr>

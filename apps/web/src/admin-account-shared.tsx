@@ -1,5 +1,7 @@
 import type { AppRole } from "./types";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Icon } from "./ui-icon";
+export { Icon } from "./ui-icon";
 const failures: Record<string, string> = {
   student_not_found: "Không tìm thấy sinh viên hoặc tài khoản không còn mang vai trò Sinh viên.",
   invalid_student_id: "Mã hồ sơ sinh viên không hợp lệ. Vui lòng đóng hộp thoại và tải lại danh sách.",
@@ -25,36 +27,6 @@ export type AccountPage = { items: Account[]; total: number; page: number; pageS
     required state instead. */
 export function RequiredLabel({ children }: { children: ReactNode }) {
   return <span>{children}<span className="am-required" aria-hidden="true">*</span></span>;
-}
-
-export function Icon({ name }: { name: string }) {
-  const paths: Record<string, string> = {
-    save: "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2ZM7 3v6h10V3M7 21v-8h10v8",
-    info: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M12 11v6M12 7v1",
-    download: "M12 3v12m-5-5 5 5 5-5M4 15v6h16v-6",
-    upload: "M12 16V4m-5 5 5-5 5 5M4 15v6h16v-6",
-    edit: "m15 4 5 5M4 20l5-1L21 7l-5-5L4 14z",
-    trash: "M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7",
-    plus: "M12 5v14M5 12h14",
-    book: "M12 5v16M12 5C9 2 4 2 2 3v16c4-1 7 0 10 2 3-2 6-3 10-2V3c-2-1-7-1-10 2Z",
-    users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3a4 4 0 0 1 0 8M22 21v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
-    add: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M20 8v6M17 11h6",
-    profile: "M4 3h16v18H4zM9 8a3 3 0 1 0 6 0 3 3 0 1 0-6 0M7 18a5 5 0 0 1 10 0",
-    shield: "m12 3 9 3v6c0 5-5 8-9 10-4-2-9-5-9-10V6zM8 12l3 3 5-6",
-    lock: "M5 10h14v11H5zM8 10V6a4 4 0 0 1 8 0v4M12 14v3",
-    clock: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M12 6v6l4 2",
-    search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
-    exit: "M9 21H3V3h6M10 12h12M18 8l4 4-4 4",
-    menu: "M3 6h18M3 12h18M3 18h18",
-    eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
-    unlock: "M5 10h14v11H5zM8 10V6a4 4 0 0 1 7.75-1.4M12 14v3",
-    chevron: "m9 6 6 6-6 6",
-    back: "m12 19-7-7 7-7M19 12H5",
-    refresh: "M21 12a9 9 0 1 1-9-9c2.5 0 4.9 1 6.7 2.7L21 8M21 3v5h-5",
-    close: "M18 6 6 18M6 6l12 12"
-  };
-  if (name === "more") return <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>;
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.users} /></svg>;
 }
 
 export async function readResponse<T>(response: Response): Promise<T> {

@@ -1,6 +1,6 @@
 .cm-workspace,
 .cm-dialog-body {
-  --cm-accent: #ad1239;
+  --cm-accent: var(--ep-action);
   --cm-ink: #202a39;
   --cm-muted: #606a79;
   --cm-line: #e3e6ec;
@@ -135,6 +135,9 @@
   font-size: 28px;
   line-height: 1.2;
 }
+
+.cm-stats strong { overflow-wrap: anywhere; }
+.cm-credit-note { margin: 0 0 16px; }
 
 .cm-filters {
   display: flex;

@@ -190,6 +190,7 @@ describe("student graduation API", () => {
       classBlock: "K29-CNTT",
       minimumCredits: 126,
       minimumGpa: 2,
+      gpaScale: null,
       notes: "Student-facing note",
     });
     expect(response.body.groups).toEqual([
@@ -220,6 +221,12 @@ describe("student graduation API", () => {
     ]) {
       expect(response.body).not.toHaveProperty(key);
     }
+  });
+
+  it.each([4, 10] as const)("exposes the administrator's configured GPA scale %s", async (gpaScale) => {
+    const { app } = setup({ detailRows: [{ id: standardId, version: 4, data: { ...standard, gpaScale } }] });
+    const response = await request(app).get(`/graduation/${standardId}`).expect(200);
+    expect(response.body.gpaScale).toBe(gpaScale);
   });
 
   it.each([lockedId, missingId])(

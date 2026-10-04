@@ -1,4 +1,5 @@
 import { Worker } from "node:worker_threads";
+import { courseCode } from "./course-codes.js";
 import {
   CurriculumError,
   courseSchema,
@@ -135,9 +136,9 @@ export async function readWorkbook(buffer: Buffer): Promise<CurriculumData> {
           row,
           message: `Ô ${col}${row} có lỗi ${v}; giá trị không được sử dụng.`,
         });
-    const code = cells.B!,
+    const sourceCode = cells.B!,
       name = cells.C!;
-    if (!code) {
+    if (!sourceCode) {
       if (cells.A && !/^\d+$/.test(cells.A)) {
         groupId = `row-${row}`;
         data.groups.push({
@@ -149,10 +150,12 @@ export async function readWorkbook(buffer: Buffer): Promise<CurriculumData> {
       }
       continue;
     }
-    if (!/^\d{2}[A-Z]{2,12}\d{4,10}$/.test(code) || !name)
+    const parsedCode = courseCode.safeParse(sourceCode);
+    if (!parsedCode.success || !name)
       throw new CurriculumError("invalid_course_row", 422, [
-        `${sheet.name}!${row}: ${code}`,
+        `${sheet.name}!${row}: ${sourceCode}`,
       ]);
+    const code = parsedCode.data;
     if (!/^\d+(\.\d+)?$/.test(cells.E!) || Number(cells.E) > 30)
       throw new CurriculumError("invalid_course_credits", 422, [code]);
     const term = (v: string, max: number) =>

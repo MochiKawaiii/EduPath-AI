@@ -3,7 +3,7 @@
   --sw-ink: #242b39;
   --sw-muted: #647081;
   --sw-border: #e3e7ec;
-  --sw-red: #ac163b;
+  --sw-red: var(--ep-action);
   --sw-soft: #fbf0f3;
   --sw-green: #27765b;
   --sw-radius: 10px;
@@ -113,19 +113,6 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-}
-
-.sw-icon-button {
-  display: grid;
-  place-items: center;
-  background: transparent;
-  color: #647081;
-  border-radius: 8px;
-}
-
-.sw-icon-button:hover {
-  background: #f1f3f6;
-  color: var(--sw-ink);
 }
 
 .sw-avatar {
@@ -253,56 +240,6 @@
 .sw-tag-green {
   background: #eaf5ee;
   color: #246b50;
-}
-
-.sw-shell .sw-outline,
-.sw-shell .sw-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 10px 15px;
-  min-height: 42px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.sw-shell .sw-outline {
-  border: 1px solid #d6dce4;
-  background: #fff;
-  color: #394353;
-}
-
-.sw-shell .sw-outline:hover {
-  border-color: var(--sw-red);
-  color: var(--sw-red);
-  background: #fffafd;
-}
-
-.sw-shell .sw-primary {
-  background: var(--sw-red);
-  color: white;
-}
-
-.sw-shell .sw-primary:hover {
-  background: #8e1231;
-}
-
-.sw-text-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: none;
-  color: var(--sw-red);
-  font-size: 12px !important;
-  font-weight: 600;
-  padding: 8px 0;
-}
-
-.sw-text-link:hover {
-  text-decoration: underline;
 }
 
 .sw-profile-intro {

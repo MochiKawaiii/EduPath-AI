@@ -1,8 +1,9 @@
 import { canAccessAdmin } from "./types";
-import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import "./landing.css";
 import { getCurrentUser } from "./auth-api";
 import EduPathBrand from "./EduPathBrand";
+import { Icon as SharedIcon } from "./ui-icon";
 import PublicFooter from "./PublicFooter";
 import { frequentlyAskedQuestions } from "./public-information";
 import FaqAnswer from "./FaqAnswer";
@@ -21,71 +22,7 @@ type IconName =
   | "close";
 
 function Icon({ name, className = "" }: { name: IconName; className?: string }) {
-  const paths: Record<IconName, ReactNode> = {
-    arrow: (
-      <>
-        <path d="M4 12h15M13 5l7 7-7 7" />
-      </>
-    ),
-    spark: (
-      <>
-        <path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z" />
-        <path d="m20 2 .7 2.3L23 5l-2.3.7L20 8l-.7-2.3L17 5l2.3-.7L20 2Z" />
-      </>
-    ),
-    cap: (
-      <>
-        <path d="m2 9 10-5 10 5-10 5L2 9Zm4 2v6c4 3 8 3 12 0v-6M22 9v8" />
-      </>
-    ),
-    chart: (
-      <>
-        <path d="M4 3v17h17M9 15v-4m5 4V7m5 8V4" />
-      </>
-    ),
-    route: (
-      <>
-        <circle cx="6" cy="5" r="2" />
-        <circle cx="18" cy="19" r="2" />
-        <path d="M8 5h9a4 4 0 0 1 0 8H7a3 3 0 0 0 0 6h9" />
-      </>
-    ),
-    target: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <circle cx="12" cy="12" r="5" />
-        <circle cx="12" cy="12" r="1" />
-      </>
-    ),
-    check: <path d="m5 12 4 4L19 6" />,
-    book: (
-      <>
-        <path d="M12 5v15M3 4h4c3 0 5 2 5 2s2-2 5-2h4v15h-4c-3 0-5 2-5 2s-2-2-5-2H3V4Z" />
-      </>
-    ),
-    shield: (
-      <>
-        <path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z" />
-        <path d="m8 12 3 3 5-6" />
-      </>
-    ),
-    menu: <path d="M4 6h16M4 12h16M4 18h16" />,
-    close: <path d="m5 5 14 14M19 5 5 19" />
-  };
-  return (
-    <svg
-      className={`lp-icon ${className}`}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {paths[name]}
-    </svg>
-  );
+  return <SharedIcon name={name} className={`lp-icon ${className}`} />;
 }
 
 const navigation = [

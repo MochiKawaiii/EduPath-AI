@@ -3,6 +3,7 @@ import { ActionMenu, Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import { termLabel } from "./student-curriculum-types";
+import { creditLabel, curriculumCredits } from "./curriculum-credits";
 import type {
   CurriculumCourse,
   CurriculumData,
@@ -12,8 +13,6 @@ import type {
 import "./curricula.css";
 
 const endpoint = "/api/admin/curricula";
-const courseCodePattern = "[0-9]{2}[A-Z]{2,12}[0-9]{4,10}";
-const courseCodeHint = "Ví dụ: 71ITSE30503.";
 const mime =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const date = (s: string) => new Date(s).toLocaleString("vi-VN");
@@ -92,29 +91,39 @@ function WarningList({ data }: { data: CurriculumData }) {
   );
 }
 function Summary({ data }: { data: CurriculumData }) {
+  const credits = curriculumCredits(data);
   return (
-    <div className="cm-stats">
-      <div>
-        <span>Khóa tuyển sinh</span>
-        <strong>{data.cohortCode}</strong>
-        <small>Năm nhập học {data.admissionYear}</small>
+    <>
+      <div className="cm-stats">
+        <div>
+          <span>Khóa tuyển sinh</span>
+          <strong>{data.cohortCode}</strong>
+          <small>Năm nhập học {data.admissionYear}</small>
+        </div>
+        <div>
+          <span>Tổng tín chỉ</span>
+          <strong>{creditLabel(data.totalCredits)}</strong>
+          <small>Theo quy định trong khung</small>
+        </div>
+        <div>
+          <span>TC bắt buộc</span>
+          <strong>{creditLabel(credits.requiredCredits)}</strong>
+          <small>{credits.hasSpecialties ? "Gồm một chuyên ngành được chọn" : "Các học phần bắt buộc tính tích lũy"}</small>
+        </div>
+        <div>
+          <span>TC tự chọn</span>
+          <strong>{creditLabel(credits.electiveCredits)}</strong>
+          <small>Số tín chỉ cần hoàn thành</small>
+        </div>
       </div>
-      <div>
-        <span>Tín chỉ của chương trình</span>
-        <strong>{data.totalCredits}</strong>
-        <small>Theo quy định trong khung</small>
-      </div>
-      <div>
-        <span>Học phần trong khung</span>
-        <strong>{data.courses.length}</strong>
-        <small>Gồm các phương án tự chọn</small>
-      </div>
-      <div>
-        <span>Nhóm tự chọn</span>
-        <strong>{data.electives.length}</strong>
-        <small>Không cộng tất cả lựa chọn</small>
-      </div>
-    </div>
+      <p className="cm-help cm-credit-note">
+        {data.courses.length} học phần · {data.electives.length} nhóm tự chọn.
+        {credits.electiveCredits !== null && " TC tự chọn là phần còn lại của tổng tín chỉ sau khi trừ TC bắt buộc."}
+        {credits.hasConditionCredits && " Giáo dục thể chất, quốc phòng và các môn không tích lũy được thể hiện riêng theo khối, không cộng vào tổng này."}
+        {credits.requiredCredits === null && " Cần rà soát loại học phần hoặc số tín chỉ của từng chuyên ngành trước khi xác định TC bắt buộc và TC tự chọn."}
+        {credits.requiredCredits !== null && credits.electiveCredits === null && " Số tín chỉ học phần chưa khớp với tổng CTĐT; cần rà soát lại khung."}
+      </p>
+    </>
   );
 }
 
@@ -642,7 +651,7 @@ function CurriculumView({
             )}
             <div className="cm-actions">
               <a
-                className="am-outline am-tone-brand"
+                className="am-outline"
                 href={`${endpoint}/${id}/source/${current.revisionId}`}
                 title="Tải tệp Excel nguồn; các chỉnh sửa trực tiếp được lưu trong phiên bản trên hệ thống"
               >
@@ -651,13 +660,13 @@ function CurriculumView({
               {mutable && (
                 <>
                   <button
-                    className="am-outline am-tone-green"
+                    className="am-outline"
                     onClick={() => setEdit("import")}
                   >
                     <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className={current.isActive ? "am-outline am-tone-amber" : "am-outline am-tone-green"}
+                    className="am-outline"
                     onClick={() => setEdit("status")}
                   >
                     <Icon name={current.isActive ? "lock" : "unlock"} />{" "}
@@ -891,6 +900,7 @@ function Courses({
   open: (c: CurriculumCourse) => void;
   onGroupAction?: (id: string, mode: "add" | "edit" | "delete") => void;
 }) {
+  const creditBlocks = new Map(curriculumCredits(data).blocks.map((block) => [block.id, block]));
   const { draft, setDraft, filters, reset } = useLiveFilters({
     q: "",
     block: "",
@@ -1005,6 +1015,13 @@ function Courses({
                               ? `Yêu cầu: ${g.credits} tín chỉ`
                               : "Chưa có số tín chỉ yêu cầu trong file"}
                           </span>
+                          {!!creditBlocks.get(g.id)?.courseCount && (
+                            <span className="cm-block-credits">
+                              TC bắt buộc: {creditLabel(creditBlocks.get(g.id)!.requiredCredits)}
+                              {" · "}TC tự chọn: {creditLabel(creditBlocks.get(g.id)!.electiveCredits)}
+                              {creditBlocks.get(g.id)!.conditionOnly && " · Khối điều kiện, không tính tích lũy"}
+                            </span>
+                          )}
                     </td>
                     <td>
                       <div className="cm-group-heading">
@@ -1355,7 +1372,7 @@ function StatusDialog({
             <Icon name="close" /> Hủy
           </button>
           <button
-            className={current.isActive ? "am-primary am-warning" : "am-primary"}
+            className="am-primary"
             disabled={busy}
             onClick={async () => {
               setBusy(true);
@@ -1498,22 +1515,16 @@ function CourseDialog({
                 <label key={key}>
                   {["code", "name"].includes(key) ? <RequiredLabel>{label}</RequiredLabel> : label}
                   <input
-                    maxLength={key === "code" ? 24 : 500}
-                    pattern={key === "code" ? courseCodePattern : undefined}
-                    title={key === "code" ? courseCodeHint : undefined}
-                    placeholder={key === "code" ? "Ví dụ: 71ITSE30503" : undefined}
+                    maxLength={key === "code" ? 100 : 500}
+                    placeholder={key === "code" ? "Nhập mã học phần" : undefined}
                     aria-describedby={key === "code" ? "course-code-help" : undefined}
                     required={["code", "name"].includes(key)}
                     value={form[key]}
-                    onInvalid={(e) => e.currentTarget.setCustomValidity(
-                      key === "code" && e.currentTarget.validity.patternMismatch ? courseCodeHint : "",
-                    )}
                     onChange={(e) => {
-                      e.currentTarget.setCustomValidity("");
-                      setForm({ ...form, [key]: key === "code" ? e.target.value.trim().toUpperCase() : e.target.value });
+                      setForm({ ...form, [key]: e.target.value });
                     }}
                   />
-                  {key === "code" && <small id="course-code-help" className="cm-help">{courseCodeHint}</small>}
+                  {key === "code" && <small id="course-code-help" className="cm-help">Nhập mã theo chương trình đào tạo, tối đa 100 ký tự.</small>}
                 </label>
               ))}
               <label>
@@ -1611,7 +1622,7 @@ function CourseDialog({
               </label>
             ))}
             <p className="cm-help">
-              Có thể ghi mã học phần trong dấu ngoặc vuông, ví dụ [71ITSE30503].
+              Ghi mã học phần trong dấu ngoặc vuông: [mã học phần].
               Điều kiện theo chuyên ngành hoặc quy định sẽ được giữ nguyên để rà
               soát.
             </p>

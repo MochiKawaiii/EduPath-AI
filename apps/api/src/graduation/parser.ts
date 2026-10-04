@@ -33,6 +33,8 @@ export function parseSheet(sheet: Sheet): GraduationData | null {
     const row = rows.find((r) => fold(r[1] ?? "").startsWith(label));
     return number(row?.[8]);
   };
+  const gpaLabel = rows.find((r) => fold(r[1] ?? "").startsWith("diem trung binh tich luy toi thieu"))?.[1] ?? "";
+  const gpaScale = fold(gpaLabel).match(/(?:he|thang(?: diem)?)\s*(4|10)\b/)?.[1];
   const name = value("tieu chuan"),
     classBlock = value("khoi lop"),
     field = value("nganh dao tao");
@@ -62,6 +64,7 @@ export function parseSheet(sheet: Sheet): GraduationData | null {
     electiveCredits: threshold("tong tin chi toi thieu nhom bat buoc tu chon"),
     freeElectiveCredits: threshold("tong so tin chi tu chon tu do"),
     minimumGpa: threshold("diem trung binh tich luy toi thieu"),
+    gpaScale: gpaScale === "4" ? 4 : gpaScale === "10" ? 10 : null,
     notes: rows
       .slice(0, header)
       .flat()

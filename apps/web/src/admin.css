@@ -1,5 +1,5 @@
 .admin-shell {
-  --admin-red: #b51639;
+  --admin-red: var(--ep-action);
   --admin-dark: #242329;
   --admin-muted: #64616b;
   --admin-border: #e6e1e3;
@@ -192,32 +192,7 @@
   margin-bottom: 28px;
 }
 
-.admin-primary,
-.admin-secondary {
-  min-height: 48px;
-  padding: 14px 20px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.admin-primary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
-  background: var(--admin-red);
-  color: #fff;
-  transition: background 180ms ease;
-}
-
-.admin-primary:hover {
-  background: #94102c;
-}
+.admin-primary { width: 100%; }
 
 .admin-primary .microsoft-icon {
   width: 22px;
@@ -226,26 +201,6 @@
   grid-template-rows: repeat(2, 10px);
   gap: 2px;
   flex-shrink: 0;
-}
-
-.admin-secondary {
-  color: var(--admin-red);
-  background: #fff;
-  border-color: #c99ca7;
-}
-
-.admin-secondary:hover {
-  background: #faedf0;
-}
-
-.admin-shell button:focus-visible {
-  outline: 3px solid var(--admin-red);
-  outline-offset: 4px;
-}
-
-.admin-shell button:disabled {
-  opacity: .65;
-  cursor: wait;
 }
 
 .admin-login-divider {

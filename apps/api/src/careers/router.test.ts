@@ -52,14 +52,13 @@ const input = {
 
 const field = {
   id: fieldId,
-  code: "data_ai",
+  code: "2",
   name: "Data and AI",
   description: "Data and machine learning roles.",
   version: fieldVersion,
 };
 
 const fieldInput = {
-  code: "custom_data",
   name: "Custom data field",
   description: "A custom career field.",
 };
@@ -128,7 +127,7 @@ function setup(options: SetupOptions = {}) {
       const studentCareerRows = options.studentCareerRows ?? [];
       return { rowCount: studentCareerRows.length, rows: studentCareerRows };
     }
-    if (sql.includes("FROM career_fields WHERE deleted_at IS NULL ORDER BY name,id"))
+    if (sql.includes("FROM career_fields WHERE deleted_at IS NULL ORDER BY code::bigint,id"))
       return { rowCount: options.fields?.length ?? 0, rows: options.fields ?? [] };
     if (sql.includes("FROM career_positions WHERE deleted_at IS NULL")) return { rowCount: rows.length, rows };
     return { rowCount: 1, rows: [] };
@@ -168,10 +167,10 @@ describe("career catalog API", () => {
     const { app, query } = setup({ fields: fieldRows, rows: [] });
     await request(app).get("/careers/fields").expect(200, { items: fieldRows });
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("FROM career_fields WHERE deleted_at IS NULL ORDER BY name,id"),
+      expect.stringContaining("FROM career_fields WHERE deleted_at IS NULL ORDER BY code::bigint,id"),
     );
     const fieldsQuery = query.mock.calls.find(([sql]) =>
-      String(sql).includes("FROM career_fields WHERE deleted_at IS NULL ORDER BY name,id"),
+      String(sql).includes("FROM career_fields WHERE deleted_at IS NULL ORDER BY code::bigint,id"),
     );
     expect(fieldsQuery?.[0]).toContain("AS \"positionCount\"");
     await request(app).get("/careers?category=valid-but-unknown").expect(200, { items: [] });
@@ -348,7 +347,7 @@ describe("career catalog API", () => {
   });
 
   it("creates, updates immutably, and soft-deletes an unused field in transactions", async () => {
-    const createdField = { ...field, ...fieldInput };
+    const createdField = { ...field, ...fieldInput, code: "7" };
     const create = setup({ createFieldRow: createdField });
     await request(create.app)
       .post("/careers/fields")
@@ -356,8 +355,8 @@ describe("career catalog API", () => {
       .send(fieldInput)
       .expect(201, createdField);
     expect(create.clientQuery).toHaveBeenCalledWith(
-      expect.stringContaining("INSERT INTO career_fields(code,name,description)"),
-      [fieldInput.code, fieldInput.name, fieldInput.description],
+      expect.stringContaining("INSERT INTO career_fields(name,description)"),
+      [fieldInput.name, fieldInput.description],
     );
     expect(create.clientQuery).toHaveBeenCalledWith("COMMIT");
     expect(create.release).toHaveBeenCalled();
@@ -391,6 +390,17 @@ describe("career catalog API", () => {
     expect(remove.clientQuery).toHaveBeenCalledWith(
       expect.stringContaining("UPDATE career_fields SET deleted_at"),
       [fieldId, expect.any(String)],
+    );
+  });
+
+  it("discards legacy manually supplied codes and returns the database-assigned field number", async () => {
+    const createdField = { ...field, ...fieldInput, code: "7" };
+    const create = setup({ createFieldRow: createdField });
+    await request(create.app).post("/careers/fields").set("Origin", origin)
+      .send({ ...fieldInput, code: "legacy_field" }).expect(201, createdField);
+    expect(create.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO career_fields(name,description)"),
+      [fieldInput.name, fieldInput.description],
     );
   });
 

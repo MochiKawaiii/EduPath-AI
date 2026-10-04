@@ -389,7 +389,7 @@ function PlanView({
             {p.data.notes && <p className="cm-prewrap">{p.data.notes}</p>}
             <div className="cm-actions">
               <a
-                className="am-outline am-tone-brand"
+                className="am-outline"
                 href={`${endpoint}/${id}/source/${p.revisionId}`}
               >
                 <Icon name="download" /> Tải xuống định dạng Excel
@@ -397,13 +397,13 @@ function PlanView({
               {editable && (
                 <>
                   <button
-                    className="am-outline am-tone-green"
+                    className="am-outline"
                     onClick={() => setModal("import")}
                   >
                     <Icon name="upload" /> Cập nhật từ Excel
                   </button>
                   <button
-                    className={p.isActive ? "am-outline am-tone-amber" : "am-outline am-tone-green"}
+                    className="am-outline"
                     onClick={() => setModal("status")}
                   >
                     <Icon name={p.isActive ? "lock" : "unlock"} />{" "}
@@ -933,7 +933,7 @@ function StatusEditor({
             <Icon name="close" /> Hủy
           </button>
           <button
-            className={plan.isActive ? "am-primary am-warning" : "am-primary"}
+            className="am-primary"
             disabled={busy}
             onClick={async () => {
               if (busy) return;

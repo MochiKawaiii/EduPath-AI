@@ -1,0 +1,146 @@
+/* One control system across the existing public, admin and student classes.
+   Layout, navigation tabs and selectable cards stay in their page styles. */
+:root {
+  --ep-action: #b51639;
+  --ep-action-hover: #92142e;
+  --ep-action-pressed: #75162d;
+  --ep-control-border: #edc3cb;
+  --ep-control-border-hover: #d58a9c;
+  --ep-control-soft: #fff5f7;
+  --ep-control-ink: #45424c;
+  --ep-control-muted: #696773;
+  --ep-control-radius: 8px;
+  --ep-control-height: 44px;
+  --ep-control-gap: 8px;
+  --ep-control-font-size: 13px;
+  --ep-control-font-weight: 650;
+  --ep-control-focus: #bb4160;
+  --ep-control-transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.ep-icon { display: block; width: 20px; height: 20px; flex-shrink: 0; }
+
+/* :root keeps page-specific form resets from changing the shared appearance. */
+:root :is(.am-primary, .am-outline, .am-quiet, .am-logout, .sw-primary, .sw-outline, .sr-secondary, .admin-primary, .admin-secondary, .lp-button, .microsoft-button) {
+  align-items: center;
+  justify-content: center;
+  gap: var(--ep-control-gap);
+  min-height: var(--ep-button-height, var(--ep-control-height));
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--ep-control-radius);
+  font-family: inherit;
+  font-size: var(--ep-control-font-size);
+  font-weight: var(--ep-control-font-weight);
+  line-height: 1.5;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: var(--ep-control-transition);
+}
+
+:root :is(.am-primary, .am-outline, .am-quiet, .am-logout, .sw-primary, .sw-outline, .sr-secondary, .admin-primary, .admin-secondary, .lp-button, .microsoft-button):not(.am-menu-toggle) { display: inline-flex; }
+
+:root :is(.am-primary, .sw-primary, .admin-primary, .lp-button, .microsoft-button) {
+  color: #fff;
+  background: var(--ep-action);
+  border-color: var(--ep-action);
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+:root :is(.am-primary, .sw-primary, .admin-primary, .lp-button, .microsoft-button):hover:not(:disabled) {
+  background: var(--ep-action-hover);
+  border-color: var(--ep-action-hover);
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+:root :is(.am-primary, .sw-primary, .admin-primary, .lp-button, .microsoft-button):active:not(:disabled) {
+  background: var(--ep-action-pressed);
+  border-color: var(--ep-action-pressed);
+}
+
+:root :is(.am-outline, .am-quiet, .am-logout, .sw-outline, .sr-secondary, .admin-secondary, .lp-button-white) {
+  color: var(--ep-control-ink);
+  background: #fff;
+  border-color: var(--ep-control-border);
+}
+
+:root :is(.am-outline, .am-quiet, .am-logout, .sw-outline, .sr-secondary, .admin-secondary, .lp-button-white):hover:not(:disabled) {
+  color: var(--ep-action-hover);
+  background: var(--ep-control-soft);
+  border-color: var(--ep-control-border-hover);
+}
+
+:root :is(.am-outline, .am-quiet, .am-logout, .sw-outline, .sr-secondary, .admin-secondary, .lp-button-white):active:not(:disabled) { background: #f9e9ee; }
+:root .am-tone-danger { color: var(--ep-action); }
+:root .sr-danger { color: var(--ep-action); }
+
+/* Only the landing-page calls to action and login use the larger size. */
+:root .lp-button:not(.lp-button-small), :root .microsoft-button { --ep-button-height: 52px; padding-inline: 24px; }
+:root .microsoft-button { display: flex; font-size: 15px; }
+
+:root :is(.am-icon-btn, .sw-icon-button, .sr-career-icon, .lp-menu-toggle, .am-menu-toggle) {
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--ep-control-height);
+  height: var(--ep-control-height);
+  min-height: var(--ep-control-height);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ep-control-radius);
+  background: transparent;
+  color: var(--ep-control-muted);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: var(--ep-control-transition);
+}
+
+:root :is(.am-icon-btn, .sw-icon-button, .sr-career-icon) { display: inline-flex; }
+:root :is(.am-icon-btn, .sw-icon-button, .sr-career-icon, .lp-menu-toggle, .am-menu-toggle):hover:not(:disabled),
+:root :is(.am-icon-btn, .sw-icon-button)[aria-expanded="true"] {
+  background: #f3f4f6;
+  border-color: #e3e5e9;
+  color: var(--ep-control-ink);
+}
+
+:root :is(.sr-career-clear, .am-delete-icon) { color: var(--ep-action); }
+:root :is(.sr-career-clear, .am-delete-icon):hover:not(:disabled) { color: var(--ep-action-hover); background: var(--ep-control-soft); border-color: var(--ep-control-border); }
+
+:root :is(.am-primary, .am-outline, .am-quiet, .am-logout, .sw-primary, .sw-outline, .sr-secondary, .admin-primary, .admin-secondary, .lp-button, .microsoft-button, .am-icon-btn, .sw-icon-button, .sr-career-icon, .lp-menu-toggle, .am-menu-toggle, .am-menu-item, .sw-text-link, .ep-text-action) > svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+:root .am-menu-item { min-height: var(--ep-control-height); gap: var(--ep-control-gap); border-radius: var(--ep-control-radius); font-size: var(--ep-control-font-size); font-weight: var(--ep-control-font-weight); transition: var(--ep-control-transition); }
+:root .am-menu-item > svg { color: inherit; }
+:root .am-menu-danger { color: var(--ep-action); }
+:root .am-menu-item:hover:not(:disabled) { background: #f3f4f6; }
+:root .am-menu-danger:hover:not(:disabled) { background: var(--ep-control-soft); }
+
+:root :is(.sw-text-link, .ep-text-action) { display: inline-flex; align-items: center; gap: var(--ep-control-gap); min-height: var(--ep-control-height); padding: 8px 0; border: 0; background: transparent; color: var(--ep-action); font-size: var(--ep-control-font-size); font-weight: var(--ep-control-font-weight); cursor: pointer; text-decoration: none; transition: var(--ep-control-transition); }
+:root :is(.sw-text-link, .ep-text-action):hover:not(:disabled) { color: var(--ep-action-hover); text-decoration: underline; }
+
+:root :is(button, a.lp-button, a.microsoft-button, a.am-outline, a.sw-outline, a.ep-text-action):focus-visible { outline: 3px solid var(--ep-control-focus); outline-offset: 3px; }
+:root :is(.am-dialog-heading, .sw-popover) button:focus-visible { outline-offset: -4px; }
+:root button:disabled { cursor: not-allowed; opacity: .55; }
+
+:root :is(.cm-upload, .sr-file-label) input::file-selector-button { min-height: var(--ep-control-height); padding: 10px 16px; border: 1px solid var(--ep-control-border); border-radius: var(--ep-control-radius); background: #fff; color: var(--ep-control-ink); font: inherit; font-weight: var(--ep-control-font-weight); cursor: pointer; transition: var(--ep-control-transition); }
+:root :is(.cm-upload, .sr-file-label) input::file-selector-button:hover { border-color: var(--ep-control-border-hover); background: var(--ep-control-soft); }
+:root :is(.cm-upload, .sr-file-label) input:disabled::file-selector-button { opacity: .55; cursor: not-allowed; }
+
+.lp-footer-university a, .lp-footer-bottom a { display: inline-flex; align-items: center; gap: var(--ep-control-gap); }
+.lp-footer :is(a > .ep-icon) { width: 16px; height: 16px; }
+.pi-policy-help a { display: inline-flex; align-items: center; gap: var(--ep-control-gap); }
+.pi-policy-help .ep-icon { width: 16px; height: 16px; }
+.so-check > .ep-icon { width: 12px; height: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ep-control-transition: none; }
+}

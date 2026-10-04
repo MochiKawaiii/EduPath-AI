@@ -312,33 +312,7 @@ a {
 .microsoft-button {
   width: 100%;
   max-width: 480px;
-  min-height: 56px;
   margin: 28px auto 0;
-  padding: 12px 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  border: 0;
-  border-radius: 10px;
-  color: #fff;
-  background: #b51639;
-  box-shadow: none;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: none;
-  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
-}
-
-.microsoft-button:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.06);
-  box-shadow: 0 4px 12px rgba(174, 16, 47, .16);
-}
-
-.microsoft-button:active {
-  transform: translateY(0);
 }
 
 .microsoft-button:focus-visible,
@@ -905,9 +879,3 @@ a {
     animation-iteration-count: 1 !important;
   }
 }
-/* Shared interaction states across public, authentication, student and admin pages. */
-:where(button, a.lp-button, a.microsoft-button, a.am-outline):focus-visible {
-  outline: 3px solid #406f98;
-  outline-offset: 3px;
-}
-button:disabled { cursor: not-allowed; opacity: .55; }

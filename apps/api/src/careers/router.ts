@@ -16,7 +16,8 @@ const fieldDetails = z.object({
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(2000),
 }).strict();
-const fieldInput = fieldDetails.extend({ code: fieldCode });
+// Accept legacy clients' code during rollout; the database assigns the actual number.
+const fieldInput = fieldDetails.extend({ code: fieldCode.optional() });
 const fieldColumns = `id,code,name,description,version`;
 export const careerInput = z
   .object({
@@ -66,7 +67,7 @@ export function createCareersRouter(
     z.object({}).strict().parse(req.query);
     const fields = await pool!.query(`SELECT ${fieldColumns},
       (SELECT count(*)::int FROM career_positions p WHERE p.category=career_fields.code AND p.deleted_at IS NULL) AS "positionCount"
-      FROM career_fields WHERE deleted_at IS NULL ORDER BY name,id`);
+      FROM career_fields WHERE deleted_at IS NULL ORDER BY code::bigint,id`);
     res.json({ items: fields.rows });
   });
   if (!student) {
@@ -77,8 +78,8 @@ export function createCareersRouter(
         await client.query("BEGIN");
         await access(client, req.session.user!, true, false, true);
         const field = await client.query(
-          `INSERT INTO career_fields(code,name,description) VALUES($1,$2,$3) RETURNING ${fieldColumns}`,
-          [data.code, data.name, data.description],
+          `INSERT INTO career_fields(name,description) VALUES($1,$2) RETURNING ${fieldColumns}`,
+          [data.name, data.description],
         );
         await client.query("COMMIT");
         res.status(201).json(field.rows[0]);

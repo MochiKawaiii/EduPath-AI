@@ -182,95 +182,7 @@
   outline-offset: 3px;
 }
 
-.am-primary,
-.am-outline,
-.am-quiet,
-.am-logout {
-  min-height: 42px;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  gap: 9px;
-  border-radius: 6px;
-  padding: 11px 16px;
-  font-size: 12px !important;
-  font-weight: 650 !important;
-}
-
-.am-primary {
-  background: #b51639;
-  color: #fff;
-  border: 1px solid #b51639;
-}
-
-.am-primary:hover {
-  background: #92142e;
-}
-
-.am-outline {
-  background: #fff;
-  color: #595561;
-  border: 1px solid #f4a2a2;
-}
-
-.am-outline:hover {
-  background: #f7f3f5;
-}
-
-/* Tinted outline buttons. A row of same-looking actions is read one label at a
-   time; a hue per action makes each one recognisable at a glance. They stay
-   outline-weight so the filled .am-primary keeps the top of the hierarchy. */
-.am-outline.am-tone-brand {
-  background: #fdf5f7;
-  border-color: #ecd0d8;
-  color: #9e1938;
-}
-
-.am-outline.am-tone-brand:hover {
-  background: #f9e9ee;
-}
-
-.am-outline.am-tone-green {
-  background: #eaf5ef;
-  border-color: #c5e1d3;
-  color: #1f5c42;
-}
-
-.am-outline.am-tone-green:hover {
-  background: #ddeee5;
-}
-
-.am-outline.am-tone-amber {
-  background: #fff6e8;
-  border-color: #f0dcb8;
-  color: #8a5a14;
-}
-
-.am-outline.am-tone-amber:hover {
-  background: #fbedd8;
-}
-
-.am-quiet {
-  background: transparent;
-  border: 1px solid transparent;
-  color: #726774;
-}
-
-.am-quiet:hover {
-  background: #f1edf0;
-}
-
-.am-logout {
-  background: #fff;
-  color: #9e1938;
-  border: 1px solid #e4c8ce;
-  margin-left: 8px;
-}
-
-.am-logout:hover {
-  background: #fbeef1;
-  border-color: #dba7b2;
-}
+.am-logout { margin-left: 8px; }
 
 .am-menu-toggle {
   display: none;
@@ -928,12 +840,6 @@
   min-width: 180px;
 }
 
-.am-row-actions button {
-  min-height: 36px;
-  padding: 7px 9px;
-  font-size: 11px !important;
-}
-
 .am-name-link {
   border: 0;
   background: none;
@@ -1049,25 +955,6 @@
   --ep-brand-w: 196px;
 }
 
-.am-icon-btn {
-  display: inline-grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: #6b6672;
-  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
-}
-
-.am-icon-btn:hover:not(:disabled) {
-  background: #f7eef1;
-  border-color: #ecd9df;
-  color: #a41c3b;
-}
-
 .am-dialog-sm {
   width: min(460px, calc(100% - 32px));
 }
@@ -1166,44 +1053,4 @@
   .am-menu-item {
     transition: none;
   }
-}
-
-/* Save and confirm buttons use the plain brand-red .am-primary; these variants
-   mark the actions that lock or delete. */
-.am-primary.am-warning {
-  background: #fff1d6;
-  border-color: #dfba76;
-  color: #754707;
-}
-
-.am-primary.am-warning:hover:not(:disabled) {
-  background: #ffe5b3;
-}
-
-.am-primary.am-delete {
-  background: #b42318;
-  border-color: #b42318;
-  color: #fff;
-}
-
-.am-primary.am-delete:hover:not(:disabled) {
-  background: #912018;
-}
-
-.am-icon-btn.am-delete-icon {
-  color: #b42318;
-}
-
-.am-icon-btn.am-delete-icon:hover:not(:disabled) {
-  background: #fff0ee;
-}
-
-.am-outline.am-tone-danger {
-  color: #b42318;
-  border-color: #efc3bf;
-  background: #fff5f4;
-}
-
-.am-outline.am-tone-danger:hover:not(:disabled) {
-  background: #ffe5e2;
 }

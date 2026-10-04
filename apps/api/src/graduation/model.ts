@@ -19,6 +19,7 @@ export const graduationSchema = z
     electiveCredits: credits,
     freeElectiveCredits: credits,
     minimumGpa: z.number().min(0).max(10).nullable(),
+    gpaScale: z.union([z.literal(4), z.literal(10)]).nullable().optional(),
     notes: text,
     groups: z
       .array(
@@ -54,7 +55,11 @@ export const graduationSchema = z
     sourceSheet: short,
     sourceNotes: z.array(text).max(100),
   })
-  .strict();
+  .strict()
+  .refine((data) => data.minimumGpa === null || data.gpaScale !== 4 || data.minimumGpa <= 4, {
+    message: "Điểm trung bình tối thiểu hệ 4 không được vượt quá 4.",
+    path: ["minimumGpa"],
+  });
 export type GraduationData = z.infer<typeof graduationSchema>;
 export const fold = (s: string) =>
   s
@@ -81,6 +86,8 @@ export function warnings(data: GraduationData): string[] {
   const result = [...data.sourceNotes];
   if (data.minimumCredits === null || data.minimumGpa === null)
     result.push("Chưa có đủ ngưỡng tín chỉ hoặc điểm trung bình tích lũy.");
+  if (data.minimumGpa !== null && !data.gpaScale)
+    result.push("Chưa chọn thang điểm trung bình. Chọn hệ 4 hoặc hệ 10 trong thông tin tiêu chuẩn để đối chiếu bảng điểm.");
   if (
     data.minimumCredits !== null &&
     [

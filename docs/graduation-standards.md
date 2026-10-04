@@ -17,9 +17,18 @@ Khóa nhận diện là **mã tiêu chuẩn + khối lớp** lấy từ nội du
 - Mã, tên, tín chỉ và cờ môn điều kiện của từng môn. Mã môn K26 như `DIT0010` được giữ nguyên.
 - Môn có dấu `(*)` mang cờ `conditionOnly`: không tính tín chỉ tích lũy/GPA theo ghi chú biểu mẫu. Tín chỉ của môn vẫn được giữ, vì nhóm điều kiện có thể yêu cầu đủ số tín chỉ riêng.
 - Tín chỉ trống (ví dụ một số môn quốc phòng K27) được lưu `null`, không biến thành 0. Điểm trung bình giữ đúng ngưỡng trong nguồn, không tự suy diễn thang điểm.
+- Quản trị viên chọn **Thang điểm trung bình: Hệ 4/Hệ 10** trong form sửa thông tin tiêu chuẩn, cùng ngưỡng điểm tối thiểu. Hệ 4 không nhận ngưỡng lớn hơn 4. Import chỉ nhận thang điểm khi nhãn nguồn ghi rõ; các tiêu chuẩn cũ chưa có thang điểm cần được quản trị viên bổ sung, không tự gán từ giá trị ngưỡng. Thang điểm lưu trong JSON phiên bản và hiển thị ở cổng sinh viên, không cần đổi schema database.
 - Bỏ qua cột “đã pass”, dấu đánh dấu và kết quả tính cá nhân ở bên phải. File K26 có tên người học vẫn chỉ cung cấp bộ tiêu chuẩn; không import kết quả của người đó vào hồ sơ sinh viên.
 
-Nội dung ghi chú được giữ làm văn bản; chức năng này quản lý tiêu chuẩn, chưa tự kết luận sinh viên đủ điều kiện tốt nghiệp. Tệp tải xuống là Excel/ZIP nguồn, chưa bao gồm chỉnh sửa trực tiếp sau import.
+Nội dung ghi chú được giữ làm văn bản. Tệp tải xuống là Excel/ZIP nguồn, chưa bao gồm chỉnh sửa trực tiếp sau import.
+
+## Điểm và đối chiếu của sinh viên
+
+Tại `/dashboard#graduation`, bảng nhóm học phần có cột **Điểm**, hiển thị hệ 10, hệ 4 và điểm chữ đã có trong bảng điểm. Khi học lại, ưu tiên điểm cao nhất trong các lần đạt; nếu chưa đạt thì hiển thị điểm đã có. Điểm 0 được giữ; MT hiển thị miễn thi và không gán điểm số.
+
+Điểm trung bình được kiểm tra riêng theo ngưỡng và thang điểm của tiêu chuẩn. Ưu tiên dòng **điểm trung bình tích lũy** đúng thang trong học kỳ có điểm gần nhất, không dùng điểm trung bình học kỳ hay bản tích lũy cũ. Nếu không có dòng tổng hợp đúng thang, tính **tham khảo** bằng điểm nhân tín chỉ, lấy điểm cao nhất mỗi mã một lần; bỏ môn (*) và MT, không đổi hệ 4 thành hệ 10 hoặc ngược lại. Thiếu điểm/tín chỉ cần thiết, thiếu ngưỡng/thang điểm hoặc dữ liệu tổng hợp không rõ sẽ báo chưa đủ dữ liệu.
+
+Khi các nhóm học phần đã hoàn thành nhưng điểm trung bình dưới ngưỡng, kết quả vẫn **Chưa đạt** và hiện nhắc đăng ký học cải thiện/bổ sung theo quy định của trường. Các môn đã đạt nhưng điểm dưới ngưỡng trung bình được đánh dấu để cân nhắc cải thiện; đây không phải ngưỡng đậu riêng của từng môn. Tiêu chuẩn khác khóa không đưa ra nhắc cải thiện cho sinh viên. Kết quả là đối chiếu tham khảo, không thay kết luận tốt nghiệp của trường.
 
 ## Cập nhật và trạng thái
 
