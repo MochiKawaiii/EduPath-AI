@@ -64,7 +64,7 @@ export function parseSheet(sheet: Sheet): GraduationData | null {
     electiveCredits: threshold("tong tin chi toi thieu nhom bat buoc tu chon"),
     freeElectiveCredits: threshold("tong so tin chi tu chon tu do"),
     minimumGpa: threshold("diem trung binh tich luy toi thieu"),
-    gpaScale: gpaScale === "4" ? 4 : gpaScale === "10" ? 10 : null,
+    gpaScale: gpaScale === "10" ? 10 : 4,
     notes: rows
       .slice(0, header)
       .flat()

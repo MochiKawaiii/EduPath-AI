@@ -31,7 +31,7 @@ const student = { ...admin, role: "student" } satisfies AuthenticatedUser;
 
 const career = {
   id: careerId,
-  code: "data-analyst",
+  code: "NN004",
   nameVi: "Chuyên viên phân tích dữ liệu",
   nameEn: "Data Analyst",
   category: "data_ai",
@@ -42,7 +42,6 @@ const career = {
 };
 
 const input = {
-  code: "data-analyst",
   nameVi: career.nameVi,
   nameEn: career.nameEn,
   category: career.category,
@@ -117,7 +116,7 @@ function setup(options: SetupOptions = {}) {
       return { rowCount: 1, rows: [{ id: `skill-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` }] };
     }
     if (sql.includes("INSERT INTO career_requirements")) return { rowCount: 1, rows: [] };
-    if (sql.includes("UPDATE career_positions SET code"))
+    if (sql.includes("UPDATE career_positions SET name_vi"))
       return { rowCount: options.updateRows === undefined ? 1 : options.updateRows.length, rows: options.updateRows ?? [career] };
     return { rowCount: 1, rows: [] };
   });
@@ -308,14 +307,15 @@ describe("career catalog API", () => {
   });
 
   it("creates a validated catalog entry and maps duplicate-style input errors before writing", async () => {
-    const created = { ...career, code: "analytics-engineer" };
+    const created = { ...career, code: "NN021" };
     const { app, clientQuery, release } = setup({ createRow: created });
     await request(app)
       .post("/careers")
       .set("Origin", origin)
-      .send({ ...input, code: created.code })
+      .send(input)
       .expect(201, created);
-    expect(clientQuery).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO career_positions"), expect.any(Array));
+    expect(clientQuery).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO career_positions(name_vi,name_en"),
+      [input.nameVi, input.nameEn, input.category, input.description, input.skills, expect.any(String)]);
     const createSql = clientQuery.mock.calls.map(([sql]) => String(sql));
     expect(createSql.findIndex((sql) => sql.includes("career_fields") && sql.includes("FOR SHARE")))
       .toBeLessThan(createSql.findIndex((sql) => sql.includes("INSERT INTO career_positions")));
@@ -325,9 +325,28 @@ describe("career catalog API", () => {
     await request(invalid.app)
       .post("/careers")
       .set("Origin", origin)
-      .send({ ...input, code: "Not valid" })
+      .send({ ...input, nameVi: " " })
       .expect(400, { error: "invalid_career" });
     expect(invalid.connect).not.toHaveBeenCalled();
+  });
+
+  it("ignores legacy career codes on create/edit and searches with the assigned code", async () => {
+    const create = setup();
+    await request(create.app).post("/careers").set("Origin", origin)
+      .send({ ...input, code: "manual-code" }).expect(201, career);
+    const insert = create.clientQuery.mock.calls.find(([sql]) => sql.includes("INSERT INTO career_positions"));
+    expect(insert?.[0]).not.toContain("(code,");
+    expect(insert?.[1]).not.toContain("manual-code");
+    const update = setup();
+    await request(update.app).patch(`/careers/${careerId}`).set("Origin", origin).set("x-version", version)
+      .send({ ...input, code: "NN999" }).expect(200, career);
+    const changed = update.clientQuery.mock.calls.find(([sql]) => sql.includes("UPDATE career_positions SET name_vi"));
+    expect(changed?.[0]).not.toContain("code=");
+    expect(changed?.[1]).not.toContain("NN999");
+    expect(update.clientQuery).toHaveBeenCalledWith("UPDATE career_positions SET search_text=$2 WHERE id=$1",
+      [careerId, fold([career.code, input.nameVi, input.nameEn, input.description, ...career.skills].join(" "))]);
+    await request(update.app).get("/careers?q=NN004").expect(200);
+    expect(update.query).toHaveBeenCalledWith(expect.stringContaining("strpos(search_text,$1)"), ["nn004", ""]);
   });
 
   it("maps an optimistic version miss to a conflict without returning a row", async () => {
@@ -338,7 +357,7 @@ describe("career catalog API", () => {
       .set("x-version", nextVersion)
       .send(input)
       .expect(409, { error: "career_changed" });
-    expect(clientQuery).toHaveBeenCalledWith(expect.stringContaining("UPDATE career_positions SET code"), expect.any(Array));
+    expect(clientQuery).toHaveBeenCalledWith(expect.stringContaining("UPDATE career_positions SET name_vi"), expect.any(Array));
     expect(clientQuery).toHaveBeenCalledWith("ROLLBACK");
     expect(clientQuery).toHaveBeenCalledWith(
       "SELECT id FROM career_fields WHERE code=$1 AND deleted_at IS NULL FOR SHARE",
@@ -485,7 +504,7 @@ describe("career catalog API", () => {
       .send(input)
       .expect(409, { error: "field_unavailable" });
     expect(unavailableUpdate.clientQuery).not.toHaveBeenCalledWith(
-      expect.stringContaining("UPDATE career_positions SET code"),
+      expect.stringContaining("UPDATE career_positions SET name_vi"),
       expect.any(Array),
     );
   });

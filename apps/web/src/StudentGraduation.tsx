@@ -146,7 +146,7 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
   const improvementCodes = new Set(data.courses.filter((course) => {
     const code = course.code.trim().toUpperCase();
     const grade = assessment.scores.get(code);
-    const score = data.gpaScale === 4 ? grade?.score4 : grade?.score10;
+    const score = assessment.gpa.scale === 4 ? grade?.score4 : grade?.score10;
     return assessment.gpa.status === "fail" && !course.conditionOnly && !grade?.conditional &&
       grade?.letter?.trim().toUpperCase() !== "MT" && assessment.results.get(code) === "pass" &&
       score !== null && score !== undefined && data.minimumGpa !== null && score < data.minimumGpa;
@@ -175,9 +175,8 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
               <dt>{label}</dt>
               <dd className={data[key] === null ? "sg-unknown" : undefined}>
                 {fmt(data[key])}
-                {key === "minimumGpa" && data.gpaScale ? ` / ${data.gpaScale}` : ""}
+                {key === "minimumGpa" ? ` / ${data.gpaScale ?? 4}` : ""}
               </dd>
-              {key === "minimumGpa" && !data.gpaScale && <small className="sc-muted">Chưa chọn thang điểm</small>}
             </div>
           ))}
         </dl>
@@ -301,8 +300,8 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                         <td className="sg-score">
                           {grade?.letter?.trim().toUpperCase() === "MT" ? <span>MT · Miễn thi</span>
                             : grade ? <>
-                              <strong>{grade.score10 !== null ? `${fmt(grade.score10)} / 10` : grade.score4 !== null ? `${fmt(grade.score4)} / 4` : "Chưa có điểm"}</strong>
-                              <small>{[grade.score10 !== null && grade.score4 !== null ? `${fmt(grade.score4)} / 4` : "", grade.letter].filter(Boolean).join(" · ")}</small>
+                              <strong>{grade.score4 !== null ? `${fmt(grade.score4)} / 4` : grade.score10 !== null ? `${fmt(grade.score10)} / 10` : "Chưa có điểm"}</strong>
+                              <small>{[grade.score10 !== null && grade.score4 !== null ? `${fmt(grade.score10)} / 10` : "", grade.letter].filter(Boolean).join(" · ")}</small>
                               {improve && <small className="sg-score-hint">Có thể học cải thiện</small>}
                             </> : "—"}
                         </td>

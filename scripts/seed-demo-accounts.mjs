@@ -20,7 +20,8 @@ const names = [
   'Võ Thanh Sơn', 'Đặng Hải Hà', 'Bùi Quốc Hưng', 'Đỗ Phương Thảo',
   'Huỳnh Minh Triết',
 ];
-const careers = ['software', 'backend', 'frontend', 'data-analyst', 'ai-engineer', 'mobile', 'qa', 'cloud', 'security-analyst'];
+// Resolve seeded careers by name, since display codes are database-generated.
+const careers = ['Software Engineer', 'Backend Developer', 'Frontend Developer', 'Data Analyst', 'AI Engineer', 'Mobile Developer', 'QA/Test Engineer', 'Cloud Engineer', 'Cybersecurity Analyst'];
 const interests = ['Lập trình ứng dụng, đọc sách công nghệ', 'Thiết kế hệ thống, giải thuật', 'Thiết kế giao diện, nhiếp ảnh', 'Phân tích dữ liệu, thống kê', 'Trí tuệ nhân tạo, nghiên cứu', 'Ứng dụng di động, thể thao', 'Kiểm thử phần mềm, làm việc nhóm', 'Điện toán đám mây, Linux', 'An toàn thông tin, mạng máy tính'];
 const ascii = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
 export const records = names.map((name, i) => {
@@ -28,17 +29,17 @@ export const records = names.map((name, i) => {
   const studentCode = `${cohort - 6}74802010${String(501 + Math.floor(i / 6)).padStart(3, '0')}`;
   return { index: i + 1, name, role: 'student', email: `${ascii(name.split(' ').at(-1))}.${studentCode}@vanlanguni.vn`, studentCode,
     cohort: `K${cohort}`, year: cohort + 1994, className: `CNTT${String(1 + i % 8).padStart(2, '0')}`,
-    semester: 1, careerCode: careers[i % careers.length], interests: interests[i % interests.length] };
+    semester: 1, careerNameEn: careers[i % careers.length], interests: interests[i % interests.length] };
 });
 [
   ['Nguyễn Hữu Thành', 'admin'], ['Trần Thu Hằng', 'faculty_board'],
   ['Lê Quang Vinh', 'department_head'], ['Phạm Minh Tâm', 'lecturer'], ['Võ Ngọc Lan', 'lecturer'],
 ].forEach(([name, role], i) => records.push({ index: 46 + i, name, role,
   email: `${ascii(name).replaceAll(' ', '')}@vlu.edu.vn`, studentCode: null, cohort: null,
-  year: null, className: null, semester: null, careerCode: null, interests: null }));
+  year: null, className: null, semester: null, careerNameEn: null, interests: null }));
 const q = v => v === null ? 'NULL' : typeof v === 'number' ? String(v) : `'${v.replaceAll("'", "''")}'`;
 export const sql = `BEGIN;
-CREATE TEMP TABLE demo_seed (n int, name text, role text, email text, student_code text, cohort text, year int, class_name text, semester int, career_code text, interests text) ON COMMIT DROP;
+CREATE TEMP TABLE demo_seed (n int, name text, role text, email text, student_code text, cohort text, year int, class_name text, semester int, career_name_en text, interests text) ON COMMIT DROP;
 CREATE TEMP TABLE demo_users_before ON COMMIT DROP AS
 SELECT id, md5(row_to_json(u)::text) AS fingerprint FROM public.users u;
 CREATE TEMP TABLE demo_profiles_before ON COMMIT DROP AS
@@ -56,7 +57,7 @@ DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM demo_seed s JOIN public.users u USING(id) WHERE u.entra_subject<>'${batch}:'||s.n OR u.email<>s.email OR u.display_name<>s.name OR u.role<>s.role) THEN
    RAISE EXCEPTION 'Existing seed identity differs; refusing to overwrite';
  END IF;
- IF EXISTS(SELECT 1 FROM demo_seed s WHERE s.role='student' AND NOT EXISTS(SELECT 1 FROM public.career_positions c WHERE c.code=s.career_code AND c.deleted_at IS NULL)) THEN
+ IF EXISTS(SELECT 1 FROM demo_seed s WHERE s.role='student' AND (SELECT count(*) FROM public.career_positions c WHERE c.name_en=s.career_name_en AND c.deleted_at IS NULL)<>1) THEN
    RAISE EXCEPTION 'A selected career is missing';
  END IF;
 END $$;
@@ -67,7 +68,7 @@ SELECT s.id,(SELECT entra_tenant_id FROM public.users GROUP BY entra_tenant_id O
 FROM demo_seed s WHERE NOT EXISTS(SELECT 1 FROM public.users u WHERE u.id=s.id);
 INSERT INTO public.student_profiles(user_id,student_code,cohort_year,current_semester,career_goal,onboarding_completed,full_name,cohort_code,class_name,interests,career_position_id)
 SELECT s.id,s.student_code,s.year,s.semester,c.name_vi,false,s.name,s.cohort,s.class_name,s.interests,c.id
-FROM demo_seed s JOIN public.career_positions c ON c.code=s.career_code AND c.deleted_at IS NULL
+FROM demo_seed s JOIN public.career_positions c ON c.name_en=s.career_name_en AND c.deleted_at IS NULL
 WHERE s.role='student' AND NOT EXISTS(SELECT 1 FROM public.student_profiles p WHERE p.user_id=s.id);
 DO $$ BEGIN
  IF (SELECT count(*) FROM public.users WHERE entra_subject LIKE '${batch}:%')<>50 OR

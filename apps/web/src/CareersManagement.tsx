@@ -98,6 +98,7 @@ export default function CareersManagement({
               <table className="cm-table">
                 <thead>
                   <tr>
+                    <th>Mã vị trí</th>
                     <th>Vị trí nghề nghiệp</th>
                     <th>Lĩnh vực</th>
                     <th>Kỹ năng liên kết</th>
@@ -109,6 +110,7 @@ export default function CareersManagement({
                     .slice((page - 1) * 10, page * 10)
                     .map((c) => (
                       <tr key={c.id}>
+                        <td className="career-code">{c.code}</td>
                         <td>
                           <strong>{c.nameVi}</strong>
                           <small>{c.nameEn}</small>
@@ -205,7 +207,6 @@ function Editor({
   saved: (career: Career) => void;
 }) {
   const [form, setForm] = useState({
-      code: current?.code ?? "",
       nameVi: current?.nameVi ?? "",
       nameEn: current?.nameEn ?? "",
       category: current?.category ?? fields[0]?.code ?? "",
@@ -246,18 +247,9 @@ function Editor({
         }}
       >
         <fieldset disabled={busy} className="career-fields">
-          <label>
-            <RequiredLabel>Mã vị trí</RequiredLabel>
-            <input
-              required
-              maxLength={60}
-              pattern="[a-z0-9]+(-[a-z0-9]+)*"
-              value={form.code}
-              onChange={(e) => setForm({ ...form, code: e.target.value })}
-              placeholder="Ví dụ: frontend-developer"
-            />
-            <small>Chữ thường, số và dấu gạch ngang.</small>
-          </label>
+          <p className="career-code-note">
+            {current ? <>Mã vị trí: <strong>{current.code}</strong> · Mã được giữ nguyên khi cập nhật.</> : "Mã vị trí được cấp tự động khi lưu (NN001, NN002…)."}
+          </p>
           <div className="cm-form-grid">
             <label>
               <RequiredLabel>Tên tiếng Việt</RequiredLabel>

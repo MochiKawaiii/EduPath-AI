@@ -190,7 +190,7 @@ describe("student graduation API", () => {
       classBlock: "K29-CNTT",
       minimumCredits: 126,
       minimumGpa: 2,
-      gpaScale: null,
+      gpaScale: 4,
       notes: "Student-facing note",
     });
     expect(response.body.groups).toEqual([

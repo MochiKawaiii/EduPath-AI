@@ -304,7 +304,7 @@ describe("graduation synthetic parser cases", () => {
       electiveCredits: 21,
       freeElectiveCredits: 0,
       minimumGpa: 2,
-      gpaScale: null,
+      gpaScale: 4,
     });
     expect(parsed.groups).toHaveLength(1);
     expect(parsed.groups[0]).toMatchObject({ kind: "mandatory", minimumCredits: 3 });
@@ -340,13 +340,16 @@ describe("graduation synthetic parser cases", () => {
       .toMatchObject({ gpaScale, minimumGpa: gpaScale === 4 ? 2 : 5.5 });
   });
 
-  it("accepts legacy standards without guessing a scale and validates explicit scales", () => {
+  it("defaults new and legacy standards to scale 4 and validates explicit overrides", () => {
     const data = parseSheet({ workbook: "synthetic.xlsx", sheet: "Sheet", rows: syntheticRows })!;
-    expect(data.gpaScale).toBeNull();
-    expect(warnings(data).some((warning) => warning.includes("thang điểm"))).toBe(true);
+    expect(data.gpaScale).toBe(4);
+    expect(warnings(data).some((warning) => warning.includes("thang điểm"))).toBe(false);
     const { gpaScale, ...legacy } = data;
     void gpaScale;
-    expect(validateData(legacy).minimumGpa).toBe(2);
+    expect(validateData(legacy)).toMatchObject({ minimumGpa: 2, gpaScale: 4 });
+    expect(validateData({ ...legacy, gpaScale: null }).gpaScale).toBe(4);
+    expect(() => validateData({ ...legacy, minimumGpa: 5.5 })).toThrow();
+    expect(warnings({ ...legacy, minimumGpa: 5.5 }).some((warning) => warning.includes("vượt thang điểm"))).toBe(true);
     expect(validateData({ ...data, minimumGpa: 5.5, gpaScale: 10 }).gpaScale).toBe(10);
     expect(() => validateData({ ...data, minimumGpa: 5.5, gpaScale: 4 })).toThrow();
     expect(() => validateData({ ...data, gpaScale: 100 })).toThrow();

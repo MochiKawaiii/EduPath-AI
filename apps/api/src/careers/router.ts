@@ -21,12 +21,8 @@ const fieldInput = fieldDetails.extend({ code: fieldCode.optional() });
 const fieldColumns = `id,code,name,description,version`;
 export const careerInput = z
   .object({
-    code: z
-      .string()
-      .trim()
-      .min(1)
-      .max(60)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    // Legacy clients may send a code; it never controls the database-assigned code.
+    code: z.string().trim().max(60).optional(),
     nameVi: z.string().trim().min(1).max(160),
     nameEn: z.string().trim().min(1).max(160),
     category: fieldCode,
@@ -182,9 +178,8 @@ export function createCareersRouter(
         await lockSkillCatalog(client);
         await requireField(client, data.category);
         const row = await client.query(
-          `INSERT INTO career_positions(code,name_vi,name_en,category,description,skills,search_text) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING ${columns}`,
+          `INSERT INTO career_positions(name_vi,name_en,category,description,skills,search_text) VALUES($1,$2,$3,$4,$5,$6) RETURNING ${columns}`,
           [
-            data.code,
             data.nameVi,
             data.nameEn,
             data.category,
@@ -192,7 +187,6 @@ export function createCareersRouter(
             skills,
             fold(
               [
-                data.code,
                 data.nameVi,
                 data.nameEn,
                 data.description,
@@ -222,11 +216,10 @@ export function createCareersRouter(
         await lockSkillCatalog(client);
         await requireField(client, data.category);
         const row = await client.query(
-          `UPDATE career_positions SET code=$3,name_vi=$4,name_en=$5,category=$6,description=$7,skills=COALESCE($8::text[],skills),search_text=$9,version=$10,updated_at=now() WHERE id=$1 AND version=$2 AND deleted_at IS NULL RETURNING ${columns}`,
+          `UPDATE career_positions SET name_vi=$3,name_en=$4,category=$5,description=$6,skills=COALESCE($7::text[],skills),search_text=$8,version=$9,updated_at=now() WHERE id=$1 AND version=$2 AND deleted_at IS NULL RETURNING ${columns}`,
           [
             id,
             version,
-            data.code,
             data.nameVi,
             data.nameEn,
             data.category,
@@ -234,7 +227,6 @@ export function createCareersRouter(
             data.skills ?? null,
             fold(
               [
-                data.code,
                 data.nameVi,
                 data.nameEn,
                 data.description,
@@ -247,7 +239,7 @@ export function createCareersRouter(
         if (!row.rowCount) throw new CareerError("career_changed", 409);
         if (data.skills) await syncLegacySkillLinks(client, id, data.skills);
         await client.query("UPDATE career_positions SET search_text=$2 WHERE id=$1", [id,
-          fold([data.code, data.nameVi, data.nameEn, data.description, ...row.rows[0].skills].join(" "))]);
+          fold([row.rows[0].code, data.nameVi, data.nameEn, data.description, ...row.rows[0].skills].join(" "))]);
         await client.query("COMMIT");
         res.json(row.rows[0]);
       } catch (e) {

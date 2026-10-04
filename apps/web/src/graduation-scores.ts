@@ -44,13 +44,12 @@ export type GpaAssessment = {
 };
 
 export function assessGraduationGpa(standard: Standard, transcript: Transcript | null): GpaAssessment {
-  const scale = standard.gpaScale ?? null;
+  const scale = standard.gpaScale ?? 4;
   const unknown = (reason: string): GpaAssessment => ({
     actual: null, required: standard.minimumGpa, scale, status: "unknown", source: null, reason,
   });
   if (!transcript) return unknown("Chưa có bảng điểm để đối chiếu.");
   if (standard.minimumGpa === null) return unknown("Tiêu chuẩn chưa có điểm trung bình tối thiểu.");
-  if (!scale) return unknown("Tiêu chuẩn chưa chọn hệ 4 hoặc hệ 10. Cần quản trị viên bổ sung thang điểm.");
   if (!numeric(standard.minimumGpa, scale)) return unknown("Ngưỡng điểm trung bình chưa phù hợp với thang điểm đã chọn.");
   const result = (actual: number, source: "printed" | "calculated"): GpaAssessment => ({
     actual, required: standard.minimumGpa, scale, source,

@@ -34,11 +34,13 @@ Migration `014_career_positions.sql` tạo danh mục và thêm liên kết từ
 - Admin: **Quản lý nghề nghiệp** tại `/quantri/vi-tri-nghe-nghiep`, breadcrumb **Nghề nghiệp**. Tìm bằng tên Việt/Anh, mã hoặc kỹ năng; tìm không dấu được hỗ trợ. Bộ lọc lĩnh vực áp dụng ngay khi chọn.
 - Admin: **Lĩnh vực nghề nghiệp** là mục riêng trong menu trái tại `/quantri/linh-vuc-nghe-nghiep`. Trang này có danh sách, tìm kiếm, thêm, sửa và xóa lĩnh vực; không nằm trong hộp thoại của trang Quản lý nghề nghiệp.
 - Sinh viên: **Hồ sơ & bảng điểm → Thông tin cá nhân → Chọn nghề nghiệp**. Chọn một vị trí trong danh sách rồi bấm **Lưu** để lưu ngay, hoặc mở yêu cầu/kỹ năng trước khi chọn mục tiêu. Có thể bỏ chọn trong form hồ sơ. Văn bản mục tiêu cũ được giữ trong cơ sở dữ liệu nhưng không hiển thị và không tính vào trạng thái hoàn tất hồ sơ.
-- Form tạo vị trí chỉ có mã, tên Việt/Anh, lĩnh vực và mô tả; không nhập kỹ năng tại đây. Lưu thành công trở về danh sách. Nút **Kỹ năng liên kết** cạnh **Thêm vị trí nghề nghiệp** mở khu vực riêng: chọn vị trí, rồi dùng **Thêm kỹ năng liên kết** để quản lý nội dung, mức yêu cầu và tính chất. Không có nút tạo yêu cầu riêng; các yêu cầu đã có vẫn xem, cập nhật và xóa được.
+- Form tạo vị trí chỉ nhập tên Việt/Anh, lĩnh vực và mô tả; mã được hệ thống tự cấp dạng **NN001, NN002…** và hiển thị trong cột **Mã vị trí** của danh sách. Form chỉnh sửa chỉ xem mã, không được đổi mã. Lưu thành công trở về danh sách. Nút **Kỹ năng liên kết** cạnh **Thêm vị trí nghề nghiệp** mở khu vực riêng: chọn vị trí, rồi dùng **Thêm kỹ năng liên kết** để quản lý nội dung, mức yêu cầu và tính chất. Không có nút tạo yêu cầu riêng; các yêu cầu đã có vẫn xem, cập nhật và xóa được.
 
 API admin nằm tại `/api/admin/careers`, danh mục cho sinh viên tại `/api/student/careers`. Trường hồ sơ `careerPositionId` lưu UUID của vị trí; bỏ trường này trong yêu cầu cập nhật sẽ giữ nguyên lựa chọn cũ, gửi `null` sẽ bỏ chọn. Không chấp nhận lựa chọn mới trỏ đến vị trí đã xóa. Các thao tác sửa/xóa vị trí kiểm tra phiên bản để tránh ghi đè cập nhật đồng thời.
 
-Khi deploy với `DATABASE_AUTO_MIGRATE=true`, backend áp dụng migration và khởi tạo danh mục. Không cần tải file hay chạy import cho 20 vị trí ban đầu.
+Migration `021_career_position_codes.sql` đổi các mã vị trí cũ, kể cả vị trí đã ngừng sử dụng, thành NN001… trong cùng transaction. UUID và liên kết hồ sơ/kỹ năng giữ nguyên; phiên bản được đổi để chặn form cũ ghi đè. Sequence cấp mã duy nhất khi tạo đồng thời, không tái sử dụng mã đã xóa; có thể có khoảng trống khi thao tác bị hủy. Từ 1000 trở đi hiển thị NN1000… không cắt bớt chữ số. Database bỏ qua mã do client cũ gửi và giữ nguyên mã khi cập nhật. Tìm kiếm hỗ trợ mã mới. Script tạo dữ liệu demo tra tên tiếng Anh thay vì mã cũ.
+
+Khi deploy với `DATABASE_AUTO_MIGRATE=true`, backend áp dụng migration và khởi tạo danh mục. Không cần tải file hay chạy import cho 20 vị trí ban đầu. Nếu áp dụng migration bằng SQL Editor, ghi phiên bản và checksum chuẩn hóa xuống `schema_migrations` trong cùng transaction để lần deploy sau không chạy lại.
 
 ## Lĩnh vực nghề nghiệp — AD-FIELD-01..04
 

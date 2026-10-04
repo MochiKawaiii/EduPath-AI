@@ -1,3 +1,5 @@
+.career-code { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.career-code-note { color: var(--text-muted, #64748b); }
 .career-workspace > *,
 .career-detail {
   min-width: 0;

@@ -425,8 +425,7 @@ function DataSummary({ data }: { data: GraduationData }) {
         {thresholdFields.map(([key, label]) => (
           <div key={key}>
             <small>{label}</small>
-            <strong>{fmt(data[key])}{key === "minimumGpa" && data.gpaScale ? ` / ${data.gpaScale}` : ""}</strong>
-            {key === "minimumGpa" && !data.gpaScale && <small>Chưa chọn thang điểm</small>}
+            <strong>{fmt(data[key])}{key === "minimumGpa" ? ` / ${data.gpaScale ?? 4}` : ""}</strong>
           </div>
         ))}
       </div>
@@ -752,7 +751,7 @@ function EditDialog({
   close: () => void;
   saved: () => void;
 }) {
-  const [form, setForm] = useState(() => structuredClone(current.data)),
+  const [form, setForm] = useState(() => ({ ...structuredClone(current.data), gpaScale: current.data.gpaScale ?? 4 })),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const group = form.groups.find((g) => g.id === groupId),
@@ -904,19 +903,17 @@ function EditDialog({
                   key={key}
                   label={label}
                   value={form[key]}
-                  max={key === "minimumGpa" ? (form.gpaScale ?? 10) : 500}
+                  max={key === "minimumGpa" ? form.gpaScale : 500}
                   change={(n) => setForm({ ...form, [key]: n })}
                 />
               ))}
               <label>
                 Thang điểm trung bình
                 <select
-                  required={form.minimumGpa !== null}
-                  value={form.gpaScale ?? ""}
-                  onChange={(e) => setForm({ ...form, gpaScale: e.target.value ? Number(e.target.value) as 4 | 10 : null })}
+                  value={form.gpaScale}
+                  onChange={(e) => setForm({ ...form, gpaScale: Number(e.target.value) as 4 | 10 })}
                 >
-                  <option value="">Chọn thang điểm</option>
-                  <option value="4">Hệ 4</option>
+                  <option value="4">Hệ 4 (mặc định)</option>
                   <option value="10">Hệ 10</option>
                 </select>
               </label>

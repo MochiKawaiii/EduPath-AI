@@ -116,7 +116,7 @@ try {
   // Include an archived numeric code that collides with the new numbering scheme.
   await pool.query("INSERT INTO career_fields(code,name,deleted_at) VALUES('1','Archived numeric field',now())");
   await pool.query(`INSERT INTO career_positions(code,name_vi,name_en,category,description,skills,search_text,deleted_at)
-    VALUES('number-audit-archived','Archived number audit','Archived number audit','1','','{}','',now())`);
+    VALUES('NN001','Archived number audit','Archived number audit','1','','{}','',now())`);
   const originalFields = (await pool.query("SELECT id,code,name,description,deleted_at,version FROM career_fields ORDER BY id")).rows;
   const originalLinks = (await pool.query(`SELECT p.id,f.id AS field_id FROM career_positions p
     JOIN career_fields f ON f.code=p.category ORDER BY p.id`)).rows;
@@ -155,6 +155,24 @@ try {
     "INSERT INTO student_profiles(user_id,career_goal,interests,class_name,current_semester) VALUES($1,$2,$3,$4,$5)",
     [studentId, "Legacy free-text goal", "Data and AI", "CNTT08", 2],
   );
+
+  const originalCareers = (await pool.query("SELECT id,code,name_vi,name_en,category,description,skills,deleted_at,version FROM career_positions ORDER BY id")).rows;
+  const originalRequirements = (await pool.query("SELECT id,career_position_id,skill_id FROM career_requirements ORDER BY id")).rows;
+  await pool.query("UPDATE student_profiles SET career_position_id=$2 WHERE user_id=$1", [studentId, originalCareers[0].id]);
+  const positionCodesMigration = await readFile("apps/api/migrations/021_career_position_codes.sql", "utf8");
+  await pool.query(`BEGIN; ${positionCodesMigration.replaceAll("public.", `${schema}.`)} COMMIT;`);
+  const numberedCareers = (await pool.query("SELECT id,code,name_vi,name_en,category,description,skills,deleted_at,version FROM career_positions ORDER BY id")).rows;
+  assert.equal(numberedCareers.length, originalCareers.length);
+  for (let i = 0; i < numberedCareers.length; i++) {
+    assert.deepEqual({ ...numberedCareers[i], code: originalCareers[i].code, version: originalCareers[i].version }, originalCareers[i]);
+    assert.match(numberedCareers[i].code, /^NN[0-9]{3,}$/);
+    assert.notEqual(numberedCareers[i].version, originalCareers[i].version);
+  }
+  assert.deepEqual(numberedCareers.map(c => Number(c.code.slice(2))).sort((a,b) => a-b), Array.from({ length: 21 }, (_, i) => i+1));
+  assert.deepEqual((await pool.query("SELECT id,career_position_id,skill_id FROM career_requirements ORDER BY id")).rows, originalRequirements);
+  assert.equal((await pool.query("SELECT career_position_id FROM student_profiles WHERE user_id=$1", [studentId])).rows[0].career_position_id, originalCareers[0].id);
+  await pool.query("UPDATE student_profiles SET career_position_id=NULL WHERE user_id=$1", [studentId]);
+  checks.push("position code migration renumbers active/archived rows and existing NN001 collisions while preserving all UUIDs, metadata, student selections and skill links");
 
   const app = express();
   app.use(express.json({ limit: "2mb" }));
@@ -243,7 +261,7 @@ try {
   assert.equal(result.status, 200);
   assert.equal(result.body.items.length, 20);
   assert.equal(new Set(result.body.items.map((item) => item.category)).size, 6);
-  const frontend = result.body.items.find((item) => item.code === "frontend");
+  const frontend = result.body.items.find((item) => item.nameEn === "Frontend Developer");
   assert(frontend, "migration must seed the frontend position");
   checks.push("migration seeds exactly 20 bilingual IT career positions across six categories");
 
@@ -291,7 +309,8 @@ try {
   assert(result.body.items.every((item) => item.category === infrastructureCode));
   result = await api("/careers", "?q=" + encodeURIComponent("DATA ANALYST"));
   assert.equal(result.status, 200);
-  assert(result.body.items.some((item) => item.code === "data-analyst"));
+  assert(result.body.items.some((item) => item.nameEn === "Data Analyst"));
+  assert((await api("/careers", "?q=" + frontend.code)).body.items.some(item => item.id === frontend.id));
   result = await api("/careers", "?category=valid-but-unknown");
   assert.equal(result.status, 200);
   assert.deepEqual(result.body, { items: [] });
@@ -328,6 +347,9 @@ try {
   result = await api("/careers", "", "POST", customInput);
   assert.equal(result.status, 201);
   const customId = result.body.id;
+  const customCode = result.body.code;
+  assert.match(customCode, /^NN[0-9]{3,}$/);
+  assert.notEqual(customCode, customInput.code);
   const customVersion = result.body.version;
   assert.equal(
     (await api("/careers", "", "POST", customInput)).body.error,
@@ -342,6 +364,8 @@ try {
   }, { "x-version": customVersion });
   assert.equal(result.status, 200);
   const updatedCustomVersion = result.body.version;
+  assert.equal(result.body.code, customCode);
+  assert((await api("/careers", "?q=" + customCode)).body.items.some(item => item.id === customId));
   assert.notEqual(updatedCustomVersion, customVersion);
   assert.equal(
     (await api("/careers", `/${customId}`, "PATCH", customInput, { "x-version": customVersion })).status,
@@ -629,7 +653,7 @@ try {
   result = await api("/student-careers", "", "GET", undefined, { "x-role": "student" });
   assert.equal(result.status, 200);
   assert.equal(result.body.items.length, 22);
-  let studentCustomCareer = result.body.items.find((item) => item.code === customFieldCareerInput.code);
+  let studentCustomCareer = result.body.items.find((item) => item.id === customFieldCareerId);
   assert.equal(studentCustomCareer.category, customFieldCode);
   assert.equal(studentCustomCareer.categoryName, "Integration Robotics");
 
@@ -668,7 +692,7 @@ try {
   result = await api("/student-careers", "/fields", "GET", undefined, { "x-role": "student" });
   assert(result.body.items.some((item) => item.code === customFieldCode && item.name === "Integration Robotics Updated"));
   result = await api("/student-careers", "", "GET", undefined, { "x-role": "student" });
-  studentCustomCareer = result.body.items.find((item) => item.code === customFieldCareerInput.code);
+  studentCustomCareer = result.body.items.find((item) => item.id === customFieldCareerId);
   assert.equal(studentCustomCareer.categoryName, "Integration Robotics Updated");
   assert.equal((await api("/careers", "/fields")).body.items.find((item) => item.code === customFieldCode).positionCount, 1);
   checks.push("renaming a career field after career creation updates admin list/detail and student category names without changing its code or position count");
@@ -715,12 +739,12 @@ try {
   assert.equal(updatedFields.find((item) => item.code === productCode).positionCount, initialProductPositionCount + 2);
   assert.deepEqual((await api("/careers", `?category=${customFieldCode}`)).body, { items: [] });
   result = await api("/careers", `?category=${productCode}`);
-  const reassignedCareer = result.body.items.find((item) => item.code === customFieldCareerInput.code);
+  const reassignedCareer = result.body.items.find((item) => item.id === customFieldCareerId);
   assert.equal(reassignedCareer.categoryName, productField.name);
   customFieldCareerDetail = await api("/careers", `/${customFieldCareerId}`, "GET");
   assert.equal(customFieldCareerDetail.body.categoryName, productField.name);
   result = await api("/student-careers", "", "GET", undefined, { "x-role": "student" });
-  studentCustomCareer = result.body.items.find((item) => item.code === customFieldCareerInput.code);
+  studentCustomCareer = result.body.items.find((item) => item.id === customFieldCareerId);
   assert.equal(studentCustomCareer.category, productCode);
   assert.equal(studentCustomCareer.categoryName, productField.name);
   result = await api("/careers", `/fields/${customFieldId}`, "DELETE", { confirmed: true }, { "x-version": updatedFieldVersion });
@@ -932,6 +956,26 @@ try {
   assert(Number(rawLegacyField.code) > Number(legacyCreatedField.body.code));
   assert.equal((await pool.query("UPDATE career_fields SET code='999999' WHERE id=$1 RETURNING code", [rawLegacyField.id])).rows[0].code, rawLegacyField.code);
   checks.push("database assigns distinct increasing field numbers under concurrent creation, never reuses deleted numbers, ignores legacy input codes and keeps assigned numbers immutable");
+
+  const largestPositionNumber = Number((await pool.query("SELECT max(substr(code,3)::bigint) AS n FROM career_positions")).rows[0].n);
+  const parallelCareers = await Promise.all(["A", "B", "C"].map(suffix => api("/careers", "", "POST", {
+    nameVi: `Concurrent career ${suffix}`, nameEn: `Concurrent career ${suffix}`, category: productCode, description: "",
+  })));
+  assert(parallelCareers.every(result => result.status === 201));
+  const parallelCodes = parallelCareers.map(result => Number(result.body.code.slice(2)));
+  assert.equal(new Set(parallelCodes).size, 3);
+  assert(parallelCodes.every(number => number > largestPositionNumber));
+  const removedCareer = parallelCareers[0].body;
+  assert.equal((await api("/careers", `/${removedCareer.id}`, "DELETE", { confirmed: true }, { "x-version": removedCareer.version })).status, 200);
+  const rawCareer = (await pool.query("INSERT INTO career_positions(code,name_vi,name_en,category,search_text) VALUES('NN001','Old backend career','Old backend career',$1,'old backend career') RETURNING id,code", [productCode])).rows[0];
+  assert(Number(rawCareer.code.slice(2)) > Math.max(...parallelCodes));
+  assert.equal((await pool.query("UPDATE career_positions SET code='NN999999' WHERE id=$1 RETURNING code", [rawCareer.id])).rows[0].code, rawCareer.code);
+  assert((await api("/careers", "?q=" + rawCareer.code)).body.items.some(item => item.id === rawCareer.id));
+  await pool.query(`SELECT setval('${schema}.career_position_code_seq'::regclass,999,true)`);
+  const thousandthCareer = await api("/careers", "", "POST", { nameVi: "Thousandth career", nameEn: "Thousandth career", category: productCode, description: "" });
+  assert.equal(thousandthCareer.status, 201);
+  assert.equal(thousandthCareer.body.code, "NN1000");
+  checks.push("position codes are generated without input, distinct under concurrent creation, immutable, never reused after deletion, searchable and retain all digits beyond NN999");
 
   const publicAfter = await publicSnapshot();
   assert.deepEqual(publicAfter, publicBefore);

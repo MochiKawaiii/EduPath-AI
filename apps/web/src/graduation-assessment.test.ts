@@ -267,11 +267,17 @@ describe("graduation group assessment", () => {
     expect(assessGraduation(data, grades)).toMatchObject({ status: "fail", needsImprovement: true });
   });
 
-  it("does not conclude eligibility or recommend improvement when GPA configuration is missing", () => {
+  it("uses scale 4 for legacy standards and keeps a missing threshold unknown", () => {
     const data = standard([group("BB", "mandatory", 3)], [course("CS-101", "BB", 3)]);
     const grades = transcript([attempt("CS-101")]);
     data.gpaScale = null;
-    expect(assessGraduation(data, grades)).toMatchObject({ groupStatus: "pass", status: "unknown", needsImprovement: false });
+    const legacyResult = assessGraduation(data, grades);
+    expect(legacyResult).toMatchObject({ groupStatus: "pass", status: "pass", gpa: { scale: 4 }, needsImprovement: false });
+    expect(legacyResult.gpa.actual).toBeCloseTo(3.2);
+    delete data.gpaScale;
+    const missingScale = assessGraduation(data, grades).gpa;
+    expect(missingScale).toMatchObject({ scale: 4, status: "pass" });
+    expect(missingScale.actual).toBeCloseTo(3.2);
     data.gpaScale = 4;
     data.minimumGpa = null;
     expect(assessGraduation(data, grades).status).toBe("unknown");

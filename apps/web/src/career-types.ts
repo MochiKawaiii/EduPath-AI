@@ -65,12 +65,12 @@ export const careerFailures: Record<string, string> = {
   field_in_use: "Lĩnh vực còn vị trí nghề nghiệp đang sử dụng. Hãy chuyển hoặc xóa các vị trí đó trước khi xóa lĩnh vực.",
   field_unavailable: "Lĩnh vực vừa bị xóa hoặc không còn sử dụng. Hãy tải lại và chọn lĩnh vực khác.",
   invalid_field: "Thông tin chưa hợp lệ. Kiểm tra tên và mô tả lĩnh vực.",
-  career_exists: "Mã hoặc tên song ngữ đã tồn tại. Hãy dùng thông tin khác.",
+  career_exists: "Tên song ngữ đã tồn tại. Hãy dùng tên khác.",
   career_changed:
     "Vị trí đã được cập nhật hoặc xóa. Đóng hộp thoại và tải lại trước khi lưu.",
   career_not_found: "Vị trí không còn trong danh mục.",
   invalid_career:
-    "Thông tin chưa hợp lệ. Kiểm tra tên, mã và các trường đã nhập.",
+    "Thông tin chưa hợp lệ. Kiểm tra tên, lĩnh vực và các trường đã nhập.",
   insufficient_role: "Bạn không còn quyền thực hiện thao tác này.",
   authentication_required:
     "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",

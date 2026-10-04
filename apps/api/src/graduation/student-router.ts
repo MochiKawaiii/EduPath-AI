@@ -19,7 +19,7 @@ export function studentGraduationData(data: GraduationData) {
     electiveCredits: data.electiveCredits,
     freeElectiveCredits: data.freeElectiveCredits,
     minimumGpa: data.minimumGpa,
-    gpaScale: data.gpaScale ?? null,
+    gpaScale: data.gpaScale ?? 4,
     notes: data.notes,
     groups: data.groups.map(({ id, name, kind, minimumCredits }) => ({
       id,

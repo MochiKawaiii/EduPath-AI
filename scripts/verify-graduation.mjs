@@ -224,6 +224,7 @@ try {
   result = await api(`/${id}`);
   assert.equal(result.status, 200);
   assert.equal(result.body.version, 1);
+  assert.equal(result.body.data.gpaScale, 4);
   assert.equal(result.body.data.courses.length, 88);
   assert.equal(result.body.history.length, 1);
   const originalToken = result.body.token;
@@ -265,6 +266,7 @@ try {
   const historical = await api(`/${id}?revision=${originalRevision}`);
   assert.equal(historical.status, 200);
   assert.equal(historical.body.version, 1);
+  assert.equal(historical.body.data.gpaScale, 4);
   assert.notEqual(
     historical.body.data.groups[0].minimumCredits,
     result.body.data.groups[0].minimumCredits,

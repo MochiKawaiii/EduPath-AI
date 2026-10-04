@@ -56,7 +56,7 @@ export const graduationSchema = z
     sourceNotes: z.array(text).max(100),
   })
   .strict()
-  .refine((data) => data.minimumGpa === null || data.gpaScale !== 4 || data.minimumGpa <= 4, {
+  .refine((data) => data.minimumGpa === null || (data.gpaScale ?? 4) !== 4 || data.minimumGpa <= 4, {
     message: "Điểm trung bình tối thiểu hệ 4 không được vượt quá 4.",
     path: ["minimumGpa"],
   });
@@ -73,6 +73,7 @@ export const identity = (data: GraduationData) =>
   fold(`${data.standardCode}|${data.classBlock}`);
 export function validateData(input: unknown) {
   const data = graduationSchema.parse(input);
+  data.gpaScale ??= 4;
   const groups = new Set(data.groups.map((g) => g.id));
   if (
     groups.size !== data.groups.length ||
@@ -86,8 +87,8 @@ export function warnings(data: GraduationData): string[] {
   const result = [...data.sourceNotes];
   if (data.minimumCredits === null || data.minimumGpa === null)
     result.push("Chưa có đủ ngưỡng tín chỉ hoặc điểm trung bình tích lũy.");
-  if (data.minimumGpa !== null && !data.gpaScale)
-    result.push("Chưa chọn thang điểm trung bình. Chọn hệ 4 hoặc hệ 10 trong thông tin tiêu chuẩn để đối chiếu bảng điểm.");
+  if (data.minimumGpa !== null && data.minimumGpa > (data.gpaScale ?? 4))
+    result.push("Ngưỡng điểm trung bình vượt thang điểm đang áp dụng. Hãy kiểm tra ngưỡng hoặc chọn hệ 10 nếu tiêu chuẩn dùng hệ 10.");
   if (
     data.minimumCredits !== null &&
     [

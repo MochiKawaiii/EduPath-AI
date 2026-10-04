@@ -78,6 +78,18 @@ describe("graduation cumulative GPA", () => {
     );
     expect(assessGraduationGpa(standard(), data)).toMatchObject({ actual: 5, status: "fail", source: "calculated" });
   });
+  it("defaults absent or null scales to 4 while retaining an explicit scale 10", () => {
+    const data = transcript(section("2025-2026", [course("A", { score10: 9, score4: 1 })], [
+      { label: "Điểm TB tích lũy (Hệ 4)", value: "1,5" },
+      { label: "Điểm TB tích lũy (Hệ 10)", value: "8" },
+    ]));
+    for (const rules of [standard(null, 2), { minimumGpa: 2, courses: [] }]) {
+      expect(assessGraduationGpa(rules, data)).toMatchObject({ scale: 4, actual: 1.5, status: "fail", source: "printed" });
+    }
+    expect(assessGraduationGpa(standard(10, 5.5), data)).toMatchObject({ scale: 10, actual: 8, status: "pass" });
+    expect(assessGraduationGpa(standard(null, 2), transcript(section("2025-2026", [course("A")]))))
+      .toMatchObject({ scale: 4, actual: 1, status: "fail", source: "calculated" });
+  });
   it("leaves malformed/conflicting summaries, missing grades and missing configuration unknown", () => {
     const records = [course("A")];
     for (const summaries of [
@@ -89,7 +101,7 @@ describe("graduation cumulative GPA", () => {
     const missing = transcript(section("2025-2026", [course("A", { score10: null, score4: null })]));
     expect(assessGraduationGpa(standard(), missing).status).toBe("unknown");
     expect(assessGraduationGpa(standard(), null).status).toBe("unknown");
-    expect(assessGraduationGpa(standard(null), transcript(section("2025-2026", records))).status).toBe("unknown");
+    expect(assessGraduationGpa(standard(4, null), transcript(section("2025-2026", records))).status).toBe("unknown");
     expect(assessGraduationGpa(standard(4, 5.5), transcript(section("2025-2026", records))).status).toBe("unknown");
   });
 });
