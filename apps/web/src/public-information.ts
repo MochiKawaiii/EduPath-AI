@@ -3,6 +3,8 @@ export const publicInformationLinks = [
   { href: "/cau-hoi-thuong-gap", label: "Câu hỏi thường gặp" }
 ] as const;
 
+export const supportEmail = "hotrosinhvien@vlu.edu.vn";
+
 export type FrequentlyAskedQuestion = {
   question: string;
   answer: string[];
@@ -103,7 +105,7 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
       "Khi bạn đăng nhập lần đầu, EduPath AI lấy họ tên, mã sinh viên, khóa, lớp và năm nhập học từ tài khoản Microsoft do trường cấp rồi điền sẵn vào hồ sơ, để bạn không phải nhập lại.",
       "Những thông tin này gắn với tài khoản trường nên chỉ hiển thị để bạn kiểm tra, không chỉnh sửa trực tiếp trên EduPath AI. Điều này giúp tránh việc nhập nhầm mã sinh viên hoặc dùng mã của người khác."
     ],
-    note: "Nếu họ tên, mã sinh viên, khóa hoặc lớp bị sai hay để trống, hãy liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin để được kiểm tra."
+    note: `Nếu họ tên, mã sinh viên, khóa hoặc lớp bị sai hay để trống, hãy gửi email đến ${supportEmail} để được kiểm tra.`
   },
   {
     question: "Tôi có thể chỉnh sửa hoặc xóa dữ liệu đã nhập không?",
@@ -111,7 +113,7 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
       "Bạn có thể mở Thông tin cá nhân, chọn Chỉnh sửa thông tin để cập nhật Sở thích và Vị trí nghề nghiệp mong muốn, rồi bấm Lưu thay đổi. Lớp học và các thông tin định danh lấy từ tài khoản trường chỉ để xem.",
       "Để xóa bảng điểm, mở Hồ sơ và bảng điểm, bấm Xóa bảng điểm và xác nhận. Việc này xóa PDF cùng toàn bộ dữ liệu môn học đã import; thông tin cá nhân vẫn được giữ lại. Sau đó bạn có thể tải một bảng điểm mới lên."
     ],
-    note: "Sau khi xóa bảng điểm, cột Kết quả và phần xét tốt nghiệp sẽ không còn dấu đạt hoặc chưa đạt cho đến khi bạn import lại. Nếu muốn xóa toàn bộ tài khoản EduPath AI hoặc nhận bản sao dữ liệu của mình, hãy liên hệ cán bộ phụ trách của Khoa."
+    note: `Sau khi xóa bảng điểm, cột Kết quả và phần xét tốt nghiệp sẽ không còn dấu đạt hoặc chưa đạt cho đến khi bạn import lại. Nếu muốn xóa toàn bộ tài khoản EduPath AI hoặc nhận bản sao dữ liệu của mình, hãy gửi email đến ${supportEmail}.`
   },
   {
     question: "Ai có thể xem bảng điểm và thông tin cá nhân của tôi?",
@@ -135,7 +137,7 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
       "Để bảo vệ tài khoản, phiên đăng nhập tự kết thúc sau một thời gian không sử dụng. Khi đó bạn chỉ cần đăng nhập lại bằng tài khoản trường.",
       "Nếu thấy thông báo trang này dành riêng cho sinh viên, tài khoản bạn vừa dùng không phải tài khoản sinh viên. Hãy chọn Đăng nhập bằng tài khoản sinh viên khác và dùng email @vanlanguni.vn của bạn."
     ],
-    note: "Nếu đã đăng nhập lại mà vẫn không vào được, hãy liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin."
+    note: `Nếu đã đăng nhập lại mà vẫn không vào được, hãy gửi email đến ${supportEmail}.`
   },
   {
     question: "Tôi có thể dùng EduPath AI trên điện thoại không?",
@@ -144,17 +146,20 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
   },
   {
     question: "Sau khi tốt nghiệp, dữ liệu của tôi trên EduPath AI sẽ ra sao?",
-    answer: ["Dữ liệu của bạn được giữ cho đến khi bạn tự xóa bảng điểm hoặc đề nghị Khoa xóa tài khoản. Nếu không còn sử dụng EduPath AI, bạn nên xóa bảng điểm và liên hệ cán bộ phụ trách của Khoa để xóa tài khoản."],
+    answer: [`Dữ liệu của bạn được giữ cho đến khi bạn tự xóa bảng điểm hoặc đề nghị xóa tài khoản. Nếu không còn sử dụng EduPath AI, bạn nên xóa bảng điểm và gửi email đến ${supportEmail} để đề nghị xóa tài khoản.`],
     note: "Bảng điểm đã xóa không khôi phục được, vì vậy hãy tự giữ bản PDF gốc trước khi xóa."
   },
   {
     question: "Tôi muốn góp ý hoặc báo lỗi thì liên hệ ở đâu?",
-    answer: ["Hãy liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin bằng email trường. Mô tả ngắn gọn bạn đang dùng chức năng nào, đã làm những bước gì và thông báo lỗi hiển thị trên màn hình."],
+    answer: [`Hãy gửi email đến ${supportEmail} từ email trường của bạn. Mô tả ngắn gọn bạn đang dùng chức năng nào, đã làm những bước gì và thông báo lỗi hiển thị trên màn hình.`],
     note: "Nếu gửi kèm ảnh chụp màn hình, hãy che các thông tin không cần thiết và không chụp thông tin của người khác."
   }
 ];
 
-export const policyUpdatedAt = "04/10/2026";
+// Students consent to this policy version when importing a transcript; the API rejects any
+// other version. Must equal TRANSCRIPT_POLICY_VERSION in apps/api/src/student/consent.ts.
+export const policyVersion = "2026-10-04";
+export const policyUpdatedAt = policyVersion.split("-").reverse().join("/");
 
 // A string renders as a paragraph; a string array renders as a bullet list.
 type InformationSection = { title: string; paragraphs: (string | string[])[] };
@@ -215,7 +220,10 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
           },
           {
             title: "Thông tin ghi nhận khi bạn sử dụng",
-            paragraphs: ["EduPath AI ghi lại thời điểm và kết quả các lần đăng nhập để bảo vệ tài khoản và hỗ trợ bạn khi gặp sự cố đăng nhập."]
+            paragraphs: [[
+              "Thời điểm và kết quả các lần đăng nhập, để bảo vệ tài khoản và hỗ trợ bạn khi gặp sự cố đăng nhập.",
+              "Thời điểm bạn đồng ý hoặc rút lại sự đồng ý cho việc xử lý bảng điểm, cùng phiên bản chính sách bạn đã đồng ý."
+            ]]
           },
           {
             title: "Thông tin không thu thập",
@@ -251,7 +259,8 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             paragraphs: [
               "Thông tin từ tài khoản trường là cần thiết để bạn đăng nhập và sử dụng EduPath AI. Sở thích, mục tiêu nghề nghiệp và bảng điểm chỉ được xử lý khi chính bạn nhập hoặc tải lên.",
               "Trước khi tải bảng điểm lên, bạn cần tích ô xác nhận đây là bảng điểm của mình và đồng ý để EduPath AI xử lý bảng điểm theo chính sách này. Ô này không được chọn sẵn; nếu bạn không tích, bảng điểm sẽ không được tải lên.",
-              "Bạn có thể rút lại sự đồng ý bất cứ lúc nào bằng cách xóa bảng điểm hoặc xóa thông tin đã nhập. Việc rút lại không ảnh hưởng đến những gì đã được xử lý trước đó."
+              "EduPath AI lưu lại thời điểm bạn đồng ý và phiên bản chính sách bạn đã đồng ý, để làm bằng chứng theo quy định của pháp luật. Khi chính sách được cập nhật, bạn sẽ được đề nghị đồng ý lại ở lần tải bảng điểm tiếp theo.",
+              "Bạn có thể rút lại sự đồng ý bất cứ lúc nào bằng cách xóa bảng điểm hoặc xóa thông tin đã nhập; thời điểm rút lại cũng được ghi nhận. Việc rút lại không ảnh hưởng đến những gì đã được xử lý trước đó."
             ]
           },
           {
@@ -342,9 +351,9 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
               [
                 "Thông tin hồ sơ: trong thời gian tài khoản EduPath AI của bạn còn tồn tại.",
                 "Bảng điểm: đến khi bạn xóa, thay bằng bản mới hoặc khi tài khoản được xóa.",
-                "Lịch sử đăng nhập: trong thời gian tài khoản còn tồn tại, để phục vụ việc bảo vệ tài khoản."
+                "Lịch sử đăng nhập và lịch sử đồng ý: trong thời gian tài khoản còn tồn tại."
               ],
-              "Khi không còn sử dụng EduPath AI, chẳng hạn sau khi tốt nghiệp, bạn có thể tự xóa bảng điểm và đề nghị Khoa xóa tài khoản."
+              `Khi không còn sử dụng EduPath AI, chẳng hạn sau khi tốt nghiệp, bạn có thể tự xóa bảng điểm và gửi email đến ${supportEmail} để đề nghị xóa tài khoản.`
             ]
           },
           {
@@ -390,16 +399,16 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             ]]
           },
           {
-            title: "Gửi yêu cầu cho Khoa",
+            title: "Gửi yêu cầu qua email",
             paragraphs: [
-              "Với các yêu cầu chưa tự làm được trên EduPath AI, bạn liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin, ví dụ:",
+              `Với các yêu cầu chưa tự làm được trên EduPath AI, bạn gửi email đến ${supportEmail}, ví dụ:`,
               [
                 "Sửa họ tên, mã số sinh viên, khóa hoặc lớp bị sai.",
                 "Nhận bản sao dữ liệu EduPath AI đang lưu về bạn.",
-                "Xóa tài khoản cùng toàn bộ hồ sơ và bảng điểm.",
+                "Xóa tài khoản cùng toàn bộ hồ sơ, bảng điểm và lịch sử liên quan.",
                 "Hạn chế hoặc phản đối việc xử lý dữ liệu."
               ],
-              "Hãy gửi từ email trường và ghi rõ họ tên, mã số sinh viên. Yêu cầu của bạn được xử lý trong thời hạn pháp luật quy định; nếu chưa thể thực hiện, Khoa sẽ cho bạn biết lý do."
+              "Hãy gửi từ email trường và ghi rõ họ tên, mã số sinh viên cùng nội dung yêu cầu. Yêu cầu của bạn được xử lý trong thời hạn pháp luật quy định; nếu chưa thể thực hiện, nhà trường sẽ cho bạn biết lý do."
             ]
           },
           {
@@ -419,7 +428,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
           {
             title: "Liên hệ và khiếu nại",
             paragraphs: [
-              "Nếu có câu hỏi về dữ liệu cá nhân hoặc cho rằng quyền của mình chưa được bảo đảm, hãy liên hệ cán bộ phụ trách tại Văn phòng Khoa Công nghệ Thông tin, Trường Đại học Văn Lang để được giải đáp.",
+              `Nếu có câu hỏi về dữ liệu cá nhân hoặc cho rằng quyền của mình chưa được bảo đảm, hãy gửi email đến ${supportEmail} để được giải đáp.`,
               "Bạn cũng có quyền khiếu nại, tố cáo đến cơ quan nhà nước có thẩm quyền theo quy định của pháp luật."
             ]
           },
@@ -476,14 +485,14 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
                 "Giữ bí mật mật khẩu và mã xác thực; không đưa cho người khác, kể cả khi nhờ tải bảng điểm giúp.",
                 "Không dùng tài khoản của người khác và không cho người khác dùng tài khoản của bạn.",
                 "Đăng xuất sau khi dùng máy tính chung ở phòng thực hành hay thư viện.",
-                "Báo ngay cho Khoa nếu nghi ngờ tài khoản của mình bị người khác sử dụng."
+                `Báo ngay qua email ${supportEmail} nếu nghi ngờ tài khoản của mình bị người khác sử dụng.`
               ],
               "Nếu bạn để người khác dùng tài khoản của mình, bạn chịu trách nhiệm về những gì họ làm bằng tài khoản đó."
             ]
           },
           {
             title: "Thông tin trong hồ sơ",
-            paragraphs: ["Họ tên, mã số sinh viên, khóa và lớp được lấy từ tài khoản trường nên bạn không sửa trực tiếp được. Nếu thông tin bị sai hoặc thiếu, hãy liên hệ cán bộ phụ trách của Khoa để được kiểm tra."]
+            paragraphs: [`Họ tên, mã số sinh viên, khóa và lớp được lấy từ tài khoản trường nên bạn không sửa trực tiếp được. Nếu thông tin bị sai hoặc thiếu, hãy gửi email đến ${supportEmail} để được kiểm tra.`]
           }
         ]
       },
@@ -530,7 +539,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
           },
           {
             title: "Khi phát hiện lỗi",
-            paragraphs: ["Nếu phát hiện lỗi, nhất là lỗi có thể làm lộ thông tin của người khác, hãy dừng lại, không khai thác hay chia sẻ và báo ngay cho cán bộ phụ trách của Khoa. Mọi hoạt động kiểm thử bảo mật cần được Khoa cho phép trước bằng văn bản."]
+            paragraphs: [`Nếu phát hiện lỗi, nhất là lỗi có thể làm lộ thông tin của người khác, hãy dừng lại, không khai thác hay chia sẻ và báo ngay qua email ${supportEmail}. Mọi hoạt động kiểm thử bảo mật cần được Khoa cho phép trước bằng văn bản.`]
           }
         ]
       },
@@ -582,7 +591,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
         sections: [
           {
             title: "Xử lý vi phạm",
-            paragraphs: ["Nếu vi phạm các điều khoản này, tài khoản của bạn có thể bị tạm khóa và hành vi vi phạm được xử lý theo quy chế của nhà trường và pháp luật. Nếu cho rằng tài khoản bị khóa nhầm, hãy liên hệ cán bộ phụ trách của Khoa để được xem xét."]
+            paragraphs: [`Nếu vi phạm các điều khoản này, tài khoản của bạn có thể bị tạm khóa và hành vi vi phạm được xử lý theo quy chế của nhà trường và pháp luật. Nếu cho rằng tài khoản bị khóa nhầm, hãy gửi email đến ${supportEmail} để được xem xét.`]
           },
           {
             title: "Thay đổi điều khoản",
@@ -592,7 +601,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             title: "Luật áp dụng và liên hệ",
             paragraphs: [
               "Các điều khoản này được điều chỉnh theo pháp luật Việt Nam. Khi có vướng mắc, hãy trao đổi với Khoa trước; nếu không giải quyết được, bạn có quyền đề nghị cơ quan nhà nước có thẩm quyền giải quyết.",
-              "Nếu có câu hỏi, hãy xem Câu hỏi thường gặp hoặc liên hệ cán bộ phụ trách tại Văn phòng Khoa Công nghệ Thông tin."
+              `Nếu có câu hỏi, hãy xem Câu hỏi thường gặp hoặc gửi email đến ${supportEmail}.`
             ]
           }
         ]

@@ -36,6 +36,8 @@
 .pi-faq-answer li { padding-left: 6px; margin-bottom: 12px; }
 .pi-faq-answer li::marker { color: var(--lp-red); font-weight: 700; }
 .pi-faq-help { margin: 38px 0 0; text-align: center; color: #514848; font-size: 17px; }
+.pi-faq-answer a, .pi-faq-help a, .pi-policy-text a { color: var(--pi-red); font-weight: 700; overflow-wrap: anywhere; }
+.pi-faq-answer a:hover, .pi-faq-help a:hover, .pi-policy-text a:hover { text-decoration: underline; }
 
 .pi-page-policy { font-family: "Manrope", "Segoe UI", system-ui, sans-serif; }
 .pi-policy-container { width: min(1800px, calc(100% - 96px)); margin-inline: auto; }

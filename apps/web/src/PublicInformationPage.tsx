@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import EduPathBrand from "./EduPathBrand";
 import PublicFooter from "./PublicFooter";
-import FaqAnswer from "./FaqAnswer";
-import { frequentlyAskedQuestions, informationPolicies, policyUpdatedAt, publicInformationLinks, type PolicyKind } from "./public-information";
+import FaqAnswer, { withEmailLinks } from "./FaqAnswer";
+import { frequentlyAskedQuestions, informationPolicies, policyUpdatedAt, publicInformationLinks, supportEmail, type PolicyKind } from "./public-information";
 import "./landing.css";
 import "./public-information.css";
 
@@ -88,8 +88,8 @@ function PolicyContent() {
                     <summary>{section.title}</summary>
                     <div className="pi-policy-text">
                       {section.paragraphs.map((block, index) => typeof block === "string"
-                        ? <p key={index}>{block}</p>
-                        : <ul key={index}>{block.map((item) => <li key={item}>{item}</li>)}</ul>)}
+                        ? <p key={index}>{withEmailLinks(block)}</p>
+                        : <ul key={index}>{block.map((item) => <li key={item}>{withEmailLinks(item)}</li>)}</ul>)}
                     </div>
                   </details>
                 ))}
@@ -117,7 +117,7 @@ function FrequentlyAskedQuestions() {
             </details>
           ))}
         </div>
-        <p className="pi-faq-help">Bạn cần thêm hỗ trợ? Hãy liên hệ cán bộ phụ trách của Khoa Công nghệ Thông tin.</p>
+        <p className="pi-faq-help">Bạn cần thêm hỗ trợ? Hãy gửi email đến <a href={`mailto:${supportEmail}`}>{supportEmail}</a>.</p>
       </div>
     </section>
   );

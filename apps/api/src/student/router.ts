@@ -7,6 +7,7 @@ import type { AuthenticatedUser } from "../auth/types.js";
 import { requireAuthentication } from "../middleware/authorization.js";
 import { parseTranscript, TranscriptError, type TranscriptData } from "./transcript-parser.js";
 import { enqueueTranscript, expireJobs, jobColumns } from "./transcript-jobs.js";
+import { recordTranscriptConsent, TRANSCRIPT_POLICY_VERSION, withdrawTranscriptConsent } from "./consent.js";
 
 const transcriptColumns = `version, filename, file_size AS "fileSize", parsed_data AS data,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
@@ -88,6 +89,9 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
   });
   router.post("/transcript", express.raw({ type: "application/pdf", limit: "5mb" }), async (req, res) => {
     if (req.get("x-confirm-own-transcript") !== "true") { res.status(400).json({ error: "ownership_confirmation_required" }); return; }
+    const consentVersion = req.get("x-consent-policy-version");
+    if (!consentVersion) { res.status(400).json({ error: "consent_required" }); return; }
+    if (consentVersion !== TRANSCRIPT_POLICY_VERSION) { res.status(409).json({ error: "policy_outdated" }); return; }
     if (!Buffer.isBuffer(req.body) || req.body.length < 8 || req.body.subarray(0, 5).toString("ascii") !== "%PDF-") { res.status(400).json({ error: "invalid_pdf" }); return; }
     const rawVersion = req.get("x-transcript-version");
     if (rawVersion && !z.uuid().safeParse(rawVersion).success) { res.status(400).json({ error: "invalid_version" }); return; }
@@ -103,6 +107,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       await lockStudent(client, req.session.user!);
       const existing = await client.query<{ version: string }>("SELECT version FROM student_transcripts WHERE user_id=$1 FOR UPDATE", [req.session.user!.userId]);
       if ((existing.rows[0]?.version ?? undefined) !== rawVersion) throw new TranscriptError("transcript_changed", 409);
+      await recordTranscriptConsent(client, req.session.user!.userId);
       if (ocrEnabled) {
         const job = await enqueueTranscript(client, req.session.user!.userId, filename, req.body, rawVersion);
         await client.query("COMMIT"); res.status(202).json({ job }); return;
@@ -127,6 +132,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       await client.query("UPDATE transcript_jobs SET status='cancelled',pdf_data=NULL,lease_token=NULL,updated_at=now() WHERE user_id=$1 AND status IN ('queued','processing')", [req.session.user!.userId]);
       const deleted = await client.query("DELETE FROM student_transcripts WHERE user_id=$1 AND version=$2", [req.session.user!.userId, input.data.version]);
       if (!deleted.rowCount) throw new TranscriptError("transcript_changed", 409);
+      await withdrawTranscriptConsent(client, req.session.user!.userId);
       await client.query("COMMIT"); res.json({ deleted: true });
     } catch (error) { await client.query("ROLLBACK"); throw error; }
     finally { client.release(); }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { Icon } from "./student-icons";
 import TranscriptProgress from "./TranscriptProgress";
+import { policyVersion } from "./public-information";
 import "./student-records.css";
 
 type Course = { ordinal: number; code: string; name: string; credits: number; score10: number | null; score4: number | null; letter: string | null; result: string | null; conditional: boolean; sourcePage: number };
@@ -24,6 +25,8 @@ const errors: Record<string, string> = {
   authentication_required: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
   database_required: "Chưa kết nối được nơi lưu bảng điểm. Vui lòng thử lại sau.",
   ownership_confirmation_required: "Hãy xác nhận đây là bảng điểm của bạn.",
+  consent_required: "Hãy đồng ý để EduPath AI xử lý bảng điểm trước khi import.",
+  policy_outdated: "Chính sách bảo mật vừa được cập nhật. Hãy tải lại trang, đọc chính sách mới rồi xác nhận lại.",
   insufficient_role: "Tài khoản hiện không có quyền sinh viên.", invalid_origin: "Phiên thao tác không hợp lệ. Vui lòng tải lại trang."
 };
 /** Explicit pass/fail text uses its corresponding colour. MT exemptions are
@@ -135,7 +138,7 @@ export default function StudentTranscript() {
     setImportCompleted(false); setImportAttempt(current => current + 1);
     setBusy(true); setUploading(true); setError(""); setMessage("");
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/pdf", "X-File-Name": encodeURIComponent(file.name), "X-Confirm-Own-Transcript": "true" };
+      const headers: Record<string, string> = { "Content-Type": "application/pdf", "X-File-Name": encodeURIComponent(file.name), "X-Confirm-Own-Transcript": "true", "X-Consent-Policy-Version": policyVersion };
       if (transcript) headers["X-Transcript-Version"] = transcript.version;
       const data = await read(await fetch("/api/student/transcript", { method: "POST", credentials: "include", headers, body: file }));
       if (data.job) { setJob(data.job); setMessage(""); }
