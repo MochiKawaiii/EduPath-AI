@@ -22,7 +22,6 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
     <div className="cm-toolbar">
       <div><h3>Yêu cầu và kỹ năng</h3><p>Các yêu cầu áp dụng cho {career.nameVi}.</p></div>
       {canManage && <div className="cm-actions">
-        <button className="am-outline" onClick={() => start("other")}><Icon name="plus" /> Thêm yêu cầu</button>
         <button className="am-primary" onClick={() => start("skill")}><Icon name="plus" /> Thêm kỹ năng liên kết</button>
       </div>}
     </div>
