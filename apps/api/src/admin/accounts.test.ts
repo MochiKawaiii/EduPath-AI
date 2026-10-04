@@ -7,7 +7,7 @@ import type { DatabasePool } from "../db/pool.js";
 import { AccountError, createAdminAccountsRouter, PostgresAdminAccountRepository } from "./accounts.js";
 
 const actor = { userId: "actor-id", tenantId: "tenant-id", role: "admin" } as AuthenticatedUser;
-const target = { id: "target-id", name: "Test account", email: "test@example.edu", role: "student", isActive: true };
+const target = { id: "target-id", name: "Test account", email: "test@example.edu", role: "student" as const, isActive: true };
 const seedBatch = "edupath-demo-2026-10-02";
 const seedId = (index: number) => createHash("md5").update(`${seedBatch}:${index}`).digest("hex").replace(/^(.{8})(.{4})(.{4})(.{4})(.*)$/, "$1-$2-$3-$4-$5");
 const seedAccountIds = Array.from({ length: 50 }, (_, index) => seedId(index + 1));
@@ -108,39 +108,86 @@ describe("admin accounts API", () => {
 });
 
 describe("Postgres admin account repository", () => {
-  function repositoryWith(matches: unknown[], validActor = true) {
-    const query = vi.fn(async (sql: string) => {
-      if (sql.includes("FOR SHARE")) return { rows: validActor ? [{ id: actor.userId }] : [] };
+  function repositoryWith(options: {
+    matches?: unknown[];
+    validActor?: boolean;
+    insertResult?: unknown;
+    updateResult?: unknown;
+    failOn?: string;
+  } = {}) {
+    const matches = options.matches ?? [];
+    const query = vi.fn(async (sql: string, _values?: unknown[]) => {
+      if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK" || sql.includes("pg_advisory_xact_lock")) return { rows: [] };
+      if (options.failOn && sql.includes(options.failOn)) throw new Error("database failure");
+      if (sql.includes("FOR SHARE")) return { rows: options.validActor === false ? [] : [{ id: actor.userId }] };
       if (sql.includes("FOR UPDATE")) return { rows: matches };
-      if (sql.includes("UPDATE users SET")) return { rows: [{ ...target, role: "admin" }] };
+      if (sql.includes("INSERT INTO users")) return { rows: options.insertResult ? [options.insertResult] : [{ ...target, role: "admin" }] };
+      if (sql.includes("UPDATE users SET")) return { rows: options.updateResult ? [options.updateResult] : [{ ...target, role: "admin" }] };
       return { rows: [] };
     });
     const release = vi.fn();
-    const repository = new PostgresAdminAccountRepository({ connect: vi.fn().mockResolvedValue({ query, release }) } as unknown as DatabasePool);
-    return { repository, query, release };
+    const client = { query, release };
+    const connect = vi.fn().mockResolvedValue(client);
+    const repository = new PostgresAdminAccountRepository({ connect } as unknown as DatabasePool);
+    return { repository, query, release, connect };
   }
-  it("grants the uniquely matched identity across tenants in a transaction", async () => {
-    const { repository, query, release } = repositoryWith([target]);
+
+  it("creates a tenant-scoped pending admin when the email is not registered yet", async () => {
+    const pendingAdmin = { ...target, id: "pending-id", email: "future.admin@example.edu", role: "admin" as const };
+    const { repository, query, release } = repositoryWith({ insertResult: pendingAdmin });
+    const created = await repository.createAdmin(actor, " FUTURE.ADMIN@example.edu ");
+
+    expect(created).toEqual(pendingAdmin);
+    const insert = query.mock.calls.find(([sql]) => sql.includes("INSERT INTO users"));
+    expect(insert?.[0]).toContain("entra_tenant_id, entra_object_id, entra_subject");
+    expect(insert?.[0]).toContain("VALUES ($1, $2, NULL, NULL");
+    expect(insert?.[0]).toContain("FALSE, NULL, NULL)");
+    expect(insert?.[1]).toEqual([expect.any(String), actor.tenantId, "future.admin@example.edu", "future.admin@example.edu"]);
+    expect(query.mock.calls.some(([sql]) => sql.includes("UPDATE users SET"))).toBe(false);
+    expect(query).toHaveBeenCalledWith("COMMIT");
+    expect(query).not.toHaveBeenCalledWith("ROLLBACK");
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("promotes the uniquely matched existing account and revokes its sessions", async () => {
+    const { repository, query, release } = repositoryWith({ matches: [target] });
     expect((await repository.createAdmin(actor, target.email)).role).toBe("admin");
     expect(query.mock.calls.find(([sql]) => sql.includes("FOR UPDATE"))?.[1]).toEqual([target.email]);
     expect(query.mock.calls.find(([sql]) => sql.includes("UPDATE users SET"))?.[1]).toEqual([target.id]);
-    expect(query).toHaveBeenCalledWith("COMMIT"); expect(release).toHaveBeenCalled();
+    expect(query.mock.calls.find(([sql]) => sql.includes("UPDATE users SET"))?.[0]).toContain("auth_version = auth_version + 1");
+    expect(query.mock.calls.some(([sql, values]) => sql.includes("DELETE FROM user_sessions") && values?.[0] === target.id)).toBe(true);
+    expect(query).toHaveBeenCalledWith("COMMIT");
+    expect(query).not.toHaveBeenCalledWith("ROLLBACK");
+    expect(release).toHaveBeenCalledOnce();
   });
+
   it.each([
-    [[], "account_not_registered"], [[target, target], "ambiguous_account"],
+    [[target, target], "ambiguous_account"],
     [[{ ...target, isActive: false }], "account_locked"], [[{ ...target, role: "admin" }], "already_admin"]
   ])("rolls back an invalid target", async (matches, code) => {
-    const { repository, query, release } = repositoryWith(matches as unknown[]);
+    const { repository, query, release } = repositoryWith({ matches: matches as unknown[] });
     await expect(repository.createAdmin(actor, target.email)).rejects.toMatchObject({ code });
     expect(query).toHaveBeenCalledWith("ROLLBACK");
-    expect(query.mock.calls.some(([sql]) => sql.includes("UPDATE users SET"))).toBe(false);
-    expect(release).toHaveBeenCalled();
+    expect(query.mock.calls.some(([sql]) => sql.includes("UPDATE users SET") || sql.includes("INSERT INTO users"))).toBe(false);
+    expect(release).toHaveBeenCalledOnce();
   });
+
   it("checks actor permissions again inside the transaction", async () => {
-    const { repository, query } = repositoryWith([target], false);
+    const { repository, query, release } = repositoryWith({ matches: [target], validActor: false });
     await expect(repository.createAdmin(actor, target.email)).rejects.toMatchObject({ code: "insufficient_role" });
     expect(query.mock.calls.some(([sql]) => sql.includes("FOR UPDATE"))).toBe(false);
+    expect(query).toHaveBeenCalledWith("ROLLBACK");
+    expect(release).toHaveBeenCalledOnce();
   });
+
+  it("rolls back database failures and always releases its client", async () => {
+    const { repository, query, release } = repositoryWith({ matches: [target], failOn: "UPDATE users SET" });
+    await expect(repository.createAdmin(actor, target.email)).rejects.toThrow("database failure");
+    expect(query).toHaveBeenCalledWith("ROLLBACK");
+    expect(query).not.toHaveBeenCalledWith("COMMIT");
+    expect(release).toHaveBeenCalledOnce();
+  });
+
   it("parameterizes search across all tenants", async () => {
     const query = vi.fn().mockResolvedValue({ rows: [{ items: [], total: 0 }] });
     const repository = new PostgresAdminAccountRepository({ query } as unknown as DatabasePool);

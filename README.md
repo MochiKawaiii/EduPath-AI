@@ -10,6 +10,9 @@ quản trị và quản lý hồ sơ sinh viên trên PostgreSQL (Sprint 2).
   biến này để chạy bản đầy đủ. Blueprint khai báo biến bí mật với `sync: false`.
 - `DATABASE_AUTO_MIGRATE=true`: API áp dụng migration còn thiếu khi khởi động,
   bao gồm `003_user_role_override.sql` và `004_account_activity.sql`.
+- Quản trị viên có thể thêm email đăng nhập Microsoft trước lần đăng nhập đầu tiên.
+  Migration `017_precreated_accounts.sql` lưu tài khoản chờ, chưa có danh tính
+  Microsoft hay ngày đăng nhập; lần đăng nhập đầu liên kết trong cùng tenant và giữ quyền đã cấp.
 - `/quantri`: đăng nhập quản trị; `/quantri/tai-khoan`: quản lý tài khoản,
   phân quyền, khóa/mở và lịch sử đăng nhập; `/quantri/sinh-vien`: danh sách,
   chi tiết, tìm kiếm và lọc hồ sơ sinh viên.

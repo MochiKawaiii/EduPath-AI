@@ -8,7 +8,6 @@ const failures: Record<string, string> = {
   last_admin_required: "Không thể khóa Quản trị viên đang hoạt động cuối cùng.",
   account_not_found: "Không tìm thấy tài khoản trong hệ thống.",
   invalid_query: "Bộ lọc hoặc khoảng ngày chưa hợp lệ.",
-  account_not_registered: "Chưa tìm thấy tài khoản. Người dùng cần đăng nhập EduPath bằng Microsoft ít nhất một lần trước khi được thêm làm quản trị viên.",
   already_admin: "Tài khoản này đã là quản trị viên. Không cần tạo lại.",
   account_locked: "Tài khoản đang bị khóa. Không thể thêm làm quản trị viên.",
   ambiguous_account: "Email trùng với nhiều danh tính. Cần kiểm tra dữ liệu trước khi cấp quyền.",
@@ -18,7 +17,7 @@ const failures: Record<string, string> = {
   invalid_origin: "Yêu cầu không hợp lệ. Vui lòng tải lại trang rồi thử lại.",
   authentication_required: "Phiên đăng nhập đã hết hạn. Vui lòng đăng xuất và đăng nhập lại."
 };
-export type Account = { id: string; name: string; email: string | null; username: string | null; role: AppRole; isActive: boolean; lastLoginAt: string };
+export type Account = { id: string; name: string; email: string | null; username: string | null; role: AppRole; isActive: boolean; lastLoginAt: string | null };
 export type AccountPage = { items: Account[]; total: number; page: number; pageSize: number };
 
 /** A field label ending in the red asterisk that marks the field as required.
@@ -86,17 +85,17 @@ export function CreateAccount({ onList, onBusy }: { onList: () => void; onBusy?:
     } catch (err) { setError(err instanceof Error ? err.message : "Không thể tạo tài khoản."); }
     finally { setBusy(false); }
   }
-  return <div className="am-create-layout"><section className="am-card am-create-card"><p className="admin-eyebrow">TÀI KHOẢN MICROSOFT · EDUPATH AI</p><h2>Thêm quản trị viên</h2><p>Thêm một người dùng đã xác thực vào đội ngũ quản trị.</p>
-    {created ? <div className="am-success" role="status"><Icon name="shield" /><h3>Đã thêm quản trị viên</h3><p><strong>{created.name}</strong><br />{created.email ?? created.username}</p><p>Người dùng cần đăng xuất và đăng nhập lại tại <code>/quantri</code> để nhận quyền mới.</p><button className="am-outline" onClick={onList}>Xem danh sách tài khoản</button></div>
+  return <div className="am-create-layout"><section className="am-card am-create-card"><p className="admin-eyebrow">TÀI KHOẢN MICROSOFT · EDUPATH AI</p><h2>Thêm quản trị viên</h2><p>Cấp quyền quản trị theo email Microsoft, kể cả khi người dùng chưa đăng nhập EduPath.</p>
+    {created ? <div className="am-success" role="status"><Icon name="shield" /><h3>Đã thêm quản trị viên</h3><p><strong>{created.name}</strong><br />{created.email ?? created.username}</p><p>Người dùng đăng nhập tại <code>/quantri</code> bằng đúng email Microsoft đã được cấp quyền. Nếu đang có phiên đăng nhập, hãy đăng xuất rồi đăng nhập lại để nhận quyền mới.</p><button className="am-outline" onClick={onList}>Xem danh sách tài khoản</button></div>
       : <form onSubmit={(event) => void submit(event)}>
         {error && <p ref={errorRef} tabIndex={-1} className="admin-error" role="alert">{error}</p>}
-        <label className="am-field" htmlFor="new-admin-email"><RequiredLabel>Email Microsoft</RequiredLabel><input id="new-admin-email" type="email" autoComplete="off" required maxLength={320} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ten@vanlanguni.vn" aria-describedby="new-admin-help" disabled={busy} /></label>
-        <p id="new-admin-help" className="am-field-help">Tài khoản phải từng đăng nhập EduPath bằng Microsoft.</p>
+        <label className="am-field" htmlFor="new-admin-email"><RequiredLabel>Email Microsoft</RequiredLabel><input id="new-admin-email" type="email" autoComplete="off" required maxLength={320} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ten@vlu.edu.vn" aria-describedby="new-admin-help" disabled={busy} /></label>
+        <p id="new-admin-help" className="am-field-help">Nhập đúng địa chỉ dùng để đăng nhập Microsoft. Có thể thêm trước lần đăng nhập đầu tiên vào EduPath.</p>
         <label className="am-field">Vai trò được cấp<input readOnly value="Quản trị viên" /></label>
         <label className="am-confirm"><input type="checkbox" required checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} disabled={busy} /><span>Tôi xác nhận cấp quyền quản trị EduPath AI cho tài khoản trên.</span></label>
         <div className="am-form-actions"><button className="am-quiet" type="button" onClick={onList} disabled={busy}>Hủy</button><button className="am-primary" type="submit" disabled={busy}>{busy ? "Đang tạo…" : "Tạo tài khoản quản trị"}</button></div>
       </form>}
-  </section><aside className="am-create-note"><Icon name="shield" /><h3>Cấp đúng quyền.<br />Đúng người dùng.</h3><p>Quản trị viên có thể truy cập khu vực quản trị và thêm quản trị viên khác.</p><hr /><h4>Không cần tạo mật khẩu</h4><p>Người dùng tiếp tục đăng nhập bằng Microsoft. Thao tác này không tạo hộp thư hay tài khoản mới trên hệ thống của trường.</p><h4>Email chưa có trong hệ thống?</h4><p>Nhờ người dùng đăng nhập EduPath một lần trước, rồi quay lại thêm quyền quản trị.</p></aside></div>;
+  </section><aside className="am-create-note"><Icon name="shield" /><h3>Cấp đúng quyền.<br />Đúng người dùng.</h3><p>Quản trị viên có thể truy cập khu vực quản trị và thêm quản trị viên khác.</p><hr /><h4>Không cần tạo mật khẩu</h4><p>Người dùng đăng nhập bằng tài khoản Microsoft của mình. Thao tác này không tạo mật khẩu, hộp thư hay tài khoản Microsoft mới.</p><h4>Email chưa có trong EduPath?</h4><p>Hệ thống lưu sẵn quyền quản trị cho email này. Người dùng đăng nhập bằng đúng tài khoản Microsoft đã được thêm để truy cập khu vực quản trị.</p></aside></div>;
 }
 
 export const roleLabels: Record<AppRole, string> = {

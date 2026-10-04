@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { DatabasePool } from "../db/pool.js";
 import { adminRoles, type AuthenticatedUser, type AppRole } from "../auth/types.js";
@@ -11,13 +12,13 @@ export interface Account {
   username: string | null;
   role: AppRole;
   isActive: boolean;
-  lastLoginAt: string;
+  lastLoginAt: string | null;
 }
 export interface AccountQuery { q: string; page: number; pageSize: number; role?: AppRole | undefined; active?: "true" | "false" | undefined }
 export interface HistoryQuery { q: string; page: number; pageSize: number; userId?: string | undefined; outcome?: "success" | "denied" | undefined; portal?: "admin" | "student" | undefined; from?: string | undefined; to?: string | undefined }
 export interface AccountChange { role?: AppRole | undefined; isActive?: boolean | undefined }
 export interface LoginEvent { id: string; userId: string; name: string; email: string | null; occurredAt: string; outcome: string; reason: string; portal: string }
-export interface AccountDetail extends Account { createdAt: string; firstLoginAt: string; updatedAt: string }
+export interface AccountDetail extends Account { createdAt: string; firstLoginAt: string | null; updatedAt: string }
 export interface AccountPage { items: Account[]; total: number }
 export class AccountError extends Error {
   constructor(public readonly code: string, public readonly status: number) { super(code); }
@@ -68,6 +69,7 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
   }
 
   async createAdmin(actor: AuthenticatedUser, email: string): Promise<Account> {
+    email = email.trim().toLowerCase();
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
@@ -85,7 +87,17 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
          ORDER BY id LIMIT 2 FOR UPDATE`,
         [email]
       );
-      if (!matches.rows.length) throw new AccountError("account_not_registered", 404);
+      if (!matches.rows.length) {
+        const result = await client.query<Account>(
+          `INSERT INTO users (id, entra_tenant_id, entra_object_id, entra_subject,
+            display_name, email, username, role, role_override, is_student, first_login_at, last_login_at)
+           VALUES ($1, $2, NULL, NULL, $3, $4, $4, 'admin', 'admin', FALSE, NULL, NULL)
+           RETURNING ${columns}`,
+          [randomUUID(), actor.tenantId, email.slice(0, 200), email]
+        );
+        await client.query("COMMIT");
+        return result.rows[0]!;
+      }
       if (matches.rows.length !== 1) throw new AccountError("ambiguous_account", 409);
       const target = matches.rows[0]!;
       if (!target.isActive) throw new AccountError("account_locked", 409);
@@ -122,9 +134,9 @@ export class PostgresAdminAccountRepository implements AdminAccountRepository {
         [actor.userId, actor.tenantId, change.role !== undefined ? ["admin"] : adminRoles]);
       if (!activeActor.rows.length) throw new AccountError("insufficient_role", 403);
       if (change.isActive === false) {
-        const lastAdmin = await client.query(`SELECT id FROM users WHERE id=$1 AND is_active
+        const lastAdmin = await client.query(`SELECT id FROM users WHERE id=$1 AND is_active AND entra_object_id IS NOT NULL
           AND COALESCE(role_override, role)='admin' AND NOT EXISTS
-          (SELECT 1 FROM users WHERE id<>$1 AND entra_tenant_id=$2 AND is_active AND COALESCE(role_override, role)='admin')`,
+          (SELECT 1 FROM users WHERE id<>$1 AND entra_tenant_id=$2 AND is_active AND entra_object_id IS NOT NULL AND COALESCE(role_override, role)='admin')`,
           [id, actor.tenantId]);
         if (lastAdmin.rows.length) throw new AccountError("last_admin_required", 409);
       }

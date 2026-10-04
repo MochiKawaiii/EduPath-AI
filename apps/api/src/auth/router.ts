@@ -157,7 +157,9 @@ export function createAuthRouter({
         response.redirect(authErrorRedirect(config, denial, transaction.returnTo));
         return;
       }
-      const user = await userRepository.upsertMicrosoftUser(identity, role);
+      const user = await userRepository.upsertMicrosoftUser(identity, role, {
+        requireRoleOverride: roleOverride !== null
+      });
       // Check the persisted role too, in case an override changed during sign-in.
       const persistedDenial = portalDenial(user.role);
       if (persistedDenial) {
