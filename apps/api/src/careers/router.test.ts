@@ -157,8 +157,19 @@ describe("career catalog API", () => {
     expect(response.body).toEqual({ items: [career] });
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("career_positions WHERE deleted_at IS NULL"),
-      ["phan tich", "data_ai"],
+      ["phan tich", "data_ai", ""],
     );
+  });
+
+  it("combines skill-link status with search/category and rejects unknown statuses", async () => {
+    const { app, query } = setup();
+    for (const status of ["linked", "unlinked"]) {
+      await request(app).get(`/careers?q=SQL&category=data_ai&skillLink=${status}`).expect(200);
+      expect(query).toHaveBeenCalledWith(expect.stringContaining("r.deleted_at IS NULL AND s.deleted_at IS NULL"),
+        ["sql", "data_ai", status]);
+    }
+    await request(app).get("/careers?skillLink=unknown").expect(400, { error: "invalid_career" });
+    expect(query.mock.calls.filter(([sql]) => sql.includes("FROM career_positions WHERE deleted_at IS NULL"))).toHaveLength(2);
   });
 
   it("lists active career fields with position counts and accepts unknown valid category filters", async () => {
@@ -199,7 +210,7 @@ describe("career catalog API", () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("FROM career_positions WHERE deleted_at IS NULL"),
-      ["ky su", "data_ai"],
+      ["ky su", "data_ai", ""],
     );
   });
 
@@ -346,7 +357,7 @@ describe("career catalog API", () => {
     expect(update.clientQuery).toHaveBeenCalledWith("UPDATE career_positions SET search_text=$2 WHERE id=$1",
       [careerId, fold([career.code, input.nameVi, input.nameEn, input.description, ...career.skills].join(" "))]);
     await request(update.app).get("/careers?q=NN004").expect(200);
-    expect(update.query).toHaveBeenCalledWith(expect.stringContaining("strpos(search_text,$1)"), ["nn004", ""]);
+    expect(update.query).toHaveBeenCalledWith(expect.stringContaining("strpos(search_text,$1)"), ["nn004", "", ""]);
   });
 
   it("maps an optimistic version miss to a conflict without returning a row", async () => {

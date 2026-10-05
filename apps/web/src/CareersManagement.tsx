@@ -21,6 +21,7 @@ export default function CareersManagement({
   const { draft, setDraft, filters, page, setPage, reset } = useLiveFilters({
     q: "",
     category: "",
+    skillLink: "",
   });
   const list = useData<{ items: Career[] }>(
     `${endpoint}?${new URLSearchParams(filters)}`,
@@ -84,6 +85,17 @@ export default function CareersManagement({
                   {field.name}
                 </option>
               ))}
+            </select>
+          </label>
+          <label>
+            Kỹ năng liên kết
+            <select
+              value={draft.skillLink}
+              onChange={(e) => setDraft({ ...draft, skillLink: e.target.value })}
+            >
+              <option value="">Tất cả</option>
+              <option value="linked">Đã liên kết</option>
+              <option value="unlinked">Chưa liên kết</option>
             </select>
           </label>
           <button className="am-outline" onClick={reset}>

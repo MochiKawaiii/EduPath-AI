@@ -516,6 +516,17 @@ try {
     }),
     { status: 409, body: { error: "requirement_exists" } },
   );
+  const linkedBeforeDuplicate = (await api("/careers", `/requirements?careerPositionId=${customId}&kind=skill`)).body.items;
+  assert(linkedBeforeDuplicate.some(item => item.skillId === reactSkillId && item.skillName === "Career Audit React"));
+  assert.deepEqual(await api("/careers", "/requirements", "POST", {
+    careerPositionId: customId, title: "React alias duplicate", description: "",
+    skillId: null, skillName: "  career audit react  ", level: "basic", isRequired: false,
+  }), { status: 409, body: { error: "requirement_exists" } });
+  assert.deepEqual(await api("/careers", `/requirements/${sqlRequirement.id}`, "PATCH", {
+    careerPositionId: customId, title: "Replace SQL with existing React", description: "",
+    skillId: reactSkillId, skillName: "", level: "basic", isRequired: false,
+  }, { "x-version": structuredSqlVersion }), { status: 409, body: { error: "requirement_exists" } });
+  assert.deepEqual((await api("/careers", `/requirements?careerPositionId=${customId}&kind=skill`)).body.items, linkedBeforeDuplicate);
   const staleRequirement = await api("/careers", `/requirements/${reactRequirement.id}`, "PATCH", {
     careerPositionId: customId,
     title: "Stale edit",
@@ -976,6 +987,41 @@ try {
   assert.equal(thousandthCareer.status, 201);
   assert.equal(thousandthCareer.body.code, "NN1000");
   checks.push("position codes are generated without input, distinct under concurrent creation, immutable, never reused after deletion, searchable and retain all digits beyond NN999");
+
+  // Filter all results before client pagination, using active skill links rather than plain requirements.
+  const filterCareerId = thousandthCareer.body.id;
+  const filterQuery = `?q=Thousandth&category=${productCode}&skillLink=`;
+  const filterIds = async status => (await api("/careers", filterQuery + status)).body.items.map(item => item.id);
+  assert.deepEqual(await filterIds("unlinked"), [filterCareerId]);
+  assert.deepEqual(await filterIds("linked"), []);
+  assert.deepEqual(await filterIds(""), [filterCareerId]);
+  assert.equal((await api("/careers", "?skillLink=unknown")).status, 400);
+  const plainFilterRequirement = await api("/careers", "/requirements", "POST", {
+    careerPositionId: filterCareerId, title: "Portfolio requirement", description: "", skillId: null,
+    skillName: "", level: "unspecified", isRequired: false,
+  });
+  assert.equal(plainFilterRequirement.status, 201);
+  assert.deepEqual(await filterIds("unlinked"), [filterCareerId]);
+  const filterLink = await api("/careers", "/requirements", "POST", {
+    careerPositionId: filterCareerId, title: "Filter audit skill", description: "", skillId: null,
+    skillName: "Filter audit skill", level: "basic", isRequired: false,
+  });
+  assert.equal(filterLink.status, 201);
+  assert.deepEqual(await filterIds("linked"), [filterCareerId]);
+  assert.deepEqual(await filterIds("unlinked"), []);
+  assert.deepEqual((await api("/careers", `?q=Thousandth&category=${infrastructureCode}&skillLink=linked`)).body.items, []);
+  const allActiveCareers = (await api("/careers")).body.items;
+  const linkedCareers = (await api("/careers", "?skillLink=linked")).body.items;
+  const unlinkedCareers = (await api("/careers", "?skillLink=unlinked")).body.items;
+  assert.deepEqual([...linkedCareers, ...unlinkedCareers].map(item => item.id).sort(), allActiveCareers.map(item => item.id).sort());
+  assert(linkedCareers.every(item => item.skills.length > 0));
+  assert(unlinkedCareers.every(item => item.skills.length === 0));
+  assert(!linkedCareers.some(item => item.id === removedCareer.id));
+  assert(!unlinkedCareers.some(item => item.id === removedCareer.id));
+  assert.equal((await api("/careers", `/requirements/${filterLink.body.id}`, "DELETE", { confirmed: true }, { "x-version": filterLink.body.version })).status, 200);
+  assert.deepEqual(await filterIds("linked"), []);
+  assert.deepEqual(await filterIds("unlinked"), [filterCareerId]);
+  checks.push("skill-link filter combines search/category before pagination, partitions all active careers, ignores plain/deleted requirements and reflects link creation/removal immediately");
 
   const publicAfter = await publicSnapshot();
   assert.deepEqual(publicAfter, publicBefore);

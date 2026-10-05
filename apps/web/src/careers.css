@@ -1,4 +1,46 @@
 .career-code { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.career-management-guide {
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  border: 1px solid var(--ep-control-border, #edc3cb);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ep-control-ink, #263244);
+}
+.career-management-guide h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.career-management-guide h2 svg { width: 18px; height: 18px; color: var(--ep-action); }
+.career-guide-flow,
+.career-guide-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.career-guide-flow a[aria-current="page"] {
+  border-color: var(--ep-control-border-hover, #d58a9c);
+  background: var(--ep-control-soft, #fff5f7);
+  color: var(--ep-action);
+}
+.career-guide-number {
+  font-variant-numeric: tabular-nums;
+  color: var(--ep-action);
+}
+.career-guide-arrow { width: 18px; height: 18px; color: #606a79; flex-shrink: 0; }
+.career-management-guide p { margin: 10px 0 0; color: #606a79; font-size: 14px; line-height: 1.65; }
+@media (max-width: 600px) {
+  .career-management-guide { padding: 14px; }
+  .career-guide-flow { align-items: stretch; flex-direction: column; gap: 8px; }
+  .career-guide-step { width: 100%; }
+  .career-guide-step a { flex: 1; justify-content: flex-start; }
+  .career-guide-arrow { display: none; }
+}
 .career-code-note { color: var(--text-muted, #64748b); }
 .career-workspace > *,
 .career-detail {
@@ -42,6 +84,29 @@
 }
 .career-description {
   white-space: pre-wrap;
+}
+.career-linked-skills {
+  padding: 16px;
+  border: 1px solid var(--ep-control-border, #edc3cb);
+  border-radius: 8px;
+  background: var(--ep-control-soft, #fff5f7);
+}
+.career-linked-skills p { margin: 12px 0 0; }
+.career-linked-skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.career-linked-skill-list li {
+  padding: 6px 10px;
+  border: 1px solid var(--ep-control-border, #edc3cb);
+  border-radius: 6px;
+  background: #fce9ef;
+  color: var(--ep-action-hover, #a50d33);
+  overflow-wrap: anywhere;
 }
 .cm-filters.career-requirement-filters {
   display: grid;

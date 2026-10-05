@@ -131,13 +131,17 @@ export function createCareersRouter(
       .object({
         q: z.string().trim().max(200).default(""),
         category: z.union([z.literal(""), fieldCode]).default(""),
+        skillLink: z.enum(["", "linked", "unlinked"]).default(""),
       })
       .strict()
       .parse(req.query);
     const rows = await pool!.query(
       `SELECT ${columns},(SELECT f.name FROM career_fields f WHERE f.code=career_positions.category) AS "categoryName"
-       FROM career_positions WHERE deleted_at IS NULL AND ($1='' OR strpos(search_text,$1)>0) AND ($2='' OR category=$2) ORDER BY name_vi,id`,
-      [fold(q.q), q.category],
+       FROM career_positions WHERE deleted_at IS NULL AND ($1='' OR strpos(search_text,$1)>0) AND ($2='' OR category=$2)
+       AND ($3='' OR EXISTS(SELECT 1 FROM career_requirements r JOIN career_skills s ON s.id=r.skill_id
+         WHERE r.career_position_id=career_positions.id AND r.deleted_at IS NULL AND s.deleted_at IS NULL)=($3='linked'))
+       ORDER BY name_vi,id`,
+      [fold(q.q), q.category, q.skillLink],
     );
     res.json({ items: rows.rows });
   });

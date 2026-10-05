@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ActionMenu, Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
-import { careerRequest, requirementLevels, type Career, type CareerRequirement, type CareerSkill } from "./career-types";
+import { careerFailures, careerRequest, requirementLevels, type Career, type CareerRequirement, type CareerSkill } from "./career-types";
 
 const endpoint = "/api/admin/careers/requirements";
 const emptyFilters = { q: "", skillId: "", level: "", kind: "", priority: "" };
@@ -63,7 +63,7 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
       </>}
     </section>
     {mode === "detail" && selected && <RequirementDetail id={selected.id} close={close} />}
-    {canManage && mode === "edit" && <RequirementEditor current={selected} kind={kind} career={career} skills={skills.data?.items ?? []} close={close} saved={onSaved} />}
+    {canManage && mode === "edit" && <RequirementEditor current={selected} kind={kind} career={career} catalog={skills} close={close} saved={onSaved} />}
     {canManage && mode === "delete" && selected && <RequirementDelete current={selected} close={close} saved={onSaved} />}
   </>;
 }
@@ -81,10 +81,13 @@ function RequirementDetail({ id, close }: { id: string; close: () => void }) {
   </Modal>;
 }
 
-function RequirementEditor({ current, kind, career, skills, close, saved }: {
-  current: CareerRequirement | null; kind: "skill" | "other"; career: Career; skills: CareerSkill[];
+function RequirementEditor({ current, kind, career, catalog, close, saved }: {
+  current: CareerRequirement | null; kind: "skill" | "other"; career: Career;
+  catalog: ReturnType<typeof useData<{ items: CareerSkill[] }>>;
   close: () => void; saved: () => void;
 }) {
+  const linked = useData<{ items: CareerRequirement[] }>(`${endpoint}?careerPositionId=${career.id}&kind=skill`);
+  const skills = catalog.data?.items ?? [];
   const [form, setForm] = useState({
     title: current?.title ?? "", description: current?.description ?? "",
     skillId: current?.skillId ?? "", skillName: "",
@@ -92,13 +95,23 @@ function RequirementEditor({ current, kind, career, skills, close, saved }: {
   });
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const isSkill = kind === "skill";
-  const chooseSkill = (id: string, name: string) => setForm(previous => ({ ...previous, skillId: id,
+  const links = linked.data?.items ?? [];
+  const ready = !isSkill || Boolean(linked.data && catalog.data && !linked.loading && !catalog.loading && !linked.error && !catalog.error);
+  const duplicate = isSkill && links.some(item => item.id !== current?.id && (
+    item.skillId === form.skillId || (form.skillId === "new" && item.skillName?.trim().toLowerCase() === form.skillName.trim().toLowerCase())
+  ));
+  const chooseSkill = (id: string, name: string) => {
+    setError("");
+    setForm(previous => ({ ...previous, skillId: id,
     skillName: id === "new" ? name : "",
     title: !previous.title || previous.title === (skills.find(skill => skill.id === previous.skillId)?.name ?? previous.skillName) ? name : previous.title,
-  }));
+    }));
+  };
   return <Modal title={current ? (isSkill ? "Chỉnh sửa liên kết kỹ năng" : "Chỉnh sửa yêu cầu nghề nghiệp") : (isSkill ? "Liên kết kỹ năng với nghề nghiệp" : "Thêm yêu cầu nghề nghiệp")} onClose={close} busy={busy}>
     <form className="cm-dialog-body cm-form" onSubmit={async event => {
       event.preventDefault();
+      if (!ready) return;
+      if (duplicate) { setError(careerFailures.requirement_exists); return; }
       if (isSkill && (!form.skillId || (form.skillId === "new" && !form.skillName.trim()))) {
         setError("Chọn kỹ năng hoặc nhập tên kỹ năng mới."); return;
       }
@@ -108,16 +121,24 @@ function RequirementEditor({ current, kind, career, skills, close, saved }: {
           method: current ? "PATCH" : "POST", headers: { "Content-Type": "application/json", ...(current ? { "x-version": current.version } : {}) },
           body: JSON.stringify({ ...form, careerPositionId: career.id, skillId: isSkill && form.skillId !== "new" ? form.skillId : null, skillName: isSkill && form.skillId === "new" ? form.skillName : "" }),
         }); saved();
-      } catch (failure) { setError((failure as Error).message); }
+      } catch (failure) { setError((failure as Error).message); if (isSkill) linked.retry(); }
       finally { setBusy(false); }
     }}>
       <fieldset disabled={busy} className="career-fields">
         <div><strong>Vị trí nghề nghiệp</strong><p>{career.nameVi}</p></div>
         {isSkill && <>
-          <label><RequiredLabel>Kỹ năng liên kết</RequiredLabel><select required value={form.skillId} onChange={event => chooseSkill(event.target.value, skills.find(skill => skill.id === event.target.value)?.name ?? "")}>
-            <option value="">Chọn kỹ năng</option>{skills.map(skill => <option key={skill.id} value={skill.id}>{skill.name}</option>)}<option value="new">Thêm kỹ năng mới…</option>
+          <section className="career-linked-skills" aria-label="Kỹ năng đã liên kết">
+            <strong>Kỹ năng đã liên kết</strong>
+            <Status {...linked} /><Status {...catalog} />
+            {!linked.loading && !linked.error && linked.data && (links.length ?
+              <ul className="career-linked-skill-list">{links.map(item => <li key={item.id}>{item.skillName}</li>)}</ul> :
+              <p>Chưa có kỹ năng nào</p>)}
+          </section>
+          <label><RequiredLabel>Kỹ năng liên kết</RequiredLabel><select required disabled={!ready} value={form.skillId} onChange={event => chooseSkill(event.target.value, skills.find(skill => skill.id === event.target.value)?.name ?? "")}>
+            <option value="">Chọn kỹ năng</option>{skills.map(skill => <option key={skill.id} value={skill.id}>{skill.name}{links.some(item => item.skillId === skill.id) ? " — Đã liên kết" : ""}</option>)}<option value="new">Thêm kỹ năng mới…</option>
           </select></label>
           {form.skillId === "new" && <label><RequiredLabel>Tên kỹ năng mới</RequiredLabel><input required maxLength={100} value={form.skillName} onChange={event => chooseSkill("new", event.target.value)} /></label>}
+          {duplicate && <p className="admin-error" role="alert">{careerFailures.requirement_exists}</p>}
         </>}
         <label><RequiredLabel>Nội dung yêu cầu</RequiredLabel><input required maxLength={160} value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} /></label>
         <label>Mô tả<textarea rows={4} maxLength={4000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
@@ -130,10 +151,10 @@ function RequirementEditor({ current, kind, career, skills, close, saved }: {
           </select></label>
         </div>
       </fieldset>
-      {error && <p className="admin-error" role="alert">{error}</p>}
+      {error && !duplicate && <p className="admin-error" role="alert">{error}</p>}
       <div className="cm-actions cm-dialog-actions">
         <button type="button" className="am-outline" disabled={busy} onClick={close}><Icon name="close" /> Hủy</button>
-        <button className="am-primary" disabled={busy}><Icon name="save" /> {busy ? "Đang lưu…" : "Lưu thay đổi"}</button>
+        <button className="am-primary" disabled={busy || !ready || duplicate}><Icon name="save" /> {busy ? "Đang lưu…" : "Lưu thay đổi"}</button>
       </div>
     </form>
   </Modal>;
