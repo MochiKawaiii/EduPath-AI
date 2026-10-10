@@ -1,4 +1,5 @@
 import { createCareersRouter } from "./careers/router.js";
+import { createCompetenciesRouter } from "./competencies/router.js";
 import { createGraduationRouter } from "./graduation/router.js";
 import { createStudentGraduationRouter } from "./graduation/student-router.js";
 import { createStudentPlansRouter } from "./plans/student-router.js";
@@ -66,6 +67,7 @@ export function createApp({
   );
   app.use("/api/worker/transcripts", createTranscriptWorkerRouter(databasePool,config.ocrWorkerKey));
   app.use("/api/admin/graduation", express.json({ limit: "2mb" }));
+  app.use("/api/admin/competencies", express.json({ limit: "2mb" }));
   app.use(express.json({ limit: "100kb" }));
   app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
@@ -166,6 +168,7 @@ export function createApp({
   app.use("/api/admin/accounts", createAdminAccountsRouter(adminAccountRepository, config.webOrigin));
   app.use("/api/admin/curricula", createCurriculaRouter(databasePool, config.webOrigin));
   app.use("/api/admin/careers", createCareersRouter(databasePool, config.webOrigin));
+  app.use("/api/admin/competencies", createCompetenciesRouter(databasePool, config.webOrigin));
   app.use("/api/student/careers", createCareersRouter(databasePool, config.webOrigin, true));
   app.use("/api/admin/graduation", createGraduationRouter(databasePool, config.webOrigin));
   app.use("/api/admin/plans", createPlansRouter(databasePool, config.webOrigin));

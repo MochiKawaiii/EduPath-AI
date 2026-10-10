@@ -8,11 +8,11 @@ import { createCareersRouter } from "./router.js";
 const id = "11111111-1111-4111-8111-111111111111";
 const version = "22222222-2222-4222-8222-222222222222";
 const origin = "https://edupath.example";
-const skill = { id, name: "Phân tích dữ liệu", description: "SQL và thống kê", version, careerCount: 0 };
+const skill = { id, name: "Phân tích dữ liệu", description: "SQL và thống kê", version, careerCount: 0, assessmentCount: 0 };
 const data = { name: "SQL", description: "Query relational data" };
 
-function setup({ role = "admin", revoked = false, duplicate = false, stale = false, linked = false }: {
-  role?: AuthenticatedUser["role"] | null; revoked?: boolean; duplicate?: boolean; stale?: boolean; linked?: boolean;
+function setup({ role = "admin", revoked = false, duplicate = false, stale = false, linked = false, assessed = false }: {
+  role?: AuthenticatedUser["role"] | null; revoked?: boolean; duplicate?: boolean; stale?: boolean; linked?: boolean; assessed?: boolean;
 } = {}) {
   const user = role ? { userId: id, tenantId: id, role } as AuthenticatedUser : undefined;
   const query = vi.fn(async (sql: string) => sql.includes("FROM users")
@@ -20,8 +20,10 @@ function setup({ role = "admin", revoked = false, duplicate = false, stale = fal
   const clientQuery = vi.fn(async (sql: string) => {
     if (sql.includes("FROM users")) return { rowCount: revoked ? 0 : 1, rows: revoked ? [] : [{ id }] };
     if (duplicate && (sql.startsWith("INSERT INTO career_skills") || sql.startsWith("UPDATE career_skills SET name"))) throw Object.assign(new Error("duplicate"), { code: "23505" });
-    if (sql.startsWith("SELECT name FROM career_skills")) return { rowCount: stale ? 0 : 1, rows: stale ? [] : [{ name: data.name }] };
+    if (sql.startsWith("SELECT name,description FROM career_skills")) return { rowCount: stale ? 0 : 1, rows: stale ? [] : [{ name: data.name, description: data.description }] };
     if (sql.startsWith("SELECT c.id FROM career_positions")) return { rowCount: linked ? 1 : 0, rows: linked ? [{ id }] : [] };
+    if (sql.startsWith("SELECT skill_id FROM ad_comp_skills")) return { rowCount: assessed ? 1 : 0, rows: assessed ? [{ skill_id: id }] : [] };
+    if (sql.startsWith("SELECT s.id,s.name,s.description,cs.scope")) return { rowCount: assessed ? 1 : 0, rows: assessed ? [skill] : [] };
     return { rowCount: 1, rows: [skill] };
   });
   const connect = vi.fn().mockResolvedValue({ query: clientQuery, release: vi.fn() });
@@ -72,6 +74,14 @@ describe("career skill catalog", () => {
     await request(stale.app).patch(`/careers/skills/${id}`).set("Origin", origin).set("x-version", version).send(data).expect(409, { error: "skill_changed" });
     const used = setup({ linked: true });
     await request(used.app).delete(`/careers/skills/${id}`).set("Origin", origin).set("x-version", version).send({ confirmed: true }).expect(409, { error: "skill_in_use" });
-    for (const item of [duplicate, stale, used]) expect(item.clientQuery).toHaveBeenCalledWith("ROLLBACK");
+    const assessed = setup({ assessed: true });
+    await request(assessed.app).delete(`/careers/skills/${id}`).set("Origin", origin).set("x-version", version).send({ confirmed: true }).expect(409, { error: "skill_in_use" });
+    for (const item of [duplicate, stale, used, assessed]) expect(item.clientQuery).toHaveBeenCalledWith("ROLLBACK");
+  });
+  it("records assessment history when a shared skill is changed through the career catalog", async () => {
+    const { app, clientQuery } = setup({ assessed: true });
+    await request(app).patch(`/careers/skills/${id}`).set("Origin", origin).set("x-version", version).send({ name: "SQL cập nhật", description: "Mô tả chung" }).expect(200);
+    expect(clientQuery.mock.calls.some(([sql]) => sql.includes("INSERT INTO ad_comp_events"))).toBe(true);
+    expect(clientQuery).toHaveBeenCalledWith("COMMIT");
   });
 });

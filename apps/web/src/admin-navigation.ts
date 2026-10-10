@@ -6,7 +6,8 @@ export const adminNavigation = [
   { path: "/quantri/ke-hoach", label: "Kế hoạch đào tạo", eyebrow: "QUẢN LÝ ĐÀO TẠO", breadcrumb: "Kế hoạch đào tạo", icon: "book" },
   { path: "/quantri/vi-tri-nghe-nghiep", label: "Quản lý nghề nghiệp", eyebrow: "QUẢN LÝ NGHỀ NGHIỆP", breadcrumb: "Nghề nghiệp", icon: "users" },
   { path: "/quantri/linh-vuc-nghe-nghiep", label: "Lĩnh vực nghề nghiệp", eyebrow: "QUẢN LÝ NGHỀ NGHIỆP", breadcrumb: "Lĩnh vực nghề nghiệp", icon: "book" },
-  { path: "/quantri/ky-nang", label: "Danh sách kỹ năng", eyebrow: "QUẢN LÝ NGHỀ NGHIỆP", breadcrumb: "Danh sách kỹ năng", icon: "book" }
+  { path: "/quantri/ky-nang", label: "Danh sách kỹ năng", eyebrow: "QUẢN LÝ NGHỀ NGHIỆP", breadcrumb: "Danh sách kỹ năng", icon: "book" },
+  { path: "/quantri/danh-gia-nang-luc", label: "Đánh giá năng lực", eyebrow: "QUẢN LÝ ĐÀO TẠO", breadcrumb: "Đánh giá năng lực", icon: "profile" }
 ] as const;
 export function resolveAdminPage(pathname: string) {
   return adminNavigation.find((item) => item.path === pathname.replace(/\/+$/, "")) ?? adminNavigation[0];

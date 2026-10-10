@@ -12,7 +12,8 @@ const input = z.object({
 const columns = `id,name,description,version`;
 const usage = `(SELECT count(DISTINCT r.career_position_id)::int FROM career_requirements r
  JOIN career_positions c ON c.id=r.career_position_id
- WHERE r.skill_id=s.id AND r.deleted_at IS NULL AND c.deleted_at IS NULL) AS "careerCount"`;
+ WHERE r.skill_id=s.id AND r.deleted_at IS NULL AND c.deleted_at IS NULL) AS "careerCount",
+ (SELECT count(*)::int FROM ad_comp_skills cs WHERE cs.skill_id=s.id AND cs.deleted_at IS NULL) AS "assessmentCount"`;
 
 export function createCareerSkillsRouter(pool: DatabasePool) {
   const router = Router();
@@ -38,10 +39,10 @@ export function createCareerSkillsRouter(pool: DatabasePool) {
           const result = await client.query(`INSERT INTO career_skills(id,name,description)
  VALUES($1,$2,$3) RETURNING ${columns}`, [id, data!.name, data!.description]);
           await client.query("COMMIT");
-          res.status(201).json({ ...result.rows[0], careerCount: 0 });
+          res.status(201).json({ ...result.rows[0], careerCount: 0, assessmentCount: 0 });
           return;
         }
-        const current = await client.query<{ name: string }>(`SELECT name FROM career_skills
+        const current = await client.query<{ name: string; description: string }>(`SELECT name,description FROM career_skills
  WHERE id=$1 AND version=$2 AND deleted_at IS NULL FOR UPDATE`, [id, version]);
         if (!current.rowCount) throw new CareerError("skill_changed", 409);
         const linked = await client.query<{ id: string }>(`SELECT c.id FROM career_positions c
@@ -49,7 +50,8 @@ export function createCareerSkillsRouter(pool: DatabasePool) {
  WHERE r.career_position_id=c.id AND r.skill_id=$1 AND r.deleted_at IS NULL)
  ORDER BY c.id FOR UPDATE`, [id]);
         if (method === "delete") {
-          if (linked.rowCount) throw new CareerError("skill_in_use", 409);
+          const assessment = await client.query("SELECT skill_id FROM ad_comp_skills WHERE skill_id=$1 AND deleted_at IS NULL FOR SHARE", [id]);
+          if (linked.rowCount || assessment.rowCount) throw new CareerError("skill_in_use", 409);
           await client.query("UPDATE career_skills SET deleted_at=now(),updated_at=now(),version=$2 WHERE id=$1", [id, randomUUID()]);
         } else {
           await client.query("UPDATE career_skills SET name=$2,description=$3,version=$4,updated_at=now() WHERE id=$1",
@@ -60,6 +62,20 @@ export function createCareerSkillsRouter(pool: DatabasePool) {
  title=CASE WHEN title=$2 THEN $3 ELSE title END,version=$4,updated_at=now()
  WHERE skill_id=$1 AND deleted_at IS NULL`, [id, current.rows[0]!.name, data!.name, randomUUID()]);
             for (const career of linked.rows) await refreshCareerSkills(client, career.id);
+          }
+          if (current.rows[0]!.name !== data!.name || current.rows[0]!.description !== data!.description) {
+            // Shared catalog changes invalidate the assessment profile token in the database.
+            // Record names and allocations here so old history does not change after another rename.
+            const profile = await client.query(`SELECT s.id,s.name,s.description,cs.scope,cs.legacy_skill_id AS "legacySkillId",cs.group_id AS "groupId",
+ g.name AS "groupName",cs.is_active AS "isActive",g.is_active AS "groupActive",cs.version,
+ COALESCE((SELECT jsonb_agg(jsonb_build_object('revisionId',c.revision_id,'courseCode',c.course_code,
+ 'courseName',cc.name,'weight',l.weight,'status',c.status) ORDER BY c.revision_id,c.course_code)
+ FROM ad_comp_course_links l JOIN ad_comp_course_configs c ON c.id=l.config_id
+ JOIN curriculum_courses cc ON cc.revision_id=c.revision_id AND cc.code=c.course_code WHERE l.skill_id=s.id),'[]'::jsonb) AS contributions
+ FROM career_skills s JOIN ad_comp_skills cs ON cs.skill_id=s.id JOIN ad_comp_groups g ON g.id=cs.group_id
+ WHERE s.id=$1 AND cs.deleted_at IS NULL`, [id]);
+            if (profile.rowCount) await client.query(`INSERT INTO ad_comp_events(kind,entity_key,actor_id,snapshot,note)
+ VALUES('shared_skill',$1,$2,$3::jsonb,$4)`, [id, req.session.user!.userId, JSON.stringify(profile.rows[0]), "Cập nhật kỹ năng dùng chung từ danh mục nghề nghiệp"]);
           }
         }
         const result = data ? await client.query(`SELECT ${columns},${usage} FROM career_skills s WHERE id=$1`, [id]) : null;

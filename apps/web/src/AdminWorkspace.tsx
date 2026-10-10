@@ -12,6 +12,7 @@ import AccountsManagement from "./AccountsManagement";
 import StudentProfiles from "./StudentProfiles";
 import CurriculaManagement from "./CurriculaManagement";
 import PlansManagement from "./PlansManagement";
+import CompetencyManagement from "./CompetencyManagement";
 import { adminNavigation, resolveAdminPage } from "./admin-navigation";
 import "./admin-workspace.css";
 
@@ -57,7 +58,7 @@ export default function AdminWorkspace({ user, busy, error, onLogout }: { user: 
       <main className="am-content"><div className="am-page-heading"><div><p className="admin-eyebrow">{current.eyebrow}</p><h1 ref={heading} tabIndex={-1}>{current.label}</h1></div></div>
         {error && <p className="admin-error" role="alert">{error}</p>}
         <CareerManagementGuide currentPath={current.path} onNavigate={navigate} />
-        {current.path === "/quantri/ky-nang" ? <CareerSkillsManagement canManage={canManage} /> : current.path === "/quantri/linh-vuc-nghe-nghiep" ? <CareerFieldsManagement canManage={canManage} /> : current.path === "/quantri/vi-tri-nghe-nghiep" ? <CareersManagement canManage={canManage} /> : current.path === "/quantri/tieu-chuan-tot-nghiep" ? <GraduationManagement canManage={canManage} /> : current.path === "/quantri/ke-hoach" ? <PlansManagement canManage={canManage} /> : current.path === "/quantri/chuong-trinh" ? <CurriculaManagement canManage={canManage} /> : current.path === "/quantri/sinh-vien" ? <StudentProfiles /> : <AccountsManagement actorId={user.userId} canManage={canManage} canAssignRoles={user.role === "admin"} />}
+        {current.path === "/quantri/danh-gia-nang-luc" ? <CompetencyManagement canManage={canManage} /> : current.path === "/quantri/ky-nang" ? <CareerSkillsManagement canManage={canManage} /> : current.path === "/quantri/linh-vuc-nghe-nghiep" ? <CareerFieldsManagement canManage={canManage} /> : current.path === "/quantri/vi-tri-nghe-nghiep" ? <CareersManagement canManage={canManage} /> : current.path === "/quantri/tieu-chuan-tot-nghiep" ? <GraduationManagement canManage={canManage} /> : current.path === "/quantri/ke-hoach" ? <PlansManagement canManage={canManage} /> : current.path === "/quantri/chuong-trinh" ? <CurriculaManagement canManage={canManage} /> : current.path === "/quantri/sinh-vien" ? <StudentProfiles /> : <AccountsManagement actorId={user.userId} canManage={canManage} canAssignRoles={user.role === "admin"} />}
       </main><footer className="am-footer">© 2026 · Bản Quyền Thuộc Khoa Công nghệ Thông tin · Trường Đại Học Văn Lang.</footer>
     </div>
   </div>;

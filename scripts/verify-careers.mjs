@@ -105,6 +105,8 @@ try {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);
+  const curriculaMigration = await readFile("apps/api/migrations/011_curricula.sql", "utf8");
+  await pool.query(curriculaMigration.replaceAll("public.", `${schema}.`));
   const careersMigration = await readFile("apps/api/migrations/014_career_positions.sql", "utf8");
   await pool.query(careersMigration.replaceAll("public.", `${schema}.`));
   const fieldsMigration = await readFile("apps/api/migrations/015_career_fields.sql", "utf8");
@@ -161,6 +163,8 @@ try {
   await pool.query("UPDATE student_profiles SET career_position_id=$2 WHERE user_id=$1", [studentId, originalCareers[0].id]);
   const positionCodesMigration = await readFile("apps/api/migrations/021_career_position_codes.sql", "utf8");
   await pool.query(`BEGIN; ${positionCodesMigration.replaceAll("public.", `${schema}.`)} COMMIT;`);
+  const competenciesMigration = await readFile("apps/api/migrations/026_competency_management.sql", "utf8");
+  await pool.query(`BEGIN; ${competenciesMigration.replaceAll("public.", `${schema}.`).replaceAll("SET search_path=public,pg_temp", `SET search_path=${schema},pg_temp`).replaceAll("nspname='public'", `nspname='${schema}'`)} COMMIT;`);
   const numberedCareers = (await pool.query("SELECT id,code,name_vi,name_en,category,description,skills,deleted_at,version FROM career_positions ORDER BY id")).rows;
   assert.equal(numberedCareers.length, originalCareers.length);
   for (let i = 0; i < numberedCareers.length; i++) {
