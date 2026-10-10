@@ -113,6 +113,12 @@ try {
   await pool.query(fieldsMigration.replaceAll("public.", `${schema}.`));
   const requirementsMigration = await readFile("apps/api/migrations/016_career_requirements.sql", "utf8");
   await pool.query(requirementsMigration.replaceAll("public.", `${schema}.`));
+  const removeRequirementLevelMigration = await readFile("apps/api/migrations/027_remove_career_requirement_level.sql", "utf8");
+  await pool.query(removeRequirementLevelMigration.replaceAll("public.", `${schema}.`));
+  const levelColumn = await pool.query(`SELECT EXISTS(SELECT 1 FROM information_schema.columns
+    WHERE table_schema=$1 AND table_name='career_requirements' AND column_name='level') AS present`, [schema]);
+  assert.equal(levelColumn.rows[0].present, false, "Migration027 removes career requirement level");
+  checks.push("migration027 removes the career requirement level column");
   const skillsMigration = await readFile("apps/api/migrations/019_career_skill_management.sql", "utf8");
   await pool.query(skillsMigration.replaceAll("public.", `${schema}.`));
   // Include an archived numeric code that collides with the new numbering scheme.
@@ -393,7 +399,7 @@ try {
   const sqlRequirement = result.body.items.find((item) => item.skillName === "SQL");
   const testingRequirement = result.body.items.find((item) => item.skillName === "Testing");
   assert(sqlRequirement && testingRequirement);
-  assert.equal(sqlRequirement.level, "unspecified");
+  assert(!Object.hasOwn(sqlRequirement, "level"));
   assert.equal(sqlRequirement.isRequired, false);
   result = await api("/careers", `/requirements/${sqlRequirement.id}`, "PATCH", {
     careerPositionId: customId,
@@ -401,11 +407,10 @@ try {
     description: "Query relational data sources.",
     skillId: sqlRequirement.skillId,
     skillName: "",
-    level: "advanced",
     isRequired: true,
   }, { "x-version": sqlRequirement.version });
   assert.equal(result.status, 200);
-  assert.equal(result.body.level, "advanced");
+  assert(!Object.hasOwn(result.body, "level"));
   const structuredSqlVersion = result.body.version;
   const careerAfterStructuredEdit = await api("/careers", `/${customId}`);
   assert.equal(careerAfterStructuredEdit.status, 200);
@@ -426,9 +431,9 @@ try {
   assert.deepEqual(result.body.items.map((item) => item.skillName).sort(), ["SQL", "Statistics"]);
   const synchronizedSql = result.body.items.find((item) => item.skillName === "SQL");
   const statisticsRequirement = result.body.items.find((item) => item.skillName === "Statistics");
-  assert.equal(synchronizedSql.level, "advanced", "legacy skill sync must retain existing requirement metadata");
+  assert(!Object.hasOwn(synchronizedSql, "level"), "admin requirement output must not expose the removed field");
   assert.equal(synchronizedSql.isRequired, true);
-  assert.equal(statisticsRequirement.level, "unspecified");
+  assert(!Object.hasOwn(statisticsRequirement, "level"));
   assert.equal(statisticsRequirement.isRequired, false);
   assert.equal((await api("/careers", `/requirements/${testingRequirement.id}`)).status, 404);
   checks.push("career POST/PATCH legacy skills synchronize structured links, preserve metadata, and retain skills when PATCH omits them");
@@ -439,15 +444,23 @@ try {
     description: "Build responsive interfaces.",
     skillId: null,
     skillName: "Career Audit React",
-    level: "intermediate",
     isRequired: true,
   });
   assert.equal(requirementResult.status, 201);
   const reactRequirement = requirementResult.body;
   const reactSkillId = reactRequirement.skillId;
-  result = await api("/careers", `/requirements?careerPositionId=${customId}&category=${productCode}&skillId=${reactSkillId}&level=intermediate&kind=skill&priority=required&q=react`);
+  result = await api("/careers", `/requirements?careerPositionId=${customId}&category=${productCode}&skillId=${reactSkillId}&kind=skill&priority=required&q=react`);
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.items.map((item) => item.id), [reactRequirement.id]);
+  assert(!Object.hasOwn(result.body.items[0], "level"));
+  assert.deepEqual(await api("/careers", `/requirements?careerPositionId=${customId}&level=advanced`), {
+    status: 400, body: { error: "invalid_requirement" },
+  });
+  const obsoleteLevelInput = await api("/careers", "/requirements", "POST", {
+    careerPositionId: customId, title: "Obsolete level input", description: "", skillId: null,
+    skillName: "", level: "intermediate", isRequired: false,
+  });
+  assert.deepEqual(obsoleteLevelInput, { status: 400, body: { error: "invalid_requirement" } });
   assert((await api("/careers", `/${customId}`)).body.skills.includes("Career Audit React"));
   result = await api("/student-careers", "", "GET", undefined, { "x-role": "student" });
   assert(result.body.items.find((item) => item.id === customId).skills.includes("Career Audit React"));
@@ -458,7 +471,6 @@ try {
     description: "Làm việc cùng nhóm.",
     skillId: null,
     skillName: "",
-    level: "unspecified",
     isRequired: false,
   });
   assert.equal(optionalRequirement.status, 201);
@@ -478,13 +490,11 @@ try {
     title: canonicalReact.title,
     description: canonicalReact.description,
     skillName: canonicalReact.skillName,
-    level: canonicalReact.level,
     isRequired: canonicalReact.isRequired,
   }, {
     title: "React fundamentals",
     description: "Build responsive interfaces.",
     skillName: "Career Audit React",
-    level: "intermediate",
     isRequired: true,
   });
   const canonicalPlain = studentCareerDetail.body.requirements.find((item) => item.title === "Kỹ năng phối hợp");
@@ -492,16 +502,15 @@ try {
     title: canonicalPlain.title,
     description: canonicalPlain.description,
     skillName: canonicalPlain.skillName,
-    level: canonicalPlain.level,
     isRequired: canonicalPlain.isRequired,
   }, {
     title: "Kỹ năng phối hợp",
     description: "Làm việc cùng nhóm.",
     skillName: null,
-    level: "unspecified",
     isRequired: false,
   });
   assert(studentCareerDetail.body.requirements.every((item) => !("version" in item) && !("skillId" in item)));
+  assert(studentCareerDetail.body.requirements.every((item) => !Object.hasOwn(item, "level")));
   assert.deepEqual(await api("/student-careers", `/${customId}`, "GET", undefined, { "x-role": "anonymous" }), {
     status: 401,
     body: { error: "authentication_required" },
@@ -515,7 +524,6 @@ try {
       description: "Duplicate active skill link.",
       skillId: reactSkillId,
       skillName: "",
-      level: "basic",
       isRequired: false,
     }),
     { status: 409, body: { error: "requirement_exists" } },
@@ -524,11 +532,11 @@ try {
   assert(linkedBeforeDuplicate.some(item => item.skillId === reactSkillId && item.skillName === "Career Audit React"));
   assert.deepEqual(await api("/careers", "/requirements", "POST", {
     careerPositionId: customId, title: "React alias duplicate", description: "",
-    skillId: null, skillName: "  career audit react  ", level: "basic", isRequired: false,
+    skillId: null, skillName: "  career audit react  ", isRequired: false,
   }), { status: 409, body: { error: "requirement_exists" } });
   assert.deepEqual(await api("/careers", `/requirements/${sqlRequirement.id}`, "PATCH", {
     careerPositionId: customId, title: "Replace SQL with existing React", description: "",
-    skillId: reactSkillId, skillName: "", level: "basic", isRequired: false,
+    skillId: reactSkillId, skillName: "", isRequired: false,
   }, { "x-version": structuredSqlVersion }), { status: 409, body: { error: "requirement_exists" } });
   assert.deepEqual((await api("/careers", `/requirements?careerPositionId=${customId}&kind=skill`)).body.items, linkedBeforeDuplicate);
   const staleRequirement = await api("/careers", `/requirements/${reactRequirement.id}`, "PATCH", {
@@ -537,7 +545,6 @@ try {
     description: "Old version.",
     skillId: reactSkillId,
     skillName: "",
-    level: "basic",
     isRequired: false,
   }, { "x-version": sqlRequirement.version });
   assert.deepEqual(staleRequirement, { status: 409, body: { error: "requirement_changed" } });
@@ -547,10 +554,9 @@ try {
     description: "The career does not exist.",
     skillId: null,
     skillName: "",
-    level: "unspecified",
     isRequired: false,
   })).status, 404);
-  checks.push("structured requirement search and filters cover career, category, skill, level, kind, priority, duplicate links, and Vietnamese text");
+  checks.push("structured requirement search and filters cover career, category, skill, kind, priority, duplicate links, and Vietnamese text; obsolete level input/filter is rejected");
 
   result = await api("/careers", `/requirements/${reactRequirement.id}`, "PATCH", {
     careerPositionId: frontend.id,
@@ -558,7 +564,6 @@ try {
     description: "Build responsive interfaces.",
     skillId: reactSkillId,
     skillName: "",
-    level: "intermediate",
     isRequired: true,
   }, { "x-version": reactRequirement.version });
   assert.equal(result.status, 200);
@@ -597,7 +602,6 @@ try {
     description: "",
     skillId: null,
     skillName: "",
-    level: "unspecified",
     isRequired: false,
   }, { Origin: "http://evil.local" }), { status: 403, body: { error: "invalid_origin" } });
   for (const role of ["faculty_board", "department_head", "lecturer"]) {
@@ -609,7 +613,6 @@ try {
       description: "Temporary requirement removed by the verifier.",
       skillId: null,
       skillName: "",
-      level: "unspecified",
       isRequired: false,
     }, { "x-role": role });
     assert.equal(staffRequirement.status, 201);
@@ -812,7 +815,6 @@ try {
     description: "This must not persist after access is revoked.",
     skillId: null,
     skillName: "",
-    level: "unspecified",
     isRequired: false,
   }, { "x-role": "lecturer" });
   assert.equal(revokedRequirement.status, 403);
@@ -896,7 +898,7 @@ try {
   assert.equal((await api("/careers", "/skills?q=audit%20ky%20nang")).body.items[0].id, managedSkill.id);
   assert.equal((await api("/careers", "/skills", "POST", { name: "AUDIT KỸ NĂNG", description: "" })).body.error, "skill_exists");
   const skillCareer = (await api("/careers")).body.items[0];
-  const linkedInput = { careerPositionId: skillCareer.id, title: managedSkill.name, description: "Keep link metadata", skillId: managedSkill.id, skillName: "", level: "advanced", isRequired: true };
+  const linkedInput = { careerPositionId: skillCareer.id, title: managedSkill.name, description: "Keep link metadata", skillId: managedSkill.id, skillName: "", isRequired: true };
   const managedLink = await api("/careers", "/requirements", "POST", linkedInput);
   assert.equal(managedLink.status, 201);
   assert.equal((await api("/careers", `/skills/${managedSkill.id}`, "DELETE", { confirmed: true }, { "x-version": managedSkill.version })).body.error, "skill_in_use");
@@ -910,7 +912,7 @@ try {
   result = await api("/careers", `/requirements/${managedLink.body.id}`);
   assert.equal(result.body.skillName, managedSkill.name);
   assert.equal(result.body.title, managedSkill.name);
-  assert.equal(result.body.level, "advanced");
+  assert(!Object.hasOwn(result.body, "level"));
   assert.equal(result.body.isRequired, true);
   assert.equal(result.body.description, "Keep link metadata");
   assert.notEqual(result.body.version, managedLink.body.version);
@@ -934,7 +936,7 @@ try {
   assert((await pool.query("SELECT deleted_at FROM career_skills WHERE id=$1", [managedSkill.id])).rows[0].deleted_at);
   assert.equal((await api("/careers", "/requirements", "POST", linkedInput)).body.error, "skill_not_found");
   assert.equal((await api("/careers", "/skills", "POST", { name: managedSkill.name, description: "New active skill" })).status, 201);
-  checks.push("skill catalog CRUD preserves existing seeds, rejects duplicates and stale writes, synchronizes names/search/cache/student requirements, preserves custom titles and levels, blocks occupied deletion and retains history");
+  checks.push("skill catalog CRUD preserves existing seeds, rejects duplicates and stale writes, synchronizes names/search/cache/student requirements, preserves custom titles and link metadata, blocks occupied deletion and retains history");
 
   const raceSkill = (await api("/careers", "/skills", "POST", { name: "Audit concurrent skill", description: "" })).body;
   const raceInput = { ...linkedInput, skillId: raceSkill.id, title: "Concurrent link" };
@@ -1002,13 +1004,13 @@ try {
   assert.equal((await api("/careers", "?skillLink=unknown")).status, 400);
   const plainFilterRequirement = await api("/careers", "/requirements", "POST", {
     careerPositionId: filterCareerId, title: "Portfolio requirement", description: "", skillId: null,
-    skillName: "", level: "unspecified", isRequired: false,
+    skillName: "", isRequired: false,
   });
   assert.equal(plainFilterRequirement.status, 201);
   assert.deepEqual(await filterIds("unlinked"), [filterCareerId]);
   const filterLink = await api("/careers", "/requirements", "POST", {
     careerPositionId: filterCareerId, title: "Filter audit skill", description: "", skillId: null,
-    skillName: "Filter audit skill", level: "basic", isRequired: false,
+    skillName: "Filter audit skill", isRequired: false,
   });
   assert.equal(filterLink.status, 201);
   assert.deepEqual(await filterIds("linked"), [filterCareerId]);

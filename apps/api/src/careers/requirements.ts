@@ -5,18 +5,16 @@ import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
 import { access, CareerError, fold, lockSkillCatalog } from "./shared.js";
 
-const levels = ["unspecified", "basic", "intermediate", "advanced"] as const;
 const input = z.object({
   careerPositionId: z.uuid(),
   title: z.string().trim().min(1).max(160),
   description: z.string().trim().max(4000),
   skillId: z.uuid().nullable(),
   skillName: z.string().trim().max(100).default(""),
-  level: z.enum(levels),
   isRequired: z.boolean(),
 }).strict().refine(value => !(value.skillId && value.skillName));
 const columns = `r.id,r.career_position_id AS "careerPositionId",r.skill_id AS "skillId",
- r.title,r.description,r.level,r.is_required AS "isRequired",r.version,
+ r.title,r.description,r.is_required AS "isRequired",r.version,
  c.name_vi AS "careerName",c.name_en AS "careerNameEn",c.category,
  f.name AS "categoryName",s.name AS "skillName"`;
 const from = `FROM career_requirements r JOIN career_positions c ON c.id=r.career_position_id
@@ -70,23 +68,53 @@ export function createCareerRequirementsRouter(pool: DatabasePool) {
     const skills = await pool.query("SELECT id,name FROM career_skills WHERE deleted_at IS NULL ORDER BY name,id");
     res.json({ items: skills.rows });
   });
+  router.get("/course-weights", async (req, res) => {
+    const query = z.object({ careerPositionId: z.uuid(), revisionId: z.uuid().optional() }).strict().parse(req.query);
+    const career = await pool.query(`SELECT c.id FROM career_positions c JOIN career_fields f ON f.code=c.category
+      WHERE c.id=$1 AND c.deleted_at IS NULL AND f.deleted_at IS NULL`, [query.careerPositionId]);
+    if (!career.rowCount) throw new CareerError("career_not_found", 404);
+    const revisions = await pool.query<{
+      revisionId: string; cohortCode: string; name: string; version: number;
+      isCurrent: boolean; isActive: boolean; activeCount: number;
+    }>(`SELECT r.id AS "revisionId",c.cohort_code AS "cohortCode",r.data->>'name' AS name,r.version,
+      c.current_revision=r.id AS "isCurrent",c.is_active AS "isActive",
+      (SELECT count(*)::int FROM ad_comp_course_configs cfg WHERE cfg.revision_id=r.id AND cfg.status='active') AS "activeCount"
+      FROM curricula c JOIN curriculum_revisions r ON r.curriculum_id=c.id
+      ORDER BY c.cohort_code DESC,r.version DESC,c.id`);
+    // Choose a visible default only; an explicitly requested revision never falls back to another cohort.
+    const selected = query.revisionId ? revisions.rows.find(row => row.revisionId === query.revisionId)
+      : revisions.rows.find(row => row.isActive && row.isCurrent && row.activeCount > 0)
+        ?? revisions.rows.find(row => row.isActive && row.isCurrent) ?? revisions.rows[0];
+    if (query.revisionId && !selected) throw new CareerError("curriculum_revision_not_found", 404);
+    const links = selected ? await pool.query(`SELECT DISTINCT s.id AS "skillId",cs.scope,
+      cc.code AS "courseCode",cc.name AS "courseName",l.weight::float8 AS weight
+      FROM career_requirements r JOIN career_skills s ON s.id=r.skill_id AND s.deleted_at IS NULL
+      JOIN ad_comp_skills cs ON cs.skill_id=s.id AND cs.deleted_at IS NULL AND cs.is_active
+      JOIN ad_comp_groups g ON g.id=cs.group_id AND g.is_active
+      JOIN ad_comp_course_links l ON l.skill_id=s.id AND l.weight>0
+      JOIN ad_comp_course_configs cfg ON cfg.id=l.config_id AND cfg.status='active' AND cfg.revision_id=$2
+      JOIN curriculum_courses cc ON cc.revision_id=cfg.revision_id AND cc.code=cfg.course_code
+      WHERE r.career_position_id=$1 AND r.deleted_at IS NULL ORDER BY cc.code,s.id`,
+    [query.careerPositionId, selected.revisionId]) : { rows: [] };
+    res.json({ careerPositionId: query.careerPositionId, revisions: revisions.rows,
+      revisionId: selected?.revisionId ?? null, items: links.rows });
+  });
   router.get("/", async (req, res) => {
     const query = z.object({
       q: z.string().trim().max(200).default(""),
       careerPositionId: z.union([z.literal(""), z.uuid()]).default(""),
       category: z.string().trim().max(60).regex(/^$|^[a-z0-9]+(?:[-_][a-z0-9]+)*$/).default(""),
       skillId: z.union([z.literal(""), z.uuid()]).default(""),
-      level: z.union([z.literal(""), z.enum(levels)]).default(""),
       kind: z.enum(["", "skill", "other"]).default(""),
       priority: z.enum(["", "required", "preferred"]).default(""),
     }).strict().parse(req.query);
     const result = await pool.query(`SELECT ${columns} ${from}
       WHERE r.deleted_at IS NULL AND c.deleted_at IS NULL AND f.deleted_at IS NULL
       AND ($1='' OR r.career_position_id=NULLIF($1,'')::uuid) AND ($2='' OR c.category=$2)
-      AND ($3='' OR r.skill_id=NULLIF($3,'')::uuid) AND ($4='' OR r.level=$4)
-      AND ($5='' OR ($5='skill' AND r.skill_id IS NOT NULL) OR ($5='other' AND r.skill_id IS NULL))
-      AND ($6='' OR r.is_required=($6='required')) ORDER BY c.name_vi,r.title,r.id`,
-      [query.careerPositionId, query.category, query.skillId, query.level, query.kind, query.priority]);
+      AND ($3='' OR r.skill_id=NULLIF($3,'')::uuid)
+      AND ($4='' OR ($4='skill' AND r.skill_id IS NOT NULL) OR ($4='other' AND r.skill_id IS NULL))
+      AND ($5='' OR r.is_required=($5='required')) ORDER BY c.name_vi,r.title,r.id`,
+      [query.careerPositionId, query.category, query.skillId, query.kind, query.priority]);
     const term = fold(query.q);
     res.json({ items: result.rows.filter(row => fold([row.title, row.description, row.skillName ?? "", row.careerName, row.careerNameEn, row.categoryName].join(" ")).includes(term)) });
   });
@@ -115,12 +143,12 @@ export function createCareerRequirementsRouter(pool: DatabasePool) {
         if (data) {
           const skillId = await skillFor(client, data);
           if (method === "post") {
-            await client.query(`INSERT INTO career_requirements(id,career_position_id,skill_id,title,description,level,is_required)
-              VALUES($1,$2,$3,$4,$5,$6,$7)`, [id, data.careerPositionId, skillId, data.title, data.description, data.level, data.isRequired]);
+            await client.query(`INSERT INTO career_requirements(id,career_position_id,skill_id,title,description,is_required)
+              VALUES($1,$2,$3,$4,$5,$6)`, [id, data.careerPositionId, skillId, data.title, data.description, data.isRequired]);
           } else {
             const changed = await client.query(`UPDATE career_requirements SET career_position_id=$3,skill_id=$4,title=$5,description=$6,
-              level=$7,is_required=$8,version=$9,updated_at=now() WHERE id=$1 AND version=$2 AND deleted_at IS NULL`,
-              [id, version, data.careerPositionId, skillId, data.title, data.description, data.level, data.isRequired, randomUUID()]);
+              is_required=$7,version=$8,updated_at=now() WHERE id=$1 AND version=$2 AND deleted_at IS NULL`,
+              [id, version, data.careerPositionId, skillId, data.title, data.description, data.isRequired, randomUUID()]);
             if (!changed.rowCount) throw new CareerError("requirement_changed", 409);
           }
         } else {

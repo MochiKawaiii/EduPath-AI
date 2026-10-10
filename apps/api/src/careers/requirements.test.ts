@@ -36,7 +36,6 @@ type Requirement = {
   skill_id: string | null;
   title: string;
   description: string;
-  level: string;
   is_required: boolean;
   version: string;
   deleted_at: Date | null;
@@ -114,15 +113,15 @@ function setup(options: Options = {}) {
     }
     if (sql.includes("INSERT INTO career_requirements")) {
       if (options.duplicateInsert) throw Object.assign(new Error("duplicate requirement"), { code: "23505" });
-      const [id, career_position_id, skill_id, title, description, level, is_required] = params as [string, string, string | null, string, string, string, boolean];
-      requirements.set(id, { id, career_position_id, skill_id, title, description, level, is_required, version: versionA, deleted_at: null });
+      const [id, career_position_id, skill_id, title, description, is_required] = params as [string, string, string | null, string, string, boolean];
+      requirements.set(id, { id, career_position_id, skill_id, title, description, is_required, version: versionA, deleted_at: null });
       return { rowCount: 1, rows: [] };
     }
     if (sql.includes("UPDATE career_requirements SET career_position_id")) {
-      const [id, version, career_position_id, skill_id, title, description, level, is_required, newVersion] = params as [string, string, string, string | null, string, string, string, boolean, string];
+      const [id, version, career_position_id, skill_id, title, description, is_required, newVersion] = params as [string, string, string, string | null, string, string, boolean, string];
       const item = requirements.get(id);
       if (!item || item.version !== version || item.deleted_at) return { rowCount: 0, rows: [] };
-      Object.assign(item, { career_position_id, skill_id, title, description, level, is_required, version: newVersion });
+      Object.assign(item, { career_position_id, skill_id, title, description, is_required, version: newVersion });
       return { rowCount: 1, rows: [] };
     }
     if (sql.includes("UPDATE career_requirements SET deleted_at")) {
@@ -173,7 +172,6 @@ function toRow(item: Requirement, skills: Map<string, { id: string; name: string
     skillId: item.skill_id,
     title: item.title,
     description: item.description,
-    level: item.level,
     isRequired: item.is_required,
     version: item.version,
     careerName: career.name_vi,
@@ -190,7 +188,6 @@ const requirementInput = {
   description: "Build interactive interfaces",
   skillId: null,
   skillName: "React",
-  level: "intermediate",
   isRequired: true,
 };
 const activeRequirement: Requirement = {
@@ -199,7 +196,6 @@ const activeRequirement: Requirement = {
   skill_id: skillA,
   title: "SQL",
   description: "Query relational data",
-  level: "advanced",
   is_required: true,
   version: versionA,
   deleted_at: null,
@@ -211,18 +207,20 @@ describe("career requirements API", () => {
     const second = { ...activeRequirement, id: careerB, career_position_id: careerB, title: "React", skill_id: skillB };
     const { app, query } = setup({ existingSkills: [{ id: skillA, name: "SQL" }, { id: skillB, name: "React" }], existingRequirements: [first, second] });
     const response = await request(app)
-      .get(`/careers/requirements?q=ky%20nang&careerPositionId=${careerA}&category=data_ai&skillId=${skillA}&level=advanced&kind=skill&priority=required`)
+      .get(`/careers/requirements?q=ky%20nang&careerPositionId=${careerA}&category=data_ai&skillId=${skillA}&kind=skill&priority=required`)
       .expect(200);
     expect(response.body.items).toEqual([toRow(first, new Map([[skillA, { id: skillA, name: "SQL" }], [skillB, { id: skillB, name: "React" }]]))]);
+    expect(response.body.items[0]).not.toHaveProperty("level");
     const listCall = query.mock.calls.find(([sql]) => String(sql).includes("FROM career_requirements r JOIN career_positions"));
     expect(listCall?.[0]).toContain("r.deleted_at IS NULL AND c.deleted_at IS NULL AND f.deleted_at IS NULL");
-    expect(listCall?.[1]).toEqual([careerA, "data_ai", skillA, "advanced", "skill", "required"]);
+    expect(listCall?.[1]).toEqual([careerA, "data_ai", skillA, "skill", "required"]);
   });
 
   it("creates, moves, and deletes requirements while refreshing both legacy career skill lists", async () => {
     const { app, clientQuery, legacySkills, requirements } = setup({ existingRequirements: [activeRequirement] });
     const created = await request(app).post("/careers/requirements").set("Origin", origin).send(requirementInput).expect(201);
     expect(created.body).toMatchObject({ ...requirementInput, skillId: skillB, skillName: "React", careerName: "Chuyên viên phân tích dữ liệu" });
+    expect(created.body).not.toHaveProperty("level");
     expect(legacySkills.get(careerA)).toEqual(["SQL", "React"]);
     const createLock = clientQuery.mock.calls.find(([sql]) => String(sql).includes("FROM career_positions WHERE id=ANY"));
     expect(createLock?.[1]).toEqual([[careerA]]);
@@ -274,8 +272,10 @@ describe("career requirements API", () => {
     await request(crossOrigin.app).post("/careers/requirements").set("Origin", "https://evil.example").send(requirementInput).expect(403, { error: "invalid_origin" });
     expect(crossOrigin.connect).not.toHaveBeenCalled();
     const invalid = setup();
-    await request(invalid.app).post("/careers/requirements").set("Origin", origin).send({ ...requirementInput, level: "expert" }).expect(400, { error: "invalid_requirement" });
+    await request(invalid.app).post("/careers/requirements").set("Origin", origin).send({ ...requirementInput, level: "intermediate" }).expect(400, { error: "invalid_requirement" });
+    await request(invalid.app).get("/careers/requirements?level=advanced").expect(400, { error: "invalid_requirement" });
     expect(invalid.connect).not.toHaveBeenCalled();
+    expect(invalid.query.mock.calls.filter(([sql]) => !String(sql).includes("SELECT id FROM users"))).toHaveLength(0);
     const stale = setup();
     await request(stale.app).patch(`/careers/requirements/${requirementA}`).set("Origin", origin).set("x-version", nextVersion).send(requirementInput).expect(409, { error: "requirement_changed" });
     expect(stale.clientQuery).toHaveBeenCalledWith("ROLLBACK");

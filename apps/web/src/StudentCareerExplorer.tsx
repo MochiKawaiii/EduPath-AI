@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLiveData } from "./use-live-data";
 import { useLiveFilters } from "./use-live-filters";
-import { careerFailures, requirementLevels, type Career, type CareerField, type StudentCareerDetail } from "./career-types";
+import { careerFailures, type Career, type CareerField, type StudentCareerDetail } from "./career-types";
 import { Icon } from "./ui-icon";
 import "./student-careers.css";
 
@@ -118,8 +118,8 @@ function CareerDetail({ id, selectedId, saving, saveError, onSelect, onClose }: 
     {career && <>
       <section className="sr-career-overview"><h3 ref={heading} tabIndex={-1}>{career.nameVi}</h3><p>{career.nameEn}</p><small>{career.categoryName}</small><p className="sr-career-description">{career.description || "Chưa bổ sung mô tả công việc."}</p></section>
       <section><h3>Yêu cầu, kỹ năng và công nghệ</h3>
-        {career.requirements.length ? <div className="sr-career-table-scroll"><table className="sr-career-table"><thead><tr><th>Yêu cầu</th><th>Kỹ năng / Công nghệ</th><th>Mức yêu cầu</th><th>Tính chất</th></tr></thead>
-          <tbody>{career.requirements.map(item => <tr key={item.id}><td><strong>{item.title}</strong>{item.description && <p className="sr-career-description">{item.description}</p>}</td><td>{item.skillName || "—"}</td><td>{requirementLevels[item.level]}</td><td>{item.isRequired ? "Bắt buộc" : "Ưu tiên"}</td></tr>)}</tbody>
+        {career.requirements.length ? <div className="sr-career-table-scroll"><table className="sr-career-table"><thead><tr><th>Yêu cầu</th><th>Kỹ năng / Công nghệ</th><th>Tính chất</th></tr></thead>
+          <tbody>{career.requirements.map(item => <tr key={item.id}><td><strong>{item.title}</strong>{item.description && <p className="sr-career-description">{item.description}</p>}</td><td>{item.skillName || "—"}</td><td>{item.isRequired ? "Bắt buộc" : "Ưu tiên"}</td></tr>)}</tbody>
         </table></div> : <p>Chưa có yêu cầu hoặc kỹ năng được cập nhật cho vị trí này.</p>}
       </section>
       {saveError && <p className="sr-error" role="alert">{saveError}</p>}

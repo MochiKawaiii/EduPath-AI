@@ -2,16 +2,18 @@ import { useState } from "react";
 import { ActionMenu, Modal, Pagination, Status, useData } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
-import { careerFailures, careerRequest, requirementLevels, type Career, type CareerRequirement, type CareerSkill } from "./career-types";
+import { CareerWeightCell, CareerWeightSelector, useCareerCourseWeights } from "./CareerCourseWeights";
+import { careerFailures, careerRequest, type Career, type CareerRequirement, type CareerSkill } from "./career-types";
 
 const endpoint = "/api/admin/careers/requirements";
-const emptyFilters = { q: "", skillId: "", level: "", kind: "", priority: "" };
+const emptyFilters = { q: "", skillId: "", kind: "", priority: "" };
 export default function CareerRequirementsManagement({ canManage, career, revision, saved }: {
   canManage: boolean; career: Career; revision: number; saved: () => void;
 }) {
   const { draft, setDraft, filters, page, setPage } = useLiveFilters(emptyFilters);
   const remote = useData<{ items: CareerRequirement[] }>(`${endpoint}?${new URLSearchParams({ ...filters, careerPositionId: career.id })}`, revision);
   const skills = useData<{ items: CareerSkill[] }>(`${endpoint}/skills`, revision);
+  const courseWeights = useCareerCourseWeights(career.id, revision);
   const [selected, setSelected] = useState<CareerRequirement | null>(null);
   const [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
   const [kind, setKind] = useState<"skill" | "other">("other");
@@ -26,13 +28,11 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
       </div>}
     </div>
     <section className="cm-panel">
+      <CareerWeightSelector state={courseWeights} />
       <div className="cm-filters career-requirement-filters">
         <label className="cm-search">Tìm yêu cầu<input value={draft.q} maxLength={200} placeholder="Nội dung hoặc kỹ năng…" onChange={event => setDraft({ ...draft, q: event.target.value })} /></label>
         <label>Kỹ năng<select value={draft.skillId} onChange={event => setDraft({ ...draft, skillId: event.target.value })}>
           <option value="">Tất cả kỹ năng</option>{skills.data?.items.map(skill => <option key={skill.id} value={skill.id}>{skill.name}</option>)}
-        </select></label>
-        <label>Mức yêu cầu<select value={draft.level} onChange={event => setDraft({ ...draft, level: event.target.value })}>
-          <option value="">Tất cả mức</option>{Object.entries(requirementLevels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select></label>
         <label>Tính chất<select value={draft.priority} onChange={event => setDraft({ ...draft, priority: event.target.value })}>
           <option value="">Tất cả</option><option value="required">Bắt buộc</option><option value="preferred">Ưu tiên</option>
@@ -45,10 +45,12 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
       <Status {...remote} /><Status {...skills} />
       {remote.data && <>
         <div className="cm-table-scroll"><table className="cm-table career-requirement-table">
-          <thead><tr><th>Yêu cầu</th><th>Kỹ năng</th><th>Mức yêu cầu</th><th>Tính chất</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Yêu cầu</th><th>Kỹ năng</th><th>Trọng số học phần</th><th>Tính chất</th><th>Thao tác</th></tr></thead>
           <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map(item => <tr key={item.id}>
             <td><strong>{item.title}</strong><small className="career-requirement-summary">{item.description || "Chưa bổ sung mô tả"}</small></td>
-            <td>{item.skillName || "—"}</td><td>{requirementLevels[item.level]}</td><td>{item.isRequired ? "Bắt buộc" : "Ưu tiên"}</td>
+            <td>{item.skillName || "—"}</td>
+            <td><CareerWeightCell key={`${career.id}:${courseWeights.data?.revisionId ?? "loading"}:${item.skillId}`} state={courseWeights} skillId={item.skillId} skillName={item.skillName} /></td>
+            <td>{item.isRequired ? "Bắt buộc" : "Ưu tiên"}</td>
             <td><ActionMenu label={`Thao tác với yêu cầu ${item.title}`} items={[
               { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => { setSelected(item); setMode("detail"); } },
               ...(canManage ? [
@@ -75,7 +77,6 @@ function RequirementDetail({ id, close }: { id: string; close: () => void }) {
       <h3>{remote.data.title}</h3><p className="career-description">{remote.data.description || "Chưa bổ sung mô tả."}</p>
       <dl><div><dt>Vị trí nghề nghiệp</dt><dd>{remote.data.careerName} · {remote.data.categoryName}</dd></div>
         <div><dt>Kỹ năng liên kết</dt><dd>{remote.data.skillName || "Không liên kết kỹ năng"}</dd></div>
-        <div><dt>Mức yêu cầu</dt><dd>{requirementLevels[remote.data.level]}</dd></div>
         <div><dt>Tính chất</dt><dd>{remote.data.isRequired ? "Bắt buộc" : "Ưu tiên"}</dd></div></dl>
     </>}<div className="cm-actions cm-dialog-actions"><button type="button" className="am-outline" onClick={close}><Icon name="close" /> Đóng</button></div></div>
   </Modal>;
@@ -91,7 +92,7 @@ function RequirementEditor({ current, kind, career, catalog, close, saved }: {
   const [form, setForm] = useState({
     title: current?.title ?? "", description: current?.description ?? "",
     skillId: current?.skillId ?? "", skillName: "",
-    level: current?.level ?? "unspecified", isRequired: current?.isRequired ?? false,
+    isRequired: current?.isRequired ?? false,
   });
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const isSkill = kind === "skill";
@@ -143,9 +144,6 @@ function RequirementEditor({ current, kind, career, catalog, close, saved }: {
         <label><RequiredLabel>Nội dung yêu cầu</RequiredLabel><input required maxLength={160} value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} /></label>
         <label>Mô tả<textarea rows={4} maxLength={4000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
         <div className="cm-form-grid">
-          <label>Mức yêu cầu<select value={form.level} onChange={event => setForm({ ...form, level: event.target.value as CareerRequirement["level"] })}>
-            {Object.entries(requirementLevels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select></label>
           <label>Tính chất<select value={form.isRequired ? "required" : "preferred"} onChange={event => setForm({ ...form, isRequired: event.target.value === "required" })}>
             <option value="preferred">Ưu tiên</option><option value="required">Bắt buộc</option>
           </select></label>

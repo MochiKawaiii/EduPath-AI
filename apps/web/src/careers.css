@@ -113,9 +113,20 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .cm-filters.career-requirement-filters label { min-width: 0; }
+.cm-filters.career-requirement-filters .cm-search { grid-column: span 2; }
 .career-requirement-table {
-  min-width: 780px;
+  min-width: 960px;
 }
+.career-weight-context { padding: 22px; border-bottom: 1px solid var(--cm-border, #dce1ea); }
+.career-weight-context label { display: grid; gap: 8px; }
+.career-weight-context select { width: 100%; min-width: 0; }
+.career-weight-context p { margin: 12px 0 0; color: var(--cm-muted); font-size: 13px; line-height: 1.6; }
+.career-weight-empty { color: var(--cm-muted); }
+.career-weight-empty small { display: block; margin-top: 5px; }
+.career-weight-detail { font-size: 14px; }
+.career-weight-detail p { line-height: 1.6; overflow-wrap: anywhere; }
+.career-weight-detail .cm-table { min-width: 500px; }
+.career-weight-detail .cm-table td:last-child { white-space: nowrap; }
 .career-requirement-summary {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -127,6 +138,7 @@
 }
 @media (max-width: 600px) {
   .cm-filters.career-requirement-filters { grid-template-columns: 1fr; }
+  .cm-filters.career-requirement-filters .cm-search { grid-column: auto; }
   .career-detail-panel dl { grid-template-columns: 1fr; }
   .career-detail-panel { padding: 18px; }
 }

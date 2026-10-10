@@ -25,7 +25,7 @@ const sourceFilename = basename(workbookPath);
 const schema = "competencies_audit_" + randomBytes(6).toString("hex");
 assert(/^competencies_audit_[0-9a-f]{12}$/.test(schema));
 const extraSchemas = new Set();
-const coreMigrations = ["011_curricula.sql", "014_career_positions.sql", "015_career_fields.sql", "016_career_requirements.sql",
+const coreMigrations = ["011_curricula.sql", "014_career_positions.sql", "015_career_fields.sql", "016_career_requirements.sql", "027_remove_career_requirement_level.sql",
   "019_career_skill_management.sql", "020_career_field_numbers.sql", "021_career_position_codes.sql"];
 const adminPool = new pg.Pool({ connectionString: env.DATABASE_URL });
 const pool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 10, options: `-c search_path=${schema},public` });

@@ -229,7 +229,6 @@ describe("career catalog API", () => {
           title: "SQL query design",
           description: "Query relational sources.",
           skillName: "SQL",
-          level: "advanced",
           isRequired: true,
         },
         {
@@ -237,7 +236,6 @@ describe("career catalog API", () => {
           title: "Portfolio project",
           description: "Build a small data project.",
           skillName: null,
-          level: "unspecified",
           isRequired: false,
         },
       ],
@@ -258,6 +256,7 @@ describe("career catalog API", () => {
     expect(detailSql).not.toMatch(/studentCount|version|count\s*\(/i);
     expect(studentCareer.requirements[0]).toMatchObject({ title: "SQL query design", skillName: "SQL", isRequired: true });
     expect(studentCareer.requirements[1]).toMatchObject({ title: "Portfolio project", skillName: null, isRequired: false });
+    expect(studentCareer.requirements.every((item) => !Object.hasOwn(item, "level"))).toBe(true);
   });
 
   it("requires authentication and returns safe not-found/validation responses for student detail", async () => {

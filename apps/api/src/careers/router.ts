@@ -151,7 +151,7 @@ export function createCareersRouter(
       const result = await pool!.query(`SELECT c.id,c.code,c.name_vi AS "nameVi",c.name_en AS "nameEn",
         c.category,f.name AS "categoryName",c.description,
         COALESCE((SELECT json_agg(json_build_object('id',r.id,'title',r.title,'description',r.description,
-          'skillName',s.name,'level',r.level,'isRequired',r.is_required) ORDER BY r.is_required DESC,r.title,r.id)
+          'skillName',s.name,'isRequired',r.is_required) ORDER BY r.is_required DESC,r.title,r.id)
           FROM career_requirements r LEFT JOIN career_skills s ON s.id=r.skill_id
           WHERE r.career_position_id=c.id AND r.deleted_at IS NULL),'[]'::json) AS requirements
         FROM career_positions c JOIN career_fields f ON f.code=c.category

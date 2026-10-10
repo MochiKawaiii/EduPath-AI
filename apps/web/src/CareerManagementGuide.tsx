@@ -8,7 +8,7 @@ const steps = [
 
 const guidance: Record<string, string> = {
   "/quantri/linh-vuc-nghe-nghiep": "Tạo lĩnh vực để phân nhóm các vị trí. Trong Quản lý nghề nghiệp, mỗi vị trí chọn một lĩnh vực và liên kết các kỹ năng từ Danh sách kỹ năng.",
-  "/quantri/ky-nang": "Chuẩn bị kho kỹ năng dùng chung cho nhiều vị trí. Vào Quản lý nghề nghiệp → Kỹ năng liên kết để gắn kỹ năng cho từng vị trí và đặt mức yêu cầu.",
+  "/quantri/ky-nang": "Chuẩn bị kho kỹ năng dùng chung cho nhiều vị trí. Vào Quản lý nghề nghiệp → Kỹ năng liên kết để gắn kỹ năng cho từng vị trí và chọn tính chất Bắt buộc hoặc Ưu tiên.",
   "/quantri/vi-tri-nghe-nghiep": "Khi thêm vị trí, chọn lĩnh vực đã có; sau khi lưu, dùng Kỹ năng liên kết để gắn kỹ năng từ danh mục chung. Bạn có thể dùng ngay lĩnh vực và kỹ năng đã có.",
 };
 
