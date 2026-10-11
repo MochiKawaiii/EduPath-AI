@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { passedPhysicalEducationCourses, studentPlanResult } from "./student-plan-results";
-import { transcriptResults } from "./transcript-results";
+import {
+  passedPhysicalEducationCourses, physicalEducationProgress, studentPlanOutcome, studentPlanResult,
+} from "./student-plan-results";
+import { transcriptOutcomes, transcriptResults } from "./transcript-results";
 
 const passed = "\u0110\u1ea1t";
 const failed = "Kh\u00f4ng \u0111\u1ea1t";
@@ -80,5 +82,34 @@ describe("student plan course results", () => {
 
     expect(studentPlanResult({ code: " 71regular0001 ", name: "Regular course" }, results, 0)).toBe("pass");
     expect(studentPlanResult({ code: "71REGULAR0002", name: "Another regular course" }, results, 2)).toBe("fail");
+  });
+});
+
+describe("student plan results from letter grades", () => {
+  it("marks a GDTC slot as inferred only when printed passes alone cannot fill it", () => {
+    const outcomes = transcriptOutcomes([{ courses: [
+      { code: "71TC0020001", result: passed },
+      { code: "71TC1020001", result: null, letter: "B+" },
+    ] }]);
+    const progress = physicalEducationProgress(["71TC0020001", " 71tc0020001 ", "71TC1020001", ""], outcomes);
+    expect(progress).toEqual({ passed: 2, confirmed: 1 });
+    expect(studentPlanOutcome({ code: "DGT0010", name: "GDTC 1" }, outcomes, progress)).toEqual({ result: "pass", inferred: false });
+    expect(studentPlanOutcome({ code: "DGT0020", name: "GDTC 2" }, outcomes, progress)).toEqual({ result: "pass", inferred: true });
+    expect(studentPlanOutcome({ code: "DGT0020", name: "GDTC 2" }, outcomes, { passed: 1, confirmed: 1 })).toBeUndefined();
+  });
+
+  it("returns regular course results with their inferred flag and leaves unreadable results blank", () => {
+    const outcomes = transcriptOutcomes([{ courses: [
+      { code: "71ITSE30503", result: null, letter: "F" },
+      { code: "71ITSE30603", result: passed, letter: "B" },
+      { code: "71ITSE30703", result: null, letter: null, score10: 7 },
+      { code: "71ITSE30803", result: failed, letter: "A" },
+    ] }]);
+    const none = physicalEducationProgress([], outcomes);
+    expect(studentPlanOutcome({ code: " 71itse30503 ", name: "A" }, outcomes, none)).toEqual({ result: "fail", inferred: true });
+    expect(studentPlanOutcome({ code: "71ITSE30603", name: "B" }, outcomes, none)).toEqual({ result: "pass", inferred: false });
+    expect(studentPlanOutcome({ code: "71ITSE30703", name: "C" }, outcomes, none)).toBeUndefined();
+    expect(studentPlanOutcome({ code: "71ITSE30803", name: "D" }, outcomes, none)).toEqual({ result: "fail", inferred: false });
+    expect(transcriptResults([{ courses: [{ code: "71ITSE30503", result: null, letter: "F" }] }]).get("71ITSE30503")).toBe("fail");
   });
 });

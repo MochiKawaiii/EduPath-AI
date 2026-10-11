@@ -83,4 +83,16 @@ describe("loadConfig", () => {
       })
     ).toThrow("DATABASE_URL must be a valid PostgreSQL connection URL");
   });
+
+  it("keeps the AI worker key optional, at least 32 characters and distinct from the OCR key", () => {
+    const ocr = "o".repeat(40);
+    const ai = "a".repeat(40);
+    expect(loadConfig(baseEnvironment).aiWorkerKey).toBeUndefined();
+    expect(loadConfig({ ...baseEnvironment, AI_WORKER_KEY: "  " }).aiWorkerKey).toBeUndefined();
+    const config = loadConfig({ ...baseEnvironment, OCR_WORKER_KEY: ocr, AI_WORKER_KEY: ai });
+    expect(config.aiWorkerKey).toBe(ai);
+    expect(config.ocrWorkerKey).toBe(ocr);
+    expect(() => loadConfig({ ...baseEnvironment, AI_WORKER_KEY: "short" })).toThrow();
+    expect(() => loadConfig({ ...baseEnvironment, OCR_WORKER_KEY: ai, AI_WORKER_KEY: ai })).toThrow(/differ/);
+  });
 });

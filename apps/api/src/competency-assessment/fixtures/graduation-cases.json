@@ -1,0 +1,149 @@
+{
+  "description": "Shared graduation cases (synthetic) for the API competency-assessment graduation port and apps/web/src/graduation-assessment.ts. Each group has a lower bound (certainly passed: printed pass, letter A+..D on a blank result, or MT) and an upper bound (plus graded courses whose result cannot be read). Pass when lower >= required, fail when upper < required, otherwise unknown. Registrations without grades are not possible passes. Course credits on the transcript equal the standard's credits, so CTĐT credits and transcript credits agree. Total credits: the printed 'Tổng số tín chỉ tích lũy' of the latest graded term, otherwise passed credits without condition-only courses ('calculated'); no check when minimumCredits is null. GPA scale defaults to 4.",
+  "rowFormat": ["code", "credits", "score10", "score4", "letter", "result"],
+  "term": { "academicYear": "2024-2025", "semester": "HK01", "note": "All rows and summaries of a case belong to this one graded term." },
+  "standard": {
+    "minimumCredits": 15,
+    "minimumGpa": 2,
+    "gpaScale": null,
+    "groups": [
+      { "id": "BB", "name": "Nhóm bắt buộc", "kind": "mandatory", "minimumCredits": null },
+      { "id": "TC002", "name": "Nhóm tự chọn TC002", "kind": "elective", "minimumCredits": 2 },
+      { "id": "TC209", "name": "Nhóm tự chọn TC209", "kind": "elective", "minimumCredits": 6 }
+    ],
+    "courses": [
+      { "id": "c1", "groupId": "BB", "code": "71ITBS10103", "name": "Nhập môn Công nghệ thông tin", "credits": 3, "conditionOnly": false },
+      { "id": "c2", "groupId": "BB", "code": "71ITBS10203", "name": "Cơ sở lập trình", "credits": 3, "conditionOnly": false },
+      { "id": "c3", "groupId": "BB", "code": "71ITSE30103", "name": "Kỹ thuật lập trình", "credits": 3, "conditionOnly": false },
+      { "id": "c4", "groupId": "BB", "code": "71NAD110013", "name": "GDQP1", "credits": 3, "conditionOnly": true },
+      { "id": "c5", "groupId": "TC002", "code": "71PEKC10062", "name": "Cờ vua", "credits": 2, "conditionOnly": true },
+      { "id": "c6", "groupId": "TC002", "code": "71PESW10042", "name": "Bơi lội", "credits": 2, "conditionOnly": true },
+      { "id": "c7", "groupId": "TC209", "code": "71ITSE30603", "name": "Phát triển ứng dụng di động", "credits": 3, "conditionOnly": false },
+      { "id": "c8", "groupId": "TC209", "code": "71ITIS30203", "name": "Hệ quản trị cơ sở dữ liệu", "credits": 3, "conditionOnly": false },
+      { "id": "c9", "groupId": "TC209", "code": "71ITIS30303", "name": "Phân tích thiết kế hệ thống", "credits": 3, "conditionOnly": false }
+    ]
+  },
+  "cases": [
+    {
+      "name": "printed results complete every group",
+      "rows": [
+        ["71ITBS10103", 3, 8.5, 3.7, "A", "Đạt"], ["71ITBS10203", 3, 7, 3, "B", "Đạt"], ["71ITSE30103", 3, 6, 2, "C", "Đạt"],
+        ["71NAD110013", 3, 7, 3, "B", "Đạt"], ["71PEKC10062", 2, 8, 3.3, "B+", "Đạt"],
+        ["71ITSE30603", 3, 7.5, 3, "B", "Đạt"], ["71ITIS30203", 3, 6.5, 2.3, "C+", "Đạt"]
+      ],
+      "summaries": [],
+      "expected": {
+        "groups": [
+          { "id": "BB", "lower": 4, "upper": 4, "required": 4, "status": "pass" },
+          { "id": "TC002", "lower": 2, "upper": 2, "required": 2, "status": "pass" },
+          { "id": "TC209", "lower": 6, "upper": 6, "required": 6, "status": "pass" }
+        ],
+        "groupStatus": "pass",
+        "credits": { "lower": 15, "upper": 15, "required": 15, "source": "calculated", "status": "pass" },
+        "gpa": { "status": "pass", "source": "calculated" },
+        "status": "pass"
+      }
+    },
+    {
+      "name": "blank result cells are decided by letter grades",
+      "rows": [
+        ["71ITBS10103", 3, 8.5, 3.7, "A", null], ["71ITBS10203", 3, 7, 3, "B", null], ["71ITSE30103", 3, 4.2, 1, "D", null],
+        ["71NAD110013", 3, 7, 3, "B", null], ["71PEKC10062", 2, 8, 3.3, "B+", null],
+        ["71ITSE30603", 3, 7.5, 3, "B", null], ["71ITIS30203", 3, 3, 0, "F", null]
+      ],
+      "summaries": [],
+      "expected": {
+        "groups": [
+          { "id": "BB", "lower": 4, "upper": 4, "required": 4, "status": "pass" },
+          { "id": "TC002", "lower": 2, "upper": 2, "required": 2, "status": "pass" },
+          { "id": "TC209", "lower": 3, "upper": 3, "required": 6, "status": "fail" }
+        ],
+        "groupStatus": "fail",
+        "credits": { "lower": 12, "upper": 12, "required": 15, "source": "calculated", "status": "fail" },
+        "gpa": { "status": "pass", "source": "calculated" },
+        "status": "fail"
+      }
+    },
+    {
+      "name": "graded courses with unreadable results keep groups open",
+      "rows": [
+        ["71ITBS10103", 3, 8.5, 3.7, "A", "Đạt"], ["71ITBS10203", 3, 7, 3, "B", "Đạt"], ["71ITSE30103", 3, 7, 3, null, null],
+        ["71NAD110013", 3, 7, 3, "B", "Đạt"], ["71PEKC10062", 2, 8, 3.3, "B+", "Đạt"],
+        ["71ITSE30603", 3, 7.5, 3, "B", "Đạt"], ["71ITIS30203", 3, 6.5, 2.3, null, null]
+      ],
+      "summaries": [],
+      "expected": {
+        "groups": [
+          { "id": "BB", "lower": 3, "upper": 4, "required": 4, "status": "unknown" },
+          { "id": "TC002", "lower": 2, "upper": 2, "required": 2, "status": "pass" },
+          { "id": "TC209", "lower": 3, "upper": 6, "required": 6, "status": "unknown" }
+        ],
+        "groupStatus": "unknown",
+        "credits": { "lower": 9, "upper": 15, "required": 15, "source": "calculated", "status": "unknown" },
+        "gpa": { "status": "pass", "source": "calculated" },
+        "status": "unknown"
+      }
+    },
+    {
+      "name": "a registration without a grade is not a possible pass",
+      "rows": [
+        ["71ITBS10103", 3, 8.5, 3.7, "A", "Đạt"], ["71ITBS10203", 3, 7, 3, "B", "Đạt"], ["71ITSE30103", 3, null, null, null, null],
+        ["71NAD110013", 3, 7, 3, "B", "Đạt"], ["71PEKC10062", 2, 8, 3.3, "B+", "Đạt"],
+        ["71ITSE30603", 3, 7.5, 3, "B", "Đạt"], ["71ITIS30203", 3, 6.5, 2.3, "C+", "Đạt"], ["71ITIS30303", 3, 6, 2, null, null]
+      ],
+      "summaries": [],
+      "expected": {
+        "groups": [
+          { "id": "BB", "lower": 3, "upper": 3, "required": 4, "status": "fail" },
+          { "id": "TC002", "lower": 2, "upper": 2, "required": 2, "status": "pass" },
+          { "id": "TC209", "lower": 6, "upper": 9, "required": 6, "status": "pass" }
+        ],
+        "groupStatus": "fail",
+        "credits": { "lower": 12, "upper": 15, "required": 15, "source": "calculated", "status": "unknown" },
+        "gpa": { "status": "pass", "source": "calculated" },
+        "status": "fail"
+      }
+    },
+    {
+      "name": "MT after an F counts as passed and stays out of the GPA",
+      "rows": [
+        ["71ITBS10103", 3, 3, 0, "F", "Không đạt"], ["71ITBS10103", 3, null, null, "MT", null],
+        ["71ITBS10203", 3, 7, 3, "B", "Đạt"], ["71ITSE30103", 3, 6, 2, "C", "Đạt"],
+        ["71NAD110013", 3, 7, 3, "B", "Đạt"], ["71PESW10042", 2, 6, 2, "C", "Đạt"],
+        ["71ITSE30603", 3, 7.5, 3, "B", "Đạt"], ["71ITIS30303", 3, 6.5, 2.3, "C+", "Đạt"]
+      ],
+      "summaries": [],
+      "expected": {
+        "groups": [
+          { "id": "BB", "lower": 4, "upper": 4, "required": 4, "status": "pass" },
+          { "id": "TC002", "lower": 2, "upper": 2, "required": 2, "status": "pass" },
+          { "id": "TC209", "lower": 6, "upper": 6, "required": 6, "status": "pass" }
+        ],
+        "groupStatus": "pass",
+        "credits": { "lower": 15, "upper": 15, "required": 15, "source": "calculated", "status": "pass" },
+        "gpa": { "status": "pass", "source": "calculated" },
+        "status": "pass"
+      }
+    },
+    {
+      "name": "printed cumulative credits and GPA win over the estimates",
+      "rows": [
+        ["71ITBS10103", 3, 8.5, 3.7, "A", "Đạt"], ["71ITBS10203", 3, 7, 3, "B", "Đạt"], ["71ITSE30103", 3, 6, 2, "C", "Đạt"],
+        ["71NAD110013", 3, 7, 3, "B", "Đạt"], ["71PEKC10062", 2, 8, 3.3, "B+", "Đạt"],
+        ["71ITSE30603", 3, 7.5, 3, "B", "Đạt"], ["71ITIS30203", 3, 6.5, 2.3, "C+", "Đạt"]
+      ],
+      "summaries": [["Tổng số tín chỉ tích lũy", "14"], ["Điểm TB tích lũy (Hệ 4)", "1,85"]],
+      "expected": {
+        "groups": [
+          { "id": "BB", "lower": 4, "upper": 4, "required": 4, "status": "pass" },
+          { "id": "TC002", "lower": 2, "upper": 2, "required": 2, "status": "pass" },
+          { "id": "TC209", "lower": 6, "upper": 6, "required": 6, "status": "pass" }
+        ],
+        "groupStatus": "pass",
+        "credits": { "lower": 14, "upper": 14, "required": 15, "source": "printed", "status": "fail" },
+        "gpa": { "status": "fail", "source": "printed" },
+        "status": "fail"
+      }
+    }
+  ]
+}

@@ -6,6 +6,8 @@ import { Icon } from "./student-icons";
 
 export type StudentProfile = {
   careerPositionId?: string | null; careerPosition?: CareerSelection | null;
+  /** Chuyên ngành (CNPM/CNDL/TTNT); null = chưa xác định, absent on older APIs. */
+  specialty?: string | null;
   name: string; studentCode: string | null; cohortCode: string | null;
   className: string | null; cohortYear: number | null; currentSemester: number | null;
   email: string | null; careerGoal: string | null; interests: string | null; profileStatus: string;

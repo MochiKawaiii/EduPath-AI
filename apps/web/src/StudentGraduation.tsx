@@ -4,6 +4,7 @@ import { searchTerm } from "./student-curriculum-types";
 import { useLiveData } from "./use-live-data";
 import type { Transcript } from "./StudentTranscript";
 import { assessGraduation } from "./graduation-assessment";
+import { INFERRED_RESULT_NOTE } from "./transcript-results";
 import "./student-curriculum.css";
 import "./student-graduation.css";
 
@@ -34,6 +35,9 @@ type Detail = Omit<
   courses: Omit<GraduationData["courses"][number], "sourceRow">[];
 };
 const fmt = (n: number | null) => (n === null ? "Chưa xác định" : n.toLocaleString("vi-VN", { maximumFractionDigits: 4 }));
+/** "? Chưa xác định" when graded courses with unreadable results keep the outcome open. */
+const statusLabel = (status: "pass" | "fail" | "unknown", undecided = false) =>
+  status === "pass" ? "✓ Đạt" : status === "fail" ? "✗ Chưa đạt" : undecided ? "? Chưa xác định" : "Chưa đủ dữ liệu";
 async function readTranscript(response: Response): Promise<{ transcript: Transcript | null }> {
   if (!response.ok) throw new Error("Chưa tải được bảng điểm để xét điều kiện. Vui lòng thử lại.");
   return response.json();
@@ -143,6 +147,9 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
   const data = remote.data!;
   const assessment = assessGraduation(data, transcript.data?.transcript ?? null);
   const assessmentReady = !transcript.loading && !transcript.error;
+  const inferredCourses = data.courses.filter((course) =>
+    assessment.outcomes.get(course.code.trim().toUpperCase())?.inferred).length;
+  const { credits, creditCheck } = assessment;
   const improvementCodes = new Set(data.courses.filter((course) => {
     const code = course.code.trim().toUpperCase();
     const grade = assessment.scores.get(code);
@@ -195,32 +202,47 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
           <p className={`sg-verdict sg-status-${sameCohort ? assessment.status : "unknown"}`} role="status">
             {!sameCohort ? "Chưa thể kết luận: tiêu chuẩn đang chọn không cùng khóa trong hồ sơ."
               : !transcript.data?.transcript ? "Chưa đủ dữ liệu xét tốt nghiệp. Hãy import bảng điểm để đối chiếu."
-              : assessment.status === "pass" ? "Đã đạt các nhóm học phần và yêu cầu điểm trung bình theo tiêu chuẩn đang chọn."
+              : assessment.status === "pass" ? `Đã đạt các nhóm học phần${credits ? ", số tín chỉ tích lũy" : ""} và yêu cầu điểm trung bình theo tiêu chuẩn đang chọn.`
               : assessment.status === "fail" ? "Chưa đủ điều kiện xét tốt nghiệp theo bảng điểm đã import."
               : "Chưa đủ dữ liệu để kết luận điều kiện xét tốt nghiệp."}
           </p>
-          <p className="sc-muted">Nhóm bắt buộc phải đạt toàn bộ môn, kể cả môn (*). Nhóm tự chọn chỉ cần đạt đủ tín chỉ yêu cầu của nhóm, không phải học hết các lựa chọn. Môn (*) được tính để hoàn thành nhóm nhưng không cộng tín chỉ tích lũy. MT được tính đạt. Kết quả chính thức do nhà trường xác nhận.</p>
+          <p className="sc-muted">Nhóm bắt buộc phải đạt toàn bộ môn, kể cả môn (*). Nhóm tự chọn chỉ cần đạt đủ tín chỉ yêu cầu của nhóm, không phải học hết các lựa chọn. Môn (*) được tính để hoàn thành nhóm nhưng không cộng tín chỉ tích lũy. MT được tính đạt. Nếu còn môn có điểm nhưng chưa rõ kết quả, nhóm có thể được ghi Chưa xác định. Kết quả chính thức do nhà trường xác nhận.</p>
+          {transcript.data?.transcript && inferredCourses > 0 && <p className="sc-muted">{inferredCourses} môn trong tiêu chuẩn này có ô Kết quả trống trong PDF (chỉ có biểu tượng), nên Đạt/Chưa đạt được suy ra từ điểm chữ chính thức: A+ đến D là Đạt, F là Chưa đạt.</p>}
           {sameCohort && assessment.needsImprovement && <div className="sg-improvement" role="alert">
             <h3>Cần học cải thiện để nâng điểm trung bình</h3>
             <p>Bạn đã hoàn thành các nhóm học phần, nhưng điểm trung bình tích lũy hiện là <strong>{fmt(assessment.gpa.actual)} / {assessment.gpa.scale}</strong>, thấp hơn mức tối thiểu <strong>{fmt(assessment.gpa.required)} / {assessment.gpa.scale}</strong>. Bạn cần đăng ký học cải thiện hoặc học bổ sung các học phần được tính điểm trung bình theo quy định của trường.</p>
             <p>Xem điểm từng môn bên dưới để chọn môn cần cải thiện; ưu tiên những môn điểm thấp và có nhiều tín chỉ. Môn (*) và môn miễn thi (MT) không giúp nâng điểm trung bình.</p>
           </div>}
+          {sameCohort && transcript.data?.transcript && creditCheck.status === "mismatch" && <div className="sg-data-warning" role="note">
+            <h3>Tổng tín chỉ chưa khớp với bảng điểm</h3>
+            <p>Tổng số tín chỉ tích lũy in trên bảng điểm là <strong>{fmt(creditCheck.printed)} TC</strong>, nhưng các môn Đạt (không tính môn điều kiện) cộng lại được <strong>{fmt(creditCheck.computed)} TC</strong>. Kết quả từng môn bên dưới có thể chưa chính xác; hãy đối chiếu với PDF gốc.</p>
+          </div>}
           {transcript.data?.transcript && assessment.gpa.status === "unknown" && <p className="sg-status-unknown">{assessment.gpa.reason}</p>}
           <div className="sc-table-wrap"><table className="sc-table sg-checks">
             <thead><tr><th>Điều kiện</th><th>Đã có</th><th>Yêu cầu</th><th>Kết quả</th></tr></thead>
-            <tbody>{assessment.checks.map((check, index) => <tr key={index}>
-              <td>{check.label}</td><td>{transcript.data?.transcript ? `${fmt(check.actual)} ${check.unit}` : "—"}</td><td>{fmt(check.required)} {check.unit}</td>
-              <td className={`sg-status-${check.status}`}>{check.status === "pass" ? "✓ Đạt" : check.status === "fail" ? "✗ Chưa đạt" : "Chưa đủ dữ liệu"}</td>
+            <tbody>{assessment.checks.map((check) => <tr key={check.groupId}>
+              <td>{check.label}</td>
+              <td>{transcript.data?.transcript ? <>{fmt(check.actual)} {check.unit}{check.unknownCourses > 0 && <small>+{check.unknownCourses} môn chưa rõ kết quả</small>}</> : "—"}</td>
+              <td>{fmt(check.required)} {check.unit}</td>
+              <td className={`sg-status-${check.status}`}>{statusLabel(check.status, Boolean(transcript.data?.transcript) && check.unknownCourses > 0)}</td>
             </tr>)}
+              {credits && <tr>
+                <td>Tín chỉ tích lũy (không tính môn điều kiện)</td>
+                <td>{transcript.data?.transcript && credits.actual !== null ? <>{fmt(credits.actual)} TC<small>{credits.source === "printed" ? "Theo bảng điểm" : "Ước tính"}</small>{(credits.possible ?? 0) > credits.actual && <small>+{fmt(credits.possible! - credits.actual)} TC chưa rõ kết quả</small>}</> : "—"}</td>
+                <td>{fmt(credits.required)} TC</td>
+                <td className={`sg-status-${credits.status}`}>{statusLabel(credits.status, (credits.possible ?? 0) > (credits.actual ?? 0))}</td>
+              </tr>}
               <tr>
                 <td>Điểm trung bình tích lũy{assessment.gpa.scale ? ` (hệ ${assessment.gpa.scale})` : ""}</td>
                 <td>{assessment.gpa.actual === null ? "—" : fmt(assessment.gpa.actual)}</td>
                 <td>{fmt(assessment.gpa.required)}{assessment.gpa.scale ? ` / ${assessment.gpa.scale}` : ""}</td>
-                <td className={`sg-status-${assessment.gpa.status}`}>{assessment.gpa.status === "pass" ? "✓ Đạt" : assessment.gpa.status === "fail" ? "✗ Chưa đạt" : "Chưa đủ dữ liệu"}</td>
+                <td className={`sg-status-${assessment.gpa.status}`}>{statusLabel(assessment.gpa.status)}</td>
               </tr>
             </tbody>
           </table></div>
           {assessment.gpa.source === "printed" && <p className="sc-muted">Điểm trung bình lấy từ dòng tích lũy trong bảng điểm của học kỳ có kết quả gần nhất.</p>}
+          {credits?.source === "printed" && <p className="sc-muted">Số tín chỉ tích lũy lấy từ dòng Tổng số tín chỉ tích lũy của học kỳ có kết quả gần nhất trong bảng điểm.</p>}
+          {credits?.source === "calculated" && <p className="sc-muted">Bảng điểm chưa có dòng Tổng số tín chỉ tích lũy. Số tín chỉ trên là ước tính: cộng tín chỉ các môn Đạt, mỗi mã môn một lần, không tính môn điều kiện (*).</p>}
           {assessment.gpa.source === "calculated" && <p className="sc-muted">Bảng điểm chưa có điểm trung bình tích lũy hệ {assessment.gpa.scale}. Điểm trên được tính tham khảo theo tín chỉ, lấy điểm cao nhất của mỗi mã môn một lần và bỏ môn (*)/MT. Không quy đổi giữa hệ 4 và hệ 10. Hãy đối chiếu với kết quả chính thức của trường.</p>}
         </>}
       </section>
@@ -257,7 +279,7 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
           return (
             <div key={group.id} className="sg-group">
               <div className="sg-group-heading">
-                <h3>{group.name}</h3>
+                <h3>{progress?.label ?? group.name}</h3>
                 <span
                   className={`sc-badge ${group.kind === "elective" ? "sc-elective" : ""}`}
                 >
@@ -280,8 +302,9 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                   </thead>
                   <tbody>
                     {items.map((c) => {
-                      const result = assessmentReady && transcript.data?.transcript
-                        ? assessment.results.get(c.code.trim().toUpperCase()) : undefined;
+                      const outcome = assessmentReady && transcript.data?.transcript
+                        ? assessment.outcomes.get(c.code.trim().toUpperCase()) : undefined;
+                      const result = outcome?.status === "pending" ? undefined : outcome?.status;
                       const grade = assessmentReady && transcript.data?.transcript
                         ? assessment.scores.get(c.code.trim().toUpperCase()) : undefined;
                       const improve = sameCohort && assessmentReady && improvementCodes.has(c.code.trim().toUpperCase());
@@ -306,7 +329,8 @@ function StandardContents({ id, sameCohort }: { id: string; sameCohort: boolean 
                             </> : "—"}
                         </td>
                         <td className={`sg-result ${result ? `sg-status-${result}` : "sc-muted"}`}>
-                          {result === "pass" ? "✓ Đạt" : result === "fail" ? "✗ Chưa đạt" : "—"}
+                          {result === "pass" ? "✓ Đạt" : result === "fail" ? "✗ Chưa đạt" : result === "unknown" ? "? Chưa xác định" : "—"}
+                          {outcome?.inferred && <small>{INFERRED_RESULT_NOTE}</small>}
                         </td>
                       </tr>
                       );

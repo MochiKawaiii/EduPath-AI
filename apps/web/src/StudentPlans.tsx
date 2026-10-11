@@ -3,8 +3,8 @@ import type { PlanData, PlanItem } from "./plan-types";
 import { searchTerm } from "./student-curriculum-types";
 import { useLiveData } from "./use-live-data";
 import type { Transcript } from "./StudentTranscript";
-import { transcriptResults } from "./transcript-results";
-import { passedPhysicalEducationCourses, studentPlanResult } from "./student-plan-results";
+import { INFERRED_RESULT_NOTE, transcriptOutcomes } from "./transcript-results";
+import { physicalEducationProgress, studentPlanOutcome } from "./student-plan-results";
 import "./student-curriculum.css";
 import "./student-plans.css";
 
@@ -96,7 +96,7 @@ function PlanContents({ id }: { id: string }) {
   const transcript = useLiveData<{ transcript: Transcript | null }>(
     "/api/student/transcript", transcriptRevision, readTranscript,
   );
-  const results = transcriptResults(transcript.data?.transcript?.data.sections ?? []);
+  const outcomes = transcriptOutcomes(transcript.data?.transcript?.data.sections ?? []);
   const remote = useLiveData<Detail>(`/api/student/plans/${id}`, 0, readPlan);
   const [query, setQuery] = useState(""),
     [term, setTerm] = useState("");
@@ -113,15 +113,16 @@ function PlanContents({ id }: { id: string }) {
       </section>
     );
   const data = remote.data!;
-  const passedPhysicalEducation = passedPhysicalEducationCourses(
+  const physicalEducation = physicalEducationProgress(
     [...(data.physicalEducationGroups?.TC002 ?? []), ...(data.physicalEducationGroups?.TC102 ?? [])],
-    results,
+    outcomes,
   );
   const rows = data.items.filter(
     (item) =>
       (!term || item.termCode === term) &&
       searchTerm(`${item.code} ${item.name}`).includes(searchTerm(query)),
   );
+  const showsInferred = rows.some((item) => studentPlanOutcome(item, outcomes, physicalEducation)?.inferred);
   return (
     <section className="sw-panel sp-content">
       <h2>{data.name}</h2>
@@ -164,6 +165,12 @@ function PlanContents({ id }: { id: string }) {
       </p>
       {transcript.loading && <p role="status">Đang đối chiếu bảng điểm…</p>}
       {transcript.error && <p role="alert">{transcript.error} <button className="sw-outline" onClick={() => setTranscriptRevision((n) => n + 1)}>Thử lại</button></p>}
+      {showsInferred && (
+        <p className="sc-muted">
+          Kết quả ghi “{INFERRED_RESULT_NOTE}” là do ô Kết quả trong PDF để
+          trống: điểm A+ đến D được tính là Đạt, F là Chưa đạt.
+        </p>
+      )}
       {data.terms
         .filter((t) => !term || term === t.code)
         .map((t) => {
@@ -192,7 +199,7 @@ function PlanContents({ id }: { id: string }) {
                   </thead>
                   <tbody>
                     {items.map((item) => {
-                      const result = studentPlanResult(item, results, passedPhysicalEducation);
+                      const outcome = studentPlanOutcome(item, outcomes, physicalEducation);
                       return (
                       <tr key={item.id}>
                         <td>{item.code || "—"}</td>
@@ -216,14 +223,15 @@ function PlanContents({ id }: { id: string }) {
                           {!item.prerequisite && !item.prior && "Chưa cung cấp"}
                         </td>
                         <td className="sc-result-cell">
-                          {result && (
-                            <span className={`sc-result sc-result-${result}`}
+                          {outcome && (
+                            <span className={`sc-result sc-result-${outcome.result}`}
                               role="img"
-                              aria-label={result === "pass" ? "Đạt" : "Chưa đạt"}
-                              title={result === "pass" ? "Đạt" : "Chưa đạt"}>
-                              {result === "pass" ? "✓" : "✗"}
+                              aria-label={outcome.result === "pass" ? "Đạt" : "Chưa đạt"}
+                              title={outcome.result === "pass" ? "Đạt" : "Chưa đạt"}>
+                              {outcome.result === "pass" ? "✓" : "✗"}
                             </span>
                           )}
+                          {outcome?.inferred && <small className="sc-result-note">{INFERRED_RESULT_NOTE}</small>}
                         </td>
                       </tr>
                       );

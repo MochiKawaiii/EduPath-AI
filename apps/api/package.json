@@ -9,6 +9,7 @@
     "db:seed-curricula": "tsx src/curricula/seed-cli.ts",
     "db:seed-plans": "tsx src/plans/seed-cli.ts",
     "db:import-competencies": "tsx src/competencies/import-cli.ts",
+    "ai-worker": "tsx src/ai-worker/cli.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "test": "vitest run",

@@ -79,6 +79,7 @@ type SetupOptions = {
   sessionUser?: AuthenticatedUser | null;
   active?: boolean;
   profileCohort?: string | null;
+  profileSpecialty?: string | null;
   listRows?: unknown[];
   detailRows?: unknown[];
 };
@@ -96,11 +97,11 @@ function setup(options: SetupOptions = {}) {
         rows: options.active === false ? [] : [{ id: studentId }],
       };
     }
-    if (sql.includes("SELECT cohort_code FROM student_profiles")) {
+    if (sql.includes("SELECT cohort_code,specialty FROM student_profiles")) {
       return {
         rowCount: options.profileCohort ? 1 : 0,
         rows: options.profileCohort
-          ? [{ cohort_code: options.profileCohort }]
+          ? [{ cohort_code: options.profileCohort, specialty: options.profileSpecialty ?? null }]
           : [],
       };
     }
@@ -263,5 +264,21 @@ describe("student graduation API", () => {
       expect(response.headers.allow).toBe("GET, HEAD");
       expect(response.body).toEqual({ error: "read_only" });
     }
+  });
+
+  it("suggests the standard of the student's specialty when a cohort has several", async () => {
+    const perSpecialty = (id: string, specialty: string, classBlock: string) => ({ ...activeListRow, id, specialty, classBlock });
+    const listRows = [
+      perSpecialty(standardId, "Công nghệ phần mềm", "7480201-03"),
+      perSpecialty(lockedId, "Công nghệ dữ liệu", "7480201-02"),
+    ];
+    const cndl = await request(setup({ profileCohort: "K29", profileSpecialty: "CNDL", listRows }).app).get("/graduation").expect(200);
+    expect(cndl.body.suggestedId).toBe(lockedId);
+    const cnpm = await request(setup({ profileCohort: "K29", profileSpecialty: "CNPM", listRows }).app).get("/graduation").expect(200);
+    expect(cnpm.body.suggestedId).toBe(standardId);
+    const unset = await request(setup({ profileCohort: "K29", listRows }).app).get("/graduation").expect(200);
+    expect(unset.body.suggestedId).toBeNull();
+    const general = await request(setup({ profileCohort: "K29", listRows: [...listRows, perSpecialty(missingId, "Công nghệ thông tin", "K29-CNTT")] }).app).get("/graduation").expect(200);
+    expect(general.body.suggestedId).toBe(missingId);
   });
 });

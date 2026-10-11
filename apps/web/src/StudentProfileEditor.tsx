@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "./student-icons";
 import { type CareerSelection } from "./career-types";
 import StudentCareerExplorer from "./StudentCareerExplorer";
+import { SPECIALTIES, specialtyLabel } from "./competency-assessment-types";
 import "./student-records.css";
 export type EditableStudentProfile = {
   className: string | null;
@@ -9,8 +10,10 @@ export type EditableStudentProfile = {
   careerGoal: string | null;
   careerPositionId?: string | null;
   careerPosition?: CareerSelection | null;
+  /** Absent until the API returns it; the field is hidden then so saving keeps working. */
+  specialty?: string | null;
 };
-async function updateProfile(input: { interests?: string; careerPositionId: string | null }) {
+async function updateProfile(input: { interests?: string; careerPositionId: string | null; specialty?: string | null }) {
   const res = await fetch("/api/student/profile", {
     method: "PATCH",
     credentials: "include",
@@ -42,17 +45,20 @@ export default function StudentProfileEditor({
     [draft, setDraft] = useState({
       interests: "",
       careerPositionId: "",
+      specialty: "",
     });
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [error, setError] = useState("");
   const [draftCareer, setDraftCareer] = useState<CareerSelection | null>(profile.careerPosition ?? null);
   const [explorer, setExplorer] = useState<{ initialCareerId?: string } | null>(null);
+  const supportsSpecialty = profile.specialty !== undefined;
   useEffect(() => {
     if (!editing) {
       setDraft({
         interests: profile.interests ?? "",
         careerPositionId: profile.careerPositionId ?? "",
+        specialty: profile.specialty ?? "",
       });
       setDraftCareer(profile.careerPosition ?? null);
     }
@@ -77,9 +83,12 @@ export default function StudentProfileEditor({
     setError("");
     setMessage("");
     try {
+      const { specialty, ...rest } = draft;
       await updateProfile({
-        ...draft,
+        ...rest,
         careerPositionId: draft.careerPositionId || null,
+        // Sent only when changed: "absent" keeps the stored value.
+        ...(supportsSpecialty && specialty !== (profile.specialty ?? "") ? { specialty: specialty || null } : {}),
       });
       setMessage("Đã cập nhật thông tin cá nhân.");
       setEditing(false);
@@ -135,6 +144,14 @@ export default function StudentProfileEditor({
                 <button type="button" className="sr-secondary sr-career-choose" onClick={() => setExplorer({})}>Chọn nghề nghiệp</button>
               </div>
             </div>
+            {supportsSpecialty && <label>
+              Chuyên ngành
+              <select value={draft.specialty} onChange={(e) => setDraft({ ...draft, specialty: e.target.value })}>
+                {SPECIALTIES.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+                <option value="">Chưa xác định</option>
+              </select>
+              <small>Dùng để chọn đúng tiêu chuẩn tốt nghiệp và học phần chuyên ngành khi đánh giá năng lực.</small>
+            </label>}
             <label className="sr-wide">
               Sở thích
               <textarea
@@ -190,6 +207,10 @@ export default function StudentProfileEditor({
               <button type="button" className="sr-secondary sr-career-choose" onClick={() => setExplorer({})}>Chọn nghề nghiệp</button>
             </div>
           </div>
+          {supportsSpecialty && <div>
+            <dt>Chuyên ngành</dt>
+            <dd>{specialtyLabel(profile.specialty)}</dd>
+          </div>}
           <div>
             <dt>Sở thích</dt>
             <dd>{profile.interests || "Chưa cập nhật sở thích."}</dd>

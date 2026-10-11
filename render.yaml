@@ -27,6 +27,10 @@ services:
       # Optional: match services/ocr/.env to enable the pull-based demo worker.
       - key: OCR_WORKER_KEY
         sync: false
+      # Optional: the local AI worker key (>= 32 characters, different from OCR_WORKER_KEY).
+      # Without it the competency assessment works and AI comments stay disabled.
+      - key: AI_WORKER_KEY
+        sync: false
       - key: ENTRA_CLIENT_ID
         sync: false
       - key: ENTRA_CLIENT_SECRET

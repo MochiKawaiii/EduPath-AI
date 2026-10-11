@@ -13,7 +13,7 @@ import {
 import { Icon } from "./student-icons";
 import { useLiveData } from "./use-live-data";
 import type { Transcript } from "./StudentTranscript";
-import { transcriptResults } from "./transcript-results";
+import { INFERRED_RESULT_NOTE, transcriptOutcomes, type CourseOutcome } from "./transcript-results";
 import "./student-curriculum.css";
 
 const endpoint = "/api/student/curricula";
@@ -136,7 +136,7 @@ function CurriculumContent({
   const transcript = useLiveData<{ transcript: Transcript | null }>(
     "/api/student/transcript", revision, readTranscript,
   );
-  const results = transcriptResults(transcript.data?.transcript?.data.sections ?? []);
+  const outcomes = transcriptOutcomes(transcript.data?.transcript?.data.sections ?? []);
   const remote = useCurriculumRequest<StudentCurriculumData>(
     `${endpoint}/${id}`,
     revision,
@@ -180,6 +180,7 @@ function CurriculumContent({
       (!filters.year || String(c.studyYear) === filters.year),
   );
   const selected = data.courses.find((c) => c.code === opened);
+  const showsInferred = courses.some((c) => outcomes.get(c.code.trim().toUpperCase())?.inferred);
   const groups = new Map(data.groups.map((g) => [g.id, g.label]));
   return (
     <>
@@ -348,6 +349,12 @@ function CurriculumContent({
         </div>
         {transcript.loading && <p className="sc-muted" role="status">Đang đối chiếu bảng điểm…</p>}
         {transcript.error && <p role="alert">{transcript.error} <button className="sw-outline" onClick={retry}>Thử lại</button></p>}
+        {showsInferred && (
+          <p className="sc-muted sc-result-legend">
+            Kết quả ghi “{INFERRED_RESULT_NOTE}” là do ô Kết quả trong PDF để
+            trống: điểm A+ đến D được tính là Đạt, F là Chưa đạt.
+          </p>
+        )}
         <div
           className="sc-table-wrap"
           tabIndex={0}
@@ -411,14 +418,7 @@ function CurriculumContent({
                         )}
                     </td>
                     <td className="sc-result-cell">
-                      {results.has(c.code.trim().toUpperCase()) && (
-                        <span className={`sc-result sc-result-${results.get(c.code.trim().toUpperCase())}`}
-                          role="img"
-                          aria-label={results.get(c.code.trim().toUpperCase()) === "pass" ? "Đạt" : "Chưa đạt"}
-                          title={results.get(c.code.trim().toUpperCase()) === "pass" ? "Đạt" : "Chưa đạt"}>
-                          {results.get(c.code.trim().toUpperCase()) === "pass" ? "✓" : "✗"}
-                        </span>
-                      )}
+                      <ResultMark outcome={outcomes.get(c.code.trim().toUpperCase())} />
                     </td>
                   </tr>
                 </Fragment>
@@ -444,6 +444,20 @@ function CurriculumContent({
           onCourse={setOpened}
         />
       )}
+    </>
+  );
+}
+
+/** ✓/✗ with a spoken label; a result decided from the letter grade also says so in text. */
+function ResultMark({ outcome }: { outcome: CourseOutcome | undefined }) {
+  if (outcome?.status !== "pass" && outcome?.status !== "fail") return null;
+  const label = outcome.status === "pass" ? "Đạt" : "Chưa đạt";
+  return (
+    <>
+      <span className={`sc-result sc-result-${outcome.status}`} role="img" aria-label={label} title={label}>
+        {outcome.status === "pass" ? "✓" : "✗"}
+      </span>
+      {outcome.inferred && <small className="sc-result-note">{INFERRED_RESULT_NOTE}</small>}
     </>
   );
 }

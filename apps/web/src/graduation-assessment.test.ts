@@ -283,3 +283,168 @@ describe("graduation group assessment", () => {
     expect(assessGraduation(data, grades).status).toBe("unknown");
   });
 });
+
+describe("graduation bounds, letter grades and credit totals", () => {
+  const unreadable = (code: string) => attempt(code, null);
+  const registered = (code: string) => ({ ...attempt(code, null), score10: null, score4: null });
+
+  it("decides blank result cells from letter grades and says which groups rely on them", () => {
+    const fixture = fiveGroupFixture();
+    const attempts = fixture.passedAttempts.map((item) => item.letter ? item : { ...item, result: null, letter: "B" });
+    const result = assessGraduation(fixture.data, transcript(attempts));
+    expect(result.status).toBe("pass");
+    expect(byGroup(result, "TC209")).toMatchObject({ actual: 9, possible: 9, inferred: true, status: "pass" });
+    expect(byGroup(result, "TC002")).toMatchObject({ actual: 2, inferred: false, status: "pass" });
+    expect(result.outcomes.get(fixture.codes.TC209[0]!)).toEqual({ status: "pass", inferred: true, exempt: false });
+    const failing = attempts.map((item) => item.code === fixture.codes.TC306[1] ? { ...item, letter: "F" } : item);
+    expect(byGroup(assessGraduation(fixture.data, transcript(failing)), "TC306"))
+      .toMatchObject({ actual: 3, possible: 3, status: "fail" });
+  });
+
+  it("keeps a group open while graded courses with unreadable results could still decide it", () => {
+    const data = standard(
+      [group("BB", "mandatory", null), group("TC", "elective", 6)],
+      ["BB1", "BB2", "BB3"].map((code) => course(code, "BB", 3)).concat(["TC1", "TC2", "TC3"].map((code) => course(code, "TC", 3))),
+    );
+    const open = assessGraduation(data, transcript([
+      attempt("BB1"), attempt("BB2"), unreadable("BB3"), attempt("TC1"), unreadable("TC2"),
+    ]));
+    expect(byGroup(open, "BB")).toMatchObject({ actual: 2, possible: 3, required: 3, unknownCourses: 1, status: "unknown" });
+    expect(byGroup(open, "TC")).toMatchObject({ actual: 3, possible: 6, required: 6, unknownCourses: 1, status: "unknown" });
+    expect(open.status).toBe("unknown");
+    const decided = assessGraduation(data, transcript([
+      attempt("BB1"), attempt("BB2"), registered("BB3"), attempt("TC1"), attempt("TC2"), unreadable("TC3"),
+    ]));
+    // An ungraded registration is not a possible pass yet; enough known passes settle a quota.
+    expect(byGroup(decided, "BB")).toMatchObject({ actual: 2, possible: 2, unknownCourses: 0, status: "fail" });
+    expect(byGroup(decided, "TC")).toMatchObject({ actual: 6, possible: 9, status: "pass" });
+    expect(decided.status).toBe("fail");
+  });
+
+  it("prefers the printed cumulative credits and otherwise estimates them without condition-only courses", () => {
+    const fixture = fiveGroupFixture();
+    expect(assessGraduation(fixture.data, transcript(fixture.passedAttempts)).credits).toBeNull();
+    fixture.data.minimumCredits = 15;
+    // Starred GDQP and TC002 courses add no credits: TC102 3 + TC209 9 + TC306 6 from the transcript rows.
+    expect(assessGraduation(fixture.data, transcript(fixture.passedAttempts)).credits)
+      .toEqual({ actual: 18, possible: 18, required: 15, source: "calculated", status: "pass" });
+    const printed = transcript(fixture.passedAttempts);
+    printed.data.sections[0]!.summaries.push({ label: "Tổng số tín chỉ tích lũy", value: "14" });
+    const result = assessGraduation(fixture.data, printed);
+    expect(result.credits).toEqual({ actual: 14, possible: 14, required: 15, source: "printed", status: "fail" });
+    expect(result.creditCheck).toMatchObject({ printed: 14, computed: 18, status: "mismatch" });
+    expect(result).toMatchObject({ groupStatus: "pass", status: "fail", needsImprovement: false });
+    expect(assessGraduation(fixture.data, null).credits).toMatchObject({ actual: null, source: null, status: "unknown" });
+  });
+
+  it("keeps the estimate open while a graded course's result cannot be read", () => {
+    const data = standard([group("BB", "mandatory", null)], [course("BB1", "BB", 3), course("BB2", "BB", 3)]);
+    data.minimumCredits = 6;
+    expect(assessGraduation(data, transcript([attempt("BB1"), unreadable("BB2")])).credits)
+      .toEqual({ actual: 3, possible: 6, required: 6, source: "calculated", status: "unknown" });
+  });
+
+  it("counts a transferred course only when the standard lists it", () => {
+    const data = standard([group("BB", "mandatory", null)], [course("BB1", "BB", 3), course("BB2", "BB", 3)]);
+    data.minimumCredits = 6;
+    const grades = transcript([attempt("BB1")]);
+    grades.data.sections[0]!.summaries.push({ label: "Tổng số tín chỉ tích lũy", value: "6" });
+    grades.data.sections.unshift({
+      id: "transfer", label: "Điểm bảo lưu", academicYear: null, semester: null, summaries: [],
+      courses: [
+        { ...attempt("BB2", null, "MT"), score10: null, score4: null },
+        { ...attempt("AV0", null, "MT"), credits: 2, score10: null, score4: null },
+      ],
+    });
+    const result = assessGraduation(data, grades);
+    expect(result.creditCheck).toMatchObject({ printed: 6, computed: 6, uncertain: 0, status: "match" });
+    expect(result.credits).toMatchObject({ actual: 6, source: "printed", status: "pass" });
+    expect(result.status).toBe("pass");
+  });
+
+  it("matches groups by member courses and tells apart groups that share a name", () => {
+    const shared = "Nhóm tự chọn TC102";
+    const data = standard(
+      [{ ...group("G1", "elective", 2), name: shared }, { ...group("G2", "elective", 2), name: shared }, group("BB", "mandatory", null)],
+      [course("71PEKC10062", "G1", 2, true), course("71PEBA10052", "G2", 2, true), course("71PEBB10052", "G2", 2, true), course("BB1", "BB", 3)],
+    );
+    const result = assessGraduation(data, transcript([{ ...attempt("71PEBA10052"), credits: 2 }, attempt("BB1")]));
+    expect(result.checks.map((check) => check.label)).toEqual([
+      `${shared} · 1 học phần, gồm 71PEKC10062`, `${shared} · 2 học phần, gồm 71PEBA10052`, "BB",
+    ]);
+    expect(result.checks.map((check) => check.status)).toEqual(["fail", "pass", "pass"]);
+  });
+});
+
+type Row = [string, number, number | null, number | null, string | null, string | null];
+type Bound = { lower: number | null; upper: number | null; required: number | null; status: string };
+type GraduationCase = {
+  name: string;
+  rows: Row[];
+  summaries: [string, string][];
+  expected: {
+    groups: (Bound & { id: string })[];
+    groupStatus: string;
+    credits: (Bound & { source: string }) | null;
+    gpa: { status: string; source: string | null };
+    status: string;
+  };
+};
+type GraduationCases = {
+  term: { academicYear: string; semester: string };
+  standard: Pick<GraduationData, "minimumCredits" | "minimumGpa"> & {
+    gpaScale: 4 | 10 | null;
+    groups: Omit<GraduationData["groups"][number], "sourceRow">[];
+    courses: Omit<GraduationData["courses"][number], "sourceRow">[];
+  };
+  cases: GraduationCase[];
+};
+type FileSystem = { readFileSync(path: URL, encoding: "utf8"): string };
+/** The API port reads the same synthetic table; read it at test time so no file
+    from the API workspace is compiled into the web app. */
+async function sharedGraduationCases(): Promise<GraduationCases> {
+  const nodeFs = "node:fs";
+  const fs = (await import(/* @vite-ignore */ nodeFs)) as FileSystem;
+  const file = new URL("../../api/src/competency-assessment/fixtures/graduation-cases.json", import.meta.url);
+  return JSON.parse(fs.readFileSync(file, "utf8")) as GraduationCases;
+}
+
+describe("shared graduation cases", () => {
+  it("gives the same bounds, credit totals and verdicts as the API fixture", async () => {
+    const fixture = await sharedGraduationCases();
+    expect(fixture.cases.length).toBeGreaterThan(0);
+    const base = standard(
+      fixture.standard.groups.map((item) => ({ ...item, sourceRow: 1 })),
+      fixture.standard.courses.map((item) => ({ ...item, sourceRow: 2 })),
+    );
+    const data: GraduationData = {
+      ...base,
+      minimumCredits: fixture.standard.minimumCredits,
+      minimumGpa: fixture.standard.minimumGpa,
+      gpaScale: fixture.standard.gpaScale,
+    };
+    for (const item of fixture.cases) {
+      const record = transcript(item.rows.map(([code, credits, score10, score4, letter, result], index) => ({
+        ...attempt(code, result, letter), ordinal: index + 1, credits, score10, score4,
+      })));
+      const section = record.data.sections[0]!;
+      section.academicYear = fixture.term.academicYear;
+      section.semester = fixture.term.semester;
+      section.summaries = item.summaries.map(([label, value]) => ({ label, value }));
+      const result = assessGraduation(data, record);
+      expect({
+        name: item.name,
+        groups: result.checks.map((check) => ({
+          id: check.groupId, lower: check.actual, upper: check.possible, required: check.required, status: check.status,
+        })),
+        groupStatus: result.groupStatus,
+        credits: result.credits && {
+          lower: result.credits.actual, upper: result.credits.possible, required: result.credits.required,
+          source: result.credits.source, status: result.credits.status,
+        },
+        gpa: { status: result.gpa.status, source: result.gpa.source },
+        status: result.status,
+      }).toEqual({ name: item.name, ...item.expected });
+    }
+  });
+});

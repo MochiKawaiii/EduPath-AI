@@ -38,7 +38,8 @@ const features = [
     number: "01",
     title: "Hiểu rõ năng lực của bạn",
     description:
-      "Kết nối kết quả học tập và kỹ năng cá nhân để nhận diện điểm mạnh, những khoảng trống và điều bạn cần tập trung tiếp theo."
+      "Kết nối kết quả học tập và kỹ năng cá nhân để nhận diện điểm mạnh, những khoảng trống và điều bạn cần tập trung tiếp theo.",
+    status: "Minh họa tính năng đang triển khai"
   },
   {
     id: "lo-trinh",
@@ -46,7 +47,8 @@ const features = [
     number: "02",
     title: "Lộ trình học tập có định hướng",
     description:
-      "Gợi ý môn học theo từng học kỳ, có xét đến chương trình đào tạo và môn tiên quyết để kế hoạch phù hợp với việc học tại trường."
+      "Gợi ý môn học theo từng học kỳ, có xét đến chương trình đào tạo và môn tiên quyết để kế hoạch phù hợp với việc học tại trường.",
+    status: "Minh họa tính năng dự kiến của đồ án"
   },
   {
     id: "nghe-nghiep",
@@ -54,7 +56,8 @@ const features = [
     number: "03",
     title: "Đến gần nghề nghiệp mong muốn",
     description:
-      "Đối chiếu kỹ năng hiện tại với yêu cầu nghề nghiệp để xác định môn tự chọn, kỹ năng tự học và trải nghiệm cần bổ sung."
+      "Đối chiếu kỹ năng hiện tại với yêu cầu nghề nghiệp để xác định môn tự chọn, kỹ năng tự học và trải nghiệm cần bổ sung.",
+    status: "Minh họa tính năng đang triển khai"
   }
 ];
 
@@ -182,7 +185,7 @@ function FeaturePreview({ selected, active }: { selected: number; active: boolea
         </div>
       )}
       <div className="lp-preview-foot">
-        <span className="lp-status-dot" /> Minh họa tính năng dự kiến của đồ án
+        <span className="lp-status-dot" /> {features[selected].status}
       </div>
     </div>
   );
@@ -431,7 +434,7 @@ export default function LandingPage() {
               <div
                 className="lp-feature-tabs"
                 role="tablist"
-                aria-label="Khám phá tính năng dự kiến"
+                aria-label="Khám phá các tính năng"
                 aria-orientation="vertical"
               >
                 {features.map((feature, index) => (
@@ -495,7 +498,7 @@ export default function LandingPage() {
                 icon: "chart" as const,
                 title: "Phác họa năng lực",
                 description: "Bổ sung bảng điểm, kỹ năng và mục tiêu để hiểu rõ điểm xuất phát.",
-                tag: "Tính năng dự kiến"
+                tag: "Đang triển khai"
               },
               {
                 icon: "route" as const,

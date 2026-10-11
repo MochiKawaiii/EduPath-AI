@@ -1,0 +1,227 @@
+import express from "express";
+import request from "supertest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { DatabasePool } from "../../db/pool.js";
+import { buildAiInput } from "./prompt.js";
+import { syntheticResult } from "./test-fixture.js";
+import { createCompetencyAiExpiry, createCompetencyWorkerRouter, expireCompetencyAiJobs } from "./worker-router.js";
+
+const KEY = "k".repeat(40);
+const AUTH = `Bearer ${KEY}`;
+const JOB = "44444444-4444-4444-8444-444444444444";
+const LEASE = "55555555-5555-4555-8555-555555555555";
+const OTHER_LEASE = "66666666-6666-4666-8666-666666666666";
+const ASSESSMENT = "22222222-2222-4222-8222-222222222222";
+const USER = "11111111-1111-4111-8111-111111111111";
+const aiInput = buildAiInput(syntheticResult());
+
+type Row = Record<string, unknown>;
+type Handler = (sql: string, params?: unknown[]) => { rows: Row[]; rowCount?: number } | undefined;
+
+function setup(handler: Handler = () => undefined) {
+  const run = vi.fn(async (sql: string, params?: unknown[]) => handler(sql, params) ?? { rows: [], rowCount: 0 });
+  const release = vi.fn();
+  const pool = { query: run, connect: vi.fn(async () => ({ query: run, release })) } as unknown as DatabasePool;
+  const app = express();
+  app.use("/w", createCompetencyWorkerRouter(pool, KEY));
+  return { app, run, release, sql: () => run.mock.calls.map(([s]) => s) };
+}
+
+const validOutput = () => ({
+  summary: "Bạn có nền tảng lập trình hướng đối tượng vững với điểm 88,5.",
+  groupInsights: [],
+  strengths: [{ skillKey: "S01", comment: "Nhập môn lập trình đạt điểm 8,5." }],
+  improvements: [],
+  careerFit: { comment: "Bạn đạt 2/4 kỹ năng của nghề." },
+  gaps: [{ skillKey: "S03", priority: "high", explanation: "Kỹ năng bắt buộc.", courses: [{ courseCode: "TST201", reason: "Học ở HK261." }], selfStudy: [] }],
+  progress: "Bạn trễ 1 mục so với kế hoạch.",
+  nextSteps: ["Đăng ký học phần kiểm thử.", "Làm một sản phẩm nhỏ.", "Ôn lại Toán rời rạc."]
+});
+const success = (output: unknown = validOutput()) => ({ leaseToken: LEASE, model: "gemma4:e4b", digest: "dc35e8d9c606", ollamaVersion: "0.40.2", metrics: { eval_count: 900, total_ms: 120000 }, output });
+
+function jobRow(extra: Row = {}): Row {
+  return { status: "processing", lease_token: LEASE, valid: true, assessment_id: ASSESSMENT, user_id: USER, ai_input: aiInput, ...extra };
+}
+const withJob = (row: Row | null): Handler => (sql) => (sql.includes("FROM stu_comp_ai_jobs WHERE id=$1 FOR UPDATE") ? { rows: row ? [row] : [] } : undefined);
+
+afterEach(() => vi.restoreAllMocks());
+
+describe("worker auth", () => {
+  it("returns 503 when no key or no database is configured", async () => {
+    const app = express();
+    app.use("/a", createCompetencyWorkerRouter({} as DatabasePool, undefined));
+    app.use("/b", createCompetencyWorkerRouter(undefined, KEY));
+    await request(app).post("/a/heartbeat").set("Authorization", AUTH).expect(503, { error: "worker_disabled" });
+    await request(app).post("/b/heartbeat").set("Authorization", AUTH).expect(503, { error: "worker_disabled" });
+  });
+
+  it("rejects a wrong key before reading the body", async () => {
+    const { app, run } = setup();
+    const res = await request(app).post("/w/claim").set("Authorization", "Bearer wrong").set("Content-Type", "application/json").send("{not json");
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ error: "unauthorized" });
+    expect(res.headers["cache-control"]).toBe("no-store");
+    await request(app).post("/w/claim").send({}).expect(401);
+    await request(app).post("/w/claim").set("Authorization", KEY).expect(401);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("parses JSON only after auth and limits it to 512 kB", async () => {
+    const { app } = setup();
+    await request(app).post(`/w/${JOB}/extend`).set("Authorization", AUTH).set("Content-Type", "application/json").send("{not json").expect(400, { error: "invalid_json" });
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: LEASE, error: "ai_failed", pad: "x".repeat(600 * 1024) }).expect(413, { error: "payload_too_large" });
+  });
+});
+
+describe("heartbeat and claim", () => {
+  it("records the heartbeat", async () => {
+    const { app, sql } = setup();
+    await request(app).post("/w/heartbeat").set("Authorization", AUTH).expect(200, { ok: true });
+    expect(sql()[0]).toContain("INSERT INTO stu_comp_ai_worker_status");
+  });
+
+  it("claims the oldest job with SKIP LOCKED, a 15 minute lease and returns the stored input", async () => {
+    const { app, run, sql } = setup((s) => (s.includes("FOR UPDATE SKIP LOCKED") ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput }] } : undefined));
+    const res = await request(app).post("/w/claim").set("Authorization", AUTH).expect(200);
+    expect(res.body.job).toEqual({ id: JOB, leaseToken: LEASE, promptVersion: "comp-v2", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
+    const claim = run.mock.calls.find(([s]) => s.includes("SKIP LOCKED"))!;
+    expect(claim[0]).toContain("ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1");
+    expect(claim[0]).toContain("status='processing' AND lease_until<now() AND attempts<$2");
+    expect(claim[0]).toContain("attempts=j.attempts+1");
+    expect(claim[0]).toContain("ai_status='processing'");
+    expect((claim[1] as unknown[]).slice(1)).toEqual([2, 15]);
+    expect(sql()[0]).toContain("stu_comp_ai_worker_status");
+  });
+
+  it("returns null when nothing is queued", async () => {
+    const { app } = setup();
+    await request(app).post("/w/claim").set("Authorization", AUTH).expect(200, { job: null });
+  });
+
+  it("runs expiry housekeeping at most once per 60 seconds", async () => {
+    let now = 1_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const { app, sql } = setup();
+    const housekeepingCount = () => sql().filter((s) => s.includes("error_code='worker_timeout'")).length;
+    await request(app).post("/w/claim").set("Authorization", AUTH).expect(200);
+    now += 30_000;
+    await request(app).post("/w/claim").set("Authorization", AUTH).expect(200);
+    expect(housekeepingCount()).toBe(1);
+    now += 31_000;
+    await request(app).post("/w/claim").set("Authorization", AUTH).expect(200);
+    expect(housekeepingCount()).toBe(2);
+  });
+});
+
+describe("expireCompetencyAiJobs", () => {
+  it("fails stuck jobs with their assessments and deletes only old terminal jobs", async () => {
+    const query = vi.fn(async () => ({ rows: [] }));
+    await expireCompetencyAiJobs({ query } as never);
+    const [fail, cleanup] = query.mock.calls.map((call) => (call as unknown as [string])[0]);
+    // Queued > 24 h, and processing with an expired lease after the last attempt or > 24 h old (single attempt too).
+    expect(fail).toContain("(status='queued' AND created_at<now()-interval '24 hours')");
+    expect(fail).toContain("OR (status='processing' AND lease_until<now() AND (attempts>=$1 OR created_at<now()-interval '24 hours'))");
+    expect(query.mock.calls[0]).toEqual([expect.any(String), [2]]);
+    expect(fail).toContain("UPDATE stu_comp_assessments a SET ai_status='failed',ai_error_code='worker_timeout'");
+    expect(fail).toContain("ai_input=NULL");
+    expect(cleanup).toBe("DELETE FROM stu_comp_ai_jobs WHERE status IN ('completed','failed','cancelled') AND updated_at<now()-interval '7 days'");
+    for (const call of query.mock.calls) expect((call as unknown as [string])[0]).not.toMatch(/DELETE FROM stu_comp_assessments/);
+  });
+});
+
+describe("createCompetencyAiExpiry", () => {
+  it("runs the expiry at most once per interval", async () => {
+    let now = 5_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const query = vi.fn(async () => ({ rows: [] }));
+    const expire = createCompetencyAiExpiry();
+    await expect(expire({ query } as never)).resolves.toBe(true);
+    now += 59_000;
+    await expect(expire({ query } as never)).resolves.toBe(false);
+    now += 2_000;
+    await expect(expire({ query } as never)).resolves.toBe(true);
+    expect(query.mock.calls.filter((call) => String((call as unknown as [string])[0]).includes("worker_timeout"))).toHaveLength(2);
+  });
+});
+
+describe("extend", () => {
+  it("extends a live lease", async () => {
+    const until = new Date("2026-10-11T10:00:00Z");
+    const { app, run } = setup((s) => (s.includes("lease_until>now() RETURNING") ? { rows: [{ leaseUntil: until }] } : undefined));
+    await request(app).post(`/w/${JOB}/extend`).set("Authorization", AUTH).send({ leaseToken: LEASE }).expect(200, { leaseUntil: until.toISOString() });
+    expect(run.mock.calls[0]![1]).toEqual([JOB, LEASE, 15]);
+  });
+
+  it("returns 409 job_expired for a lost lease and 400 for bad input", async () => {
+    const { app } = setup();
+    await request(app).post(`/w/${JOB}/extend`).set("Authorization", AUTH).send({ leaseToken: LEASE }).expect(409, { error: "job_expired" });
+    await request(app).post("/w/not-a-uuid/extend").set("Authorization", AUTH).send({ leaseToken: LEASE }).expect(400, { error: "invalid_input" });
+    await request(app).post(`/w/${JOB}/extend`).set("Authorization", AUTH).send({ leaseToken: LEASE, extra: 1 }).expect(400);
+  });
+});
+
+describe("complete", () => {
+  it("stores a valid output and clears the job input", async () => {
+    const { app, run, release } = setup(withJob(jobRow()));
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success()).expect(200, { ok: true });
+    const calls = run.mock.calls.map(([s, p]) => [s, p] as const);
+    const assessment = calls.find(([s]) => s.includes("SET ai_status='completed'"))!;
+    expect(assessment[1]).toEqual([ASSESSMENT, USER, JSON.stringify(validOutput()), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "comp-v2"]);
+    const job = calls.find(([s]) => s.startsWith("UPDATE stu_comp_ai_jobs SET status=$2"))!;
+    expect(job[0]).toContain("ai_input=NULL");
+    expect(job[1]).toEqual([JOB, "completed", null, JSON.stringify({ eval_count: 900, total_ms: 120000 })]);
+    expect(calls.at(-1)![0]).toBe("COMMIT");
+    expect(release).toHaveBeenCalled();
+  });
+
+  it("fails the assessment with invalid_ai_output when the output does not validate", async () => {
+    const { app, run } = setup(withJob(jobRow()));
+    const output = { ...validOutput(), summary: "Điểm của bạn là 91 trên https://example.org" };
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(output)).expect(200, { ok: true });
+    const failed = run.mock.calls.find(([s]) => s.includes("SET ai_status='failed'"))!;
+    expect(failed[1]).toEqual([ASSESSMENT, USER, "invalid_ai_output"]);
+    const job = run.mock.calls.find(([s]) => s.startsWith("UPDATE stu_comp_ai_jobs SET status=$2"))!;
+    expect((job[1] as unknown[]).slice(0, 3)).toEqual([JOB, "failed", "invalid_ai_output"]);
+    expect(run.mock.calls.some(([s]) => s.includes("SET ai_status='completed'"))).toBe(false);
+  });
+
+  it("records a worker error code", async () => {
+    const { app, run } = setup(withJob(jobRow()));
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: LEASE, error: "ai_output_truncated" }).expect(200);
+    expect(run.mock.calls.find(([s]) => s.includes("SET ai_status='failed'"))![1]).toEqual([ASSESSMENT, USER, "ai_output_truncated"]);
+    expect(run.mock.calls.find(([s]) => s.startsWith("UPDATE stu_comp_ai_jobs SET status=$2"))![1]).toEqual([JOB, "failed", "ai_output_truncated", null]);
+  });
+
+  it("is idempotent for the same lease after completion", async () => {
+    for (const status of ["completed", "failed"]) {
+      const { app, sql } = setup(withJob(jobRow({ status, valid: null, ai_input: null })));
+      await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success()).expect(200, { ok: true });
+      expect(sql().filter((s) => s.startsWith("UPDATE"))).toEqual([]);
+    }
+  });
+
+  it("returns 409 job_expired for another lease, an expired lease, a cancelled or missing job", async () => {
+    const cases: (Row | null)[] = [
+      jobRow({ lease_token: OTHER_LEASE }),
+      jobRow({ valid: false }),
+      jobRow({ status: "cancelled", lease_token: null }),
+      jobRow({ status: "completed", lease_token: OTHER_LEASE }),
+      null
+    ];
+    for (const row of cases) {
+      const { app, sql, release } = setup(withJob(row));
+      await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success()).expect(409, { error: "job_expired" });
+      expect(sql()).toContain("ROLLBACK");
+      expect(sql().filter((s) => s.startsWith("UPDATE"))).toEqual([]);
+      expect(release).toHaveBeenCalled();
+    }
+  });
+
+  it("rejects malformed bodies and unknown error codes", async () => {
+    const { app, run } = setup(withJob(jobRow()));
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: LEASE, error: "worker_timeout" }).expect(400, { error: "invalid_input" });
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: LEASE, error: "ai_failed", output: {} }).expect(400);
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: "nope", error: "ai_failed" }).expect(400);
+    expect(run).not.toHaveBeenCalled();
+  });
+});

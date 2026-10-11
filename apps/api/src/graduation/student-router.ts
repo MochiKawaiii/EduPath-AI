@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { DatabasePool } from "../db/pool.js";
 import { requireAuthentication } from "../middleware/authorization.js";
 import type { GraduationData } from "./model.js";
+import { isSpecialtyCode, resolveGraduationStandard } from "../competency-assessment/specialty.js";
 
 /** Only the conditions a student needs; source workbook details and review notes stay in the admin portal. */
 export function studentGraduationData(data: GraduationData) {
@@ -73,18 +74,26 @@ export function createStudentGraduationRouter(pool: DatabasePool | undefined) {
         r.data->>'classBlock' AS "classBlock",(r.data->>'minimumCredits')::numeric AS "minimumCredits"
         FROM graduation_standards c JOIN graduation_revisions r ON r.id=c.current_revision
         WHERE c.is_active ORDER BY c.cohort_code DESC,r.data->>'name',c.id`),
-      pool!.query("SELECT cohort_code FROM student_profiles WHERE user_id=$1", [
+      pool!.query("SELECT cohort_code,specialty FROM student_profiles WHERE user_id=$1", [
         req.session.user!.userId,
       ]),
     ]);
     const profileCohort = profile.rows[0]?.cohort_code ?? null;
+    const specialty = profile.rows[0]?.specialty;
     const matches = result.rows.filter(
       (row) => row.cohortCode === profileCohort,
     );
+    // Several standards per cohort (one per specialty, 7480201-0x): pick the student's
+    // specialty, or the single general standard when the specialty is unset.
+    const resolved = matches.length > 1
+      ? resolveGraduationStandard(matches, isSpecialtyCode(specialty) ? specialty : null, (row) => ({
+        specialty: row.specialty ?? "", classBlock: row.classBlock ?? "", standardCode: "",
+      })).standard
+      : matches[0];
     res.json({
       items: result.rows,
       profileCohort,
-      suggestedId: matches.length === 1 ? matches[0]!.id : null,
+      suggestedId: resolved?.id ?? null,
     });
   });
   router.get("/:id", async (req, res) => {

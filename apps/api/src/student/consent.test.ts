@@ -81,7 +81,7 @@ describe("transcript processing consent", () => {
     expect(superseded).toBeGreaterThan(-1);
     expect(granted).toBeGreaterThan(superseded);
     expect(queued).toBeGreaterThan(granted);
-    expect(clientQuery.mock.calls[granted]?.[1]).toEqual([expect.any(String), studentId, TRANSCRIPT_POLICY_VERSION]);
+    expect(clientQuery.mock.calls[granted]?.[1]).toEqual([expect.any(String), studentId, TRANSCRIPT_POLICY_VERSION, "transcript_processing"]);
     expect(calls.at(-1)).toBe("COMMIT");
   });
 
@@ -91,7 +91,7 @@ describe("transcript processing consent", () => {
       .send({ version: transcriptVersion, confirmed: true }).expect(200, { deleted: true });
 
     const withdrawn = clientQuery.mock.calls.find(([sql]) => String(sql).includes("end_reason='withdrawn'"));
-    expect(withdrawn?.[1]).toEqual([studentId]);
+    expect(withdrawn?.[1]).toEqual([studentId, "transcript_processing"]);
     expect(sqlCalls(clientQuery).at(-1)).toBe("COMMIT");
   });
 

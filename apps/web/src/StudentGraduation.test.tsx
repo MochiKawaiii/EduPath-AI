@@ -8,23 +8,41 @@ import type { GraduationData } from "./graduation-types";
 const liveData = vi.hoisted(() => vi.fn());
 vi.mock("./use-live-data", () => ({ useLiveData: liveData }));
 
-function render(options: { score?: number; score4?: number; gpaScale?: 4 | 10 | null; minimumGpa?: number; sameCohort?: boolean; error?: string; loading?: boolean } = {}) {
+type Options = {
+  score?: number; score4?: number; gpaScale?: 4 | 10 | null; minimumGpa?: number; sameCohort?: boolean; error?: string; loading?: boolean;
+  /** Printed result of CS-101 (default "Đạt"); null is a blank, icon-only cell. */
+  result?: string | null; letter?: string | null;
+  /** Printed "Tổng số tín chỉ tích lũy" of the term. */
+  cumulative?: string;
+  /** Adds CS-102 to the mandatory group, graded but with no readable result. */
+  unreadable?: boolean;
+};
+function render(options: Options = {}) {
   const rules: GraduationData = {
     schemaVersion: 1, name: "Tiêu chuẩn thử nghiệm", standardCode: "TEST", cohortCode: "K29",
     classBlock: "K29", major: "CNTT", specialty: "", educationSystem: "", faculty: "",
     minimumCredits: 3, mandatoryCredits: 3, electiveCredits: 0, freeElectiveCredits: 0,
     minimumGpa: options.minimumGpa ?? 2, gpaScale: options.gpaScale === undefined ? 4 : options.gpaScale, notes: "",
     groups: [{ id: "BB", name: "Bắt buộc", kind: "mandatory", minimumCredits: 3, sourceRow: 1 }],
-    courses: [{ id: "A", code: "CS-101", name: "Lập trình", credits: 3, groupId: "BB", conditionOnly: false, sourceRow: 2 }],
+    courses: [
+      { id: "A", code: "CS-101", name: "Lập trình", credits: 3, groupId: "BB", conditionOnly: false, sourceRow: 2 },
+      ...(options.unreadable ? [{ id: "B", code: "CS-102", name: "Cơ sở dữ liệu", credits: 3, groupId: "BB", conditionOnly: false, sourceRow: 3 }] : []),
+    ],
     sourceWorkbook: "", sourceSheet: "", sourceNotes: [],
   };
   const transcript: Transcript = {
     version: "test", filename: "bang-diem.pdf", fileSize: 100,
     createdAt: "2026-10-05T00:00:00Z", updatedAt: "2026-10-05T00:00:00Z",
     data: { schemaVersion: 1, parserVersion: "test", pageCount: 1, courseCount: 1, warnings: [], sections: [{
-    id: "2025-2026/HK01", label: "HK01", academicYear: "2025-2026", semester: "HK01", summaries: [],
-    courses: [{ ordinal: 1, code: "CS-101", name: "Lập trình", credits: 3, score10: options.score ?? 5,
-      score4: options.score4 ?? 1, letter: "D", result: "Đạt", conditional: false, sourcePage: 1 }],
+    id: "2025-2026/HK01", label: "HK01", academicYear: "2025-2026", semester: "HK01",
+    summaries: options.cumulative === undefined ? [] : [{ label: "Tổng số tín chỉ tích lũy", value: options.cumulative }],
+    courses: [
+      { ordinal: 1, code: "CS-101", name: "Lập trình", credits: 3, score10: options.score ?? 5,
+        score4: options.score4 ?? 1, letter: options.letter === undefined ? "D" : options.letter,
+        result: options.result === undefined ? "Đạt" : options.result, conditional: false, sourcePage: 1 },
+      ...(options.unreadable ? [{ ordinal: 2, code: "CS-102", name: "Cơ sở dữ liệu", credits: 3, score10: 7,
+        score4: 3, letter: null, result: null, conditional: false, sourcePage: 1 }] : []),
+    ],
   }] } };
   liveData.mockImplementation((url: string) => ({
     loading: url === "/api/student/transcript" && Boolean(options.loading),
@@ -70,5 +88,33 @@ describe("student graduation view", () => {
       expect(html).not.toContain("5 / 10 · D");
       expect(html).not.toContain("Cần học cải thiện để nâng điểm trung bình");
     }
+  });
+  it("says in text when a result comes from the letter grade because the PDF cell is blank", () => {
+    const html = render({ result: null, letter: "B", score: 7, score4: 3 });
+    expect(html).toContain("✓ Đạt<small>suy ra từ điểm chữ</small>");
+    expect(html).toContain("1 môn trong tiêu chuẩn này có ô Kết quả trống trong PDF");
+    expect(html).toContain("Đã đạt các nhóm học phần, số tín chỉ tích lũy và yêu cầu điểm trung bình");
+    expect(render({ result: null, letter: "F", score: 3, score4: 0 })).toContain("✗ Chưa đạt<small>suy ra từ điểm chữ</small>");
+    expect(render({ score4: 3 })).not.toContain("suy ra từ điểm chữ");
+  });
+  it("keeps a group undecided while a graded course's result cannot be read", () => {
+    const html = render({ unreadable: true, score4: 3 });
+    expect(html).toContain("1 môn<small>+1 môn chưa rõ kết quả</small>");
+    expect(html).toContain('<td class="sg-status-unknown">? Chưa xác định</td>');
+    expect(html).toContain("? Chưa xác định</td>");
+    expect(html).toContain("Chưa đủ dữ liệu để kết luận điều kiện xét tốt nghiệp.");
+  });
+  it("prefers the printed cumulative credits and warns when the course results do not add up", () => {
+    const printed = render({ cumulative: "5", score4: 3 });
+    expect(printed).toContain("Tín chỉ tích lũy (không tính môn điều kiện)");
+    expect(printed).toContain("5 TC<small>Theo bảng điểm</small>");
+    expect(printed).toContain("Tổng tín chỉ chưa khớp với bảng điểm");
+    expect(printed).toContain("Kết quả chính thức do nhà trường xác nhận.");
+    const estimated = render({ score4: 3 });
+    expect(estimated).toContain("3 TC<small>Ước tính</small>");
+    expect(estimated).toContain("Số tín chỉ trên là ước tính");
+    expect(estimated).not.toContain("Tổng tín chỉ chưa khớp với bảng điểm");
+    expect(render({ cumulative: "3", score4: 3 })).not.toContain("Tổng tín chỉ chưa khớp với bảng điểm");
+    expect(render({ cumulative: "5", score4: 3, sameCohort: false })).not.toContain("Tổng tín chỉ chưa khớp với bảng điểm");
   });
 });

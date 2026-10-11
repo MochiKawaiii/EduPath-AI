@@ -14,6 +14,10 @@ import type { Store } from "express-session";
 import helmet from "helmet";
 import type { DatabasePool } from "./db/pool.js";
 import { createStudentDataRouter } from "./student/router.js";
+import { createCompetencyAssessmentRouter } from "./competency-assessment/router.js";
+import { createCompetencyAiQueue } from "./competency-assessment/ai/queue.js";
+import { PROMPT_VERSION } from "./competency-assessment/ai/prompt.js";
+import { createCompetencyWorkerRouter } from "./competency-assessment/ai/worker-router.js";
 import { createCurriculaRouter } from "./curricula/router.js";
 import { createPlansRouter } from "./plans/router.js";
 import { createStudentCurriculaRouter } from "./curricula/student-router.js";
@@ -66,6 +70,8 @@ export function createApp({
     })
   );
   app.use("/api/worker/transcripts", createTranscriptWorkerRouter(databasePool,config.ocrWorkerKey));
+  // The AI worker router authenticates before parsing its own body, so it must come before express.json.
+  app.use("/api/worker/competency-assessments", createCompetencyWorkerRouter(databasePool, config.aiWorkerKey));
   app.use("/api/admin/graduation", express.json({ limit: "2mb" }));
   app.use("/api/admin/competencies", express.json({ limit: "2mb" }));
   app.use(express.json({ limit: "100kb" }));
@@ -175,6 +181,9 @@ export function createApp({
   app.use("/api/student/plans", createStudentPlansRouter(databasePool));
   app.use("/api/student/graduation", createStudentGraduationRouter(databasePool));
   app.use("/api/student/curricula", createStudentCurriculaRouter(databasePool));
+  // AI comments are queued only when AI_WORKER_KEY is configured; otherwise ai_status is 'disabled'.
+  app.use("/api/student/competency-assessments", createCompetencyAssessmentRouter(databasePool, config.webOrigin,
+    createCompetencyAiQueue({ enabled: Boolean(config.aiWorkerKey) }), { promptVersion: PROMPT_VERSION }));
   app.use("/api/student", createStudentDataRouter(databasePool, config.webOrigin,Boolean(config.ocrWorkerKey)));
   app.use("/api/admin/students", createStudentProfilesRouter(studentProfileRepository, adminAccountRepository));
 

@@ -90,4 +90,10 @@ describe("student profile SQL safety", () => {
     await expect(repo.detail(actor, id)).rejects.toMatchObject({ code: "student_not_found", status: 404 });
     expect(query).toHaveBeenCalledWith(expect.stringContaining("COALESCE(u.role_override, u.role) = 'student'"), [id, null]);
   });
+  it("returns the stored specialty with the detail (also used by /api/student/profile)", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ id, profileStatus: "incomplete", specialty: "CNDL" }] });
+    const repo = new PostgresStudentProfileRepository({ query } as unknown as DatabasePool);
+    await expect(repo.detail(actor, id)).resolves.toMatchObject({ specialty: "CNDL" });
+    expect(String(query.mock.calls[0]![0])).toContain("p.specialty");
+  });
 });

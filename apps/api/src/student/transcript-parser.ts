@@ -128,5 +128,5 @@ export function parsePages(pages: Page[]): TranscriptData {
     }
   }
   if (!count || count > 1000 || sections.some(s => !s.courses.length)) throw new TranscriptError("unreadable_rows");
-  return { schemaVersion: 1, parserVersion: "vlu-native-1", pageCount: pages.length, courseCount: count, sections, warnings: ["Bảng điểm do sinh viên tải lên; chưa được nhà trường xác minh.", "Cột kết quả trống hoặc biểu tượng không có lớp chữ được giữ trống; không suy đoán từ điểm."] };
+  return { schemaVersion: 1, parserVersion: "vlu-native-1", pageCount: pages.length, courseCount: count, sections, warnings: ["Bảng điểm do sinh viên tải lên; chưa được nhà trường xác minh.", "Ô Kết quả chỉ có biểu tượng (không có lớp chữ) được đọc là trống; khi ô Kết quả trống, Đạt/Không đạt được xác định theo điểm chữ chính thức: A+ đến D là Đạt, F là Không đạt."] };
 }

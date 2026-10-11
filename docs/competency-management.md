@@ -10,10 +10,10 @@ Phân hệ này là màn hình quản trị trong EduPath AI, dùng PostgreSQL, 
 | --- | --- |
 | Function List / `Function List` | Vùng A1:N170, 164 dòng có mã chức năng. AD-COMP có 19 dòng, mã được giữ nguyên. Hai dòng chức năng khác không có mã. |
 | Function List / `Quy trình` | Vùng A1:W60; chỉ A1 chứa lỗi Excel `#VALUE!`, các ô còn lại trống. Không có luồng nghiệp vụ có thể sử dụng từ sheet này. |
-| K29 / `skills` | 67 kỹ năng; cột `Tên kỹ năng chuẩn`, `Loại kỹ năng`, `Phạm vi năng lực`, `Số học phần sử dụng`. |
-| K29 / `course_skills` | 258 liên kết trên 85 mã học phần; cột `Mã học phần`, `Tên học phần`, `Tên kỹ năng`, `Trọng số (0–1)`, `Loại kỹ năng`. |
+| K29 / `skills` | 81 kỹ năng (workbook hiện hành, 10/2026; bản đầu có 67); cột `Tên kỹ năng chuẩn`, `Loại kỹ năng`, `Phạm vi năng lực`, `Số học phần sử dụng`. |
+| K29 / `course_skills` | 289 liên kết trên 88 mã học phần, tức 88 cấu hình học phần (bản đầu: 258 liên kết / 85 mã); cột `Mã học phần`, `Tên học phần`, `Tên kỹ năng`, `Trọng số (0–1)`, `Loại kỹ năng`. |
 
-K29 có ba nhóm: **Kiến thức nền tảng** (10 kỹ năng / 44 liên kết), **Kỹ năng mềm** (6 / 88), **Chuyên môn** (51 / 126). Không ép thành hai nhóm như mô tả ban đầu của Function List. Trọng số trong file là số từ 0,05 đến 1; tổng mỗi học phần bằng 1, sai số lớn nhất khoảng 2,22e-16. Không phát hiện thiếu trường bắt buộc, sai kiểu, liên kết trùng, kỹ năng không xác định, nhóm không nhất quán, kỹ năng không có học phần hoặc sai số học phần sử dụng. Workbook không cung cấp công thức tính điểm năng lực.
+Số liệu theo nhóm dưới đây là của bản đầu (67 kỹ năng). K29 có ba nhóm: **Kiến thức nền tảng** (10 kỹ năng / 44 liên kết), **Kỹ năng mềm** (6 / 88), **Chuyên môn** (51 / 126). Không ép thành hai nhóm như mô tả ban đầu của Function List. Trọng số trong file là số từ 0,05 đến 1; tổng mỗi học phần bằng 1, sai số lớn nhất khoảng 2,22e-16. Không phát hiện thiếu trường bắt buộc, sai kiểu, liên kết trùng, kỹ năng không xác định, nhóm không nhất quán, kỹ năng không có học phần hoặc sai số học phần sử dụng. Workbook không cung cấp công thức tính điểm năng lực.
 
 Đối chiếu PostgreSQL **cục bộ** trước khi nhập:
 

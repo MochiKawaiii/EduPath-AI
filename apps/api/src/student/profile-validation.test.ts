@@ -43,3 +43,20 @@ describe("student profile writes", () => {
     expect(connect).not.toHaveBeenCalled();
   });
 });
+describe("student specialty", () => {
+  it.each(["CNPM", "CNDL", "TTNT", null])("saves specialty %s", async specialty => {
+    const { app, query } = setup();
+    await request(app).patch("/student/profile").set("Origin", "https://edupath.example").send({ ...profile, specialty }).expect(200);
+    expect(query).toHaveBeenCalledWith("UPDATE student_profiles SET specialty=$2 WHERE user_id=$1", ["student-id", specialty]);
+  });
+  it("keeps the stored specialty when the field is absent", async () => {
+    const { app, query } = setup();
+    await request(app).patch("/student/profile").set("Origin", "https://edupath.example").send(profile).expect(200);
+    expect(query.mock.calls.some(([sql]) => String(sql).includes("specialty"))).toBe(false);
+  });
+  it.each(["cnpm", "ATTT", "", 3])("rejects specialty %s before accessing the database", async specialty => {
+    const { app, connect } = setup();
+    await request(app).patch("/student/profile").set("Origin", "https://edupath.example").send({ ...profile, specialty }).expect(400, { error: "invalid_profile" });
+    expect(connect).not.toHaveBeenCalled();
+  });
+});

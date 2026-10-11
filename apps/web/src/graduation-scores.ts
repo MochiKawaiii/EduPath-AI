@@ -1,7 +1,7 @@
 import type { GraduationData } from "./graduation-types";
 import type { Transcript } from "./StudentTranscript";
 import { academicSections, latestResultSection } from "./student-overview-data";
-import { transcriptResults } from "./transcript-results";
+import { attemptOutcome } from "./transcript-results";
 
 type Course = Transcript["data"]["sections"][number]["courses"][number];
 type Standard = Pick<GraduationData, "minimumGpa" | "gpaScale"> & {
@@ -25,7 +25,7 @@ export function graduationCourseScores(transcript: Transcript | null) {
   const grades = new Map<string, Course & { attemptCount: number }>();
   for (const [code, attempts] of attemptsByCode(transcript)) {
     const mt = attempts.find(exempt);
-    const passing = attempts.filter((course) => transcriptResults([{ courses: [course] }]).get(code) === "pass");
+    const passing = attempts.filter((course) => attemptOutcome(course).status === "pass");
     const candidates = passing.length ? passing : attempts;
     const best = mt ?? [...candidates].sort((a, b) =>
       (b.score10 ?? -1) - (a.score10 ?? -1) || (b.score4 ?? -1) - (a.score4 ?? -1))[0]!;

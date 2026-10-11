@@ -8,6 +8,7 @@ import { requireAuthentication } from "../middleware/authorization.js";
 import { parseTranscript, TranscriptError, type TranscriptData } from "./transcript-parser.js";
 import { enqueueTranscript, expireJobs, jobColumns } from "./transcript-jobs.js";
 import { recordTranscriptConsent, TRANSCRIPT_POLICY_VERSION, withdrawTranscriptConsent } from "./consent.js";
+import { deleteCompetencyData } from "../competency-assessment/repository.js";
 
 const transcriptColumns = `version, filename, file_size AS "fileSize", parsed_data AS data,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
@@ -34,7 +35,8 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       interests: z.string().trim().max(2000).nullable().optional(),
       careerGoal: z.string().trim().max(2000).nullable().optional(),
       careerPositionId: z.uuid().nullable().optional(),
-      currentSemester: z.number().int().min(1).max(3).nullable().optional()
+      currentSemester: z.number().int().min(1).max(3).nullable().optional(),
+      specialty: z.enum(["CNPM", "CNDL", "TTNT"]).nullable().optional()
     }).strict().safeParse(req.body);
     if (!input.success) { res.status(400).json({ error: "invalid_profile" }); return; }
     const client = await pool!.connect();
@@ -55,6 +57,9 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
         }
         await client.query("UPDATE student_profiles SET career_position_id=$2 WHERE user_id=$1", [req.session.user!.userId, selected]);
       }
+      // Absent keeps the specialty, null clears it ("Chưa xác định").
+      if (input.data.specialty !== undefined)
+        await client.query("UPDATE student_profiles SET specialty=$2 WHERE user_id=$1", [req.session.user!.userId, input.data.specialty]);
       await client.query("COMMIT");
       res.json({ saved: true });
     } catch (error) { await client.query("ROLLBACK"); throw error; }
@@ -117,6 +122,8 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
         ON CONFLICT(user_id) DO UPDATE SET version=EXCLUDED.version,filename=EXCLUDED.filename,
         pdf_data=EXCLUDED.pdf_data,file_size=EXCLUDED.file_size,sha256=EXCLUDED.sha256,parsed_data=EXCLUDED.parsed_data,updated_at=CURRENT_TIMESTAMP
         RETURNING ${transcriptColumns}`, [req.session.user!.userId, randomUUID(), filename, req.body, req.body.length, createHash("sha256").update(req.body).digest("hex"), JSON.stringify(data)]);
+      // Results computed from the previous transcript no longer apply.
+      await deleteCompetencyData(client, req.session.user!.userId);
       await client.query("COMMIT");
       res.status(existing.rowCount ? 200 : 201).json({ transcript: result.rows[0] });
     } catch (error) { await client.query("ROLLBACK"); throw error; }
@@ -132,6 +139,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       await client.query("UPDATE transcript_jobs SET status='cancelled',pdf_data=NULL,lease_token=NULL,updated_at=now() WHERE user_id=$1 AND status IN ('queued','processing')", [req.session.user!.userId]);
       const deleted = await client.query("DELETE FROM student_transcripts WHERE user_id=$1 AND version=$2", [req.session.user!.userId, input.data.version]);
       if (!deleted.rowCount) throw new TranscriptError("transcript_changed", 409);
+      await deleteCompetencyData(client, req.session.user!.userId);
       await withdrawTranscriptConsent(client, req.session.user!.userId);
       await client.query("COMMIT"); res.json({ deleted: true });
     } catch (error) { await client.query("ROLLBACK"); throw error; }

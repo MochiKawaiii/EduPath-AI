@@ -121,7 +121,7 @@
 .sg-group .sc-table td:nth-child(4) {
   white-space: normal;
 }
-.sg-group .sc-table .sg-result { width: 120px; min-width: 120px; text-align: center; vertical-align: middle; }
+.sg-group .sc-table .sg-result { width: 150px; min-width: 150px; text-align: center; vertical-align: middle; }
 .sg-group .sc-table .sg-score { width: 140px; text-align: center; vertical-align: middle; white-space: normal; }
 .sg-score strong, .sg-score small { display: block; }
 .sg-score small { margin-top: 4px; font-size: 11px; color: var(--sw-muted); }
@@ -137,6 +137,12 @@
 .sg-assessment h2, .sg-assessment p { margin: 0; }
 .sg-verdict { padding: 16px; border: 1px solid currentColor; border-radius: 8px; font-weight: 600; }
 .sg-checks { min-width: 650px; }
+/* Group labels can be long ("… · n học phần, gồm …"); let them wrap instead of squeezing the values. */
+.sg-checks td:first-child { white-space: normal; min-width: 200px; }
+.sg-checks small,
+.sg-group .sc-table .sg-result small { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; line-height: 1.4; color: var(--sw-muted); }
+.sg-data-warning { padding: 16px 20px; border: 1px solid #e9d39b; border-radius: 8px; background: #fff8e8; color: #775014; }
+.sg-data-warning h3 { margin: 0 0 8px; font-size: 15px; }
 @media (max-width: 1000px) {
   .sg-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));

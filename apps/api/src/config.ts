@@ -14,8 +14,12 @@ const postgresUrl = z.string().trim().min(1).refine((value) => {
   }
 }, "DATABASE_URL must be a valid PostgreSQL connection URL");
 
+const optionalWorkerKey = z.preprocess(v => typeof v === "string" && !v.trim() ? undefined : v, z.string().min(32).optional());
+
 const environmentSchema = z.object({
-  OCR_WORKER_KEY: z.preprocess(v => typeof v === "string" && !v.trim() ? undefined : v, z.string().min(32).optional()),
+  OCR_WORKER_KEY: optionalWorkerKey,
+  // Bearer key of the local AI worker (competency comments). Optional: without it AI is disabled.
+  AI_WORKER_KEY: optionalWorkerKey,
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   WEB_ORIGIN: z.url().optional(),
@@ -52,10 +56,14 @@ const environmentSchema = z.object({
   // staff, so they may only reach the admin portal, and only once an admin has
   // approved a role for them.
   STAFF_EMAIL_DOMAINS: z.string().default("vlu.edu.vn")
-});
+}).refine(
+  (env) => !env.AI_WORKER_KEY || env.AI_WORKER_KEY !== env.OCR_WORKER_KEY,
+  { message: "AI_WORKER_KEY must differ from OCR_WORKER_KEY", path: ["AI_WORKER_KEY"] }
+);
 
 export interface AppConfig {
   ocrWorkerKey?: string;
+  aiWorkerKey?: string;
   nodeEnv: "development" | "test" | "production";
   port: number;
   webOrigin: string;
@@ -120,6 +128,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
 
   return {
     ...(parsed.OCR_WORKER_KEY ? {ocrWorkerKey:parsed.OCR_WORKER_KEY} : {}),
+    ...(parsed.AI_WORKER_KEY ? { aiWorkerKey: parsed.AI_WORKER_KEY } : {}),
     nodeEnv: parsed.NODE_ENV,
     port: parsed.PORT,
     webOrigin,

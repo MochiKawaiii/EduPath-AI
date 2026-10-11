@@ -1,0 +1,20 @@
+{
+  "description": "Shared cases for deciding one transcript attempt's result. Used by apps/web/src/transcript-results.ts tests and the API competency-assessment course-state tests so both sides agree. A printed result text always wins; only when it is empty is the official letter grade used (inferred=true). MT is an exemption and counts as passed by the existing rule (not inferred).",
+  "passLetters": ["A+", "A", "B+", "B", "C+", "C", "D+", "D"],
+  "failLetters": ["F"],
+  "cases": [
+    { "name": "printed Đạt", "result": "Đạt", "letter": "B", "expected": "pass", "inferred": false },
+    { "name": "printed check mark", "result": "✓", "letter": "A", "expected": "pass", "inferred": false },
+    { "name": "printed Không đạt", "result": "Không đạt", "letter": "F", "expected": "fail", "inferred": false },
+    { "name": "printed cross", "result": "✗", "letter": "F", "expected": "fail", "inferred": false },
+    { "name": "printed text wins over letter", "result": "Đạt", "letter": "F", "expected": "pass", "inferred": false },
+    { "name": "exemption MT without result", "result": null, "letter": "MT", "expected": "pass", "inferred": false },
+    { "name": "empty result, letter A+", "result": null, "letter": "A+", "expected": "pass", "inferred": true },
+    { "name": "empty result, letter B", "result": null, "letter": "B", "expected": "pass", "inferred": true },
+    { "name": "empty result, letter D+", "result": null, "letter": "D+", "expected": "pass", "inferred": true },
+    { "name": "empty result, letter D", "result": null, "letter": "D", "expected": "pass", "inferred": true },
+    { "name": "empty result, letter F", "result": null, "letter": "F", "expected": "fail", "inferred": true },
+    { "name": "blank string result, letter C", "result": "   ", "letter": "C", "expected": "pass", "inferred": true },
+    { "name": "no result and no letter", "result": null, "letter": null, "expected": "unknown", "inferred": false }
+  ]
+}

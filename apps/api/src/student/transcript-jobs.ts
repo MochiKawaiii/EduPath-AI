@@ -5,6 +5,7 @@ import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
 import { TranscriptError } from "./transcript-parser.js";
 import { mapOcrTranscript } from "./ocr-adapter.js";
+import { deleteCompetencyData } from "../competency-assessment/repository.js";
 
 export const jobColumns = `id,filename,status,error_code AS "errorCode",created_at AS "createdAt",updated_at AS "updatedAt"`;
 export async function expireJobs(pool: Pick<DatabasePool, "query">) {
@@ -73,6 +74,8 @@ export function createTranscriptWorkerRouter(pool: DatabasePool | undefined, key
           VALUES($1,$2,$3,$4,$5,$6,$7::jsonb) ON CONFLICT(user_id) DO UPDATE SET version=EXCLUDED.version,filename=EXCLUDED.filename,pdf_data=EXCLUDED.pdf_data,
           file_size=EXCLUDED.file_size,sha256=EXCLUDED.sha256,parsed_data=EXCLUDED.parsed_data,updated_at=now()`,
           [uid, randomUUID(), job.filename, job.pdf_data, job.pdf_data.length, createHash("sha256").update(job.pdf_data).digest("hex"), JSON.stringify(parsed)]);
+        // Results computed from the replaced transcript no longer apply.
+        await deleteCompetencyData(client, uid);
       }
       await client.query("UPDATE transcript_jobs SET status=$2,error_code=$3,pdf_data=NULL,updated_at=now() WHERE id=$1", [req.params.id, errorCode ? "failed" : "completed", errorCode ?? null]);
       await client.query("COMMIT"); res.json({ ok: true });

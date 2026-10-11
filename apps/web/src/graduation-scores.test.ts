@@ -32,6 +32,16 @@ describe("graduation course scores", () => {
     expect(graduationCourseScores(data).get("MT")).toMatchObject({ score10: null, score4: null, letter: " mt " });
     expect(graduationCourseScores(null).size).toBe(0);
   });
+  it("uses letter grades for blank result cells: the passing attempt, and MT over an earlier F", () => {
+    const data = transcript(section("2025-2026", [
+      course("LET", { result: null, letter: null, score10: 9, score4: 3.8 }),
+      course("LET", { result: null, letter: "C", score10: 6, score4: 2 }),
+      course("MTF", { result: null, letter: "F", score10: 2, score4: 0 }),
+      course("MTF", { result: null, letter: "MT", score10: null, score4: null }),
+    ]));
+    expect(graduationCourseScores(data).get("LET")).toMatchObject({ score10: 6, letter: "C", attemptCount: 2 });
+    expect(graduationCourseScores(data).get("MTF")).toMatchObject({ letter: "MT", score10: null, attemptCount: 2 });
+  });
 });
 
 describe("graduation cumulative GPA", () => {
