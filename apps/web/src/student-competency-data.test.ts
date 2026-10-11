@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  aiStateCopy, bucketSkills, canRegenerate, dataUsedLine, deficitText, eligibilityDisplay, errorMessage, filterSkills, formatScore,
-  gapStatusDisplay, isPreconditionError, levelStep, mapAiOutput, modelLabel, scoreDifference, shouldPoll, sortRequirements, termLabel, EMPTY_SKILL_FILTERS,
+  aiStateCopy, bucketSkills, canRegenerate, cleanKeyText, dataUsedLine, deficitText, eligibilityDisplay, errorMessage, filterSkills, formatScore,
+  gapStatusDisplay, groupEvidenceCounts, isPreconditionError, PRIORITY_LABELS, levelStep, mapAiOutput, modelLabel, scoreDifference, shouldPoll, sortRequirements, termLabel, EMPTY_SKILL_FILTERS,
 } from "./student-competency-data";
 import { fixtureAiOutput, fixtureAssessment, fixtureResult } from "./student-competency.fixture";
 import type { CareerRequirementResult } from "./competency-assessment-types";
@@ -105,6 +105,19 @@ describe("skills", () => {
     ]);
     expect(buckets.at(-1)!.note).toContain("Không phải điểm yếu");
   });
+  it("counts a group's skills with the overall rule, whatever a stored skillCount says", () => {
+    // Regression: "49/65" next to an overall "62/66" — not-applicable skills (S08) are not in the denominator.
+    // fixtureResult's G1 skillCount (6) is the pre-comp-calc-v3 value that still counted S08.
+    expect(groupEvidenceCounts(fixtureResult.skills, "G1")).toEqual({ withEvidence: 4, total: 5 });
+    // S06 is condition-only and S05 exempt-only (counts as evidence).
+    expect(groupEvidenceCounts(fixtureResult.skills, "G2")).toEqual({ withEvidence: 1, total: 1 });
+    const sum = fixtureResult.groups.map((group) => groupEvidenceCounts(fixtureResult.skills, group.key))
+      .reduce((total, counts) => ({ withEvidence: total.withEvidence + counts.withEvidence, total: total.total + counts.total }), { withEvidence: 0, total: 0 });
+    const counted = fixtureResult.skills.filter((skill) => !skill.conditionOnly && skill.status !== "not_applicable");
+    expect(sum).toEqual({ withEvidence: counted.filter((skill) => skill.status === "scored" || skill.status === "exempt_only").length, total: counted.length });
+    // The group rows add up to the overall "Dựa trên x/y kỹ năng" line.
+    expect(sum).toEqual({ withEvidence: fixtureResult.overall.basis.skillsWithEvidence, total: fixtureResult.overall.basis.applicableSkills });
+  });
 });
 
 describe("scoreDifference", () => {
@@ -116,6 +129,25 @@ describe("scoreDifference", () => {
     expect(scoreDifference({ score: 85, status: "met", deficit: null, threshold: 85 })).toBe(0);
     expect(scoreDifference({ score: null, status: "not_studied", deficit: null, threshold: 85 })).toBeNull();
     expect(scoreDifference({ score: 50, status: "upcoming", deficit: null, threshold: 70 })).toBeNull();
+  });
+});
+
+describe("cleanKeyText", () => {
+  const names = new Map([["S12", "API"], ["S03", "Kiểm thử phần mềm"], ["S07", "C#"], ["G1", "Chuyên môn"], ["G2", "Kỹ năng mềm"]]);
+  it("drops a key written next to its own name instead of repeating the name", () => {
+    // Regression: "(API - S12)" used to become "(API - API)".
+    expect(cleanKeyText("Khả năng tích hợp (API - S12) của bạn rất tốt.", names)).toBe("Khả năng tích hợp (API) của bạn rất tốt.");
+    expect(cleanKeyText("API (S12) đạt mức Thành thạo.", names)).toBe("API đạt mức Thành thạo.");
+    expect(cleanKeyText("S12 - API đạt mức Thành thạo.", names)).toBe("API đạt mức Thành thạo.");
+    expect(cleanKeyText("Ôn (S12: API) và S12 (API).", names)).toBe("Ôn (API) và API.");
+    expect(cleanKeyText("Kiểm thử phần mềm (S03), Lập trình C# (S07).", names)).toBe("Kiểm thử phần mềm, Lập trình C#.");
+    expect(cleanKeyText("Nhóm Chuyên môn (G1) và nhóm G2 - Kỹ năng mềm.", names)).toBe("Nhóm Chuyên môn và nhóm Kỹ năng mềm.");
+  });
+  it("replaces a bare key elsewhere, drops a bracketed one and keeps unknown keys", () => {
+    expect(cleanKeyText("Bạn nên luyện kỹ năng S12 và nhóm G1.", names)).toBe("Bạn nên luyện kỹ năng API và nhóm Chuyên môn.");
+    expect(cleanKeyText("Kỹ năng kiểm thử (S03) cần thêm sản phẩm.", names)).toBe("Kỹ năng kiểm thử cần thêm sản phẩm.");
+    expect(cleanKeyText("Mã S99, G9 và S120 giữ nguyên.", names)).toBe("Mã S99, G9 và S120 giữ nguyên.");
+    expect(cleanKeyText("Không có khóa nào, 2 / 4 kỹ năng.", names)).toBe("Không có khóa nào, 2 / 4 kỹ năng.");
   });
 });
 
@@ -147,6 +179,10 @@ describe("mapAiOutput", () => {
     expect(mapped.gaps[0].courses).toEqual([{ code: "TST105", name: "Kiểm thử phần mềm", reason: "Đo trực tiếp kỹ năng kiểm thử." }]);
     expect(mapped.gaps[1]).toMatchObject({ key: "S09", name: "Docker" });
     expect(mapped.nextSteps).toHaveLength(3);
+  });
+  it("labels AI priorities apart from the career property 'Ưu tiên'", () => {
+    expect(PRIORITY_LABELS).toEqual({ high: "Cần làm sớm", medium: "Nên làm", low: "Có thể để sau" });
+    for (const label of Object.values(PRIORITY_LABELS)) expect(label).not.toMatch(/Ưu tiên/);
   });
   it("survives missing or malformed fields", () => {
     expect(mapAiOutput(null, fixtureResult)).toBeNull();

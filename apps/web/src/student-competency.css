@@ -120,11 +120,11 @@
 .scomp-page .scomp-ai-failed { border-color: #e9d39b; background: #fffaf0; }
 .scomp-page .scomp-ai-body { display: grid; gap: 16px; font-size: 14px; line-height: 1.7; }
 .scomp-page .scomp-ai-summary { font-size: 15px; }
-.scomp-page .scomp-ai-block { display: grid; gap: 6px; }
+.scomp-page .scomp-ai-block { display: grid; gap: 6px; align-content: start; }
 .scomp-page .scomp-ai-block ul,
 .scomp-page .scomp-ai-block ol { display: grid; gap: 6px; margin: 0; padding-left: 20px; }
 .scomp-page .scomp-ai-sub { margin-top: 4px !important; font-size: 13px; color: #3d4757; }
-.scomp-page .scomp-ai-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+.scomp-page .scomp-ai-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; align-items: start; }
 .scomp-page .scomp-priority { padding: 0 6px; border: 1px solid var(--sw-border); border-radius: 4px; color: var(--sw-muted); font-size: 11px; font-weight: 600; white-space: nowrap; }
 .scomp-page .scomp-ai-footer { padding-top: 12px; border-top: 1px solid var(--sw-border); color: var(--sw-muted); font-size: 12px; line-height: 1.6; }
 .scomp-page .scomp-ai-tip { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; padding: 8px 10px; border-radius: 6px; background: #f2f6fc; font-size: 13px; line-height: 1.6; }

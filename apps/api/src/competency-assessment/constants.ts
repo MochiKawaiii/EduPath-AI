@@ -3,7 +3,8 @@
 
 /** Stored in meta.calcVersion of every assessment. */
 /** v2: a below skill with a Học cải thiện course is no longer listed as "no course left". */
-export const CALC_VERSION = "comp-calc-v2";
+/** v3: a group's skillCount leaves out not-applicable skills, like overall.basis.applicableSkills. */
+export const CALC_VERSION = "comp-calc-v3";
 
 /** Skill, group and overall levels (0–100 scale), classified on unrounded values. */
 export const LEVEL_THRESHOLDS = { proficient: 85, good: 70, basic: 50 } as const;

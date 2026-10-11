@@ -7,7 +7,7 @@ import { specialtyLabel, type AiStatus, type AssessmentResult, type AssessmentSt
 import {
   COMPETENCY_API, CONFIDENCE_LABELS, COURSE_STATE_LABELS, EMPTY_SKILL_FILTERS, LEVEL_SCALE, PRECONDITION_COPY, PRIORITY_LABELS,
   aiErrorMessage, aiStateCopy, bucketSkills, canRegenerate, dataUsedLine, eligibilityDisplay, errorMessage, filterSkills, formatDateTime,
-  formatNumber, formatPercent, formatScore, gapStatusDisplay, isGap, isPreconditionError, levelSentence, levelStep, mapAiOutput, modelLabel,
+  formatNumber, formatPercent, formatScore, gapStatusDisplay, groupEvidenceCounts, isGap, isPreconditionError, levelSentence, levelStep, mapAiOutput, modelLabel,
   scoreDifference, shouldPoll, skillName, sortRequirements, type MappedAiOutput, type PreconditionError, type SkillFilters, type StatusTone,
 } from "./student-competency-data";
 import "./student-curriculum.css";
@@ -135,11 +135,11 @@ function Overview({ result }: { result: AssessmentResult }) {
       </div>
       <div className="scomp-groups">
         <h3>Theo nhóm kỹ năng</h3>
-        <ul>{result.groups.map((group) => <li key={group.key}>
-          <div className="scomp-group-label"><strong>{group.name}</strong><span>{group.skillsWithEvidence.toLocaleString("vi-VN")}/{group.skillCount.toLocaleString("vi-VN")} kỹ năng có minh chứng</span></div>
+        <ul>{result.groups.map((group) => { const counts = groupEvidenceCounts(result.skills, group.key); return <li key={group.key}>
+          <div className="scomp-group-label"><strong>{group.name}</strong><span>{counts.withEvidence.toLocaleString("vi-VN")}/{counts.total.toLocaleString("vi-VN")} kỹ năng có minh chứng</span></div>
           <ScoreBar score={group.score} level={group.level} ticks={[50, 70, 85]} />
           <div className="scomp-group-value"><strong>{formatScore(group.score)}</strong><span>{group.levelLabel}</span></div>
-        </li>)}</ul>
+        </li>; })}</ul>
         <div className="scomp-axis-row" aria-hidden="true"><span /><div className="scomp-axis"><span style={{ left: "0%" }}>0</span><span style={{ left: "50%" }}>50</span><span style={{ left: "70%" }}>70</span><span style={{ left: "85%" }}>85</span><span style={{ left: "100%" }}>100</span></div><span /></div>
       </div>
       <div className="scomp-fit-tile">

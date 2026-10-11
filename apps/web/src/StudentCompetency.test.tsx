@@ -73,6 +73,18 @@ describe("StudentCompetency", () => {
     expect(html).toContain("Kỹ năng cần tự học (CTĐT chưa đo)");
     expect(html).toContain("Đóng gói ứng dụng web của bạn bằng Docker.");
   });
+  it("counts group skills like the overall line and tags AI priorities without 'Ưu tiên'", () => {
+    const html = withAi("completed");
+    // G1 has S01–S04 scored, S07 no evidence, S08 outside the student's choices (not counted).
+    expect(html).toContain("4/5 kỹ năng có minh chứng");
+    expect(html).not.toContain("4/6 kỹ năng có minh chứng");
+    // G1 4/5 + G2 1/1 = the overall 5/6.
+    expect(html).toContain("1/1 kỹ năng có minh chứng");
+    expect(html).toContain("Dựa trên 5/6 kỹ năng có minh chứng");
+    expect(html).toContain('class="scomp-priority">Cần làm sớm</span>');
+    expect(html).toContain('class="scomp-priority">Nên làm</span>');
+    expect(html).not.toMatch(/scomp-priority">Ưu tiên/);
+  });
   it("groups skills with no evidence last and says it is not a weakness", () => {
     const html = withAi("completed");
     expect(html.indexOf("Chưa có minh chứng (1)")).toBeGreaterThan(html.indexOf("Kiến thức chuyên môn (4)"));

@@ -74,8 +74,9 @@ export const fixtureResult: AssessmentResult = {
   },
   weightsCoverage: { weightedCourses: 7, curriculumCourses: 8, share: 0.875 },
   courses,
-  overall: { score: 79.4, level: "good", levelLabel: "Khá", confidence: "medium", confidenceLabel: "Trung bình", coverage: 0.55, evidence: 9.4, groupsWithScore: 1, basis: { skillsWithEvidence: 5, applicableSkills: 7, evidenceCourses: 5 } },
+  overall: { score: 79.4, level: "good", levelLabel: "Khá", confidence: "medium", confidenceLabel: "Trung bình", coverage: 0.55, evidence: 9.4, groupsWithScore: 1, basis: { skillsWithEvidence: 5, applicableSkills: 6, evidenceCourses: 5 } },
   groups: [
+    // skillCount 6 is a pre-comp-calc-v3 value (it still counted the not-applicable S08); the page derives 4/5 from the skills.
     { key: "G1", id: "group-G1", name: groupNames.G1, score: 79.4, level: "good", levelLabel: "Khá", confidence: "medium", confidenceLabel: "Trung bình", coverage: 0.55, evidence: 8.2, skillCount: 6, skillsWithEvidence: 4 },
     { key: "G2", id: "group-G2", name: groupNames.G2, score: null, level: "exempt", levelLabel: "Miễn/công nhận", confidence: null, confidenceLabel: null, coverage: null, evidence: 1.2, skillCount: 1, skillsWithEvidence: 1 },
   ],

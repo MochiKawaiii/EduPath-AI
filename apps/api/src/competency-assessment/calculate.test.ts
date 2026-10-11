@@ -146,6 +146,18 @@ describe("calculateAssessment on the synthetic CNPM student", () => {
     }
   });
 
+  it("counts group skills with the overall rule: not-applicable and condition-only skills are left out", () => {
+    // Regression: the group line read 49/65 while the overview read 62/66 (not-applicable skills in the group denominator).
+    const bigData = byName(result, "Phân tích dữ liệu lớn");
+    expect(bigData.status).toBe("not_applicable");
+    const group = result.groups.find((item) => item.key === bigData.groupKey)!;
+    const counted = result.skills.filter((skill) => skill.groupKey === group.key && !skill.conditionOnly && skill.status !== "not_applicable");
+    expect(group.skillCount).toBe(counted.length);
+    expect(group.skillCount).toBeLessThan(result.skills.filter((skill) => skill.groupKey === group.key && !skill.conditionOnly).length);
+    expect(result.groups.reduce((sum, item) => sum + item.skillCount, 0)).toBe(result.overall.basis.applicableSkills);
+    expect(result.groups.reduce((sum, item) => sum + item.skillsWithEvidence, 0)).toBe(result.overall.basis.skillsWithEvidence);
+  });
+
   it("sorts skills by score, evidence and key", () => {
     const scored = result.skills.filter((skill) => skill.score !== null).map((skill) => skill.score!);
     expect(scored).toEqual([...scored].sort((a, b) => b - a));

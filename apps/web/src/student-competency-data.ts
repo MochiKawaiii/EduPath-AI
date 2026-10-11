@@ -165,7 +165,8 @@ export const COURSE_STATE_LABELS: Record<CourseState, string> = {
   in_progress: "Đang học", not_taken: "Chưa học", not_in_curriculum: "Ngoài CTĐT",
 };
 
-export const PRIORITY_LABELS: Record<AiPriority, string> = { high: "Ưu tiên cao", medium: "Ưu tiên vừa", low: "Ưu tiên thấp" };
+/** AI priority tags; worded apart from the career property "Ưu tiên" (preferred). The stored enum stays high/medium/low. */
+export const PRIORITY_LABELS: Record<AiPriority, string> = { high: "Cần làm sớm", medium: "Nên làm", low: "Có thể để sau" };
 
 /* ----------------------------------------------------------------- skills */
 
@@ -185,6 +186,16 @@ export function filterSkills(skills: readonly SkillResult[], filters: SkillFilte
     && (!filters.careerOnly || skill.careerSkill)
     && (!filters.needsWork || skillNeedsWork(skill))
     && (!query || fold(`${skill.name} ${skill.scope} ${skill.evidenceCourses.map((row) => row.code).join(" ")}`).includes(query)));
+}
+
+/**
+ * "x/y kỹ năng có minh chứng" of one group, with the same rule as overall.basis: condition-only
+ * and not-applicable skills are left out. Derived from the skills so results stored before
+ * comp-calc-v3 (whose group skillCount still included not-applicable skills) read the same.
+ */
+export function groupEvidenceCounts(skills: readonly Pick<SkillResult, "groupKey" | "conditionOnly" | "status">[], groupKey: string): { withEvidence: number; total: number } {
+  const counted = skills.filter((skill) => skill.groupKey === groupKey && !skill.conditionOnly && skill.status !== "not_applicable");
+  return { withEvidence: counted.filter((skill) => skill.status === "scored" || skill.status === "exempt_only").length, total: counted.length };
 }
 
 export type SkillBucket = { id: string; title: string; note: string | null; skills: SkillResult[] };
@@ -252,6 +263,42 @@ export type MappedAiOutput = {
 };
 
 const plain = (value: unknown) => typeof value === "string" ? value.trim() : "";
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const KEY_PATTERN = /(?<![\p{L}\p{N}])[SG]\d{1,3}(?![\p{L}\p{N}])/gu;
+const KEY_SEP = "(?:\\s*[-–—:,/]\\s*|\\s+)";
+const KEY_OPEN = "[(\\[]";
+const KEY_CLOSE = "[)\\]]";
+/**
+ * Removes internal keys (S01…, G1…) from AI prose. Same rules as the server cleanup
+ * (apps/api/src/competency-assessment/ai/key-cleanup.ts), kept here as a safety net for
+ * outputs stored before comp-v3: a key next to its own name is dropped with its separator
+ * ("API (S12)" → "API", "(API - S12)" → "(API)", "S12 - API" → "API"), a bracketed key
+ * elsewhere is dropped and a bare key elsewhere becomes the name.
+ */
+export function cleanKeyText(text: string, names: ReadonlyMap<string, string>): string {
+  let out = text;
+  const keys = [...new Set(out.match(KEY_PATTERN) ?? [])].filter((key) => names.has(key));
+  if (!keys.length) return text;
+  for (const key of keys) {
+    const name = names.get(key)!.trim();
+    const k = `(?<![\\p{L}\\p{N}])${key}(?![\\p{L}\\p{N}])`;
+    if (name) {
+      const n = `((?<![\\p{L}\\p{N}])${escapeRegExp(name)}(?![\\p{L}\\p{N}]))`;
+      const rules = [
+        `${n}\\s*${KEY_OPEN}\\s*${k}\\s*${KEY_CLOSE}`,
+        `${n}${KEY_SEP}${k}`,
+        `${KEY_OPEN}\\s*${k}\\s*${KEY_CLOSE}\\s*${n}`,
+        `${k}\\s*${KEY_OPEN}\\s*${n}\\s*${KEY_CLOSE}`,
+        `${k}${KEY_SEP}${n}`,
+      ];
+      for (const rule of rules) out = out.replace(new RegExp(rule, "giu"), "$1");
+    }
+    out = out.replace(new RegExp(`\\s*${KEY_OPEN}\\s*${k}\\s*${KEY_CLOSE}`, "gu"), "");
+    if (name) out = out.replace(new RegExp(k, "gu"), name);
+  }
+  return out.replace(/ {2,}/g, " ").replace(/\s+([.,;:!?)])/g, "$1").trim();
+}
 const list = <T,>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
 const priority = (value: unknown): AiPriority => value === "high" || value === "low" ? value : "medium";
 
@@ -264,12 +311,9 @@ export function mapAiOutput(output: AiOutput | null | undefined, result: Assessm
   if (!output || typeof output !== "object") return null;
   const skills = new Map(result.skillDirectory.map((skill) => [skill.key, skill.name]));
   const groups = new Map(result.groups.map((group) => [group.key, group.name]));
-  // The model sometimes writes internal keys in prose ("Kiểm thử (S03)", "kỹ năng S03"):
-  // drop a bracketed known key and replace a bare one with its name.
+  // The model sometimes writes internal keys in prose ("Kiểm thử (S03)", "(API - S12)", "kỹ năng S03").
   const names = new Map<string, string>([...skills, ...groups]);
-  const text = (value: unknown) => plain(value)
-    .replace(/\s*\(([SG]\d{1,3})\)/g, (match, key: string) => (names.has(key) ? "" : match))
-    .replace(/\b([SG]\d{1,3})\b/g, (match, key: string) => names.get(key) ?? match);
+  const text = (value: unknown) => cleanKeyText(plain(value), names);
   // A skill below a career threshold (or not studied) is never shown as a strength.
   const careerGap = new Set((result.career?.requirements ?? []).filter((req) => req.skillKey && (req.status === "below" || req.status === "not_studied")).map((req) => req.skillKey!));
   const weak = new Set([...list<{ skillKey?: unknown }>(output.improvements), ...list<{ skillKey?: unknown }>(output.gaps)].map((item) => item?.skillKey));

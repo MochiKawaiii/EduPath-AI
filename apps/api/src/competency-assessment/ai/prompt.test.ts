@@ -6,10 +6,13 @@ import {
   SYSTEM_PROMPT,
   buildAiInput,
   buildPromptContext,
+  formatDeficit,
   formatNumber,
+  formatScore,
   sanitizeText,
   termText
 } from "./prompt.js";
+import { numbersIn } from "./validate.js";
 import { syntheticResult } from "./test-fixture.js";
 
 describe("sanitizeText", () => {
@@ -53,9 +56,21 @@ describe("formatting helpers", () => {
     expect(formatNumber(72.456)).toBe("72,46");
     expect(formatNumber(85)).toBe("85");
   });
-  it("explains HKyyS term codes", () => {
-    expect(termText("HK253")).toBe("HK253 (HK3 năm học 2025-2026)");
+  it("writes HKyyS term codes in words", () => {
+    expect(termText("HK253")).toBe("học kỳ 3 năm học 2025–2026");
+    expect(termText("HK261")).toBe("học kỳ 1 năm học 2026–2027");
+    expect(termText("HK093")).toBe("học kỳ 3 năm học 2009–2010");
+    expect(termText("Học kỳ hè")).toBe("Học kỳ hè");
     expect(termText(null)).toBe("chưa xếp lịch");
+  });
+  it("prints 100-point scores and deficits exactly as the page (floored score, deficit rounded up, at least 1)", () => {
+    expect(formatScore(83.92)).toBe("83");
+    expect(formatScore(84.999)).toBe("84");
+    expect(formatScore(85)).toBe("85");
+    expect(formatScore(0)).toBe("0");
+    expect(formatDeficit(9.44)).toBe("10");
+    expect(formatDeficit(30)).toBe("30");
+    expect(formatDeficit(0.2)).toBe("1");
   });
 });
 
@@ -63,8 +78,8 @@ describe("buildAiInput", () => {
   const input = buildAiInput(syntheticResult());
 
   it("uses the spec system prompt verbatim plus the output description", () => {
-    expect(PROMPT_VERSION).toBe("comp-v2");
-    expect(input.promptVersion).toBe("comp-v2");
+    expect(PROMPT_VERSION).toBe("comp-v3");
+    expect(input.promptVersion).toBe("comp-v3");
     expect(input.system).toBe(SYSTEM_PROMPT);
     expect(input.system.startsWith("Bạn là cố vấn học tập của EduPath AI, đồng hành cùng sinh viên ngành Công nghệ Thông tin, Trường Đại học Văn Lang.\n")).toBe(true);
     expect(input.system).toContain("1. Không tự tính, ước lượng hay làm tròn lại bất kỳ con số nào.");
@@ -76,6 +91,9 @@ describe("buildAiInput", () => {
     expect(input.system).not.toContain("<mô tả");
     expect(input.system).toContain("không viết khóa S…/G… và không viết mã học phần");
     expect(input.system).toContain("không đưa ra chỉ số hay phần trăm phù hợp");
+    expect(input.system).toContain("chép đúng từng chữ số như trong dữ liệu, không thêm chữ số thập phân");
+    expect(input.system).toContain('8. Gọi học kỳ bằng chữ đúng như trong dữ liệu, ví dụ "học kỳ 3 năm học 2025–2026"; không viết mã học kỳ dạng HK253.');
+    expect(input.system).toContain('"high" (cần làm sớm) | "medium" (nên làm) | "low" (có thể để sau)');
   });
 
   it("sends the fixed Ollama options", () => {
@@ -90,7 +108,7 @@ describe("buildAiInput", () => {
     for (const section of ["[1. HỒ SƠ]", "[2. ĐIỂM TỔNG", "[3. KỸ NĂNG]", "[4. NGHỀ MỤC TIÊU]", "[5. ỨNG VIÊN", "[6. KỸ NĂNG CẦN TỰ HỌC", "[7. TIẾN ĐỘ", "[8. XÉT TỐT NGHIỆP", "[9. CẢNH BÁO"]) {
       expect(user).toContain(section);
     }
-    expect(user).toContain("S01 | Lập trình hướng đối tượng | nhóm G1 | điểm 88,5 | Thành thạo");
+    expect(user).toContain("S01 | Lập trình hướng đối tượng | nhóm G1 | điểm 88 | Thành thạo");
     expect(user).toContain("S05 | Điện toán đám mây | Chưa đủ dữ liệu");
     expect(user).toContain("TST202 | Đảm bảo chất lượng phần mềm | 3 TC | học mới | Chưa đủ điều kiện; thiếu: TST201");
     expect(user).toContain("thiếu 30 (Thiếu nhiều)");
@@ -116,9 +134,29 @@ describe("buildAiInput", () => {
     const line = buildAiInput(result).user.split("\n").find((text) => text.startsWith("S01 |"))!;
     expect(line).toContain("| minh chứng: TST101 Nhập môn lập trình (điểm 8,5, A)");
     expect(line).toContain("| đang học: TST202 Đảm bảo chất lượng phần mềm (đang học)");
-    expect(line).toContain("| sắp học (chưa phải minh chứng): TST201 Kiểm thử phần mềm cơ bản (sắp học HK261");
+    expect(line).toContain("| sắp học (chưa phải minh chứng): TST201 Kiểm thử phần mềm cơ bản (sắp học vào học kỳ 1 năm học 2026–2027)");
     expect(line.indexOf("minh chứng: TST101")).toBeLessThan(line.indexOf("đang học"));
     expect(line.split("minh chứng:")[1]!.split("|")[0]).not.toContain("TST201");
+  });
+
+  it("sends the numbers the page shows: whole 100-point scores, whole percentages, no term codes", () => {
+    const result = syntheticResult();
+    result.overall.score = 83.92;
+    result.groups[0] = { ...result.groups[0]!, score: 89.56 };
+    result.skills[0] = { ...result.skills[0]!, score: 93.44, coverage: 0.4567 };
+    result.career!.requirements[2] = { ...result.career!.requirements[2]!, score: 75.56, deficit: 9.44 };
+    const user = buildAiInput(result).user;
+    expect(user).toContain("Điểm tổng: 83 | Khá");
+    expect(user).toContain("G1 | Kỹ thuật phần mềm | điểm 89 | Khá");
+    expect(user).toContain("S01 | Lập trình hướng đối tượng | nhóm G1 | điểm 93 | Thành thạo | tin cậy Trung bình | độ phủ 46%");
+    expect(user).toContain("ngưỡng 85 | điểm 75 | Thấp hơn ngưỡng | thiếu 10 (Thiếu nhiều)");
+    for (const shown of [83.92, 89.56, 93.44, 75.56, 9.44, 45.67]) expect(numbersIn(user)).not.toContain(shown);
+    // Course scores stay on the 10-point scale with up to two decimals, like the page.
+    expect(user).toContain("TST101 Nhập môn lập trình (điểm 8,5, A)");
+    expect(user).toContain("Học kỳ gần nhất có điểm: học kỳ 3 năm học 2025–2026");
+    expect(user).toContain("Học kỳ hiện tại: học kỳ 3 năm học 2025–2026; học kỳ kế tiếp: học kỳ 1 năm học 2026–2027");
+    expect(user).toContain("- trễ: TST150 Toán rời rạc (kế hoạch: học kỳ 2 năm học 2025–2026)");
+    expect(user).not.toMatch(/HK\d{3}/);
   });
 
   it("sanitizes names taken from the database", () => {

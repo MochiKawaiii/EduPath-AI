@@ -305,7 +305,7 @@ export type GroupResult = ScoreSummary & {
   key: string;
   id: string;
   name: string;
-  /** Skills of the group that are not condition-only. */
+  /** Skills of the group that are neither condition-only nor not applicable (sums to overall.basis.applicableSkills). */
   skillCount: number;
   skillsWithEvidence: number;
 };

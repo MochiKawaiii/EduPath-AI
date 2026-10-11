@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { buildAiInput } from "./prompt.js";
 import { syntheticResult } from "./test-fixture.js";
-import { hasForbiddenContent, numbersIn, validateAiOutput, validationContextFromAiInput, type AiOutput } from "./validate.js";
+import { hasForbiddenContent, numbersIn, termCodeNumbers, validateAiOutput, validationContextFromAiInput, type AiOutput } from "./validate.js";
 
 const input = buildAiInput(syntheticResult());
 const context = validationContextFromAiInput(input)!;
 
 const valid = (): AiOutput => ({
-  summary: "Bạn có nền tảng lập trình hướng đối tượng vững với điểm 88,5, nhưng kiểm thử phần mềm mới đạt 55 trên ngưỡng 85.",
-  groupInsights: [{ groupKey: "G1", comment: "Nhóm kỹ thuật phần mềm đạt 80,5, mức Khá." }],
+  summary: "Bạn có nền tảng lập trình hướng đối tượng vững với điểm 88, nhưng kiểm thử phần mềm mới đạt 55 trên ngưỡng 85.",
+  groupInsights: [{ groupKey: "G1", comment: "Nhóm kỹ thuật phần mềm đạt 80, mức Khá." }],
   strengths: [{ skillKey: "S01", comment: "Học phần Nhập môn lập trình đạt 8.5 cho thấy bạn nắm chắc nền tảng." }],
   improvements: [{ skillKey: "S03", priority: "high", comment: "Kiểm thử phần mềm còn thiếu 30 điểm so với ngưỡng của nghề." }],
   careerFit: { comment: "Bạn đạt 2/4 kỹ năng của nghề, mức Khá phù hợp." },
@@ -87,6 +87,20 @@ describe("validateAiOutput", () => {
     expect(reasonOf({ ...valid(), progress: "Điểm 72.46 cho thấy..." })).toBe("invented_number@progress");
   });
 
+  it("rejects extra decimals on a score the data block gives as a whole number", () => {
+    // The engine scores are 88,5 / 80,5 / 72,25; the data block (and the page) show 88 / 80 / 72.
+    expect(reasonOf({ ...valid(), summary: "Điểm tổng của bạn là 72." })).toBe("ok");
+    expect(reasonOf({ ...valid(), summary: "Điểm tổng của bạn là 72,25." })).toBe("invented_number@summary");
+    expect(reasonOf({ ...valid(), summary: "Lập trình hướng đối tượng đạt 88,5." })).toBe("invented_number@summary");
+    expect(reasonOf({ ...valid(), groupInsights: [{ groupKey: "G1", comment: "Nhóm đạt 80,5." }] })).toBe("invented_number@groupInsights.0.comment");
+  });
+
+  it("accepts a term written in words or as the code of a term in the data block, and rejects an invented term code", () => {
+    expect(reasonOf({ ...valid(), progress: "Bạn đang ở học kỳ 3 năm học 2025–2026, học kỳ tới là học kỳ 1 năm học 2026–2027." })).toBe("ok");
+    expect(reasonOf({ ...valid(), progress: "Bạn nên đăng ký Kiểm thử phần mềm cơ bản ở HK261." })).toBe("ok");
+    expect(reasonOf({ ...valid(), progress: "Bạn nên đăng ký Kiểm thử phần mềm cơ bản ở HK271." })).toBe("invented_number@progress");
+  });
+
   it("rejects URLs, emails and HTML", () => {
     expect(reasonOf({ ...valid(), summary: "Xem https://example.org nhé." })).toBe("forbidden_content@summary");
     expect(reasonOf({ ...valid(), summary: "Xem www.example.org nhé." })).toBe("forbidden_content@summary");
@@ -100,8 +114,18 @@ describe("validateAiOutput", () => {
 describe("helpers", () => {
   it("reads decimal comma and dot the same way", () => {
     expect(numbersIn("điểm 72,5 và 8.5, HK253, 2/4")).toEqual([72.5, 8.5, 253, 2, 4]);
-    expect(context.numbers.has(72.5)).toBe(true);
+    // Course scores keep their decimals (8,5); 100-point skill scores are whole (72,5 is sent as 72).
+    expect(context.numbers.has(8.5)).toBe(true);
+    expect(context.numbers.has(72)).toBe(true);
+    expect(context.numbers.has(72.5)).toBe(false);
     expect(context.numbers.has(2026)).toBe(true);
+  });
+  it("derives HKyyS codes from terms written in words", () => {
+    expect(termCodeNumbers("học kỳ 3 năm học 2025–2026; học kỳ 1 năm học 2026-2027; học kỳ 2 năm học 2009–2010")).toEqual([253, 261, 92]);
+    expect(numbersIn("HK092")).toEqual([92]);
+    expect(context.numbers.has(253)).toBe(true);
+    expect(context.numbers.has(262)).toBe(true);
+    expect(context.numbers.has(271)).toBe(false);
   });
   it("does not flag technology names", () => {
     expect(hasForbiddenContent("ASP.NET, Node.js, C#/C++ và Socket.io")).toBe(false);

@@ -5,6 +5,7 @@ import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import express, { Router, type ErrorRequestHandler, type RequestHandler } from "express";
 import { z } from "zod";
 import type { DatabasePool } from "../../db/pool.js";
+import { cleanAiOutputKeys, keyNamesFrom } from "./key-cleanup.js";
 import { validateAiOutput, validationContextFromAiInput } from "./validate.js";
 
 export const AI_JOB_LEASE_MINUTES = 15;
@@ -167,8 +168,14 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
       if (!("error" in input)) {
         const context = job.ai_input ? validationContextFromAiInput({ schema: job.ai_input.schema, user: job.ai_input.user }) : null;
         const checked = context ? validateAiOutput(input.output, context) : null;
-        if (checked?.ok) output = checked.output;
-        else errorCode = "invalid_ai_output";
+        if (checked?.ok) {
+          // Keys the model wrote into prose are replaced by names before storing (comp-v3).
+          const names = await client.query<{ skills: unknown; groups: unknown }>(
+            `SELECT computed->'skillDirectory' AS skills,computed->'groups' AS groups FROM stu_comp_assessments WHERE id=$1 AND user_id=$2`,
+            [job.assessment_id, job.user_id]);
+          const row = names.rows[0];
+          output = cleanAiOutputKeys(checked.output, keyNamesFrom(row?.skills, row?.groups));
+        } else errorCode = "invalid_ai_output";
       }
       const promptVersion = typeof job.ai_input?.promptVersion === "string" ? job.ai_input.promptVersion : null;
       if (errorCode === null && !("error" in input)) {

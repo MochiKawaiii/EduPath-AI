@@ -15,8 +15,10 @@ import { AI_OUTPUT_LIMITS as L, buildOutputSchema, type JsonSchema, type OutputS
 /**
  * comp-v2: separate strength/improvement enums, planned courses no longer listed as evidence,
  * no numeric fit index, no keys or course codes in prose, field rules against repetition.
+ * comp-v3: numbers exactly as the page shows them (100-point scores floored, deficits rounded up),
+ * terms in words ("học kỳ 3 năm học 2025–2026"), priority meanings, keys cleaned before storing.
  */
-export const PROMPT_VERSION = "comp-v2";
+export const PROMPT_VERSION = "comp-v3";
 
 /** Ollama options sent with every job (worker adds think/stream/truncate/keep_alive/model). */
 export const AI_OPTIONS = { num_ctx: 16384, num_predict: 4096, temperature: 0.4, top_p: 0.95, top_k: 64 } as const;
@@ -75,28 +77,43 @@ export function formatNumber(value: number, digits = 2): string {
   const rounded = Math.round(value * factor) / factor;
   return String(rounded).replace(".", ",");
 }
+/**
+ * A 100-point score (skill, group, overall, career threshold) exactly as the page shows it:
+ * a whole number rounded down (web formatScore), so 83,92 is sent as 83.
+ */
+export function formatScore(value: number): string {
+  return String(Math.floor(value + 1e-9));
+}
+/** A career deficit as the page shows it: whole points rounded up, at least 1 (web deficitPoints). */
+export function formatDeficit(deficit: number): string {
+  return String(Math.max(1, Math.ceil(deficit - 1e-9)));
+}
+/** A share as a whole percentage, like the page (web formatPercent). */
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
-/** "HK253" -> "HK253 (HK3 năm học 2025-2026)"; anything else is returned sanitized. */
+/** "HK253" -> "học kỳ 3 năm học 2025–2026" (HKyyS: yy = start year % 100); anything else is returned sanitized. */
 export function termText(term: string | null | undefined): string {
   if (!term) return "chưa xếp lịch";
   const match = /^HK(\d{2})(\d)$/.exec(term.trim());
   if (!match) return sanitizeText(term, 40);
   const start = 2000 + Number(match[1]);
-  return `${term.trim()} (HK${match[2]} năm học ${start}-${start + 1})`;
+  return `học kỳ ${match[2]} năm học ${start}–${start + 1}`;
 }
+/** "sắp học vào học kỳ 1 năm học 2026–2027", or "sắp học, chưa xếp lịch". */
+const plannedText = (term: string | null | undefined) => (term ? `sắp học vào ${termText(term)}` : "sắp học, chưa xếp lịch");
 
 const SYSTEM_PROMPT_BASE = `Bạn là cố vấn học tập của EduPath AI, đồng hành cùng sinh viên ngành Công nghệ Thông tin, Trường Đại học Văn Lang.
 Hệ thống đã tính sẵn mọi con số từ bảng điểm, trọng số học phần, chương trình đào tạo, kế hoạch đào tạo, tiêu chuẩn xét tốt nghiệp và yêu cầu của nghề mục tiêu. Việc của bạn là đọc kết quả đó, chọn và xếp ưu tiên trong các danh sách được cung cấp, rồi viết nhận xét, giải thích, lời khuyên dành riêng cho sinh viên này.
 
 Nguyên tắc dữ liệu (bắt buộc):
-1. Không tự tính, ước lượng hay làm tròn lại bất kỳ con số nào. Nếu nhắc đến số liệu, chép đúng như trong dữ liệu.
+1. Không tự tính, ước lượng hay làm tròn lại bất kỳ con số nào. Nếu nhắc đến số liệu, chép đúng từng chữ số như trong dữ liệu, không thêm chữ số thập phân (dữ liệu ghi "điểm 83" thì viết 83, không viết 83,5 hay 83,92).
 2. Chỉ nói về kỹ năng, nhóm kỹ năng, học phần, nghề nghiệp có trong dữ liệu. Khóa kỹ năng (S01…), khóa nhóm (G1…) và mã học phần chỉ dùng trong các trường skillKey, groupKey, courseCode; trong văn bản luôn gọi bằng tên. Chỉ chọn học phần trong danh sách gợi ý của đúng kỹ năng đó. Không bịa tên khóa học, chứng chỉ, đường link hay giảng viên.
 3. Kỹ năng "Chưa đủ dữ liệu" nghĩa là chương trình đào tạo chưa có học phần đo kỹ năng này. Không kết luận sinh viên yếu; hãy gợi ý cách tự học và tự kiểm chứng bằng sản phẩm cụ thể.
 4. "Chưa có minh chứng" nghĩa là sinh viên chưa học học phần liên quan; "Sắp học" nghĩa là học phần nằm ở học kỳ sau theo kế hoạch. Cả hai đều không phải học kém.
 5. Mỗi kỹ năng có "phạm vi" mô tả những gì học phần thực sự dạy. Không khẳng định sinh viên thành thạo công cụ mà phạm vi ghi là chưa xác nhận.
 6. Không phán xét con người, không so sánh với sinh viên khác, không hứa hẹn về kết quả tốt nghiệp hay việc làm. Kết quả xét tốt nghiệp chính thức do nhà trường công bố.
 7. Nếu có cảnh báo dữ liệu, nói ngắn gọn cảnh báo đó ảnh hưởng thế nào tới độ chính xác.
+8. Gọi học kỳ bằng chữ đúng như trong dữ liệu, ví dụ "học kỳ 3 năm học 2025–2026"; không viết mã học kỳ dạng HK253.
 
 Văn phong:
 - Tiếng Việt tự nhiên, ấm áp, rõ ràng; gọi sinh viên là "bạn".
@@ -111,7 +128,7 @@ const OUTPUT_DESCRIPTION = `Cấu trúc JSON (giới hạn tính theo số ký t
 - summary: 2–3 câu tổng quan, tối đa ${L.summary} ký tự; không lặp chi tiết sẽ nói ở careerFit, gaps hay nextSteps.
 - groupInsights: tối đa ${L.groupInsights} mục { groupKey: khóa nhóm G…, comment: tối đa ${L.groupComment} ký tự } cho các nhóm kỹ năng đáng chú ý.
 - strengths: tối đa ${L.strengths} mục { skillKey: khóa kỹ năng S…, comment: tối đa ${L.skillComment} ký tự } về điểm mạnh; chỉ chọn kỹ năng ở dòng "Có thể nêu là điểm mạnh" của mục [3]; minh chứng chỉ là học phần đã học, không lấy học phần đang học hay sắp học.
-- improvements: tối đa ${L.improvements} mục { skillKey, priority: "high" | "medium" | "low", comment: tối đa ${L.skillComment} ký tự } về kỹ năng nên cải thiện; chỉ chọn kỹ năng ở dòng "Có thể nêu là cần cải thiện" của mục [3].
+- improvements: tối đa ${L.improvements} mục { skillKey, priority: "high" (cần làm sớm) | "medium" (nên làm) | "low" (có thể để sau), comment: tối đa ${L.skillComment} ký tự } về kỹ năng nên cải thiện; chỉ chọn kỹ năng ở dòng "Có thể nêu là cần cải thiện" của mục [3].
 - careerFit: { comment: tối đa ${L.careerFit} ký tự } về mức phù hợp với nghề mục tiêu; chép đúng tính chất Bắt buộc hay Ưu tiên của từng kỹ năng như mục [4]; chỉ nêu mức phù hợp bằng chữ, không đưa ra chỉ số hay phần trăm phù hợp; nếu chưa chọn nghề, nói ngắn gọn và gợi ý chọn nghề.
 - gaps: tối đa ${L.gaps} mục, chỉ cho kỹ năng trong mục "Ứng viên khoảng trống": { skillKey, priority, explanation: tối đa ${L.gapExplanation} ký tự, courses: tối đa ${L.gapCourses} mục { courseCode: mã trong danh sách của đúng kỹ năng đó, reason: tối đa ${L.courseReason} ký tự, chỉ dựa trên dòng của học phần đó trong mục [5] (học mới hay cải thiện, điều kiện, học kỳ) }, selfStudy: tối đa ${L.selfStudy} gợi ý tự học, mỗi gợi ý tối đa ${L.selfStudyItem} ký tự }.
 - progress: tối đa ${L.progress} ký tự về tiến độ so với kế hoạch đào tạo và xét tốt nghiệp (tham khảo).
@@ -202,7 +219,7 @@ function evidenceText(row: SkillEvidenceRow, course: CourseFact | undefined): st
     case "exempt": state = "miễn (MT)"; break;
     case "studied": state = course?.state === "failed" ? "chưa đạt" : "đã học, chưa rõ kết quả"; break;
     case "in_progress": state = "đang học"; break;
-    case "planned": state = `sắp học ${termText(course?.plannedTerm)}`; break;
+    case "planned": state = plannedText(course?.plannedTerm); break;
     default: state = "chưa chọn";
   }
   return `${code} ${name} (${state})`;
@@ -212,7 +229,7 @@ function skillLine(skill: SkillResult, courses: Map<string, CourseFact>): string
   const head = `${skill.key} | ${sanitizeText(skill.name)} | nhóm ${skill.groupKey}`;
   let status: string;
   if (skill.status === "scored" && skill.score !== null) {
-    status = `điểm ${formatNumber(skill.score)} | ${skill.levelLabel}`;
+    status = `điểm ${formatScore(skill.score)} | ${skill.levelLabel}`;
   } else if (skill.status === "exempt_only") {
     status = `${skill.levelLabel} (chỉ có học phần miễn MT)`;
   } else if (skill.status === "not_applicable") {
@@ -251,9 +268,9 @@ function supportLine(course: SupportCourse): string {
 
 function lateText(entry: LateEntry): string {
   switch (entry.kind) {
-    case "course": return `${sanitizeText(entry.code, 20)} ${sanitizeText(entry.name)} (${termText(entry.termCode)})`;
-    case "choice": return `${sanitizeText(entry.label)} (${termText(entry.termCode)}): còn thiếu ${formatNumber(entry.missing)} ${entry.unit === "course" ? "học phần" : "tín chỉ"}`;
-    default: return `${sanitizeText(entry.label)} (${termText(entry.termCode)}): đã đạt ${entry.passed}/${entry.required}`;
+    case "course": return `${sanitizeText(entry.code, 20)} ${sanitizeText(entry.name)} (kế hoạch: ${termText(entry.termCode)})`;
+    case "choice": return `${sanitizeText(entry.label)} (kế hoạch: ${termText(entry.termCode)}): còn thiếu ${formatNumber(entry.missing)} ${entry.unit === "course" ? "học phần" : "tín chỉ"}`;
+    default: return `${sanitizeText(entry.label)} (kế hoạch: ${termText(entry.termCode)}): đã đạt ${entry.passed}/${entry.required}`;
   }
 }
 
@@ -290,10 +307,10 @@ export function renderDataBlock(result: AssessmentResult, context: PromptContext
 
   push("", "[2. ĐIỂM TỔNG VÀ NHÓM KỸ NĂNG] (thang 100)");
   const o = result.overall;
-  push(`Điểm tổng: ${o.score !== null ? formatNumber(o.score) : "chưa có"} | ${o.levelLabel}${o.confidenceLabel ? ` | tin cậy ${o.confidenceLabel}` : ""}` +
+  push(`Điểm tổng: ${o.score !== null ? formatScore(o.score) : "chưa có"} | ${o.levelLabel}${o.confidenceLabel ? ` | tin cậy ${o.confidenceLabel}` : ""}` +
     ` | dựa trên ${o.basis.skillsWithEvidence}/${o.basis.applicableSkills} kỹ năng có minh chứng từ ${o.basis.evidenceCourses} học phần`);
   for (const group of result.groups) {
-    push(`${group.key} | ${sanitizeText(group.name)} | ${group.score !== null ? `điểm ${formatNumber(group.score)}` : "chưa có điểm"} | ${group.levelLabel}` +
+    push(`${group.key} | ${sanitizeText(group.name)} | ${group.score !== null ? `điểm ${formatScore(group.score)}` : "chưa có điểm"} | ${group.levelLabel}` +
       `${group.confidenceLabel ? ` | tin cậy ${group.confidenceLabel}` : ""} | ${group.skillsWithEvidence}/${group.skillCount} kỹ năng có minh chứng`);
   }
 
@@ -320,12 +337,12 @@ export function renderDataBlock(result: AssessmentResult, context: PromptContext
       const parts = [
         `${name}${title}`,
         req.priorityLabel,
-        `ngưỡng ${formatNumber(req.threshold)}`,
-        req.score !== null ? `điểm ${formatNumber(req.score)}` : "chưa có điểm",
+        `ngưỡng ${formatScore(req.threshold)}`,
+        req.score !== null ? `điểm ${formatScore(req.score)}` : "chưa có điểm",
         sanitizeText(req.statusLabel, 60)
       ];
-      if (req.status === "below" && req.deficit !== null) parts.push(`thiếu ${formatNumber(req.deficit)}${req.deficitBandLabel ? ` (${sanitizeText(req.deficitBandLabel, 40)})` : ""}`);
-      if (req.status === "upcoming") parts.push(`sắp học ${termText(req.upcomingTerm)}`);
+      if (req.status === "below" && req.deficit !== null) parts.push(`thiếu ${formatDeficit(req.deficit)}${req.deficitBandLabel ? ` (${sanitizeText(req.deficitBandLabel, 40)})` : ""}`);
+      if (req.status === "upcoming") parts.push(plannedText(req.upcomingTerm));
       if (req.exemptOnly) parts.push("chỉ đạt qua học phần miễn MT");
       push(`- ${parts.join(" | ")}`);
     }
@@ -378,7 +395,10 @@ export function renderDataBlock(result: AssessmentResult, context: PromptContext
       `${g.gpa.required !== null ? `, yêu cầu ${formatNumber(g.gpa.required)}` : ""} (thang ${g.gpa.scale})`);
   }
   for (const group of g.groups.filter((item) => item.status !== "pass")) {
-    push(`- ${sanitizeText(group.label)}: ${group.lower ?? "chưa rõ"}/${group.required ?? "chưa rõ"} ${group.unit}${group.status === "fail" ? " (chưa đủ)" : " (chưa rõ)"}`);
+    // Same range as the graduation table: "lower" or "lower đến upper".
+    const done = group.lower === null ? "chưa rõ" : group.upper !== null && group.upper !== group.lower
+      ? `${formatNumber(group.lower)} đến ${formatNumber(group.upper)}` : formatNumber(group.lower);
+    push(`- ${sanitizeText(group.label)}: ${done}/${group.required === null ? "chưa rõ" : formatNumber(group.required)} ${group.unit}${group.status === "fail" ? " (chưa đủ)" : " (chưa rõ)"}`);
   }
   if (g.needsImprovement) push("Các nhóm học phần đã đủ nhưng điểm trung bình chưa đạt: có thể học cải thiện.");
 

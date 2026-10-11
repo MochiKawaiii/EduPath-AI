@@ -28,7 +28,7 @@ function setup(handler: Handler = () => undefined) {
 }
 
 const validOutput = () => ({
-  summary: "Bạn có nền tảng lập trình hướng đối tượng vững với điểm 88,5.",
+  summary: "Bạn có nền tảng lập trình hướng đối tượng vững với điểm 88.",
   groupInsights: [],
   strengths: [{ skillKey: "S01", comment: "Nhập môn lập trình đạt điểm 8,5." }],
   improvements: [],
@@ -42,7 +42,8 @@ const success = (output: unknown = validOutput()) => ({ leaseToken: LEASE, model
 function jobRow(extra: Row = {}): Row {
   return { status: "processing", lease_token: LEASE, valid: true, assessment_id: ASSESSMENT, user_id: USER, ai_input: aiInput, ...extra };
 }
-const withJob = (row: Row | null): Handler => (sql) => (sql.includes("FROM stu_comp_ai_jobs WHERE id=$1 FOR UPDATE") ? { rows: row ? [row] : [] } : undefined);
+const withJob = (row: Row | null, names: Row | null = null): Handler => (sql) => (sql.includes("FROM stu_comp_ai_jobs WHERE id=$1 FOR UPDATE") ? { rows: row ? [row] : [] }
+  : names && sql.includes("computed->'skillDirectory'") ? { rows: [names] } : undefined);
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -83,7 +84,7 @@ describe("heartbeat and claim", () => {
   it("claims the oldest job with SKIP LOCKED, a 15 minute lease and returns the stored input", async () => {
     const { app, run, sql } = setup((s) => (s.includes("FOR UPDATE SKIP LOCKED") ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput }] } : undefined));
     const res = await request(app).post("/w/claim").set("Authorization", AUTH).expect(200);
-    expect(res.body.job).toEqual({ id: JOB, leaseToken: LEASE, promptVersion: "comp-v2", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
+    expect(res.body.job).toEqual({ id: JOB, leaseToken: LEASE, promptVersion: "comp-v3", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
     const claim = run.mock.calls.find(([s]) => s.includes("SKIP LOCKED"))!;
     expect(claim[0]).toContain("ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1");
     expect(claim[0]).toContain("status='processing' AND lease_until<now() AND attempts<$2");
@@ -166,12 +167,32 @@ describe("complete", () => {
     await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success()).expect(200, { ok: true });
     const calls = run.mock.calls.map(([s, p]) => [s, p] as const);
     const assessment = calls.find(([s]) => s.includes("SET ai_status='completed'"))!;
-    expect(assessment[1]).toEqual([ASSESSMENT, USER, JSON.stringify(validOutput()), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "comp-v2"]);
+    expect(assessment[1]).toEqual([ASSESSMENT, USER, JSON.stringify(validOutput()), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "comp-v3"]);
     const job = calls.find(([s]) => s.startsWith("UPDATE stu_comp_ai_jobs SET status=$2"))!;
     expect(job[0]).toContain("ai_input=NULL");
     expect(job[1]).toEqual([JOB, "completed", null, JSON.stringify({ eval_count: 900, total_ms: 120000 })]);
     expect(calls.at(-1)![0]).toBe("COMMIT");
     expect(release).toHaveBeenCalled();
+  });
+
+  it("replaces skill and group keys in prose with names before storing", async () => {
+    const result = syntheticResult();
+    const { app, run } = setup(withJob(jobRow(), { skills: result.skillDirectory, groups: result.groups }));
+    const output = {
+      ...validOutput(),
+      summary: "Lập trình hướng đối tượng (S01) là thế mạnh của nhóm G1.",
+      strengths: [{ skillKey: "S01", comment: "Bạn vững (Lập trình hướng đối tượng - S01)." }],
+      nextSteps: ["Ôn S03 - Kiểm thử phần mềm.", "Làm một sản phẩm nhỏ.", "Ôn lại Toán rời rạc."]
+    };
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(output)).expect(200, { ok: true });
+    const lookup = run.mock.calls.find(([s]) => s.includes("computed->'skillDirectory'"))!;
+    expect(lookup[1]).toEqual([ASSESSMENT, USER]);
+    const stored = JSON.parse((run.mock.calls.find(([s]) => s.includes("SET ai_status='completed'"))![1] as unknown[])[2] as string);
+    expect(stored.summary).toBe("Lập trình hướng đối tượng là thế mạnh của nhóm Kỹ thuật phần mềm.");
+    expect(stored.strengths).toEqual([{ skillKey: "S01", comment: "Bạn vững (Lập trình hướng đối tượng)." }]);
+    expect(stored.nextSteps[0]).toBe("Ôn Kiểm thử phần mềm.");
+    expect(stored.gaps[0].skillKey).toBe("S03");
+    expect(JSON.stringify([stored.summary, stored.strengths[0].comment, stored.nextSteps])).not.toMatch(/\b[SG]\d/);
   });
 
   it("fails the assessment with invalid_ai_output when the output does not validate", async () => {

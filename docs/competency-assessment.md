@@ -24,9 +24,11 @@ Trang `#competency` của cổng sinh viên tính năng lực từ bảng điể
 | Chuyên ngành sinh viên (CNPM/CNDL/TTNT) | migration 028, `PATCH /api/student/profile`, `specialty.ts` |
 | Nhận xét AI | `ai/*`, `apps/api/src/ai-worker/*`, `services/ai/` |
 
-## Công thức và ngưỡng (`CALC_VERSION = "comp-calc-v2"`)
+## Công thức và ngưỡng (`CALC_VERSION = "comp-calc-v3"`)
 
 > comp-calc-v2: kỹ năng dưới ngưỡng còn học phần **Học cải thiện** không bị liệt kê là "Không còn học phần nào trong CTĐT để học thêm" (chỉ khi không còn học phần học mới lẫn học cải thiện).
+>
+> comp-calc-v3: "x/y kỹ năng có minh chứng" của mỗi nhóm (`groups[].skillCount`) dùng cùng quy tắc với dòng tổng (`overall.basis.applicableSkills`): bỏ kỹ năng chỉ thuộc môn điều kiện và kỹ năng "Ngoài lựa chọn học phần của bạn" (`not_applicable`), nên tổng các nhóm bằng dòng tổng. Trang web tự đếm lại từ danh sách kỹ năng nên kết quả lưu trước v3 cũng hiển thị đúng.
 
 - `cr` = tín chỉ theo CTĐT, `w` = trọng số kỹ năng trong học phần.
 - **Điểm kỹ năng (0–100)** = `10 × Σ(score10 × cr × w) / Σ(cr × w)` trên các học phần có điểm (gồm cả lần F); MT tính là đã học nhưng không vào trung bình.
@@ -67,6 +69,8 @@ Xóa hoặc thay bảng điểm (kể cả qua OCR) xóa toàn bộ kết quả 
 - Server bật hàng đợi khi có `AI_WORKER_KEY` (≥ 32 ký tự, khác `OCR_WORKER_KEY`) trong `apps/api/.env` hoặc trên Render.
 - Mỗi sinh viên có tối đa một job đang chờ; bản mới hủy job cũ. Quá 25 job chờ toàn hệ thống → `deferred`.
 - Prompt `comp-v2`: system prompt cố định + khối dữ liệu đã làm sạch (bỏ token đặc biệt Gemma, ký tự điều khiển). Schema JSON được dựng riêng cho từng job: enum nhóm; enum **điểm mạnh** (kỹ năng mức Khá trở lên, không dưới ngưỡng nghề) tách khỏi enum **cần cải thiện** (dưới Khá hoặc dưới ngưỡng nghề); mã học phần theo từng kỹ năng khoảng trống. Khối dữ liệu chỉ ghi học phần đã học là "minh chứng" (đang học / sắp học ghi riêng), không gửi chỉ số phù hợp dạng số. Validator từ chối mã học phần trong văn bản không có trong khối dữ liệu (`foreign_course`) và kỹ năng vừa là điểm mạnh vừa cần cải thiện/khoảng trống (`conflicting_skill`); trang web còn thay khóa S…/G… lọt vào văn bản bằng tên.
+- Prompt `comp-v3`: khối dữ liệu ghi số **đúng như trang hiển thị** — điểm thang 100 (tổng, nhóm, kỹ năng, ngưỡng và điểm của yêu cầu nghề) là số nguyên làm tròn xuống như `formatScore`, mức thiếu làm tròn lên (tối thiểu 1) như `deficitPoints`, độ phủ là phần trăm nguyên, điểm học phần/tín chỉ/điểm trung bình tích lũy tối đa 2 chữ số thập phân. Validator lấy tập số cho phép từ khối dữ liệu nên "83,92" bị từ chối (`invented_number`). Học kỳ ghi bằng chữ ("học kỳ 3 năm học 2025–2026", từ mã HKyyS: yy = năm bắt đầu % 100, S = học kỳ); nếu mô hình vẫn viết mã của một học kỳ có trong dữ liệu (HK253) thì vẫn chấp nhận, mã bịa (HK271) bị từ chối. Prompt giải thích priority: high = "Cần làm sớm", medium = "Nên làm", low = "Có thể để sau" (nhãn trên trang; tránh trùng với tính chất "Ưu tiên" của yêu cầu nghề).
+- Trước khi lưu `ai_output`, server (`ai/key-cleanup.ts`) gỡ khóa S…/G… khỏi văn bản: khóa đứng cạnh chính tên của nó bị bỏ cùng dấu nối ("API (S12)" → "API", "(API - S12)" → "(API)", "S12 - API" → "API"), khóa trong ngoặc ở chỗ khác bị bỏ, khóa trần được thay bằng tên. Trang web chạy cùng quy tắc (`cleanKeyText`) cho các nhận xét lưu trước comp-v3.
 - Server kiểm tra lại đầu ra: schema Zod strict, danh sách khóa và mã cho phép, không URL/email/HTML, mọi con số trong văn bản phải có trong khối dữ liệu. Sai → `invalid_ai_output`, không hiển thị.
 
 ### Giao thức worker (`/api/worker/competency-assessments`)

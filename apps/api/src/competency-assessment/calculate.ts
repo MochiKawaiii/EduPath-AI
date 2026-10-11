@@ -383,7 +383,8 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
     for (const skill of members) addExposure(pooled, skill.nonCondition);
     addExposure(totalExposure, pooled);
     const result = summary(pooled);
-    const counted = members.filter((skill) => !skill.conditionOnly);
+    // Same rule as overall.basis: condition-only and not-applicable skills are not counted.
+    const counted = members.filter((skill) => !skill.conditionOnly && skill.status !== "not_applicable");
     return {
       key: groupKey.get(group.id)!, id: group.id, name: group.name, rawScore: result.score,
       score: result.score === null ? null : round(result.score), level: result.level, levelLabel: LEVEL_LABELS[result.level],
