@@ -4,7 +4,12 @@
 /** Stored in meta.calcVersion of every assessment. */
 /** v2: a below skill with a Học cải thiện course is no longer listed as "no course left". */
 /** v3: a group's skillCount leaves out not-applicable skills, like overall.basis.applicableSkills. */
-export const CALC_VERSION = "comp-calc-v3";
+/**
+ * v4: computed scores lose their float noise before they are classified (all 8.5 grades gave
+ * 84.99999999999999, i.e. Khá and below Bắt buộc 85), and 0–100 scores are stored rounded down to
+ * 2 decimals, so the whole number the page shows never reaches a level the score has not reached.
+ */
+export const CALC_VERSION = "comp-calc-v4";
 
 /** Skill, group and overall levels (0–100 scale), classified on unrounded values. */
 export const LEVEL_THRESHOLDS = { proficient: 85, good: 70, basic: 50 } as const;

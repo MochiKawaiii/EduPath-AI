@@ -60,6 +60,13 @@ export const round = (value: number, digits = 2) => {
 };
 /** Vietnamese decimal formatting without locale data: 0.6 → "0,6". */
 export const vn = (value: number, digits = 2) => String(round(value, digits)).replace(".", ",");
+/** A computed 0–100 score without float noise (84.99999999999999 → 85), so a level is not missed by 1e-14. */
+export const snapScore = (value: number) => Math.round(value * 1e9) / 1e9;
+/**
+ * A stored 0–100 score: 2 decimals rounded down. The page and the AI prompt show its whole part, so a
+ * score that has not reached a level is never shown at it (84.996 is stored as 84.99 and shown as 84).
+ */
+export const floorScore = (value: number) => Math.floor(value * 100 + 1e-9) / 100;
 
 /** Level from an unrounded 0–100 score. */
 export function levelOf(score: number | null, exemptOnly = false): LevelCode {
@@ -294,7 +301,7 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
     const skill = skillInputs.get(skillId)!;
     const all = exposure(links, () => true);
     const nonCondition = exposure(links, (row) => !row.conditionOnly);
-    const score = all.scoreDen > 0 ? 10 * all.scoreNum / all.scoreDen : null;
+    const score = all.scoreDen > 0 ? snapScore(10 * all.scoreNum / all.scoreDen) : null;
     const exempt = links.some((link) => link.row.applicable && link.row.state === "exempt");
     const inA = links.filter((link) => link.row.applicable);
     let status: SkillResult["status"], reason: NotApplicableReason | null = null;
@@ -356,7 +363,7 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
     return {
       key: skill.key, skillId: skill.skillId, name: skill.name, groupKey: groupKey.get(skill.groupId)!, groupId: skill.groupId,
       groupName: group.name, scope: skill.scope,
-      score: skill.score === null ? null : round(skill.score), level, levelLabel: LEVEL_LABELS[level],
+      score: skill.score === null ? null : floorScore(skill.score), level, levelLabel: LEVEL_LABELS[level],
       confidence, confidenceLabel: confidence ? CONFIDENCE_LABELS[confidence] : null,
       coverage: coverage === null ? null : round(coverage, 4), evidence: round(skill.all.num, 4), denominator: round(skill.all.den, 4),
       status: skill.status, notApplicableReason: skill.notApplicableReason, conditionOnly: skill.conditionOnly,
@@ -370,7 +377,7 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
 
   /* ---- 5. groups and overall, condition-only courses excluded (§7.4) ---- */
   const summary = (exp: Exposure) => {
-    const score = exp.scoreDen > 0 ? 10 * exp.scoreNum / exp.scoreDen : null;
+    const score = exp.scoreDen > 0 ? snapScore(10 * exp.scoreNum / exp.scoreDen) : null;
     const coverage = exp.den > 0 ? Math.min(1, Math.max(0, exp.num / exp.den)) : null;
     const level = levelOf(score, exp.exempt > 0);
     const confidence = score !== null || exp.exempt > 0 ? confidenceOf(coverage, exp.num) : null;
@@ -387,14 +394,14 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
     const counted = members.filter((skill) => !skill.conditionOnly && skill.status !== "not_applicable");
     return {
       key: groupKey.get(group.id)!, id: group.id, name: group.name, rawScore: result.score,
-      score: result.score === null ? null : round(result.score), level: result.level, levelLabel: LEVEL_LABELS[result.level],
+      score: result.score === null ? null : floorScore(result.score), level: result.level, levelLabel: LEVEL_LABELS[result.level],
       confidence: result.confidence, confidenceLabel: result.confidence ? CONFIDENCE_LABELS[result.confidence] : null,
       coverage: result.coverage === null ? null : round(result.coverage, 4), evidence: round(pooled.num, 4),
       skillCount: counted.length, skillsWithEvidence: counted.filter((skill) => skill.status === "scored" || skill.status === "exempt_only").length,
     };
   });
   const scoredGroups = groupResults.filter((group) => group.rawScore !== null);
-  const overallScore = scoredGroups.length ? scoredGroups.reduce((sum, group) => sum + group.rawScore!, 0) / scoredGroups.length : null;
+  const overallScore = scoredGroups.length ? snapScore(scoredGroups.reduce((sum, group) => sum + group.rawScore!, 0) / scoredGroups.length) : null;
   const overallSummary = summary(totalExposure);
   const overallLevel = levelOf(overallScore, totalExposure.exempt > 0);
   const overallConfidence = overallScore !== null || totalExposure.exempt > 0 ? overallSummary.confidence : null;
@@ -402,7 +409,7 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
   const evidenceCourseCodes = new Set(countedSkills.flatMap((skill) => skill.links)
     .filter((link) => !link.row.conditionOnly && isStudiedState(link.row.state)).map((link) => link.row.code));
   const overall = {
-    score: overallScore === null ? null : round(overallScore), level: overallLevel, levelLabel: LEVEL_LABELS[overallLevel],
+    score: overallScore === null ? null : floorScore(overallScore), level: overallLevel, levelLabel: LEVEL_LABELS[overallLevel],
     confidence: overallConfidence, confidenceLabel: overallConfidence ? CONFIDENCE_LABELS[overallConfidence] : null,
     coverage: overallSummary.coverage === null ? null : round(overallSummary.coverage, 4), evidence: round(totalExposure.num, 4),
     groupsWithScore: scoredGroups.length,
@@ -523,7 +530,7 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
         });
       }
       return {
-        ...base, score: score === null ? null : round(score), level, levelLabel: level ? LEVEL_LABELS[level] : null,
+        ...base, score: score === null ? null : floorScore(score), level, levelLabel: level ? LEVEL_LABELS[level] : null,
         confidence: skill && (skill.status === "scored" || skill.status === "exempt_only") ? confidenceOf(coverage, skill.all.num) : null,
         status, statusLabel: GAP_STATUS_LABELS[status], deficit: deficit === null ? null : round(deficit),
         deficitBand: band, deficitBandLabel: band ? DEFICIT_BAND_LABELS[band] : null,
@@ -557,7 +564,7 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
       dataText: `${counts.withData}/${counts.total} kỹ năng có dữ liệu`,
       fit: fitRaw === null ? null : round(fitRaw, 4), fitCode, fitLabel: FIT_LABELS[fitCode], dataShare: round(dataShare, 4),
       weightedMeanScore: meanCoefficient > 0
-        ? round(scoredRows.reduce((sum, row) => sum + row.coefficient * workById.get(row.skillId!)!.score!, 0) / meanCoefficient) : null,
+        ? floorScore(snapScore(scoredRows.reduce((sum, row) => sum + row.coefficient * workById.get(row.skillId!)!.score!, 0) / meanCoefficient)) : null,
       weightedMeanCount: scoredRows.length,
     };
     if (career.deleted) {

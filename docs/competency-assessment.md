@@ -9,7 +9,7 @@ Trang `#competency` của cổng sinh viên tính năng lực từ bảng điể
 | Bộ tính điểm dựa trên tri thức | Trọng số học phần → kỹ năng do Khoa cấu hình (AD-COMP). Mọi con số, mức, khoảng trống, gợi ý đều do lớp này tính, thuần và tất định. | `apps/api/src/competency-assessment/calculate.ts`, `constants.ts`, `course-state.ts`, `plan-progress.ts`, `graduation.ts`, `specialty.ts` |
 | Thu thập dữ liệu | Đọc ảnh chụp nhất quán (REPEATABLE READ READ ONLY): hồ sơ, bảng điểm, CTĐT, trọng số, tiêu chuẩn tốt nghiệp, KHĐT, nghề mục tiêu. | `inputs.ts` |
 | Lưu trữ và API | Lưu kết quả (tối đa 20 bản/sinh viên), đồng ý, hàng đợi AI. | `repository.ts`, `router.ts`, `ai/queue.ts` |
-| LLM cục bộ | `gemma4:e4b` qua Ollama trên máy của Khoa; chỉ diễn giải số liệu đã tính, đầu ra bị ràng buộc bằng JSON schema và kiểm tra lại phía server. | `ai/prompt.ts`, `ai/schema.ts`, `ai/validate.ts`, `ai/worker-router.ts`, `apps/api/src/ai-worker/` |
+| LLM cục bộ | `gemma4:e4b` qua Ollama trên máy chạy worker AI (hiện là laptop của nhóm thực hiện đồ án, GPU RTX 3050 4 GB); chỉ diễn giải số liệu đã tính, đầu ra bị ràng buộc bằng JSON schema và kiểm tra lại phía server. | `ai/prompt.ts`, `ai/schema.ts`, `ai/validate.ts`, `ai/worker-router.ts`, `apps/api/src/ai-worker/` |
 | Giao diện | Trang `#competency`, hộp thoại đồng ý, trạng thái nhận xét AI. | `apps/web/src/StudentCompetency.tsx`, `student-competency-data.ts` |
 
 ### Chức năng → thành phần
@@ -24,14 +24,16 @@ Trang `#competency` của cổng sinh viên tính năng lực từ bảng điể
 | Chuyên ngành sinh viên (CNPM/CNDL/TTNT) | migration 028, `PATCH /api/student/profile`, `specialty.ts` |
 | Nhận xét AI | `ai/*`, `apps/api/src/ai-worker/*`, `services/ai/` |
 
-## Công thức và ngưỡng (`CALC_VERSION = "comp-calc-v3"`)
+## Công thức và ngưỡng (`CALC_VERSION = "comp-calc-v4"`)
 
 > comp-calc-v2: kỹ năng dưới ngưỡng còn học phần **Học cải thiện** không bị liệt kê là "Không còn học phần nào trong CTĐT để học thêm" (chỉ khi không còn học phần học mới lẫn học cải thiện).
 >
 > comp-calc-v3: "x/y kỹ năng có minh chứng" của mỗi nhóm (`groups[].skillCount`) dùng cùng quy tắc với dòng tổng (`overall.basis.applicableSkills`): bỏ kỹ năng chỉ thuộc môn điều kiện và kỹ năng "Ngoài lựa chọn học phần của bạn" (`not_applicable`), nên tổng các nhóm bằng dòng tổng. Trang web tự đếm lại từ danh sách kỹ năng nên kết quả lưu trước v3 cũng hiển thị đúng.
+>
+> comp-calc-v4: điểm tính ra được làm sạch nhiễu số thực trước khi xếp mức (`snapScore`; ví dụ mọi học phần 8,5 điểm từng ra 84,99999999999999, tức "Khá" và chưa đạt Bắt buộc 85), và điểm thang 100 được lưu **làm tròn xuống** 2 chữ số (`floorScore`) thay vì làm tròn thường, nên số nguyên trang hiển thị không bao giờ đạt một mức mà điểm thật chưa đạt (84,996 lưu 84,99, hiển thị 84, thiếu 1).
 
 - `cr` = tín chỉ theo CTĐT, `w` = trọng số kỹ năng trong học phần.
-- **Điểm kỹ năng (0–100)** = `10 × Σ(score10 × cr × w) / Σ(cr × w)` trên các học phần có điểm (gồm cả lần F); MT tính là đã học nhưng không vào trung bình.
+- **Điểm kỹ năng (0–100)** = `10 × Σ(score10 × cr × w) / Σ(cr × w)` trên các học phần có điểm; mỗi học phần lấy lần học được chọn (lần đạt có điểm cao nhất, nên lần F trước đó bị bỏ qua sau khi học lại đạt; lần F chỉ được tính khi học phần chưa từng đạt); MT tính là đã học nhưng không vào trung bình.
 - **Độ phủ** dùng cùng tập học phần áp dụng A (học phần chung ∪ chuyên ngành đã chọn ∪ mọi học phần đã học); mẫu số tính theo hạn mức tín chỉ của từng nhóm tự chọn.
 - **Mức**: ≥85 Thành thạo, ≥70 Khá, ≥50 Cơ bản, <50 Cần củng cố.
 - **Độ tin cậy** = min(dải độ phủ 30%/70%, dải minh chứng Σ cr·w 1,0/2,5).

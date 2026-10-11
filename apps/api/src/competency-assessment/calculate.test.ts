@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  calculateAssessment, compareSkills, confidenceOf, deficitBand, fitCodeOf, fitCredit, levelOf,
+  calculateAssessment, compareSkills, confidenceOf, deficitBand, fitCodeOf, fitCredit, floorScore, levelOf, snapScore,
 } from "./calculate.js";
 import { CALC_VERSION } from "./constants.js";
 import {
@@ -32,6 +32,16 @@ const mapTerms = (map: (row: TranscriptTerm["rows"][number]) => TranscriptTerm["
   syntheticStudentTerms().map((term) => ({ ...term, rows: term.rows.map(map) }));
 
 describe("formula helpers (spec §7.3, §7.5, §7.6)", () => {
+  it("removes float noise and stores scores rounded down, so the shown whole number never passes a level", () => {
+    expect(snapScore(84.99999999999999)).toBe(85);
+    expect(snapScore(72.375)).toBe(72.375);
+    expect(floorScore(84.996)).toBe(84.99);
+    expect(floorScore(85)).toBe(85);
+    expect(floorScore(70.1)).toBe(70.1);
+    expect(floorScore(72.375)).toBe(72.37);
+    expect(levelOf(84.996)).toBe("good");
+  });
+
   it("classifies levels on unrounded scores", () => {
     expect(levelOf(84.999)).toBe("good");
     expect(levelOf(85)).toBe("proficient");
@@ -102,8 +112,8 @@ describe("calculateAssessment on the synthetic CNPM student", () => {
   });
 
   it("averages score10 × credits × weight over the selected attempts (retake after F counts its pass)", () => {
-    // (6.6·3·0.6 + 7.8·3·0.7 + 7.2·3·0.3) / (1.8 + 2.1 + 0.9) × 10
-    expect(byName(result, "Lập trình cơ bản")).toMatchObject({ score: 72.38, level: "good", evidence: 4.8, coverage: 1 });
+    // (6.6·3·0.6 + 7.8·3·0.7 + 7.2·3·0.3) / (1.8 + 2.1 + 0.9) × 10 = 72.375, stored rounded down (comp-calc-v4)
+    expect(byName(result, "Lập trình cơ bản")).toMatchObject({ score: 72.37, level: "good", evidence: 4.8, coverage: 1 });
     expect(result.courses.find((course) => course.code === "71ITBS10203")).toMatchObject({ state: "passed", score10: 6.6, attempts: 2, inferred: true });
   });
 
@@ -130,9 +140,22 @@ describe("calculateAssessment on the synthetic CNPM student", () => {
     expect(byName(result, "Học máy nhập môn")).toMatchObject({ score: 47, level: "needs_work", confidence: "high", otherSpecialtyCourses: ["71ITAI40803"] });
   });
 
+  it("reaches a level exactly at its threshold despite float noise (comp-calc-v4)", () => {
+    const codes = new Set(["71ITBS10203", "71ITSE30103", "71ITSE30503"]);
+    const inputs = syntheticInputs({
+      terms: mapTerms((row) => (codes.has(row[0]) ? [row[0], row[1], 8.5, 4, "A"] : row)),
+      career: career([[SKILL.programming, true]]),
+    });
+    // 10 × 8.5·(0.3 + 0.3 + 0.3) / 0.9 is 84.99999999999999 in floating point without the snap.
+    inputs.weights = { ...inputs.weights, links: inputs.weights.links.map((link) => (link.skillId === SKILL.programming ? { ...link, weight: 0.1 } : link)) };
+    const snapped = calculateAssessment(inputs);
+    expect(byName(snapped, "Lập trình cơ bản")).toMatchObject({ score: 85, level: "proficient" });
+    expect(snapped.career!.requirements[0]).toMatchObject({ status: "met", score: 85, deficit: null });
+  });
+
   it("keeps GDTC/GDQP out of group and overall scores but shows their skills", () => {
     const foundation = result.groups.find((group) => group.name === "Kiến thức nền tảng")!;
-    expect(foundation).toMatchObject({ score: 80.29, skillCount: 1, skillsWithEvidence: 1 });
+    expect(foundation).toMatchObject({ score: 80.28, skillCount: 1, skillsWithEvidence: 1 });
     expect(byName(result, "Kiến thức quốc phòng")).toMatchObject({ conditionOnly: true, score: 70 });
     const mean = result.groups.reduce((sum, group) => sum + group.score!, 0) / result.groups.length;
     expect(result.overall.score).toBeCloseTo(mean, 1);
