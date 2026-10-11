@@ -1,6 +1,6 @@
 # Tạo liên kết kỹ năng với nghề nghiệp (AI)
 
-Chức năng đi kèm AD-REQ-03 "Tạo liên kết kỹ năng với nghề nghiệp (thủ công)". Trong **Quản lý nghề nghiệp → một vị trí → Yêu cầu và kỹ năng**, admin nhờ LLM cục bộ (`gemma4:e4b` qua Ollama trên máy của Khoa, cùng worker với nhận xét năng lực) đề xuất kỹ năng cho vị trí đó. Admin xem lại danh sách, bỏ chọn hoặc xóa dòng, đổi kỹ năng, sửa **Nội dung yêu cầu** và **Mô tả**, đổi **Bắt buộc/Ưu tiên**, rồi chỉ lưu những dòng giữ lại. Không có gì được lưu nếu admin không bấm lưu; kết quả AI không bao giờ được áp dụng nguyên trạng một cách tự động.
+Chức năng đi kèm AD-REQ-03 "Tạo liên kết kỹ năng với nghề nghiệp (thủ công)". Trong **Quản lý nghề nghiệp → một vị trí → Yêu cầu và kỹ năng**, admin nhờ LLM cục bộ (`gemma4:e4b` qua Ollama trên máy chạy worker AI, hiện là laptop của nhóm thực hiện đồ án, cùng worker với nhận xét năng lực) đề xuất kỹ năng cho vị trí đó. Admin xem lại danh sách, bỏ chọn hoặc xóa dòng, đổi kỹ năng, sửa **Nội dung yêu cầu** và **Mô tả**, đổi **Bắt buộc/Ưu tiên**, rồi chỉ lưu những dòng giữ lại. Không có gì được lưu nếu admin không bấm lưu; kết quả AI không bao giờ được áp dụng nguyên trạng một cách tự động.
 
 ## Thành phần
 
@@ -152,7 +152,7 @@ So sánh v1 và v2 bằng cách nhóm theo `prompt_version`.
 1. Backend có `AI_WORKER_KEY` trong `apps/api/.env` (tạo bằng `node scripts/setup-ai-worker.mjs`, xem `services/ai/README.md`). Dev server tự áp dụng migration 031 khi khởi động lại.
 2. Chạy worker: `npm run ai-worker -w @edupath/api` hoặc `services/ai/start-worker.ps1`.
 3. **Sau khi cập nhật mã nguồn, khởi động lại worker một lần.** Worker đang chạy từ trước vẫn làm job nhận xét năng lực bình thường nhưng không báo hỗ trợ `career_skill_suggestion`, nên trang hiển thị worker chưa hỗ trợ đề xuất kỹ năng và job nghề nghiệp nằm chờ cho tới khi worker mới nhận.
-4. Mở **Quản lý nghề nghiệp → một vị trí → Yêu cầu và kỹ năng** và yêu cầu AI đề xuất. Với danh mục local hiện tại (khoảng 130 kỹ năng chưa liên kết cho một vị trí), khối dữ liệu dài khoảng 10.000 ký tự, ngắn hơn prompt nhận xét năng lực; thời gian sinh thực tế chưa đo.
+4. Mở **Quản lý nghề nghiệp → một vị trí → Yêu cầu và kỹ năng** và yêu cầu AI đề xuất. Với danh mục local hiện tại (khoảng 130 kỹ năng chưa liên kết cho một vị trí), khối dữ liệu dài khoảng 10.000 ký tự (khoảng 4.000 token vào), ngắn hơn prompt nhận xét năng lực. Đo thực tế với `gemma4:e4b` trên RTX 3050 4 GB (`OLLAMA_NUM_GPU=38`): khoảng 25–40 giây mỗi vị trí từ lúc nhận việc đến lúc hoàn tất, 1.100–1.400 token ra.
 
 ## Giao diện
 
