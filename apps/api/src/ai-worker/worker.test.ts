@@ -196,3 +196,40 @@ describe("runWorker", () => {
     expect((client.claim as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThanOrEqual(12);
   });
 });
+
+describe("processJob job kinds", () => {
+  const careerJob: ClaimedJob = { ...job, kind: "career_skill_suggestion", promptVersion: "career-skill-v1" };
+  const careerOutput = {
+    suggestions: [{ skillKey: "S001", priority: "required", title: "Viết truy vấn SQL", description: "Mô tả", reason: "Lý do" }],
+    newSkills: []
+  };
+
+  it("checks a career job with the career shape and logs the kind without any prompt or output text", async () => {
+    const logs: string[] = [];
+    const { client, completions } = fakeClient();
+    const chat = vi.fn<OllamaPort["chat"]>().mockResolvedValue(ok(JSON.stringify(careerOutput)));
+    expect(await processJob(careerJob, info, deps(client, chat, logs), new AbortController().signal)).toBe("completed");
+    expect(completions[0]?.body).toMatchObject({ leaseToken: "lease-1", output: careerOutput });
+    const events = logs.map((line) => JSON.parse(line) as Record<string, unknown>);
+    for (const name of ["job_claimed", "generation_finished", "job_finished"]) {
+      expect(events.find((event) => event.event === name)).toMatchObject({ kind: "career_skill_suggestion" });
+    }
+    expect(logs.join("\n")).not.toMatch(/BÍ MẬT|Viết truy vấn/);
+  });
+
+  it("retries once and fails a career job that returned the competency shape", async () => {
+    const { client, completions } = fakeClient();
+    const chat = vi.fn<OllamaPort["chat"]>().mockResolvedValue(ok(JSON.stringify(validOutput)));
+    expect(await processJob(careerJob, info, deps(client, chat), new AbortController().signal)).toBe("failed");
+    expect(chat).toHaveBeenCalledTimes(2);
+    expect(completions[0]?.body).toEqual({ leaseToken: "lease-1", error: "invalid_ai_output" });
+  });
+
+  it("treats a job without kind as a competency assessment", async () => {
+    const logs: string[] = [];
+    const { client } = fakeClient();
+    const chat = vi.fn<OllamaPort["chat"]>().mockResolvedValue(ok(JSON.stringify(validOutput)));
+    expect(await processJob(job, info, deps(client, chat, logs), new AbortController().signal)).toBe("completed");
+    expect(JSON.parse(logs[0]!)).toMatchObject({ event: "job_claimed", kind: "competency_assessment" });
+  });
+});

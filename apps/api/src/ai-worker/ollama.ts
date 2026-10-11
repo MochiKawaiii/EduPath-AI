@@ -1,3 +1,5 @@
+import { CAREER_SKILL_SUGGESTION_KIND, type AiJobKind } from "../competency-assessment/ai/worker-protocol.js";
+
 /** Error codes the worker may report to the API (contract C3). */
 export const AI_ERROR_CODES = ["ai_timeout", "ai_output_truncated", "invalid_ai_output", "ollama_unavailable", "ai_failed"] as const;
 export type AiErrorCode = (typeof AI_ERROR_CODES)[number];
@@ -251,11 +253,7 @@ export async function ollamaChat(runtime: OllamaRuntime, job: OllamaJob, deps: O
 
 const TOP_LEVEL_ARRAYS = ["groupInsights", "strengths", "improvements", "gaps", "nextSteps"] as const;
 
-/**
- * Quick local parse + shape check before posting (the API validates fully).
- * Throws invalid_ai_output when the content is not a plausible AiOutput object.
- */
-export function parseAiOutput(content: string): Record<string, unknown> {
+function parseJsonObject(content: string): Record<string, unknown> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(content.trim());
@@ -263,7 +261,15 @@ export function parseAiOutput(content: string): Record<string, unknown> {
     throw new AiWorkerError("invalid_ai_output", "not_json");
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new AiWorkerError("invalid_ai_output", "not_object");
-  const output = parsed as Record<string, unknown>;
+  return parsed as Record<string, unknown>;
+}
+
+/**
+ * Quick local parse + shape check before posting (the API validates fully).
+ * Throws invalid_ai_output when the content is not a plausible AiOutput object.
+ */
+export function parseAiOutput(content: string): Record<string, unknown> {
+  const output = parseJsonObject(content);
   if (typeof output.summary !== "string" || output.summary.trim() === "") throw new AiWorkerError("invalid_ai_output", "summary");
   if (typeof output.progress !== "string") throw new AiWorkerError("invalid_ai_output", "progress");
   for (const key of TOP_LEVEL_ARRAYS) {
@@ -276,6 +282,26 @@ export function parseAiOutput(content: string): Record<string, unknown> {
   const nextSteps = output.nextSteps as unknown[];
   if (nextSteps.length < 1 || nextSteps.some((step) => typeof step !== "string")) throw new AiWorkerError("invalid_ai_output", "nextSteps");
   return output;
+}
+
+/**
+ * Quick local check of a career skill suggestion: a JSON object with a "suggestions" array and a
+ * "newSkills" array of objects. The API drops bad items and validates the rest.
+ */
+export function parseCareerSuggestionOutput(content: string): Record<string, unknown> {
+  const output = parseJsonObject(content);
+  for (const key of ["suggestions", "newSkills"] as const) {
+    const items = output[key];
+    if (!Array.isArray(items) || items.some((item) => !item || typeof item !== "object" || Array.isArray(item))) {
+      throw new AiWorkerError("invalid_ai_output", key);
+    }
+  }
+  return output;
+}
+
+/** The local output check for a job kind. */
+export function parseJobOutput(kind: AiJobKind, content: string): Record<string, unknown> {
+  return kind === CAREER_SKILL_SUGGESTION_KIND ? parseCareerSuggestionOutput(content) : parseAiOutput(content);
 }
 
 export interface OllamaModelInfo {

@@ -1,23 +1,41 @@
 // Worker API for the local AI commentary (contract C3, spec §8). Mounted at
 // /api/worker/competency-assessments BEFORE the global JSON parser: the key is checked
 // before any body is read, then this router parses JSON itself (512 kB).
+// The same endpoints also serve career skill suggestions (careers/ai-suggestions/jobs.ts) to
+// workers that advertise the "career_skill_suggestion" kind; extend/complete find the id in
+// either job table.
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import express, { Router, type ErrorRequestHandler, type RequestHandler } from "express";
 import { z } from "zod";
 import type { DatabasePool } from "../../db/pool.js";
+import {
+  claimCareerSuggestion,
+  completeCareerSuggestion,
+  createCareerSuggestionExpiry,
+  extendCareerSuggestion
+} from "../../careers/ai-suggestions/jobs.js";
 import { cleanAiOutputKeys, keyNamesFrom } from "./key-cleanup.js";
 import { validateAiOutput, validationContextFromAiInput } from "./validate.js";
+import {
+  AI_HOUSEKEEPING_INTERVAL_MS,
+  AI_JOB_LEASE_MINUTES,
+  AI_JOB_MAX_ATTEMPTS,
+  AI_WORKER_ERROR_CODES,
+  CAREER_SKILL_SUGGESTION_KIND,
+  COMPETENCY_ASSESSMENT_KIND,
+  normalizeJobKinds,
+  type AiJobKind
+} from "./worker-protocol.js";
 
-export const AI_JOB_LEASE_MINUTES = 15;
-export const AI_JOB_MAX_ATTEMPTS = 2;
-export const AI_HOUSEKEEPING_INTERVAL_MS = 60_000;
-export const AI_WORKER_ERROR_CODES = ["ai_timeout", "ai_output_truncated", "invalid_ai_output", "ollama_unavailable", "ai_failed"] as const;
+export { AI_HOUSEKEEPING_INTERVAL_MS, AI_JOB_LEASE_MINUTES, AI_JOB_MAX_ATTEMPTS, AI_WORKER_ERROR_CODES } from "./worker-protocol.js";
 
 class WorkerError extends Error {
   constructor(readonly code: string, readonly status: number) { super(code); }
 }
 
 const leaseBody = z.object({ leaseToken: z.uuid() }).strict();
+/** Optional on /heartbeat and /claim; workers released before career suggestions send {}. */
+const kindsBody = z.object({ kinds: z.array(z.string().max(64)).max(16).optional() });
 const metricsSchema = z.record(z.string().max(64), z.union([z.number(), z.string().max(200), z.boolean(), z.null()]))
   .refine((value) => Object.keys(value).length <= 32, "too_many_metrics");
 const completeBody = z.union([
@@ -79,6 +97,7 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
   const hash = (value: string) => createHash("sha256").update(value).digest();
   const expected = aiWorkerKey ? hash(`Bearer ${aiWorkerKey}`) : null;
   const housekeeping = createCompetencyAiExpiry();
+  const careerHousekeeping = createCareerSuggestionExpiry();
 
   const authenticate: RequestHandler = (req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -90,21 +109,50 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
   router.use(express.json({ limit: "512kb" }));
   const db = pool!;
 
-  const heartbeat = () => db.query("INSERT INTO stu_comp_ai_worker_status(id,seen_at) VALUES(1,now()) ON CONFLICT(id) DO UPDATE SET seen_at=now()");
+  const heartbeat = (kinds: AiJobKind[]) => db.query(
+    "INSERT INTO stu_comp_ai_worker_status(id,seen_at,kinds) VALUES(1,now(),$1::text[]) ON CONFLICT(id) DO UPDATE SET seen_at=now(),kinds=EXCLUDED.kinds",
+    [kinds]);
+  const jobKinds = (body: unknown) => {
+    const parsed = kindsBody.safeParse(body ?? {});
+    if (!parsed.success) throw new WorkerError("invalid_input", 400);
+    return normalizeJobKinds(parsed.data.kinds);
+  };
   const jobId = (value: unknown) => {
     const parsed = z.uuid().safeParse(value);
     if (!parsed.success) throw new WorkerError("invalid_input", 400);
     return parsed.data;
   };
 
-  router.post("/heartbeat", async (_req, res) => {
-    await heartbeat();
+  router.post("/heartbeat", async (req, res) => {
+    await heartbeat(jobKinds(req.body));
     res.json({ ok: true });
   });
 
-  router.post("/claim", async (_req, res) => {
-    await heartbeat();
+  router.post("/claim", async (req, res) => {
+    const kinds = jobKinds(req.body);
+    await heartbeat(kinds);
     await housekeeping(db);
+    await careerHousekeeping(db);
+    // Career suggestions first: an admin is waiting on the page and these jobs are rare.
+    if (kinds.includes(CAREER_SKILL_SUGGESTION_KIND)) {
+      const career = await claimCareerSuggestion(db, randomUUID());
+      if (career) {
+        const input = career.aiInput;
+        // The key map (catalog/linked) stays on the server.
+        res.json({ job: {
+          kind: CAREER_SKILL_SUGGESTION_KIND,
+          id: career.id,
+          leaseToken: career.leaseToken,
+          promptVersion: input.promptVersion,
+          system: input.system,
+          user: input.user,
+          schema: input.schema,
+          options: input.options
+        } });
+        return;
+      }
+    }
+    if (!kinds.includes(COMPETENCY_ASSESSMENT_KIND)) { res.json({ job: null }); return; }
     const result = await db.query<{ id: string; leaseToken: string; aiInput: Record<string, unknown> }>(`WITH candidate AS (
         SELECT id FROM stu_comp_ai_jobs
         WHERE ai_input IS NOT NULL AND (status='queued' OR (status='processing' AND lease_until<now() AND attempts<$2))
@@ -120,6 +168,7 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
     if (!row) { res.json({ job: null }); return; }
     const input = row.aiInput;
     res.json({ job: {
+      kind: COMPETENCY_ASSESSMENT_KIND,
       id: row.id,
       leaseToken: row.leaseToken,
       promptVersion: input.promptVersion,
@@ -138,9 +187,9 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
       `UPDATE stu_comp_ai_jobs SET lease_until=now()+make_interval(mins => $3),updated_at=now()
         WHERE id=$1 AND status='processing' AND lease_token=$2 AND lease_until>now() RETURNING lease_until AS "leaseUntil"`,
       [id, body.data.leaseToken, AI_JOB_LEASE_MINUTES]);
-    const row = result.rows[0];
-    if (!row) throw new WorkerError("job_expired", 409);
-    res.json({ leaseUntil: new Date(row.leaseUntil).toISOString() });
+    const leaseUntil = result.rows[0]?.leaseUntil ?? await extendCareerSuggestion(db, id, body.data.leaseToken);
+    if (!leaseUntil) throw new WorkerError("job_expired", 409);
+    res.json({ leaseUntil: new Date(leaseUntil).toISOString() });
   });
 
   router.post("/:id/complete", async (req, res) => {
@@ -159,7 +208,14 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
         res.json({ ok: true });
         return;
       }
-      if (!job || job.status !== "processing" || job.lease_token !== input.leaseToken || job.valid !== true) {
+      if (!job) {
+        // Not a competency job: the id may be a career skill suggestion.
+        if (await completeCareerSuggestion(client, id, input) !== "ok") throw new WorkerError("job_expired", 409);
+        await client.query("COMMIT");
+        res.json({ ok: true });
+        return;
+      }
+      if (job.status !== "processing" || job.lease_token !== input.leaseToken || job.valid !== true) {
         throw new WorkerError("job_expired", 409);
       }
 

@@ -7,6 +7,8 @@ import {
   getOllamaModelInfo,
   ollamaChat,
   parseAiOutput,
+  parseCareerSuggestionOutput,
+  parseJobOutput,
   type FetchLike,
   type OllamaJob,
   type OllamaRuntime
@@ -223,6 +225,34 @@ describe("parseAiOutput", () => {
   ])("rejects %s as invalid_ai_output", (_name, content) => {
     expect(() => parseAiOutput(content)).toThrowError(AiWorkerError);
     expect(() => parseAiOutput(content)).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
+  });
+});
+
+describe("parseCareerSuggestionOutput", () => {
+  const career = {
+    suggestions: [{ skillKey: "S001", priority: "required", title: "Viết truy vấn SQL", description: "Mô tả", reason: "Lý do" }],
+    newSkills: []
+  };
+
+  it("accepts an object with suggestions and newSkills arrays, also when both are empty", () => {
+    expect(parseCareerSuggestionOutput(JSON.stringify(career))).toEqual(career);
+    expect(parseCareerSuggestionOutput(JSON.stringify({ suggestions: [], newSkills: [] }))).toEqual({ suggestions: [], newSkills: [] });
+  });
+
+  it.each([
+    ["not json", "{\"suggestions\":"],
+    ["array", "[]"],
+    ["missing newSkills", JSON.stringify({ suggestions: [] })],
+    ["suggestions not array", JSON.stringify({ suggestions: {}, newSkills: [] })],
+    ["item not an object", JSON.stringify({ suggestions: ["SQL"], newSkills: [] })]
+  ])("rejects %s as invalid_ai_output", (_name, content) => {
+    expect(() => parseCareerSuggestionOutput(content)).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
+  });
+
+  it("parseJobOutput runs the check of the job kind", () => {
+    expect(parseJobOutput("career_skill_suggestion", JSON.stringify(career))).toEqual(career);
+    expect(() => parseJobOutput("competency_assessment", JSON.stringify(career))).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
+    expect(() => parseJobOutput("career_skill_suggestion", JSON.stringify(validOutput))).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
   });
 });
 

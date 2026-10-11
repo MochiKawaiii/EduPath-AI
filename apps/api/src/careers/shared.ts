@@ -4,7 +4,8 @@ import { adminRoles, type AuthenticatedUser } from "../auth/types.js";
 
 export const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").toLowerCase();
 export class CareerError extends Error {
-  constructor(readonly code: string, readonly status = 400) { super(code); }
+  /** details are added to the JSON error body (e.g. the skills of a requirement_exists conflict). */
+  constructor(readonly code: string, readonly status = 400, readonly details?: Record<string, unknown>) { super(code); }
 }
 /** Serialize skill renames/deletions with link writes before taking career row locks. */
 export async function lockSkillCatalog(client: PoolClient) {

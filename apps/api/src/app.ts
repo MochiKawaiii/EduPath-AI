@@ -173,7 +173,7 @@ export function createApp({
 
   app.use("/api/admin/accounts", createAdminAccountsRouter(adminAccountRepository, config.webOrigin));
   app.use("/api/admin/curricula", createCurriculaRouter(databasePool, config.webOrigin));
-  app.use("/api/admin/careers", createCareersRouter(databasePool, config.webOrigin));
+  app.use("/api/admin/careers", createCareersRouter(databasePool, config.webOrigin, false, { aiSuggestions: Boolean(config.aiWorkerKey) }));
   app.use("/api/admin/competencies", createCompetenciesRouter(databasePool, config.webOrigin));
   app.use("/api/student/careers", createCareersRouter(databasePool, config.webOrigin, true));
   app.use("/api/admin/graduation", createGraduationRouter(databasePool, config.webOrigin));

@@ -20,12 +20,12 @@ const columns = `r.id,r.career_position_id AS "careerPositionId",r.skill_id AS "
 const from = `FROM career_requirements r JOIN career_positions c ON c.id=r.career_position_id
  JOIN career_fields f ON f.code=c.category LEFT JOIN career_skills s ON s.id=r.skill_id`;
 
-async function lockCareers(client: PoolClient, ids: string[]) {
+export async function lockCareers(client: PoolClient, ids: string[]) {
   const unique = [...new Set(ids)].sort();
   const found = await client.query("SELECT id FROM career_positions WHERE id=ANY($1::uuid[]) AND deleted_at IS NULL ORDER BY id FOR UPDATE", [unique]);
   if (found.rowCount !== unique.length) throw new CareerError("career_not_found", 404);
 }
-async function skillFor(client: PoolClient, data: { skillId: string | null; skillName: string }) {
+export async function skillFor(client: PoolClient, data: { skillId: string | null; skillName: string }) {
   if (data.skillId) {
     const found = await client.query("SELECT id FROM career_skills WHERE id=$1 AND deleted_at IS NULL FOR SHARE", [data.skillId]);
     if (!found.rowCount) throw new CareerError("skill_not_found", 404);

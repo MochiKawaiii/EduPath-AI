@@ -1,6 +1,6 @@
 # Worker AI (Ollama + Gemma 4 E4B)
 
-Worker này chạy trên máy cá nhân có GPU. Nó lấy các yêu cầu nhận xét AI từ API EduPath, gọi Ollama ở chính máy này để sinh nhận xét, rồi gửi kết quả về API. Dữ liệu chỉ đi giữa API và máy chạy worker; Ollama chỉ nghe trên `127.0.0.1`.
+Worker này chạy trên máy cá nhân có GPU. Nó lấy job AI từ API EduPath, gọi Ollama ở chính máy này, rồi gửi kết quả về API. Có hai loại job: nhận xét năng lực cho sinh viên (`competency_assessment`) và đề xuất kỹ năng cho vị trí nghề nghiệp ở trang quản trị (`career_skill_suggestion`, xem `docs/career-ai-suggestions.md`). Dữ liệu chỉ đi giữa API và máy chạy worker; Ollama chỉ nghe trên `127.0.0.1`.
 
 Mã nguồn nằm ở `apps/api/src/ai-worker/`. Cấu hình nằm ở `services/ai/.env` (không commit).
 
@@ -64,12 +64,14 @@ hoặc:
 npm run ai-worker --workspace @edupath/api
 ```
 
-Worker ghi log dạng JSON, mỗi dòng một sự kiện (`job_claimed`, `generation_finished`, `job_finished`...). Log chỉ chứa mã job, mã lỗi và số liệu thời gian; không bao giờ ghi prompt hay nội dung nhận xét. Nhấn `Ctrl+C` để dừng; job đang chạy dở sẽ được API giao lại sau khi hết hạn lease (15 phút).
+Worker ghi log dạng JSON, mỗi dòng một sự kiện (`job_claimed`, `generation_finished`, `job_finished`...). Log chỉ chứa mã job, loại job (`kind`), mã lỗi và số liệu thời gian; không bao giờ ghi prompt hay nội dung nhận xét. Nhấn `Ctrl+C` để dừng; job đang chạy dở sẽ được API giao lại sau khi hết hạn lease (15 phút).
+
+**Sau mỗi lần cập nhật mã nguồn, khởi động lại worker** (`Ctrl+C` rồi chạy lại). Worker chạy từ bản cũ vẫn làm nhận xét năng lực bình thường nhưng không báo hỗ trợ đề xuất kỹ năng, nên trang Quản lý nghề nghiệp sẽ báo worker chưa hỗ trợ và job đề xuất nằm chờ.
 
 Cách worker làm việc:
 - Khi khởi động, nạp model một lần với đúng `num_ctx` và `num_gpu` như job thật để job đầu không phải nạp lại.
 - Gửi heartbeat mỗi 20 giây khi Ollama sẵn sàng; trang của sinh viên dựa vào đó để báo "worker đang hoạt động".
-- Khi rảnh, hỏi job mới mỗi 5 giây; gặp lỗi mạng thì chờ 15 giây.
+- Khi rảnh, hỏi job mới mỗi 5 giây; gặp lỗi mạng thì chờ 15 giây. Worker báo cho API các loại job nó làm được; job đề xuất kỹ năng được nhận trước vì admin đang chờ trên trang.
 - Trong lúc sinh, gia hạn lease khoảng 3 phút một lần.
 - Nếu model trả về JSON hỏng, thử lại đúng 1 lần. Không thử lại khi bị cắt do hết `num_predict` (`ai_output_truncated`) hoặc quá thời gian (`ai_timeout`).
 

@@ -26,7 +26,8 @@ describe("createWorkerClient", () => {
   it("posts with the bearer key, refuses redirects and parses a claimed job", async () => {
     const { calls, fetch } = recorder(() => Response.json({ job: claimed }));
     const client = createWorkerClient({ apiUrl: "http://localhost:4000", workerKey: key, fetch });
-    expect(await client.claim()).toEqual(claimed);
+    // A server released before career suggestions sends no kind: the job is a competency assessment.
+    expect(await client.claim()).toEqual({ ...claimed, kind: "competency_assessment" });
     expect(calls[0]?.url).toBe("http://localhost:4000/api/worker/competency-assessments/claim");
     expect(calls[0]?.init?.method).toBe("POST");
     expect(calls[0]?.init?.redirect).toBe("manual");
@@ -57,5 +58,22 @@ describe("createWorkerClient", () => {
     const error = await expired.extend(claimed.id, "x").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(WorkerApiError);
     expect(error).toMatchObject({ status: 409, code: "job_expired" });
+  });
+});
+
+describe("job kinds", () => {
+  it("advertises every supported kind on heartbeat and claim and reads the job kind", async () => {
+    const { calls, fetch } = recorder(() => Response.json({ job: { ...claimed, kind: "career_skill_suggestion" } }));
+    const client = createWorkerClient({ apiUrl: "http://localhost:4000", workerKey: key, fetch });
+    await client.heartbeat();
+    expect((await client.claim())?.kind).toBe("career_skill_suggestion");
+    for (const call of calls) expect(JSON.parse(String(call.init?.body))).toEqual({ kinds: ["competency_assessment", "career_skill_suggestion"] });
+  });
+
+  it("can advertise fewer kinds and rejects a kind it does not know", async () => {
+    const { calls, fetch } = recorder(() => Response.json({ job: { ...claimed, kind: "something_new" } }));
+    const client = createWorkerClient({ apiUrl: "http://localhost:4000", workerKey: key, fetch, kinds: ["competency_assessment"] });
+    await expect(client.claim()).rejects.toMatchObject({ code: "invalid_claim_response" });
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ kinds: ["competency_assessment"] });
   });
 });

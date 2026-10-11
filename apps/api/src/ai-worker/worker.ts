@@ -1,8 +1,9 @@
+import { COMPETENCY_ASSESSMENT_KIND, type AiJobKind } from "../competency-assessment/ai/worker-protocol.js";
 import { WorkerApiError, type ClaimedJob, type CompleteBody, type WorkerClient } from "./client.js";
 import {
   AiWorkerError,
   GenerationAbortedError,
-  parseAiOutput,
+  parseJobOutput,
   type OllamaChatResult,
   type OllamaJob,
   type OllamaMetrics,
@@ -73,26 +74,34 @@ export interface GenerationResult {
 }
 
 /**
- * Runs the chat call and the local output check. Retries exactly once when the model returned
- * unparseable or mis-shaped JSON; never retries truncation (done_reason "length"), timeouts or other errors.
+ * Runs the chat call and the local output check for the job kind. Retries exactly once when the model
+ * returned unparseable or mis-shaped JSON; never retries truncation (done_reason "length"), timeouts or other errors.
  */
-export async function generateWithRetry(ollama: OllamaPort, job: OllamaJob, signal: AbortSignal, log: WorkerLogger, jobId: string): Promise<GenerationResult> {
+export async function generateWithRetry(
+  ollama: OllamaPort,
+  job: OllamaJob,
+  signal: AbortSignal,
+  log: WorkerLogger,
+  jobId: string,
+  kind: AiJobKind = COMPETENCY_ASSESSMENT_KIND
+): Promise<GenerationResult> {
   const maxAttempts = 2;
   for (let attempt = 1; ; attempt++) {
     const started = Date.now();
     const result = await ollama.chat(job, signal);
     log("generation_finished", {
       job: jobId,
+      kind,
       attempt,
       ms: Date.now() - started,
       prompt_eval_count: result.metrics.prompt_eval_count,
       eval_count: result.metrics.eval_count
     });
     try {
-      return { output: parseAiOutput(result.content), metrics: result.metrics, attempts: attempt };
+      return { output: parseJobOutput(kind, result.content), metrics: result.metrics, attempts: attempt };
     } catch (error) {
       if (!(error instanceof AiWorkerError) || error.code !== "invalid_ai_output" || attempt >= maxAttempts || signal.aborted) throw error;
-      log("generation_retry", { job: jobId, attempt, reason: error.detail });
+      log("generation_retry", { job: jobId, kind, attempt, reason: error.detail });
     }
   }
 }
@@ -140,10 +149,12 @@ export async function processJob(job: ClaimedJob, info: OllamaModelInfo, deps: W
       });
   }, timings.extendEveryMs);
 
-  deps.log("job_claimed", { job: job.id, promptVersion: job.promptVersion });
+  // A job object without kind (an older server, or a test double) is a competency assessment.
+  const kind = job.kind ?? COMPETENCY_ASSESSMENT_KIND;
+  deps.log("job_claimed", { job: job.id, kind, promptVersion: job.promptVersion });
   let body: CompleteBody;
   try {
-    const result = await generateWithRetry(deps.ollama, job, controller.signal, deps.log, job.id);
+    const result = await generateWithRetry(deps.ollama, job, controller.signal, deps.log, job.id, kind);
     body = { leaseToken: job.leaseToken, model: deps.model, digest: info.digest, ollamaVersion: info.version, metrics: result.metrics, output: result.output };
   } catch (error) {
     if (error instanceof GenerationAbortedError || controller.signal.aborted) {
@@ -159,7 +170,7 @@ export async function processJob(job: ClaimedJob, info: OllamaModelInfo, deps: W
 
   const reported = await completeWithRetry(deps, timings, job.id, body, signal);
   const outcome: JobOutcome = !reported ? "abandoned" : "output" in body ? "completed" : "failed";
-  deps.log("job_finished", { job: job.id, outcome });
+  deps.log("job_finished", { job: job.id, kind, outcome });
   return outcome;
 }
 

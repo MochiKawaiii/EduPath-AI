@@ -4,6 +4,7 @@ import { Icon, RequiredLabel } from "./admin-account-shared";
 import { useLiveFilters } from "./use-live-filters";
 import { CareerWeightCell, CareerWeightSelector, useCareerCourseWeights } from "./CareerCourseWeights";
 import { careerFailures, careerRequest, type Career, type CareerRequirement, type CareerSkill } from "./career-types";
+import CareerSkillAiSuggestions from "./CareerSkillAiSuggestions";
 
 const endpoint = "/api/admin/careers/requirements";
 const emptyFilters = { q: "", skillId: "", kind: "", priority: "" };
@@ -15,7 +16,7 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
   const skills = useData<{ items: CareerSkill[] }>(`${endpoint}/skills`, revision);
   const courseWeights = useCareerCourseWeights(career.id, revision);
   const [selected, setSelected] = useState<CareerRequirement | null>(null);
-  const [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
+  const [mode, setMode] = useState<"detail" | "edit" | "delete" | "ai" | null>(null);
   const [kind, setKind] = useState<"skill" | "other">("other");
   const close = () => { setSelected(null); setMode(null); };
   const onSaved = () => { close(); saved(); };
@@ -24,6 +25,7 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
     <div className="cm-toolbar">
       <div><h3>Yêu cầu và kỹ năng</h3><p>Các yêu cầu áp dụng cho {career.nameVi}.</p></div>
       {canManage && <div className="cm-actions">
+        <button className="am-outline" onClick={() => { setSelected(null); setMode("ai"); }}><Icon name="spark" /> AI đề xuất kỹ năng</button>
         <button className="am-primary" onClick={() => start("skill")}><Icon name="plus" /> Thêm kỹ năng liên kết</button>
       </div>}
     </div>
@@ -67,6 +69,7 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
     {mode === "detail" && selected && <RequirementDetail id={selected.id} close={close} />}
     {canManage && mode === "edit" && <RequirementEditor current={selected} kind={kind} career={career} catalog={skills} close={close} saved={onSaved} />}
     {canManage && mode === "delete" && selected && <RequirementDelete current={selected} close={close} saved={onSaved} />}
+    {canManage && mode === "ai" && <CareerSkillAiSuggestions career={career} catalog={skills} close={close} saved={onSaved} />}
   </>;
 }
 

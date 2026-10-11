@@ -2,6 +2,8 @@ import express from "express";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DatabasePool } from "../../db/pool.js";
+import { buildCareerSuggestionInput } from "../../careers/ai-suggestions/prompt.js";
+import { careerSource, fixtureId } from "../../careers/ai-suggestions/test-fixture.js";
 import { buildAiInput } from "./prompt.js";
 import { syntheticResult } from "./test-fixture.js";
 import { createCompetencyAiExpiry, createCompetencyWorkerRouter, expireCompetencyAiJobs } from "./worker-router.js";
@@ -84,7 +86,7 @@ describe("heartbeat and claim", () => {
   it("claims the oldest job with SKIP LOCKED, a 15 minute lease and returns the stored input", async () => {
     const { app, run, sql } = setup((s) => (s.includes("FOR UPDATE SKIP LOCKED") ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput }] } : undefined));
     const res = await request(app).post("/w/claim").set("Authorization", AUTH).expect(200);
-    expect(res.body.job).toEqual({ id: JOB, leaseToken: LEASE, promptVersion: "comp-v3", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
+    expect(res.body.job).toEqual({ kind: "competency_assessment", id: JOB, leaseToken: LEASE, promptVersion: "comp-v3", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
     const claim = run.mock.calls.find(([s]) => s.includes("SKIP LOCKED"))!;
     expect(claim[0]).toContain("ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1");
     expect(claim[0]).toContain("status='processing' AND lease_until<now() AND attempts<$2");
@@ -244,5 +246,121 @@ describe("complete", () => {
     await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: LEASE, error: "ai_failed", output: {} }).expect(400);
     await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: "nope", error: "ai_failed" }).expect(400);
     expect(run).not.toHaveBeenCalled();
+  });
+});
+
+describe("career skill suggestion jobs", () => {
+  const BOTH = ["competency_assessment", "career_skill_suggestion"];
+  const careerInput = buildCareerSuggestionInput(careerSource());
+  const careerClaim = (s: string) => s.includes("UPDATE career_ai_suggestions j SET status='processing'");
+  const competencyClaim = (s: string) => s.includes("UPDATE stu_comp_ai_jobs j SET status='processing'");
+  const claimRows: Handler = (s) => (careerClaim(s) ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput: careerInput }] }
+    : competencyClaim(s) ? { rows: [{ id: OTHER_LEASE, leaseToken: LEASE, aiInput }] } : undefined);
+  const careerRow = (extra: Row = {}): Row => ({ status: "processing", lease_token: LEASE, valid: true, ai_input: careerInput, ...extra });
+  const withCareer = (row: Row | null): Handler => (s) => (s.includes("FROM career_ai_suggestions WHERE id=$1 FOR UPDATE") ? { rows: row ? [row] : [] } : undefined);
+  const careerUpdate = (run: ReturnType<typeof setup>["run"]) => run.mock.calls.find(([s]) => s.startsWith("UPDATE career_ai_suggestions SET status=$2"));
+  const careerOutput = (suggestions: unknown[], newSkills: unknown[] = []) => ({ suggestions, newSkills });
+  const suggestion = (skillKey: string) => ({ skillKey, priority: "required", title: "Viết truy vấn SQL (S002)", description: "Dùng hằng ngày.", reason: "Vị trí làm việc với dữ liệu." });
+
+  it("stores the advertised kinds on heartbeat and drops unknown ones", async () => {
+    const cases: [object | undefined, string[]][] = [
+      [{ kinds: BOTH }, BOTH],
+      [{ kinds: ["career_skill_suggestion", "something_new", "career_skill_suggestion"] }, ["career_skill_suggestion"]],
+      [{ kinds: ["something_new"] }, ["competency_assessment"]],
+      [{}, ["competency_assessment"]],
+      [undefined, ["competency_assessment"]]
+    ];
+    for (const [body, kinds] of cases) {
+      const { app, run } = setup();
+      const req = request(app).post("/w/heartbeat").set("Authorization", AUTH);
+      await (body === undefined ? req : req.send(body)).expect(200, { ok: true });
+      expect(run.mock.calls[0]![0]).toContain("kinds=EXCLUDED.kinds");
+      expect(run.mock.calls[0]![1]).toEqual([kinds]);
+    }
+    const { app } = setup();
+    await request(app).post("/w/heartbeat").set("Authorization", AUTH).send({ kinds: "career_skill_suggestion" }).expect(400, { error: "invalid_input" });
+  });
+
+  it("never gives a career job to an old worker that sends no kinds", async () => {
+    for (const body of [undefined, {}]) {
+      const { app, sql } = setup(claimRows);
+      const req = request(app).post("/w/claim").set("Authorization", AUTH);
+      const res = await (body === undefined ? req : req.send(body)).expect(200);
+      expect(res.body.job.kind).toBe("competency_assessment");
+      expect(sql().some(careerClaim)).toBe(false);
+    }
+  });
+
+  it("gives a new worker the career job first, without the key map", async () => {
+    const { app, run, sql } = setup(claimRows);
+    const res = await request(app).post("/w/claim").set("Authorization", AUTH).send({ kinds: BOTH }).expect(200);
+    expect(res.body.job).toEqual({ kind: "career_skill_suggestion", id: JOB, leaseToken: LEASE, promptVersion: "career-skill-v1",
+      system: careerInput.system, user: careerInput.user, schema: careerInput.schema, options: careerInput.options });
+    expect(JSON.stringify(res.body)).not.toContain(fixtureId(2));
+    expect(sql().some(competencyClaim)).toBe(false);
+    const claim = run.mock.calls.find(([s]) => careerClaim(s))!;
+    expect(claim[0]).toContain("ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1");
+    expect((claim[1] as unknown[]).slice(1)).toEqual([2, 15]);
+    // Career expiry runs with the competency housekeeping.
+    const expiry = run.mock.calls.find(([s]) => s.startsWith("UPDATE career_ai_suggestions SET status='failed'"))!;
+    expect(expiry[0]).toContain("(status='queued' AND created_at<now()-interval '24 hours')");
+    expect(expiry[0]).toContain("ai_input=NULL");
+    expect(expiry[1]).toEqual([2, "worker_timeout"]);
+  });
+
+  it("falls back to a competency job when no career job is queued, and honours a career-only worker", async () => {
+    const competencyOnly: Handler = (s) => (competencyClaim(s) ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput }] } : undefined);
+    const both = setup(competencyOnly);
+    expect((await request(both.app).post("/w/claim").set("Authorization", AUTH).send({ kinds: BOTH }).expect(200)).body.job.kind).toBe("competency_assessment");
+    const careerOnly = setup(competencyOnly);
+    await request(careerOnly.app).post("/w/claim").set("Authorization", AUTH).send({ kinds: ["career_skill_suggestion"] }).expect(200, { job: null });
+    expect(careerOnly.sql().some(competencyClaim)).toBe(false);
+  });
+
+  it("extends the lease of a career job", async () => {
+    const until = new Date("2026-10-11T10:00:00Z");
+    const { app, run } = setup((s) => (s.startsWith("UPDATE career_ai_suggestions SET lease_until") ? { rows: [{ leaseUntil: until }] } : undefined));
+    await request(app).post(`/w/${JOB}/extend`).set("Authorization", AUTH).send({ leaseToken: LEASE }).expect(200, { leaseUntil: until.toISOString() });
+    expect(run.mock.calls[1]![1]).toEqual([JOB, LEASE, 15]);
+  });
+
+  it("stores a validated career result with model info and clears the input", async () => {
+    const { app, run } = setup(withCareer(careerRow()));
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(careerOutput([suggestion("S002"), suggestion("S404")]))).expect(200, { ok: true });
+    const update = careerUpdate(run)!;
+    expect(update[0]).toContain("ai_input=NULL");
+    expect(update[0]).toContain("completed_at=now()");
+    const params = update[1] as unknown[];
+    expect(params.slice(0, 3)).toEqual([JOB, "completed", null]);
+    expect(JSON.parse(params[3] as string)).toEqual({ returned: 2, dropped: 1, items: [
+      { skillId: fixtureId(2), skillName: "SQL", isNewSkill: false, isRequired: true, title: "Viết truy vấn SQL", description: "Dùng hằng ngày.", reason: "Vị trí làm việc với dữ liệu." }
+    ] });
+    expect(params.slice(4)).toEqual([JSON.stringify({ eval_count: 900, total_ms: 120000 }), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "career-skill-v1"]);
+    expect(run.mock.calls.at(-1)![0]).toBe("COMMIT");
+    expect(run.mock.calls.some(([s]) => s.includes("stu_comp_assessments"))).toBe(false);
+  });
+
+  it("fails a career job with invalid_ai_output or the error code the worker reported", async () => {
+    const invalid = setup(withCareer(careerRow()));
+    await request(invalid.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(careerOutput([suggestion("S404")]))).expect(200);
+    expect((careerUpdate(invalid.run)![1] as unknown[]).slice(0, 4)).toEqual([JOB, "failed", "invalid_ai_output", null]);
+    const shape = setup(withCareer(careerRow()));
+    await request(shape.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(validOutput())).expect(200);
+    expect((careerUpdate(shape.run)![1] as unknown[]).slice(1, 3)).toEqual(["failed", "invalid_ai_output"]);
+    const timeout = setup(withCareer(careerRow()));
+    await request(timeout.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: LEASE, error: "ai_timeout" }).expect(200);
+    expect(careerUpdate(timeout.run)![1]).toEqual([JOB, "failed", "ai_timeout", null, null, null, null, null, "career-skill-v1"]);
+  });
+
+  it("does not resurrect a cancelled career job and is idempotent for the same lease", async () => {
+    for (const row of [careerRow({ status: "cancelled", lease_token: null, ai_input: null }), careerRow({ lease_token: OTHER_LEASE }), careerRow({ valid: false })]) {
+      const { app, run, sql } = setup(withCareer(row));
+      await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(careerOutput([suggestion("S002")]))).expect(409, { error: "job_expired" });
+      expect(careerUpdate(run)).toBeUndefined();
+      expect(sql()).toContain("ROLLBACK");
+    }
+    const done = setup(withCareer(careerRow({ status: "completed", valid: null, ai_input: null })));
+    await request(done.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(careerOutput([suggestion("S002")]))).expect(200, { ok: true });
+    expect(careerUpdate(done.run)).toBeUndefined();
   });
 });

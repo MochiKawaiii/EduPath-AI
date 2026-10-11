@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AI_JOB_KINDS, COMPETENCY_ASSESSMENT_KIND, type AiJobKind } from "../competency-assessment/ai/worker-protocol.js";
 import type { AiErrorCode, FetchLike, OllamaMetrics } from "./ollama.js";
 
 export const WORKER_API_PATH = "/api/worker/competency-assessments";
@@ -18,6 +19,8 @@ export class WorkerApiError extends Error {
 }
 
 const claimedJobSchema = z.object({
+  /** Servers released before career suggestions send no kind; their jobs are competency assessments. */
+  kind: z.enum(AI_JOB_KINDS).default(COMPETENCY_ASSESSMENT_KIND),
   id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i),
   leaseToken: z.string().min(1).max(200),
   promptVersion: z.string().min(1).max(64),
@@ -48,6 +51,8 @@ export interface WorkerClientOptions {
   fetch?: FetchLike;
   requestTimeoutMs?: number;
   maxResponseBytes?: number;
+  /** Job kinds advertised on /heartbeat and /claim; default: every kind this worker can run. */
+  kinds?: readonly AiJobKind[];
 }
 
 async function readCapped(response: Response, maxBytes: number): Promise<string> {
@@ -79,6 +84,7 @@ export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
   const fetchImpl: FetchLike = options.fetch ?? fetch;
   const timeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const maxBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
+  const kinds = [...(options.kinds ?? AI_JOB_KINDS)];
   const base = `${new URL(options.apiUrl).origin}${WORKER_API_PATH}`;
 
   async function post(path: string, body: unknown): Promise<unknown> {
@@ -115,10 +121,10 @@ export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
 
   return {
     async heartbeat() {
-      await post("/heartbeat", {});
+      await post("/heartbeat", { kinds });
     },
     async claim() {
-      const parsed = claimResponseSchema.safeParse(await post("/claim", {}));
+      const parsed = claimResponseSchema.safeParse(await post("/claim", { kinds }));
       if (!parsed.success) throw new WorkerApiError(200, "invalid_claim_response");
       return parsed.data.job;
     },

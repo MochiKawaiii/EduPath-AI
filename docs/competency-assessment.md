@@ -78,6 +78,7 @@ Xóa hoặc thay bảng điểm (kể cả qua OCR) xóa toàn bộ kết quả 
 Xác thực `Authorization: Bearer <AI_WORKER_KEY>` (SHA-256 + `timingSafeEqual`) trước khi đọc body; body tối đa 512 kB.
 
 - `POST /heartbeat`, `POST /claim` (job cũ nhất, `FOR UPDATE SKIP LOCKED`, lease 15 phút, tối đa 2 lần thử), `POST /:id/extend`, `POST /:id/complete` (idempotent theo lease).
+- Loại job: worker gửi `{ kinds: [...] }` trong `/heartbeat` và `/claim` (lưu ở `stu_comp_ai_worker_status.kinds`); job trả về có `kind`. `competency_assessment` là nhận xét năng lực; `career_skill_suggestion` là đề xuất kỹ năng cho vị trí nghề nghiệp (xem `docs/career-ai-suggestions.md`), được ưu tiên nhận trước. Worker cũ không gửi `kinds` nên chỉ nhận job nhận xét năng lực. `/:id/extend` và `/:id/complete` tìm id ở cả hai bảng job.
 - Dọn dẹp tối đa mỗi 60 giây, chạy cả từ `/claim` của worker lẫn từ API sinh viên (`GET /latest`, `GET /latest/status`, khi xếp job mới) nên vẫn chạy khi worker offline: job đang xử lý hết lease sau lần thử cuối, hoặc job (đang chờ / đang xử lý đã hết lease) quá 24 giờ → `failed` với `worker_timeout` và xóa `ai_input`; xóa job đã kết thúc quá 7 ngày. Không bao giờ xóa kết quả đánh giá.
 
 ### Cài đặt máy chạy worker

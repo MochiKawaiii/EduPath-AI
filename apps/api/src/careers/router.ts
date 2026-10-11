@@ -10,6 +10,7 @@ import {
 import { access, CareerError, fold, lockSkillCatalog } from "./shared.js";
 import { createCareerRequirementsRouter, syncLegacySkillLinks } from "./requirements.js";
 import { createCareerSkillsRouter } from "./skills.js";
+import { createCareerAiSuggestionsRouter } from "./ai-suggestions/router.js";
 export { fold } from "./shared.js";
 const fieldCode = z.string().trim().min(1).max(60).regex(/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/);
 const fieldDetails = z.object({
@@ -42,6 +43,8 @@ export function createCareersRouter(
   pool: DatabasePool | undefined,
   origin: string,
   student = false,
+  // AI skill suggestions are queued only when AI_WORKER_KEY is configured.
+  options: { aiSuggestions?: boolean } = {},
 ) {
   const router = Router();
   router.use(student ? requireAuthentication : requireAdminAccess);
@@ -161,6 +164,8 @@ export function createCareersRouter(
     });
   }
   if (!student) {
+    // Mounted before /requirements so /requirements/:id never captures it.
+    router.use("/requirements/ai-suggestions", createCareerAiSuggestionsRouter(pool!, { enabled: options.aiSuggestions === true }));
     router.use("/requirements", createCareerRequirementsRouter(pool!));
     router.use("/skills", createCareerSkillsRouter(pool!));
     router.get("/:id", async (req, res) => {
@@ -280,11 +285,11 @@ export function createCareersRouter(
   }
   const errors: ErrorRequestHandler = (e, _req, res, next) => {
     if (e instanceof CareerError) {
-      res.status(e.status).json({ error: e.code });
+      res.status(e.status).json({ error: e.code, ...e.details });
       return;
     }
     if (e instanceof z.ZodError) {
-      res.status(400).json({ error: _req.path.startsWith("/skills") ? "invalid_skill" : _req.path.startsWith("/requirements") ? "invalid_requirement" : _req.path.startsWith("/fields") ? "invalid_field" : "invalid_career" });
+      res.status(400).json({ error: _req.path.startsWith("/skills") ? "invalid_skill" : _req.path.startsWith("/requirements/ai-suggestions") ? "invalid_ai_suggestion" : _req.path.startsWith("/requirements") ? "invalid_requirement" : _req.path.startsWith("/fields") ? "invalid_field" : "invalid_career" });
       return;
     }
     if (e.code === "23505") {
