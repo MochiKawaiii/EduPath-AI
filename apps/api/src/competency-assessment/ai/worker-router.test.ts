@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DatabasePool } from "../../db/pool.js";
-import { buildCareerSuggestionInput } from "../../careers/ai-suggestions/prompt.js";
+import { buildCareerSuggestionInput, CAREER_SUGGESTION_PROMPT_VERSION } from "../../careers/ai-suggestions/prompt.js";
 import { careerSource, fixtureId } from "../../careers/ai-suggestions/test-fixture.js";
 import { buildAiInput } from "./prompt.js";
 import { syntheticResult } from "./test-fixture.js";
@@ -294,7 +294,7 @@ describe("career skill suggestion jobs", () => {
   it("gives a new worker the career job first, without the key map", async () => {
     const { app, run, sql } = setup(claimRows);
     const res = await request(app).post("/w/claim").set("Authorization", AUTH).send({ kinds: BOTH }).expect(200);
-    expect(res.body.job).toEqual({ kind: "career_skill_suggestion", id: JOB, leaseToken: LEASE, promptVersion: "career-skill-v1",
+    expect(res.body.job).toEqual({ kind: "career_skill_suggestion", id: JOB, leaseToken: LEASE, promptVersion: CAREER_SUGGESTION_PROMPT_VERSION,
       system: careerInput.system, user: careerInput.user, schema: careerInput.schema, options: careerInput.options });
     expect(JSON.stringify(res.body)).not.toContain(fixtureId(2));
     expect(sql().some(competencyClaim)).toBe(false);
@@ -335,7 +335,7 @@ describe("career skill suggestion jobs", () => {
     expect(JSON.parse(params[3] as string)).toEqual({ returned: 2, dropped: 1, items: [
       { skillId: fixtureId(2), skillName: "SQL", isNewSkill: false, isRequired: true, title: "Viết truy vấn SQL", description: "Dùng hằng ngày.", reason: "Vị trí làm việc với dữ liệu." }
     ] });
-    expect(params.slice(4)).toEqual([JSON.stringify({ eval_count: 900, total_ms: 120000 }), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "career-skill-v1"]);
+    expect(params.slice(4)).toEqual([JSON.stringify({ eval_count: 900, total_ms: 120000 }), "gemma4:e4b", "dc35e8d9c606", "0.40.2", CAREER_SUGGESTION_PROMPT_VERSION]);
     expect(run.mock.calls.at(-1)![0]).toBe("COMMIT");
     expect(run.mock.calls.some(([s]) => s.includes("stu_comp_assessments"))).toBe(false);
   });
@@ -349,7 +349,7 @@ describe("career skill suggestion jobs", () => {
     expect((careerUpdate(shape.run)![1] as unknown[]).slice(1, 3)).toEqual(["failed", "invalid_ai_output"]);
     const timeout = setup(withCareer(careerRow()));
     await request(timeout.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: LEASE, error: "ai_timeout" }).expect(200);
-    expect(careerUpdate(timeout.run)![1]).toEqual([JOB, "failed", "ai_timeout", null, null, null, null, null, "career-skill-v1"]);
+    expect(careerUpdate(timeout.run)![1]).toEqual([JOB, "failed", "ai_timeout", null, null, null, null, null, CAREER_SUGGESTION_PROMPT_VERSION]);
   });
 
   it("does not resurrect a cancelled career job and is idempotent for the same lease", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyItems, failureMessage, foldName, formatElapsed, hasEdits, requestErrorMessage, rowsFromSuggestion, validateRows, workerLine,
+  applyItems, failureMessage, foldName, formatElapsed, hasEdits, requestErrorMessage, rowsFromSuggestion, similarLinkedSkillOf, validateRows, workerLine,
   type CareerAiSuggestionItem,
 } from "./career-ai-suggestions";
 
@@ -10,7 +10,7 @@ const catalog = [
   { id: "s-viz", name: "Trực quan hóa dữ liệu" },
 ];
 const item = (patch: Partial<CareerAiSuggestionItem>): CareerAiSuggestionItem => ({
-  index: 0, skillId: "s-sql", skillName: "SQL", isNewSkill: false, alreadyLinked: false, isRequired: false,
+  index: 0, skillId: "s-sql", skillName: "SQL", isNewSkill: false, alreadyLinked: false, similarLinkedSkill: null, isRequired: false,
   title: "Viết truy vấn SQL để trích xuất dữ liệu", description: "Dùng hằng ngày.", reason: "Cốt lõi của nghề.", ...patch,
 });
 const items = [
@@ -53,6 +53,23 @@ describe("career AI suggestion helpers", () => {
     expect(rows.map((row) => row.checked)).toEqual([true, true, false, false]);
     expect(rows[3]).toMatchObject({ skillId: null, isNewSkill: true, skillName: "Kể chuyện bằng dữ liệu" });
     expect(validateRows(rows, [], catalog)).toMatchObject({ valid: true, selected: 2, selectable: 3, required: 1 });
+  });
+  it("leaves rows close to a linked skill unticked and names that skill while the row is unchanged", () => {
+    const similar = [
+      item({ index: 0, skillId: "s-sql", skillName: "SQL", similarLinkedSkill: null }),
+      item({ index: 1, skillId: "s-py", skillName: "Lập trình Python", similarLinkedSkill: "Python" }),
+      item({ index: 2, skillId: "s-viz", skillName: "Trực quan hóa dữ liệu", alreadyLinked: true }),
+      item({ index: 3, skillId: null, skillName: "Phân tích và quản lý yêu cầu", isNewSkill: true, similarLinkedSkill: "Phân tích yêu cầu" }),
+    ];
+    const rows = rowsFromSuggestion(similar);
+    expect(rows.map((row) => row.checked)).toEqual([true, false, false, false]);
+    expect(rows.map((row) => similarLinkedSkillOf(row, similar))).toEqual([null, "Python", null, "Phân tích yêu cầu"]);
+    // Ticking it anyway keeps the hint; another skill or another name drops it.
+    expect(similarLinkedSkillOf({ ...rows[1]!, checked: true }, similar)).toBe("Python");
+    expect(similarLinkedSkillOf({ ...rows[1]!, skillId: "s-sql" }, similar)).toBeNull();
+    expect(similarLinkedSkillOf({ ...rows[3]!, skillName: " phan tich va quan ly  yeu cau " }, similar)).toBe("Phân tích yêu cầu");
+    expect(similarLinkedSkillOf({ ...rows[3]!, skillName: "Quản lý phạm vi dự án" }, similar)).toBeNull();
+    expect(validateRows(rows, [], catalog)).toMatchObject({ valid: true, selected: 1, selectable: 3 });
   });
   it("flags missing titles, missing names, repeated and linked skills on ticked rows only", () => {
     const rows = rowsFromSuggestion(items);

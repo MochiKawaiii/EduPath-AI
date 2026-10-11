@@ -185,11 +185,14 @@
 .cai-check input:disabled, .cai-check input:disabled + span { cursor: not-allowed; }
 .cai-tag { flex-shrink: 0; padding: 3px 8px; border-radius: 5px; background: #eef0f4; color: #4b5665; font-size: 12px; line-height: 1.5; white-space: nowrap; }
 .cai-tag-required { background: #fce9ef; color: var(--ep-action-hover, #a50d33); }
+/* The full name is repeated in .cai-similar below, so a long one may be cut here. */
+.cai-tag-similar { flex-shrink: 1; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; background: var(--cm-warn-bg); color: var(--cm-warn); box-shadow: inset 0 0 0 1px #ebdbb7; }
 .cai-remove { flex-shrink: 0; }
 .cai-row-fields { display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 12px 14px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .cai-row-fields label { min-width: 0; }
 .cai-row-fields .cai-wide { grid-column: 1 / -1; }
 .cai-reason { color: var(--cm-muted); font-size: 12.5px; line-height: 1.6; }
+.cai-similar { padding: 8px 12px; border: 1px solid #ebdbb7; border-radius: 6px; background: var(--cm-warn-bg); color: var(--cm-warn); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .cai-row-errors { margin: 0; padding: 0; list-style: none; color: #9c2934; font-size: 13px; line-height: 1.6; }
 .cai-summary { padding: 12px 16px; border-radius: 8px; background: var(--cm-soft); font-weight: 600; font-size: 14px; }
 .cai-empty { padding: 16px; border: 1px dashed var(--cm-line); border-radius: 8px; color: var(--cm-muted); text-align: center; }
@@ -200,5 +203,6 @@
   .cai-row { padding: 12px; }
   .cai-row-head { flex-wrap: wrap; }
   .cm-form label.cai-check { flex-basis: calc(100% - 56px); }
+  .cai-tag-similar { max-width: 100%; }
   .cai-row-fields { grid-template-columns: 1fr; }
 }

@@ -108,8 +108,9 @@ function promptData(user) {
 
 /**
  * A hand-written model answer for the simulated worker: 6 suggestions (one with a key in prose, one
- * repeated key, one unknown key, one with a link) and 3 new skills (one really new, one equal to a
- * catalog skill written in capitals, one equal to a linked skill). 5 items survive the server check.
+ * repeated key, one unknown key, one with a link) and 3 new skills (one really new, written with a
+ * "Kỹ năng" prefix and marked required, one equal to a catalog skill written in capitals, one equal to a
+ * linked skill). 5 items survive the server check; the new skill is stored without the prefix as Ưu tiên.
  */
 function simulatedOutput(job) {
   const { keys, linked } = promptData(job.user);
@@ -125,7 +126,7 @@ function simulatedOutput(job) {
       { skillKey: k4, ...item("preferred", `Áp dụng ${keys.get(k4)} trong dự án`) },
     ],
     newSkills: [
-      { name: "Kiểm chứng quy trình giả lập", ...item("preferred", "Kiểm chứng quy trình giả lập trước khi triển khai") },
+      { name: "Kỹ năng  kiểm chứng quy trình giả lập", ...item("required", "Kiểm chứng quy trình giả lập trước khi triển khai") },
       { name: keys.get(k5).toUpperCase(), ...item("preferred", `Thực hành ${keys.get(k5)}`) },
       { name: linked[0] ?? "Kỹ năng đã liên kết", ...item("required", "Kỹ năng đã liên kết sẽ bị bỏ") },
     ],
@@ -316,7 +317,7 @@ try {
       promptTokens: time.promptTokens ?? null, outputTokens: time.outputTokens ?? null,
       returned: row.result?.returned ?? null, dropped: row.result?.dropped ?? null, model: row.ai_model, ollamaVersion: row.ollama_version,
       items: suggestion.items.map((item) => ({ priority: item.isRequired ? "Bắt buộc" : "Ưu tiên", skill: item.skillName, new: item.isNewSkill,
-        alreadyLinked: item.alreadyLinked, title: item.title, description: item.description, reason: item.reason })) });
+        alreadyLinked: item.alreadyLinked, similarTo: item.similarLinkedSkill, title: item.title, description: item.description, reason: item.reason })) });
     assert.equal(suggestion.status, "completed", JSON.stringify({ code: career.code, errorCode: suggestion.errorCode }));
     assert.equal(row.ai_input, null, "ai_input is cleared when the job ends");
     assert.equal(row.prompt_version, CAREER_SUGGESTION_PROMPT_VERSION);
@@ -327,11 +328,15 @@ try {
       assert(!/\bS\d{3}\b/.test([item.title, item.description, item.reason].join(" ")), "no catalog keys left in prose");
       assert(item.title.length <= 160 && item.description.length <= 600 && item.reason.length <= 300);
       assert.equal(item.alreadyLinked, false, "nothing suggested is linked yet");
+      assert(item.similarLinkedSkill === null || typeof item.similarLinkedSkill === "string");
+      if (item.isNewSkill) assert.equal(item.isRequired, false, "new skills are stored as Ưu tiên");
     }
+    assert(suggestion.items.filter((item) => item.isRequired).length <= 5, "at most 5 Bắt buộc");
     if (!withOllama) {
       assert.deepEqual([row.result.returned, row.result.dropped, suggestion.items.length], [9, 4, 5]);
       assert.deepEqual(suggestion.items.map((item) => item.isNewSkill), [false, false, false, true, false]);
-      assert.equal(suggestion.items[3].skillName, "Kiểm chứng quy trình giả lập");
+      assert.equal(suggestion.items[3].skillName, "Kiểm chứng quy trình giả lập", "the 'Kỹ năng' prefix is dropped");
+      assert.equal(suggestion.items[3].isRequired, false);
       assert.equal(suggestion.items[4].skillName, row.result.items[4].skillName, "a capitalised catalog name becomes that catalog skill");
       assert(suggestion.items[4].skillId);
       assert(!suggestion.items[0].description.includes("S0"), "a key in prose is replaced by the skill name");
@@ -366,7 +371,8 @@ try {
     [[keep(catalogItems[0]), { skillId: linked4.skillId, skillName: "", title: "Đã liên kết", description: "", isRequired: false, sourceIndex: null }], [linked4.skillName]],
     [[keep(catalogItems[0]), keep(catalogItems[0], { title: "Lặp lại" })], [catalogItems[0].skillName]],
     [[{ skillId: null, skillName: linked4.skillName.toUpperCase(), title: "Tên đã liên kết viết hoa", description: "", isRequired: false, sourceIndex: null }], [linked4.skillName]],
-    [[{ skillId: null, skillName: "Quản lý rủi ro dự án kiểm chứng", title: "Một", description: "", isRequired: false, sourceIndex: null },
+    // Extra spaces do not make a different name.
+    [[{ skillId: null, skillName: " Quản lý  rủi ro dự án   kiểm chứng", title: "Một", description: "", isRequired: false, sourceIndex: null },
       { skillId: null, skillName: "QUAN LY RUI RO DU AN KIEM CHUNG", title: "Hai", description: "", isRequired: false, sourceIndex: null }], null],
   ];
   for (const [items, skills] of conflictCases) {
@@ -381,7 +387,7 @@ try {
   assert.equal((await ai("POST", `/${s4.id}/apply`, { body: { items: [keep(catalogItems[0])] }, headers: { origin: "http://evil.example" } })).status, 403);
   assert.equal((await requirementsOf(nn004.id)).length, before4.length);
   assert.equal(await count("career_skills WHERE deleted_at IS NULL"), skillsBefore);
-  checks.push("apply refuses a linked skill, the same skill twice, a new name equal to a linked skill (any case) and two equal new names with 409 requirement_exists + names; empty or invalid bodies are 400 and foreign origins 403; nothing is saved");
+  checks.push("apply refuses a linked skill, the same skill twice, a new name equal to a linked skill (any case) and two equal new names (any case, extra spaces) with 409 requirement_exists + names; empty or invalid bodies are 400 and foreign origins 403; nothing is saved");
 
   // Apply a reviewed subset: up to 3 catalog rows (first one edited) and one new skill.
   const subset = catalogItems.slice(0, 3);

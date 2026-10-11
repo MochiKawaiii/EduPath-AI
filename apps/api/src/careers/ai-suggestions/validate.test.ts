@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildCareerSuggestionInput } from "./prompt.js";
 import { careerSource, fixtureId as id } from "./test-fixture.js";
-import { suggestionContextFromAiInput, validateCareerSuggestionOutput, type CareerSuggestionContext } from "./validate.js";
+import { cleanNewSkillName, suggestionContextFromAiInput, validateCareerSuggestionOutput, type CareerSuggestionContext } from "./validate.js";
 
 // S001 Rèn luyện thể chất, S002 SQL, S003 Trực quan hóa dữ liệu; Python is already linked.
 const context = suggestionContextFromAiInput(buildCareerSuggestionInput(careerSource())) as CareerSuggestionContext;
@@ -81,8 +81,33 @@ describe("validateCareerSuggestionOutput", () => {
       [id(2), "SQL", false]
     ]);
     const fresh = items(validate([], [newSkill("Power BI", { priority: "required" }), newSkill("power bi"), newSkill("  ")]));
-    expect(fresh).toEqual([{ skillId: null, skillName: "Power BI", isNewSkill: true, isRequired: true,
+    // New skills are always Ưu tiên: they have no course mapping yet.
+    expect(fresh).toEqual([{ skillId: null, skillName: "Power BI", isNewSkill: true, isRequired: false,
       title: "Xây dựng báo cáo tự động", description: "Dùng để báo cáo.", reason: "Danh mục chưa có." }]);
+  });
+
+  it("drops a leading 'Kỹ năng' from new names and folds the rest again", () => {
+    const result = validate([], [
+      newSkill("Kỹ năng  phân tích   nghiệp vụ", { priority: "required" }),
+      newSkill("KĨ NĂNG: sql"),
+      newSkill("kỹ năng Phân tích nghiệp vụ")
+    ]);
+    expect(items(result).map((row) => [row.skillId, row.skillName, row.isNewSkill, row.isRequired])).toEqual([
+      [null, "Phân tích nghiệp vụ", true, false],
+      [id(2), "SQL", false, false]
+    ]);
+    expect(result.ok && result.result.dropped).toBe(1);
+    // A name that is only the prefix is empty, and "Kỹ năng Python" is the linked skill.
+    expect(validate([], [newSkill("Kỹ năng"), newSkill("Kỹ năng Python")])).toEqual({ ok: false, reason: "no_valid_items", path: "" });
+  });
+
+  it("keeps at most 5 catalog skills Bắt buộc, in the model's order", () => {
+    const keys = Array.from({ length: 8 }, (_, i) => ({ key: `S${String(i + 1).padStart(3, "0")}`, id: id(10 + i), name: `Công cụ ${i + 1}` }));
+    const many = validateCareerSuggestionOutput({
+      suggestions: keys.map((entry, i) => item(entry.key, { priority: i === 2 ? "preferred" : "required" })),
+      newSkills: [newSkill("Power BI", { priority: "required" })]
+    }, { catalog: keys, linked: [] });
+    expect(items(many).map((row) => row.isRequired)).toEqual([true, true, false, true, true, true, false, false, false]);
   });
 
   it("accepts an empty answer and rejects a wrong shape", () => {
@@ -93,5 +118,18 @@ describe("validateCareerSuggestionOutput", () => {
     expect(validate([item("S002", { priority: "high" })])).toMatchObject({ ok: false, reason: "schema" });
     expect(validate(Array.from({ length: 13 }, () => item("S002")))).toMatchObject({ ok: false, reason: "schema" });
     expect(validate([], Array.from({ length: 4 }, (_, i) => newSkill(`Kỹ năng ${i}`)))).toMatchObject({ ok: false, reason: "schema" });
+  });
+});
+
+describe("cleanNewSkillName", () => {
+  it("strips the prefix, collapses whitespace and capitalises a plain first word", () => {
+    expect(cleanNewSkillName("  Kỹ năng   quản lý  cấu hình ")).toBe("Quản lý cấu hình");
+    expect(cleanNewSkillName("KỸ NĂNG - Kiểm thử hiệu năng")).toBe("Kiểm thử hiệu năng");
+    expect(cleanNewSkillName("Ky nang iOS")).toBe("iOS");
+    expect(cleanNewSkillName("kĩ năng")).toBe("");
+    // Only a prefix is removed; other names are kept as written.
+    expect(cleanNewSkillName("Kỹ thuật phần mềm")).toBe("Kỹ thuật phần mềm");
+    expect(cleanNewSkillName("Kỹ năngx")).toBe("Kỹ năngx");
+    expect(cleanNewSkillName("pandas")).toBe("pandas");
   });
 });

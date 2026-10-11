@@ -12,6 +12,7 @@ import { CAREER_SKILL_SUGGESTION_KIND } from "../../competency-assessment/ai/wor
 import { lockCareers, refreshCareerSkills, skillFor } from "../requirements.js";
 import { access, CareerError, fold, lockSkillCatalog } from "../shared.js";
 import { createCareerSuggestionExpiry, enqueueCareerSuggestion } from "./jobs.js";
+import { similarSkillNames } from "./similarity.js";
 import type { StoredSuggestionItem, StoredSuggestionResult } from "./validate.js";
 
 /** /latest only returns suggestions created within this many days. */
@@ -35,9 +36,11 @@ type SuggestionRow = {
 const columns = `id,career_position_id AS "careerPositionId",status,error_code AS "errorCode",created_at AS "createdAt",
  updated_at AS "updatedAt",completed_at AS "completedAt",applied_at AS "appliedAt",ai_model AS model,
  prompt_version AS "promptVersion",result`;
+/** Typed names are compared and stored with single spaces, so "Lập  trình" cannot add a near-duplicate. */
+const collapse = (value: string) => value.replace(/\s+/g, " ").trim();
 const applyItem = z.object({
   skillId: z.uuid().nullable(),
-  skillName: z.string().trim().max(100),
+  skillName: z.string().transform(collapse).pipe(z.string().max(100)),
   title: z.string().trim().min(1).max(160),
   description: z.string().trim().max(4000),
   isRequired: z.boolean(),
@@ -47,7 +50,10 @@ const applyBody = z.object({ items: z.array(applyItem).min(1).max(20) }).strict(
 
 const iso = (value: Date | string | null) => (value === null ? null : new Date(value).toISOString());
 
-/** API shape; items carry the current catalog name and whether the skill is linked by now. */
+/**
+ * API shape; items carry the current catalog name, whether the skill is linked by now and, if not,
+ * the first linked skill whose name looks like it (a hint for the admin, never an exclusion).
+ */
 async function present(db: Db, row: SuggestionRow) {
   const { result, ...rest } = row;
   const base = {
@@ -61,23 +67,25 @@ async function present(db: Db, row: SuggestionRow) {
   if (!stored.length) return { ...base, items: [] };
   const ids = [...new Set(stored.map((item) => item.skillId).filter((id): id is string => Boolean(id)))];
   const linked = await db.query<{ id: string; name: string }>(`SELECT s.id,s.name FROM career_requirements r JOIN career_skills s ON s.id=r.skill_id
-    WHERE r.career_position_id=$1 AND r.deleted_at IS NULL AND s.deleted_at IS NULL`, [row.careerPositionId]);
+    WHERE r.career_position_id=$1 AND r.deleted_at IS NULL AND s.deleted_at IS NULL ORDER BY s.name,s.id`, [row.careerPositionId]);
   const current = ids.length
     ? await db.query<{ id: string; name: string }>("SELECT id,name FROM career_skills WHERE id=ANY($1::uuid[]) AND deleted_at IS NULL", [ids])
     : { rows: [] };
   const names = new Map(current.rows.map((skill) => [skill.id, skill.name]));
   const linkedIds = new Set(linked.rows.map((skill) => skill.id));
-  const linkedNames = new Set(linked.rows.map((skill) => fold(skill.name.trim())));
+  const linkedNames = new Set(linked.rows.map((skill) => fold(collapse(skill.name))));
   const items = stored.flatMap((item, index) => {
     // A catalog skill deleted since the suggestion was made is no longer offered.
     if (item.skillId && !names.has(item.skillId)) return [];
     const skillName = item.skillId ? names.get(item.skillId)! : item.skillName;
+    const alreadyLinked = item.skillId ? linkedIds.has(item.skillId) : linkedNames.has(fold(collapse(skillName)));
     return [{
       index,
       skillId: item.skillId,
       skillName,
       isNewSkill: item.isNewSkill,
-      alreadyLinked: item.skillId ? linkedIds.has(item.skillId) : linkedNames.has(fold(skillName.trim())),
+      alreadyLinked,
+      similarLinkedSkill: alreadyLinked ? null : linked.rows.find((skill) => similarSkillNames(skillName, skill.name))?.name ?? null,
       isRequired: item.isRequired,
       title: item.title,
       description: item.description,
@@ -192,11 +200,11 @@ export function createCareerAiSuggestionsRouter(pool: DatabasePool, options: { e
 
       const catalog = await client.query<{ id: string; name: string }>("SELECT id,name FROM career_skills WHERE deleted_at IS NULL");
       const byId = new Map(catalog.rows.map((skill) => [skill.id, skill]));
-      const byName = new Map(catalog.rows.map((skill) => [fold(skill.name.trim()), skill]));
+      const byName = new Map(catalog.rows.map((skill) => [fold(collapse(skill.name)), skill]));
       const linked = await client.query<{ skillId: string }>(
         `SELECT skill_id AS "skillId" FROM career_requirements WHERE career_position_id=$1 AND deleted_at IS NULL AND skill_id IS NOT NULL`, [careerId]);
       const linkedIds = new Set(linked.rows.map((row) => row.skillId));
-      // A new name that already exists in the catalog (ignoring case and accents) uses that skill.
+      // A new name (whitespace already collapsed) that exists in the catalog, ignoring case and accents, uses that skill.
       const rows = items.map((item) => {
         if (item.skillId) {
           const skill = byId.get(item.skillId);
@@ -224,7 +232,7 @@ export function createCareerAiSuggestionsRouter(pool: DatabasePool, options: { e
         await client.query(`INSERT INTO career_requirements(id,career_position_id,skill_id,title,description,is_required)
           VALUES($1,$2,$3,$4,$5,$6)`, [randomUUID(), careerId, skillId, item.title, item.description, item.isRequired]);
         const source = item.sourceIndex === null ? undefined : stored[item.sourceIndex];
-        const sameSkill = source && (source.skillId ? source.skillId === skillId : fold(source.skillName.trim()) === fold(name.trim()));
+        const sameSkill = source && (source.skillId ? source.skillId === skillId : fold(collapse(source.skillName)) === fold(collapse(name)));
         if (!source || !sameSkill || source.title.trim() !== item.title || source.description.trim() !== item.description
           || source.isRequired !== item.isRequired) edited += 1;
       }

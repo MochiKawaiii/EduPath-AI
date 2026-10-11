@@ -2,6 +2,9 @@
 // (anything unparseable fails the job with invalid_ai_output) but lenient per item: an item
 // with an unknown or repeated key, or with a link/email/HTML in its text, is dropped and the
 // rest are kept, because the admin reviews every row before anything is saved.
+// A few rules the model does not reliably follow are enforced here instead: new skills are
+// always Ưu tiên (they have no course mapping yet), a leading "Kỹ năng" is dropped from new
+// names, and at most CAREER_SUGGESTION_LIMITS.required catalog skills stay Bắt buộc.
 import { z } from "zod";
 import { sanitizeText } from "../../competency-assessment/ai/prompt.js";
 import { cleanKeyText } from "../../competency-assessment/ai/key-cleanup.js";
@@ -38,6 +41,20 @@ export const careerSuggestionOutputSchema = z.object({
   newSkills: z.array(z.object({ name: raw, ...details }).strict()).max(L.newSkills)
 }).strict();
 
+/** A leading "Kỹ năng"/"Kĩ năng" (any case, with or without accents) and a separator after it. */
+const SKILL_PREFIX = /^k[ỹĩyi]\s+n[ăa]ng(?:\s*[:\-–]\s*|\s+|$)/iu;
+
+/**
+ * "Kỹ năng  phân tích nghiệp vụ" → "Phân tích nghiệp vụ"; whitespace collapsed. After a removed
+ * prefix a plain lowercase word is capitalised ("phân" → "Phân") but a name like "iOS" is kept.
+ */
+export function cleanNewSkillName(name: string): string {
+  const collapsed = name.normalize("NFC").replace(/\s+/g, " ").trim();
+  const stripped = collapsed.replace(SKILL_PREFIX, "").trim();
+  if (stripped === collapsed || !/^\p{Ll}(?:\p{Ll}|\s|$)/u.test(stripped)) return stripped;
+  return stripped.charAt(0).toLocaleUpperCase("vi") + stripped.slice(1);
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -65,8 +82,9 @@ export function validateCareerSuggestionOutput(output: unknown, context: CareerS
   }
   const { suggestions, newSkills } = parsed.data;
   const byKey = new Map(context.catalog.map((entry) => [entry.key, entry]));
-  const byName = new Map(context.catalog.map((entry) => [fold(entry.name.trim()), entry]));
-  const linkedNames = new Set(context.linked.map((skill) => fold(skill.name.trim())));
+  const nameKey = (name: string) => fold(name.replace(/\s+/g, " ").trim());
+  const byName = new Map(context.catalog.map((entry) => [nameKey(entry.name), entry]));
+  const linkedNames = new Set(context.linked.map((skill) => nameKey(skill.name)));
   const names = new Map(context.catalog.map((entry) => [entry.key, entry.name]));
   // Keys written into prose become names; then control tokens are stripped and lengths capped.
   const clean = (value: string, max: number) => sanitizeText(cleanKeyText(value, names), max);
@@ -91,10 +109,10 @@ export function validateCareerSuggestionOutput(output: unknown, context: CareerS
     items.push({ skillId: entry.id, skillName: entry.name, isNewSkill: false, ...body });
   }
   for (const item of newSkills) {
-    const name = clean(item.name, L.skillName);
+    const name = cleanNewSkillName(clean(item.name, L.skillName));
     const key = fold(name);
     if (!name || hasForbiddenContent(name) || linkedNames.has(key)) continue;
-    // A "new" name that is already in the catalog becomes that catalog skill.
+    // A "new" name that is already in the catalog becomes that catalog skill (with the model's priority).
     const existing = byName.get(key);
     if (existing ? usedSkills.has(existing.id) : usedNewNames.has(key)) continue;
     const body = texts(item);
@@ -104,8 +122,15 @@ export function validateCareerSuggestionOutput(output: unknown, context: CareerS
       items.push({ skillId: existing.id, skillName: existing.name, isNewSkill: false, ...body });
     } else {
       usedNewNames.add(key);
-      items.push({ skillId: null, skillName: name, isNewSkill: true, ...body });
+      items.push({ skillId: null, skillName: name, isNewSkill: true, ...body, isRequired: false });
     }
+  }
+  // Bắt buộc means a competency threshold of 85 for students: keep the first few, in the model's order.
+  let required = 0;
+  for (const item of items) {
+    if (!item.isRequired) continue;
+    required += 1;
+    if (required > L.required) item.isRequired = false;
   }
 
   const returned = suggestions.length + newSkills.length;

@@ -64,8 +64,15 @@ describe("career suggestion prompt", () => {
 
   it("never sends student data and states the rules the admin relies on", () => {
     expect(CAREER_SUGGESTION_SYSTEM_PROMPT).toContain("Trường Đại học Văn Lang");
-    expect(CAREER_SUGGESTION_SYSTEM_PROMPT).toContain("thường 2–5 kỹ năng");
+    expect(CAREER_SUGGESTION_PROMPT_VERSION).toBe("career-skill-v2");
+    expect(CAREER_SUGGESTION_SYSTEM_PROMPT).toContain("thường 2–4 kỹ năng, tối đa 5, tính cả kỹ năng mới");
+    expect(CAREER_SUGGESTION_SYSTEM_PROMPT).toContain("Kỹ năng mềm (giao tiếp, làm việc nhóm, tư duy, tự học…) tối đa 3");
+    expect(CAREER_SUGGESTION_SYSTEM_PROMPT).toContain("Kỹ năng mềm và kiến thức nền tảng chung (ví dụ kiến thức nền tảng CNTT) luôn là \"preferred\"");
+    expect(CAREER_SUGGESTION_SYSTEM_PROMPT).toContain("đã có \"SQL\" thì không chọn \"Truy vấn dữ liệu bằng SQL\"");
+    expect(CAREER_SUGGESTION_SYSTEM_PROMPT).toContain("bộ kỹ năng chuyên môn cốt lõi");
+    expect(CAREER_SUGGESTION_SYSTEM_PROMPT).toContain("không mở đầu bằng \"Kỹ năng\"");
     expect(CAREER_SUGGESTION_SYSTEM_PROMPT).toContain("tối đa 3 mục");
+    expect(CAREER_SUGGESTION_SYSTEM_PROMPT).not.toMatch(/\$\{|undefined/);
     expect(buildCareerSuggestionInput(careerSource()).user).not.toMatch(/sinh viên|MSSV|email/i);
   });
 });

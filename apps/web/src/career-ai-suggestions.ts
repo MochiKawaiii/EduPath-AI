@@ -14,6 +14,11 @@ export type CareerAiSuggestionItem = {
   skillName: string;
   isNewSkill: boolean;
   alreadyLinked: boolean;
+  /**
+   * A skill linked to the career whose name looks like this one ("SQL" for "Truy vấn dữ liệu bằng SQL");
+   * null when there is none or the skill itself is linked. The row then starts unticked.
+   */
+  similarLinkedSkill: string | null;
   isRequired: boolean;
   title: string;
   description: string;
@@ -142,12 +147,12 @@ export const foldName = (value: string) => value.trim().normalize("NFD").replace
 
 /* ------------------------------------------------------------ review rows */
 
-/** Catalog rows start ticked unless already linked; new skills start unticked. */
+/** Catalog rows start ticked unless already linked or close to a linked skill; new skills start unticked. */
 export function rowsFromSuggestion(items: CareerAiSuggestionItem[]): SuggestionRow[] {
   return items.map((item) => ({
     key: `row-${item.index}`,
     index: item.index,
-    checked: !item.isNewSkill && !item.alreadyLinked,
+    checked: !item.isNewSkill && !item.alreadyLinked && !item.similarLinkedSkill,
     isNewSkill: item.isNewSkill,
     alreadyLinked: item.alreadyLinked,
     skillId: item.isNewSkill ? null : item.skillId,
@@ -157,6 +162,18 @@ export function rowsFromSuggestion(items: CareerAiSuggestionItem[]): SuggestionR
     isRequired: item.isRequired,
     reason: item.reason,
   }));
+}
+
+/**
+ * The linked skill a row looks like, while the row still stands for the suggested skill: once the
+ * admin picks another catalog skill or types another name, the hint no longer applies.
+ */
+export function similarLinkedSkillOf(row: SuggestionRow, items: CareerAiSuggestionItem[]): string | null {
+  if (row.alreadyLinked) return null;
+  const item = items.find((entry) => entry.index === row.index);
+  if (!item?.similarLinkedSkill) return null;
+  const same = row.isNewSkill ? foldName(row.skillName) === foldName(item.skillName) : row.skillId === item.skillId;
+  return same ? item.similarLinkedSkill : null;
 }
 
 /** The name a row stands for: the catalog name for catalog rows, the typed name for new ones. */

@@ -192,7 +192,7 @@ describe("POST / (request suggestions)", () => {
   it("queues a job for the career with the key map kept server-side", async () => {
     const { app, suggestions, calls } = setup({ linked: [python] });
     const res = await request(app).post(base).set("Origin", origin).send({ careerPositionId: career }).expect(201);
-    expect(res.body.suggestion).toMatchObject({ careerPositionId: career, status: "queued", errorCode: null, items: [], appliedAt: null, promptVersion: "career-skill-v1" });
+    expect(res.body.suggestion).toMatchObject({ careerPositionId: career, status: "queued", errorCode: null, items: [], appliedAt: null, promptVersion: "career-skill-v2" });
     const row = suggestions.get(res.body.suggestion.id)!;
     expect(row.requestedBy).toBe(adminId);
     const input = row.aiInput as { catalog: { key: string; name: string }[]; user: string };
@@ -233,14 +233,29 @@ describe("reading suggestions", () => {
     expect(res.body.suggestion).toMatchObject({ id: suggestionId, status: "completed", model: "gemma4:e4b", createdAt: "2026-10-11T05:00:00.000Z" });
     expect(res.body.suggestion).not.toHaveProperty("result");
     expect(res.body.suggestion.items).toEqual([
-      { index: 0, skillId: sql, skillName: "SQL", isNewSkill: false, alreadyLinked: false, isRequired: true, title: "Sử dụng SQL trong công việc", description: "Mô tả", reason: "Lý do" },
-      { index: 1, skillId: python, skillName: "Python", isNewSkill: false, alreadyLinked: true, isRequired: false, title: "Sử dụng Python trong công việc", description: "Mô tả", reason: "Lý do" },
+      { index: 0, skillId: sql, skillName: "SQL", isNewSkill: false, alreadyLinked: false, similarLinkedSkill: null, isRequired: true, title: "Sử dụng SQL trong công việc", description: "Mô tả", reason: "Lý do" },
+      { index: 1, skillId: python, skillName: "Python", isNewSkill: false, alreadyLinked: true, similarLinkedSkill: null, isRequired: false, title: "Sử dụng Python trong công việc", description: "Mô tả", reason: "Lý do" },
       // index 2 refers to a catalog skill deleted since; it is no longer offered.
-      { index: 3, skillId: null, skillName: "Power BI", isNewSkill: true, alreadyLinked: false, isRequired: false, title: "Sử dụng Power BI trong công việc", description: "Mô tả", reason: "Lý do" }
+      { index: 3, skillId: null, skillName: "Power BI", isNewSkill: true, alreadyLinked: false, similarLinkedSkill: null, isRequired: false, title: "Sử dụng Power BI trong công việc", description: "Mô tả", reason: "Lý do" }
     ]);
     await request(setup().app).get(`${base}/latest?careerPositionId=${career}`).expect(200, { suggestion: null });
     await request(setup({ suggestions: [completed({ appliedAt: new Date() })] }).app).get(`${base}/latest?careerPositionId=${career}`).expect(200, { suggestion: null });
     await request(setup().app).get(`${base}/latest`).expect(400, { error: "invalid_ai_suggestion" });
+  });
+
+  it("names a linked skill that a suggested skill looks like, without excluding it", async () => {
+    const result = { returned: 4, dropped: 0, items: [
+      stored(viz, "Trực quan hóa dữ liệu"), stored(null, "Lập trình  Python"), stored(null, "Truy vấn dữ liệu bằng SQL"), stored(python, "Python")
+    ] };
+    const { app } = setup({ suggestions: [completed({ result })], linked: [python, sql] });
+    const res = await request(app).get(`${base}/${suggestionId}`).expect(200);
+    expect(res.body.suggestion.items.map((item: { skillName: string; alreadyLinked: boolean; similarLinkedSkill: string | null }) =>
+      [item.skillName, item.alreadyLinked, item.similarLinkedSkill])).toEqual([
+      ["Trực quan hóa dữ liệu", false, null],
+      ["Lập trình  Python", false, "Python"],
+      ["Truy vấn dữ liệu bằng SQL", false, "SQL"],
+      ["Python", true, null]
+    ]);
   });
 
   it("reads one suggestion by id and is never captured by /requirements/:id", async () => {
@@ -299,11 +314,22 @@ describe("POST /:id/apply", () => {
     expect(order.at(-1)).toBe("COMMIT");
   });
 
-  it("matches a new name to an existing catalog skill ignoring accents", async () => {
+  it("matches a new name to an existing catalog skill ignoring accents and extra spaces", async () => {
     const { app, requirements, skills } = setup({ suggestions: [completed()] });
-    await request(app).post(`${base}/${suggestionId}/apply`).set("Origin", origin).send({ items: [keep(null, "truc quan hoa du lieu", null)] }).expect(201);
+    await request(app).post(`${base}/${suggestionId}/apply`).set("Origin", origin).send({ items: [keep(null, " truc  quan	hoa du   lieu ", null)] }).expect(201);
     expect(requirements.map((row) => row.skillId)).toEqual([viz]);
     expect(skills.size).toBe(3);
+  });
+
+  it("stores a new skill name with single spaces and counts it as the suggested one", async () => {
+    const { app, skills, suggestions } = setup({ suggestions: [completed()] });
+    await request(app).post(`${base}/${suggestionId}/apply`).set("Origin", origin).send({ items: [keep(null, "  Power   BI ", 3, { title: "Sử dụng Power BI trong công việc" })] }).expect(201);
+    expect([...skills.values()]).toContain("Power BI");
+    expect(suggestions.get(suggestionId)!.appliedSummary).toEqual({ suggested: 4, saved: 1, edited: 0, newSkills: 1 });
+    const twice = setup({ suggestions: [completed()] });
+    const res = await request(twice.app).post(`${base}/${suggestionId}/apply`).set("Origin", origin).send({ items: [keep(null, "Lập trình web", null), keep(null, "Lập  trình   web", null)] }).expect(409);
+    expect(res.body).toEqual({ error: "requirement_exists", skills: ["Lập trình web"] });
+    await request(twice.app).post(`${base}/${suggestionId}/apply`).set("Origin", origin).send({ items: [keep(null, "   ", null)] }).expect(400, { error: "invalid_ai_suggestion" });
   });
 
   it("refuses duplicates and saves nothing", async () => {

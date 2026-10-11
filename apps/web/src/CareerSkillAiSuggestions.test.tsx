@@ -12,7 +12,7 @@ const career: Career = { id: "career-1", code: "DA01", nameVi: "Chuyên viên ph
 const catalog = { data: { items: [{ id: "s-sql", name: "SQL" }, { id: "s-py", name: "Lập trình Python" }, { id: "s-viz", name: "Trực quan hóa dữ liệu" }] }, error: null, loading: false, retry: () => {} };
 const online: CareerAiStatus = { enabled: true, worker: { online: true, supportsSuggestions: true, seenAt: "2026-10-11T05:00:00.000Z" } };
 const item = (patch: Partial<CareerAiSuggestionItem>): CareerAiSuggestionItem => ({
-  index: 0, skillId: "s-sql", skillName: "SQL", isNewSkill: false, alreadyLinked: false, isRequired: true,
+  index: 0, skillId: "s-sql", skillName: "SQL", isNewSkill: false, alreadyLinked: false, similarLinkedSkill: null, isRequired: true,
   title: "Viết truy vấn SQL để trích xuất và tổng hợp dữ liệu", description: "Truy vấn kho dữ liệu hằng ngày.", reason: "Công việc cốt lõi của vị trí.", ...patch,
 });
 const suggestion = (patch: Partial<CareerAiSuggestion>): CareerAiSuggestion => ({
@@ -80,6 +80,18 @@ describe("CareerSkillAiSuggestions", () => {
     expect(html).toContain("Đã chọn 2/3 kỹ năng · 1 bắt buộc");
     expect(html).toMatch(/<button type="button" class="am-primary">.*Lưu 2 liên kết<\/button>/);
     expect(html).toContain('value="Kể chuyện bằng dữ liệu"');
+  });
+  it("starts a row close to a linked skill unticked and explains why", () => {
+    const html = render(suggestion({ items: [
+      item({}),
+      item({ index: 1, skillId: "s-py", skillName: "Lập trình Python", isRequired: false, similarLinkedSkill: "Python" }),
+      item({ index: 2, skillId: "s-viz", skillName: "Trực quan hóa dữ liệu", alreadyLinked: true, isRequired: false }),
+    ] }), { linked: [{ skillId: "s-viz", skillName: "Trực quan hóa dữ liệu" }, { skillId: "s-python", skillName: "Python" }] });
+    expect(html).toContain('<span class="cai-tag cai-tag-similar" title="Gần giống: Python">Gần giống: Python</span>');
+    expect(html).toContain('<p class="cai-similar">Nghề này đã có kỹ năng “Python”. Chỉ chọn nếu đây là kỹ năng khác.</p>');
+    expect(html).toMatch(/<input type="checkbox"\/><span>Lập trình Python/);
+    expect(html.match(/cai-tag-similar/g)).toHaveLength(1);
+    expect(html).toContain("Đã chọn 1/2 kỹ năng · 1 bắt buộc");
   });
   it("blocks saving a skill that was linked after the suggestion was made", () => {
     const html = render(completed, { linked: [{ skillId: "s-viz", skillName: "Trực quan hóa dữ liệu" }, { skillId: "s-py", skillName: "Lập trình Python" }] });

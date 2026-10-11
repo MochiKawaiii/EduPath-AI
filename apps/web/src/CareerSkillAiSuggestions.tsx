@@ -5,7 +5,7 @@ import type { Career, CareerRequirement, CareerSkill } from "./career-types";
 import {
   CAREER_AI_API, CareerAiError, DESCRIPTION_MAX, POLL_STATUS_MS, POLL_SUGGESTION_MS, SKILL_NAME_MAX, TITLE_MAX,
   applyItems, careerAiRequest, failureMessage, formatDateTime, formatElapsed, hasEdits, isPending, jsonPost,
-  rowSkillName, rowsFromSuggestion, validateRows, workerLine,
+  rowSkillName, rowsFromSuggestion, similarLinkedSkillOf, validateRows, workerLine,
   type CareerAiStatus, type CareerAiSuggestion, type LinkedSkill, type SuggestionRow,
 } from "./career-ai-suggestions";
 
@@ -204,6 +204,7 @@ function Review({ suggestion, career, catalog, linked, linkedState, refreshLinke
     const name = rowSkillName(row, skills) || "kỹ năng mới";
     const rowErrors = check.errors[row.key] ?? [];
     const id = `cai-${suggestion.id}-${row.key}`;
+    const similar = similarLinkedSkillOf(row, suggestion.items);
     return <li key={row.key} className={`cai-row${row.checked && !row.alreadyLinked ? " cai-row-on" : ""}${row.alreadyLinked ? " cai-row-linked" : ""}${rowErrors.length ? " cai-row-invalid" : ""}`}>
       <div className="cai-row-head">
         <label className="cai-check">
@@ -211,6 +212,7 @@ function Review({ suggestion, career, catalog, linked, linkedState, refreshLinke
           <span>{name}</span>
         </label>
         {row.alreadyLinked && <span className="cai-tag">Đã liên kết</span>}
+        {similar && <span className="cai-tag cai-tag-similar" title={`Gần giống: ${similar}`}>Gần giống: {similar}</span>}
         {row.isRequired && !row.alreadyLinked && <span className="cai-tag cai-tag-required">Bắt buộc</span>}
         <button type="button" className="am-icon-btn am-delete-icon cai-remove" disabled={busy !== null} aria-label={`Bỏ đề xuất ${name}`} title="Bỏ đề xuất" onClick={() => setRows((previous) => previous.filter((item) => item.key !== row.key))}><Icon name="trash" /></button>
       </div>
@@ -228,6 +230,7 @@ function Review({ suggestion, career, catalog, linked, linkedState, refreshLinke
         <label htmlFor={`${id}-title`} className="cai-wide"><RequiredLabel>Nội dung yêu cầu</RequiredLabel><input id={`${id}-title`} maxLength={TITLE_MAX} value={row.title} onChange={(event) => update(row.key, { title: event.target.value })} /></label>
         <label htmlFor={`${id}-description`} className="cai-wide">Mô tả<textarea id={`${id}-description`} rows={2} maxLength={DESCRIPTION_MAX} value={row.description} onChange={(event) => update(row.key, { description: event.target.value })} /></label>
       </fieldset>
+      {similar && <p className="cai-similar">Nghề này đã có kỹ năng “{similar}”. Chỉ chọn nếu đây là kỹ năng khác.</p>}
       {row.reason && <p className="cai-reason">Lý do AI đề xuất: {row.reason}</p>}
       {rowErrors.length > 0 && <ul className="cai-row-errors" role="alert">{rowErrors.map((message) => <li key={message}>{message}</li>)}</ul>}
     </li>;
