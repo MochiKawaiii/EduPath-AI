@@ -504,7 +504,7 @@ function Conditions({
                   className="am-outline"
                   onClick={() => editGroup(group.id)}
                 >
-                  <Icon name="edit" /> Chỉnh sửa nhóm
+                  <Icon name="edit" /> Chỉnh sửa
                 </button>
               )}
             </div>
@@ -536,7 +536,7 @@ function Conditions({
                             className="am-outline"
                             onClick={() => editCourse(c.id)}
                           >
-                            <Icon name="edit" /> Chỉnh sửa học phần
+                            <Icon name="edit" /> Chỉnh sửa
                           </button>
                         </td>
                       )}

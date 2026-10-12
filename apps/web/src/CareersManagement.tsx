@@ -14,7 +14,7 @@ export default function CareersManagement({
   canManage: boolean;
 }) {
   const [revision, setRevision] = useState(0),
-    [linksOpen, setLinksOpen] = useState(false),
+    [linksCareerId, setLinksCareerId] = useState<string | null>(null),
     [detailId, setDetailId] = useState<string | null>(null),
     [selected, setSelected] = useState<Career | null>(null),
     [mode, setMode] = useState<"edit" | "delete" | null>(null);
@@ -42,25 +42,15 @@ export default function CareersManagement({
     close();
     setRevision((n) => n + 1);
   };
+  const add = () => {
+    setSelected(null);
+    setMode("edit");
+  };
   return (
     <section className="cm-workspace career-workspace">
-      {linksOpen ? <CareerLinksManagement canManage={canManage} revision={revision} saved={() => setRevision(current => current + 1)} close={() => setLinksOpen(false)} /> : detailId ? <Detail key={detailId} id={detailId} fields={fields.data?.items ?? []} revision={revision} close={() => setDetailId(null)} /> : <>
+      {linksCareerId !== null ? <CareerLinksManagement key={linksCareerId} initialCareerId={linksCareerId} canManage={canManage} revision={revision} saved={() => setRevision(current => current + 1)} close={() => setLinksCareerId(null)} /> : detailId ? <Detail key={detailId} id={detailId} fields={fields.data?.items ?? []} revision={revision} close={() => setDetailId(null)} /> : <>
       <div className="cm-toolbar">
         <p>Danh mục nghề nghiệp song ngữ để sinh viên lựa chọn định hướng.</p>
-        <div className="cm-actions">
-        {canManage && <button className="am-primary" onClick={() => setLinksOpen(true)}><Icon name="plus" /> Liên kết kỹ năng</button>}
-        {canManage && (
-          <button
-            className="am-primary"
-            onClick={() => {
-              setSelected(null);
-              setMode("edit");
-            }}
-          >
-            <Icon name="plus" /> Thêm vị trí nghề nghiệp
-          </button>
-        )}
-        </div>
       </div>
       <section className="cm-panel">
         <div className="cm-filters">
@@ -139,8 +129,10 @@ export default function CareersManagement({
                             items={[
                               { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => setDetailId(c.id) },
                               ...(canManage ? [
-                                { key: "edit", icon: "edit", label: "Chỉnh sửa vị trí", onSelect: () => { setSelected(c); setMode("edit"); } },
-                                { key: "delete", icon: "trash", label: "Xóa vị trí", danger: true, onSelect: () => { setSelected(c); setMode("delete"); } },
+                                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(c); setMode("edit"); } },
+                                { key: "links", icon: "link", label: "Liên kết kỹ năng", onSelect: () => setLinksCareerId(c.id) },
+                                { key: "add", icon: "plus", label: "Thêm vị trí nghề nghiệp", onSelect: add },
+                                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(c); setMode("delete"); } },
                               ] : []),
                             ]}
                           />
@@ -151,7 +143,11 @@ export default function CareersManagement({
               </table>
             </div>
             {!list.data.items.length && (
-              <p className="am-empty">Không có vị trí phù hợp với bộ lọc.</p>
+              <div className="am-empty">
+                <p>Không có vị trí phù hợp với bộ lọc.</p>
+                {/* Adding lives in each row's menu; with no rows, offer it here. */}
+                {canManage && <button className="am-primary" onClick={add}><Icon name="plus" /> Thêm vị trí nghề nghiệp</button>}
+              </div>
             )}
             <Pagination
               total={list.data.items.length}
@@ -312,7 +308,7 @@ function Editor({
               }
             />
           </label>
-          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng bằng nút Liên kết kỹ năng trên danh sách vị trí.</small></div> : <p>Sau khi lưu, dùng nút Liên kết kỹ năng trên danh sách vị trí để thêm yêu cầu và liên kết kỹ năng.</p>}
+          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng bằng mục Liên kết kỹ năng trong menu Thao tác của vị trí.</small></div> : <p>Sau khi lưu, chọn Liên kết kỹ năng trong menu Thao tác của vị trí để thêm yêu cầu và liên kết kỹ năng.</p>}
         </fieldset>
         {error && (
           <p className="admin-error" role="alert">

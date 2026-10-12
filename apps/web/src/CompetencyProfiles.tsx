@@ -49,7 +49,7 @@ export function CompetencyGroupsTab({ canManage, revision, onSaved }: TabProps) 
             <td>{group.skillCount}</td><td><ProfileState active={group.isActive} /></td>
             <td><ActionMenu label={`Thao tác với nhóm ${group.name}`} items={[
               { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(group); setMode("detail"); } },
-              ...(canManage ? [{ key: "edit", icon: "edit", label: "Chỉnh sửa nhóm", onSelect: () => { setSelected(group); setMode("edit"); } }] : []),
+              ...(canManage ? [{ key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(group); setMode("edit"); } }] : []),
             ]} /></td>
           </tr>)}</tbody>
         </table></div>
@@ -90,7 +90,7 @@ function GroupDetails({ current, revision, canManage, close, edit }: { current: 
       </>}
       <div className="cm-actions cm-dialog-actions">
         <button className="am-outline" onClick={close}><Icon name="close" /> Đóng</button>
-        {canManage && detail && <button className="am-primary" onClick={() => edit(detail)}><Icon name="edit" /> Chỉnh sửa nhóm</button>}
+        {canManage && detail && <button className="am-primary" onClick={() => edit(detail)}><Icon name="edit" /> Chỉnh sửa</button>}
       </div>
     </div>
   </Modal>;
@@ -167,8 +167,8 @@ export function CompetencySkillsTab({ canManage, revision, onSaved }: TabProps) 
             <td><ActionMenu label={`Thao tác với kỹ năng ${skill.name}`} items={[
               { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(skill); setMode("detail"); } },
               ...(canManage ? [
-                { key: "edit", icon: "edit", label: "Chỉnh sửa hồ sơ năng lực", onSelect: () => { setSelected(skill); setMode("edit"); } },
-                { key: "delete", icon: "trash", label: "Xóa hồ sơ năng lực", danger: true, onSelect: () => { setSelected(skill); setMode("delete"); } },
+                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(skill); setMode("edit"); } },
+                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(skill); setMode("delete"); } },
               ] : []),
             ]} /></td>
           </tr>)}</tbody>
@@ -287,7 +287,7 @@ function SkillDetails({ current, revision, canManage, close, edit }: { current: 
       </>}
       <div className="cm-actions cm-dialog-actions">
         <button className="am-outline" onClick={close}><Icon name="close" /> Đóng</button>
-        {canManage && detail && <button className="am-primary" onClick={() => edit(detail)}><Icon name="edit" /> Chỉnh sửa hồ sơ năng lực</button>}
+        {canManage && detail && <button className="am-primary" onClick={() => edit(detail)}><Icon name="edit" /> Chỉnh sửa</button>}
       </div>
     </div>
   </Modal>;

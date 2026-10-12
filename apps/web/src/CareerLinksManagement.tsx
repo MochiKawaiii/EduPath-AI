@@ -4,12 +4,14 @@ import { Icon } from "./admin-account-shared";
 import type { Career } from "./career-types";
 import CareerRequirementsManagement from "./CareerRequirementsManagement";
 
-export default function CareerLinksManagement({ canManage, revision, saved, close }: {
+export default function CareerLinksManagement({ canManage, revision, saved, close, initialCareerId = "" }: {
   canManage: boolean; revision: number; saved: () => void; close: () => void;
+  /** The position whose row menu opened this view; the select can still switch. */
+  initialCareerId?: string;
 }) {
   const remote = useData<{ items: Career[] }>("/api/admin/careers", revision);
   const [lastCareers, setLastCareers] = useState<Career[]>([]);
-  const [careerId, setCareerId] = useState("");
+  const [careerId, setCareerId] = useState(initialCareerId);
   const careers = remote.data?.items ?? lastCareers;
   const career = careers.find(item => item.id === careerId);
   useEffect(() => {

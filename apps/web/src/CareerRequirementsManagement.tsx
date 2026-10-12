@@ -57,8 +57,8 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
             <td><ActionMenu label={`Thao tác với yêu cầu ${item.title}`} items={[
               { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(item); setMode("detail"); } },
               ...(canManage ? [
-                { key: "edit", icon: "edit", label: "Chỉnh sửa yêu cầu", onSelect: () => { setSelected(item); setKind(item.skillId ? "skill" : "other"); setMode("edit"); } },
-                { key: "delete", icon: "trash", label: "Xóa yêu cầu", danger: true, onSelect: () => { setSelected(item); setMode("delete"); } },
+                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(item); setKind(item.skillId ? "skill" : "other"); setMode("edit"); } },
+                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(item); setMode("delete"); } },
               ] : []),
             ]} /></td>
           </tr>)}</tbody>
