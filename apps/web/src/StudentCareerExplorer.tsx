@@ -60,10 +60,10 @@ export default function StudentCareerExplorer({ selectedId, initialCareerId, onS
     <header><h2 id="student-career-title">Khám phá nghề nghiệp</h2><button type="button" className="sr-secondary" disabled={saving} onClick={onClose} aria-label="Đóng khám phá nghề nghiệp">Đóng</button></header>
     <div className="sr-career-content">
       {detailId ? <>
-        <button type="button" className="sr-secondary" disabled={saving} onClick={() => { setSaveError(""); setDetailId(""); }}><Icon name="back" />Danh sách vị trí</button>
+        <button type="button" className="sr-secondary" disabled={saving} onClick={() => { setSaveError(""); setDetailId(""); }}><Icon name="back" />Quay lại danh sách vị trí</button>
         <CareerDetail key={detailId} id={detailId} selectedId={selectedId} saving={saving} saveError={saveError} onSelect={career => void selectCareer(career)} onClose={onClose} />
       </> : <>
-        <p>Chọn một vị trí trong danh sách rồi bấm Lưu để đặt mục tiêu nghề nghiệp. Bạn có thể xem yêu cầu để tìm hiểu thêm trước khi chọn.</p>
+        <p>Chọn một vị trí trong danh sách rồi bấm Lưu mục tiêu để đặt mục tiêu nghề nghiệp. Bạn có thể xem yêu cầu để tìm hiểu thêm trước khi chọn.</p>
         <details className="sr-career-fields">
           <summary>Lĩnh vực nghề nghiệp</summary>
           {fields.data && <div className="sr-career-field-grid">{fields.data.items.map(field => <article key={field.id}>
@@ -98,7 +98,7 @@ export default function StudentCareerExplorer({ selectedId, initialCareerId, onS
         </>}
         {pendingCareer && <p className="sr-career-choice-summary" role="status">Đang chọn: <strong>{pendingCareer.nameVi} — {pendingCareer.nameEn}</strong></p>}
         {saveError && <p className="sr-error" role="alert">{saveError}</p>}
-        <div className="sr-actions sr-form-actions"><button type="button" className="sr-secondary" disabled={saving} onClick={onClose}><Icon name="close" />Hủy</button><button type="button" className="sw-primary" disabled={saving || !pendingCareer || pendingCareer.id === selectedId} onClick={() => { if (pendingCareer) void selectCareer(pendingCareer); }}><Icon name="save" />{saving ? "Đang lưu…" : "Lưu"}</button></div>
+        <div className="sr-actions sr-form-actions"><button type="button" className="sr-secondary" disabled={saving} onClick={onClose}><Icon name="close" />Hủy</button><button type="button" className="sw-primary" disabled={saving || !pendingCareer || pendingCareer.id === selectedId} onClick={() => { if (pendingCareer) void selectCareer(pendingCareer); }}><Icon name="save" />{saving ? "Đang lưu mục tiêu…" : "Lưu mục tiêu"}</button></div>
       </>}
     </div>
   </dialog>;

@@ -10,7 +10,7 @@ Thông tin từng khối kiến thức trong bảng học phần hiển thị **
 
 - **Import:** chọn `.xlsx` không quá 5 MB, xem trước, đọc và xác nhận cảnh báo rồi lưu. Định dạng xác định bằng nội dung; tên tệp bất kỳ. Khung cùng ngành và khóa không được tạo trùng.
 - **Danh sách và tìm kiếm:** tìm theo tên, ngành/chuyên ngành hoặc khóa. Gõ tìm kiếm cập nhật sau 300 ms; chọn khóa/trạng thái lọc ngay. Danh sách phân trang 10 khung.
-- **Chi tiết:** xem các khối, học phần, nhóm tự chọn, học kỳ/năm học, tiên quyết/học trước và các điểm cần rà soát. Nút **Chi tiết** ở học phần có toàn bộ trường và các ô Excel gốc.
+- **Chi tiết:** xem các khối, học phần, nhóm tự chọn, học kỳ/năm học, tiên quyết/học trước và các điểm cần rà soát. Nút **Xem chi tiết** ở học phần có toàn bộ trường và các ô Excel gốc.
 - **Cập nhật:** dùng biểu tượng bút ở đầu khung để sửa thông tin chương trình. Các mục cha như A, B chỉ là tiêu đề chứa mục con, không có menu thao tác và không được chọn khi thêm/chuyển môn. Menu **…** cuối mỗi dòng khối con **Khối kiến thức** cho phép thêm, sửa hoặc xóa môn trong khối. Khi thêm môn, chỉ bắt buộc mã học phần, tên học phần và tín chỉ; loại môn và các thông tin còn lại được để trống để bổ sung sau. Form thêm/sửa có combobox khối kiến thức; khi thêm sẽ chọn sẵn khối vừa mở menu. Có thể chuyển môn sang khối khác, sửa mã và các trường học phần. Muốn thay toàn bộ cấu trúc khối, dùng **Cập nhật từ Excel** với tệp cùng ngành và khóa. Mỗi lần lưu tạo phiên bản mới; lịch sử và Excel nguồn được giữ lại.
 - **Mở/khóa:** khóa khung không còn áp dụng, giữ lại dữ liệu để tra cứu. Có thể mở lại; trạng thái không bị thay đổi khi chạy đồng bộ các nguồn ban đầu.
 
@@ -18,7 +18,7 @@ Quản trị viên, Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng
 
 Xóa môn cần xác nhận và chỉ xóa khỏi phiên bản mới của khung đang mở, không xóa danh mục môn toàn hệ thống, khung khác hoặc lịch sử. Nếu môn bị xóa/đổi mã còn nằm trong điều kiện tiên quyết/học trước của môn khác, hệ thống giữ nguyên điều kiện đó và đánh dấu trong tab **Cảnh báo** để quản trị viên sửa. Tổng tín chỉ quy định không tự cộng/trừ khi thêm hoặc xóa môn vì có các nhóm tự chọn và chuyên ngành. Khối trống vẫn hiển thị để thêm môn lại.
 
-**Tải khung CTĐT** tải Excel nguồn để đối chiếu; tệp này không bao gồm chỉnh sửa trực tiếp sau import. Những chỉnh sửa được lưu trong JSON và bảng học phần của phiên bản mới. Kế hoạch đào tạo đã liên kết với phiên bản CTĐT cũ vẫn giữ nguyên liên kết; trang sinh viên đọc phiên bản hiện hành của khung đang mở.
+**Tải xuống Excel nguồn** tải tệp Excel gốc để đối chiếu; tệp này không bao gồm chỉnh sửa trực tiếp sau import. Những chỉnh sửa được lưu trong JSON và bảng học phần của phiên bản mới. Kế hoạch đào tạo đã liên kết với phiên bản CTĐT cũ vẫn giữ nguyên liên kết; trang sinh viên đọc phiên bản hiện hành của khung đang mở.
 
 **Mã học phần:** thêm/sửa và nhập Excel cùng nhận mã theo chương trình, không bắt buộc số đầu, số chữ hay độ dài theo mẫu mã VLU cũ. Mã phải có nội dung, tối đa 100 ký tự và không chứa ký tự điều khiển; khoảng trắng đầu/cuối được bỏ và mã được chuẩn hóa thành chữ hoa để tra cứu nhất quán. Mã có dấu gạch, chấm, gạch chéo hoặc khoảng trắng vẫn được chấp nhận. Không cho tạo trùng mã trong một khung. Trong tiên quyết/học trước, dùng `[mã học phần]` để tham chiếu rõ ràng, kể cả mã có khoảng trắng; mã thiếu trong khung vẫn được giữ và đánh dấu cần rà soát.
 
@@ -57,7 +57,7 @@ Vào **Chương trình đào tạo** trong menu bên trái hoặc menu tài kho�
 - Các mã hoặc điều kiện còn chưa rõ được ghi nhận là cần xác nhận với cố vấn học tập. Chức năng này chưa kết luận sinh viên đủ điều kiện đăng ký hay tốt nghiệp.
 - Trang tải lại khi trở về tab hoặc bấm **Tải lại** để nhận phiên bản/trạng thái mới nhất.
 
-**Mô tả môn học:** ba file Excel ban đầu không có mô tả chi tiết. Quản trị viên bổ sung qua **Chi tiết khung → Chi tiết học phần → Chỉnh sửa học phần → Mô tả học phần**. Nội dung lưu trong phiên bản JSON của học phần và hiển thị ở cổng sinh viên. Không suy diễn mô tả từ tên môn hoặc lấy ghi chú thay mô tả; khi chưa có dữ liệu, trang thông báo chưa được cung cấp. Không cần migration mới cho trường tùy chọn này.
+**Mô tả môn học:** ba file Excel ban đầu không có mô tả chi tiết. Quản trị viên bổ sung qua **Xem chi tiết** ở khung → **Xem chi tiết** ở học phần → **Chỉnh sửa học phần** → **Mô tả học phần**. Nội dung lưu trong phiên bản JSON của học phần và hiển thị ở cổng sinh viên. Không suy diễn mô tả từ tên môn hoặc lấy ghi chú thay mô tả; khi chưa có dữ liệu, trang thông báo chưa được cung cấp. Không cần migration mới cho trường tùy chọn này.
 
 ## Các chức năng tiếp theo
 

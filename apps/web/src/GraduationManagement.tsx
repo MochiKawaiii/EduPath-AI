@@ -504,7 +504,7 @@ function Conditions({
                   className="am-outline"
                   onClick={() => editGroup(group.id)}
                 >
-                  <Icon name="edit" /> Cập nhập
+                  <Icon name="edit" /> Chỉnh sửa nhóm
                 </button>
               )}
             </div>
@@ -536,7 +536,7 @@ function Conditions({
                             className="am-outline"
                             onClick={() => editCourse(c.id)}
                           >
-                            <Icon name="edit" /> Chỉnh sửa
+                            <Icon name="edit" /> Chỉnh sửa học phần
                           </button>
                         </td>
                       )}
@@ -581,7 +581,7 @@ function Standard({
     <section className="cm-workspace grad-workspace">
       <div className="cm-toolbar">
         <button className="am-outline" onClick={back}>
-          <Icon name="back" /> Danh sách tiêu chuẩn
+          <Icon name="back" /> Quay lại danh sách tiêu chuẩn
         </button>
       </div>
       <Status {...remote} />
@@ -599,7 +599,7 @@ function Standard({
             </div>
             {editable && (
               <button
-                    className="am-icon-btn cm-metadata-edit" title="Sửa thông tin" aria-label="Sửa thông tin"
+                    className="am-icon-btn cm-metadata-edit" title="Chỉnh sửa thông tin" aria-label="Chỉnh sửa thông tin"
                     onClick={() => {
                       setGroup(undefined);
                       setCourse(undefined);
@@ -615,7 +615,7 @@ function Standard({
                 className="am-outline"
                 href={`${endpoint}/${id}/source/${data.revisionId}`}
               >
-                <Icon name="download" /> Tải xuống định dạng Excel
+                <Icon name="download" /> Tải xuống Excel nguồn
               </a>
               {editable && (
                 <>
@@ -630,7 +630,7 @@ function Standard({
                     onClick={() => setDialog("status")}
                   >
                     <Icon name={data.isActive ? "lock" : "unlock"} />
-                    {data.isActive ? "Khóa tiêu chuẩn" : "Mở tiêu chuẩn"}
+                    {data.isActive ? "Khóa tiêu chuẩn" : "Mở khóa tiêu chuẩn"}
                   </button>
                 </>
               )}
@@ -778,10 +778,10 @@ function EditDialog({
     <Modal
       title={
         group
-          ? "Cập nhật nhóm điều kiện"
+          ? "Chỉnh sửa nhóm điều kiện"
           : course
-            ? "Cập nhật môn học điều kiện"
-            : "Cập nhật tiêu chuẩn xét tốt nghiệp"
+            ? "Chỉnh sửa học phần"
+            : "Chỉnh sửa thông tin tiêu chuẩn"
       }
       onClose={close}
       busy={busy}
@@ -994,7 +994,7 @@ function StatusDialog({
     [error, setError] = useState("");
   return (
     <Modal
-      title={current.isActive ? "Khóa tiêu chuẩn" : "Mở tiêu chuẩn"}
+      title={current.isActive ? "Khóa tiêu chuẩn" : "Mở khóa tiêu chuẩn"}
       onClose={close}
       busy={busy}
       size="sm"

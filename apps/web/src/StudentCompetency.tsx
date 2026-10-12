@@ -113,7 +113,7 @@ function DeleteDialog({ busy, error, onClose, onConfirm }: { busy: boolean; erro
     {error && <p className="sr-error" role="alert">{error}</p>}
     <div className="sr-actions sr-form-actions">
       <button type="button" className="sr-secondary" disabled={busy} onClick={onClose} autoFocus>Hủy</button>
-      <button type="button" className="sw-primary sr-delete-confirm" disabled={busy} onClick={onConfirm}>{busy ? "Đang xóa…" : "Xóa kết quả"}</button>
+      <button type="button" className="sw-primary sr-delete-confirm" disabled={busy} onClick={onConfirm}>{busy ? "Đang xóa…" : "Xác nhận xóa"}</button>
     </div>
   </dialog>;
 }
@@ -438,7 +438,7 @@ function Checklist({ hasTranscript, transcriptFailed, profile, suggestion }: { h
     <span className={`so-check ${item.done ? "so-check-done" : ""}`} aria-hidden="true">{item.done ? <Icon name="check" /> : null}</span>
     <span className="scomp-check-text"><strong>{item.label}</strong><span>{item.value}</span>{item.note && <span className="scomp-suggestion">{item.note}</span>}</span>
     <span className="sr-only">{item.done === null ? "Chưa xác định" : item.done ? "Đã có" : "Chưa có"}</span>
-    <a className="sw-text-link" href="#profile">{item.done ? "Sửa" : "Bổ sung"}</a>
+    <a className="sw-text-link" href="#profile">{item.done ? "Chỉnh sửa" : "Bổ sung"}</a>
   </li>)}</ul>;
 }
 

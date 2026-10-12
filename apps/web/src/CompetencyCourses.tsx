@@ -40,7 +40,7 @@ export function CompetencyCoursesTab({ curriculum, canManage, revision, onSaved 
         <td><span className={`comp-state comp-state-${course.status}`}>{statusLabels[course.status]}</span></td>
         <td>{course.skillCount} kỹ năng<strong>{percentage(course.totalWeight)}</strong>{course.status === "archived" && <small>Trọng số lưu trong lịch sử; không đóng góp.</small>}</td>
         <td><ActionMenu label={`Thao tác với ${course.code}`} items={[
-          { key: "view", icon: "eye", label: "Chi tiết và lịch sử", onSelect: () => open(course, "view") },
+          { key: "view", icon: "eye", label: "Xem chi tiết", onSelect: () => open(course, "view") },
           ...(canManage ? [
             { key: "edit", icon: "edit", label: course.status === "missing" ? "Tạo cấu hình" : "Chỉnh sửa cấu hình", disabled: course.occurrenceCount > 1, onSelect: () => open(course, "edit") },
             ...(course.configId && course.status !== "archived" ? [{ key: "archive", icon: "trash", label: "Lưu trữ cấu hình", danger: true, onSelect: () => open(course, "archive") }] : []),
@@ -106,7 +106,7 @@ function CourseConfiguration({ initial, canManage, startEditing, close, saved, b
           return <div className="comp-allocation-row" key={index}>
             <label>Kỹ năng {index + 1}{editing ? <select value={row.skillId} onChange={event => setRows(rows.map((item, at) => at === index ? { ...item, skillId: event.target.value } : item))}><option value="">Chọn kỹ năng</option>{!selected && row.skillId && <option value={row.skillId}>{linked?.skillName ?? "Kỹ năng không còn khả dụng"}</option>}{options.map(skill => <option key={skill.id} value={skill.id} disabled={!skill.isActive || !skill.groupActive || rows.some((item, at) => at !== index && item.skillId === skill.id)}>{skill.name} · {skill.groupName}{!skill.isActive || !skill.groupActive ? " · Ngừng sử dụng" : ""}</option>)}</select> : <strong>{skillName(row.skillId)}</strong>}</label>
             <label className="comp-percent">Trọng số (%)<input type="number" min="0" max="100" step="any" value={row.percent} onChange={event => setRows(rows.map((item, at) => at === index ? { ...item, percent: event.target.value } : item))} /></label>
-            {editing && <button type="button" className="am-outline comp-remove-link" aria-label={`Gỡ ${skillName(row.skillId)} khỏi cấu hình`} onClick={() => setRemoveIndex(index)}><Icon name="trash" /> Gỡ</button>}
+            {editing && <button type="button" className="am-outline comp-remove-link" aria-label={`Gỡ ${skillName(row.skillId)} khỏi cấu hình`} onClick={() => setRemoveIndex(index)}><Icon name="trash" /> Gỡ liên kết</button>}
             {(selected && (!selected.isActive || !selected.groupActive)) || (!selected && linked && !linked.isActive) ? <small className="comp-row-warning">Kỹ năng hoặc nhóm đang ngừng sử dụng; không thể áp dụng.</small> : null}
           </div>;
         })}
@@ -121,7 +121,7 @@ function CourseConfiguration({ initial, canManage, startEditing, close, saved, b
     {editing && missingSkills && <p className="cm-warning" role="alert">Có kỹ năng không còn trong danh mục đánh giá năng lực. Hãy thay thế hoặc gỡ các liên kết đó trước khi lưu bản nháp hoặc áp dụng.</p>}
     {editing && !missingSkills && unavailable && catalogReady && <p className="cm-warning">Có kỹ năng hoặc nhóm ngừng sử dụng. Hãy thay thế hoặc gỡ liên kết trước khi áp dụng.</p>}
     {error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}
-    <div className="cm-actions cm-dialog-actions"><button type="button" className="am-outline" disabled={busy} onClick={close}><Icon name="close" /> Đóng</button><div className="cm-dialog-actions-main">{canManage && (editing ? <><button className="am-outline" disabled={busy || !validDraft || removeIndex !== null} onClick={() => void save("draft")}><Icon name="save" />{busy ? "Đang lưu…" : "Lưu bản nháp"}</button><button className="am-primary" disabled={busy || !canActivate || removeIndex !== null} onClick={() => void save("active")}><Icon name="save" />{busy ? "Đang lưu…" : "Lưu và áp dụng"}</button></> : <button className="am-primary" disabled={duplicateCode} onClick={() => setEditing(true)}><Icon name="edit" />{current.status === "missing" ? "Tạo cấu hình" : "Chỉnh sửa"}</button>)}</div></div>
+    <div className="cm-actions cm-dialog-actions"><button type="button" className="am-outline" disabled={busy} onClick={close}><Icon name="close" /> Đóng</button><div className="cm-dialog-actions-main">{canManage && (editing ? <><button className="am-outline" disabled={busy || !validDraft || removeIndex !== null} onClick={() => void save("draft")}><Icon name="save" />{busy ? "Đang lưu…" : "Lưu bản nháp"}</button><button className="am-primary" disabled={busy || !canActivate || removeIndex !== null} onClick={() => void save("active")}><Icon name="save" />{busy ? "Đang lưu…" : "Lưu và áp dụng"}</button></> : <button className="am-primary" disabled={duplicateCode} onClick={() => setEditing(true)}><Icon name="edit" />{current.status === "missing" ? "Tạo cấu hình" : "Chỉnh sửa cấu hình"}</button>)}</div></div>
     <CourseHistory entries={current.history} />
   </div>;
 }

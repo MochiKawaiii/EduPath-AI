@@ -44,7 +44,7 @@ const errors: Record<string, string> = {
   import_busy: "Hệ thống đang xử lý một tệp Excel khác. Vui lòng thử lại sau.",
   import_timeout: "Đọc Excel quá lâu. Hãy kiểm tra tệp và thử lại.",
   invalid_curriculum_input:
-    "Thông tin chưa hợp lệ. Kiểm tra mã môn, khối kiến thức, tín chỉ và học kỳ (1–3).",
+    "Thông tin chưa hợp lệ. Kiểm tra mã học phần, khối kiến thức, tín chỉ và học kỳ (1–3).",
   insufficient_role: "Chỉ quản trị viên được thay đổi khung CTĐT.",
   authentication_required: "Phiên đăng nhập đã hết. Hãy đăng nhập lại.",
   invalid_origin: "Không xác nhận được nguồn yêu cầu. Hãy tải lại trang.",
@@ -119,7 +119,7 @@ function Summary({ data }: { data: CurriculumData }) {
       <p className="cm-help cm-credit-note">
         {data.courses.length} học phần · {data.electives.length} nhóm tự chọn.
         {credits.electiveCredits !== null && " TC tự chọn là phần còn lại của tổng tín chỉ sau khi trừ TC bắt buộc."}
-        {credits.hasConditionCredits && " Giáo dục thể chất, quốc phòng và các môn không tích lũy được thể hiện riêng theo khối, không cộng vào tổng này."}
+        {credits.hasConditionCredits && " Giáo dục thể chất, quốc phòng và các học phần không tích lũy được thể hiện riêng theo khối, không cộng vào tổng này."}
         {credits.requiredCredits === null && " Cần rà soát loại học phần hoặc số tín chỉ của từng chuyên ngành trước khi xác định TC bắt buộc và TC tự chọn."}
         {credits.requiredCredits !== null && credits.electiveCredits === null && " Số tín chỉ học phần chưa khớp với tổng CTĐT; cần rà soát lại khung."}
       </p>
@@ -611,7 +611,7 @@ function CurriculumView({
     <section className="cm-workspace">
       <div className="cm-toolbar">
         <button className="am-outline" onClick={back}>
-          <Icon name="back" /> Danh sách khung
+          <Icon name="back" /> Quay lại danh sách khung
         </button>
       </div>
       <Status {...remote} />
@@ -642,8 +642,8 @@ function CurriculumView({
             {mutable && (
               <button
                 className="am-icon-btn cm-metadata-edit"
-                title="Sửa thông tin"
-                aria-label="Sửa thông tin"
+                title="Chỉnh sửa thông tin"
+                aria-label="Chỉnh sửa thông tin"
                 onClick={() => setEdit("metadata")}
               >
                 <Icon name="edit" />
@@ -657,9 +657,9 @@ function CurriculumView({
               <a
                 className="am-outline"
                 href={`${endpoint}/${id}/source/${current.revisionId}`}
-                title="Tải tệp Excel nguồn; các chỉnh sửa trực tiếp được lưu trong phiên bản trên hệ thống"
+                title="Tải xuống tệp Excel nguồn; các chỉnh sửa trực tiếp được lưu trong phiên bản trên hệ thống"
               >
-                <Icon name="download" /> Tải khung CTĐT
+                <Icon name="download" /> Tải xuống Excel nguồn
               </a>
               {mutable && (
                 <>
@@ -674,14 +674,14 @@ function CurriculumView({
                     onClick={() => setEdit("status")}
                   >
                     <Icon name={current.isActive ? "lock" : "unlock"} />{" "}
-                    {current.isActive ? "Khóa khung" : "Mở khung"}
+                    {current.isActive ? "Khóa khung" : "Mở khóa khung"}
                   </button>
                 </>
               )}
             </div>
             <p className="cm-help">
               Tệp nguồn: {current.sourceFilename}. Tổng tín chỉ chương trình
-              không phải tổng của tất cả các môn tự chọn và chuyên ngành. Tệp
+              không phải tổng của tất cả các học phần tự chọn và chuyên ngành. Tệp
               tải xuống là Excel nguồn; các chỉnh sửa trực tiếp được lưu trong
               phiên bản trên hệ thống.
             </p>
@@ -1044,9 +1044,9 @@ function Courses({
                               label={`Thao tác ${g.label}`}
                               items={(
                                 [
-                                  ["add", "Thêm môn học", "plus"],
-                                  ["edit", "Chỉnh sửa môn học", "edit"],
-                                  ["delete", "Xóa môn học", "trash"],
+                                  ["add", "Thêm học phần", "plus"],
+                                  ["edit", "Chỉnh sửa học phần", "edit"],
+                                  ["delete", "Xóa học phần", "trash"],
                                 ] as const
                               ).map(([mode, label, icon]) => ({
                                 key: mode,
@@ -1085,7 +1085,7 @@ function Courses({
                               className="am-outline"
                               onClick={() => open(c)}
                             >
-                              <Icon name="eye" /> Chi tiết
+                              <Icon name="eye" /> Xem chi tiết
                             </button>
                           </td>
                         </tr>
@@ -1122,8 +1122,8 @@ function GroupCoursePicker({
     <Modal
       title={
         mode === "edit"
-          ? "Chỉnh sửa môn học trong khối"
-          : "Xóa môn học trong khối"
+          ? "Chỉnh sửa học phần trong khối"
+          : "Xóa học phần trong khối"
       }
       onClose={onClose}
     >
@@ -1137,7 +1137,7 @@ function GroupCoursePicker({
       >
         <p>{data.groups.find((g) => g.id === groupId)?.label}</p>
         <label>
-          <RequiredLabel>Môn học</RequiredLabel>
+          <RequiredLabel>Học phần</RequiredLabel>
           <select
             value={code}
             onChange={(e) => setCode(e.target.value)}
@@ -1150,7 +1150,7 @@ function GroupCoursePicker({
             ))}
           </select>
         </label>
-        {!courses.length && <p>Khối chưa có môn học.</p>}
+        {!courses.length && <p>Khối chưa có học phần.</p>}
         <div className="cm-actions cm-dialog-actions">
           <button type="button" className="am-outline" onClick={onClose}>
             <Icon name="close" /> Hủy
@@ -1181,7 +1181,7 @@ function DeleteCourseDialog({
     (r) => r.courseCode !== course.code && r.targetCodes.includes(course.code),
   );
   return (
-    <Modal title="Xóa môn học khỏi khung" onClose={onClose} busy={busy}>
+    <Modal title="Xóa học phần khỏi khung" onClose={onClose} busy={busy}>
       <div className="cm-dialog-body cm-form">
         <p>
           Bạn muốn xóa{" "}
@@ -1191,13 +1191,13 @@ function DeleteCourseDialog({
           khỏi phiên bản hiện hành?
         </p>
         <p>
-          Phiên bản trước vẫn giữ môn này. Tổng tín chỉ quy định của khung không
+          Phiên bản trước vẫn giữ học phần này. Tổng tín chỉ quy định của khung không
           tự thay đổi.
         </p>
         {references.length > 0 && (
           <div className="cm-warning">
             <strong>
-              Còn {references.length} điều kiện tham chiếu môn này
+              Còn {references.length} điều kiện tham chiếu học phần này
             </strong>
             <p>
               {[...new Set(references.map((r) => r.courseCode))].join(", ")}.
@@ -1240,7 +1240,7 @@ function DeleteCourseDialog({
               }
             }}
           >
-            <Icon name="trash" /> {busy ? "Đang xóa…" : "Xác nhận xóa môn"}
+            <Icon name="trash" /> {busy ? "Đang xóa…" : "Xác nhận xóa"}
           </button>
         </div>
       </div>
@@ -1265,7 +1265,7 @@ function MetadataDialog({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   return (
-    <Modal title="Cập nhật thông tin khung CTĐT" onClose={onClose} busy={busy}>
+    <Modal title="Chỉnh sửa thông tin khung CTĐT" onClose={onClose} busy={busy}>
       <form
         className="cm-dialog-body cm-form"
         onSubmit={async (e) => {
@@ -1321,8 +1321,8 @@ function MetadataDialog({
           />
         </label>
         <p className="cm-help">
-          Ngành và khóa giữ nguyên để bảo toàn liên kết dữ liệu. Thêm, sửa hoặc
-          xóa môn bằng menu … ở từng khối kiến thức.
+          Ngành và khóa giữ nguyên để bảo toàn liên kết dữ liệu. Thêm, chỉnh sửa
+          hoặc xóa học phần bằng menu … ở từng khối kiến thức.
         </p>
         {error && (
           <p className="admin-error cm-prewrap" role="alert">
@@ -1362,7 +1362,7 @@ function StatusDialog({
       title={
         current.isActive
           ? "Khóa khung chương trình đào tạo"
-          : "Mở khung chương trình đào tạo"
+          : "Mở khóa khung chương trình đào tạo"
       }
       onClose={onClose}
       busy={busy}
@@ -1481,9 +1481,9 @@ function CourseDialog({
     <Modal
       title={
         mode === "add"
-          ? "Thêm môn học"
+          ? "Thêm học phần"
           : editing
-            ? "Chỉnh sửa môn học"
+            ? "Chỉnh sửa học phần"
             : course.name
       }
       onClose={onClose}
@@ -1695,7 +1695,7 @@ function CourseDialog({
               <summary>
                 {course.sourceRow > 0
                   ? `Dữ liệu Excel gốc · ${course.sourceSheet}, dòng ${course.sourceRow}`
-                  : "Môn được thêm trực tiếp trong khung"}
+                  : "Học phần được thêm trực tiếp trong khung"}
               </summary>
               <dl className="cm-source">
                 {Object.entries(course.sourceCells).map(([col, value]) => (
@@ -1734,7 +1734,7 @@ function CourseDialog({
                 onClick={onDelete}
               >
                 <Icon name="trash" />
-                Xóa môn học
+                Xóa học phần
               </button>
             )}
             {canManage &&

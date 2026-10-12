@@ -32,9 +32,9 @@ Khi các nhóm học phần đã hoàn thành nhưng điểm trung bình dưới
 
 ## Cập nhật và trạng thái
 
-**Sửa thông tin** chỉnh tên, ngưỡng và ghi chú. **Sửa nhóm** chỉnh tên, loại nhóm và tín chỉ yêu cầu. **Sửa môn** chỉnh mã, tên, tín chỉ, chuyển nhóm và cờ môn điều kiện. Mỗi lần lưu tạo phiên bản mới và kiểm tra token để chặn ghi đè thay đổi đồng thời. Các bản lịch sử chỉ đọc.
+**Chỉnh sửa thông tin** chỉnh tên, ngưỡng và ghi chú. **Chỉnh sửa nhóm** chỉnh tên, loại nhóm và tín chỉ yêu cầu. **Chỉnh sửa học phần** chỉnh mã, tên, tín chỉ, chuyển nhóm và cờ môn điều kiện. Mỗi lần lưu tạo phiên bản mới và kiểm tra token để chặn ghi đè thay đổi đồng thời. Các bản lịch sử chỉ đọc.
 
-**Khóa tiêu chuẩn** đánh dấu ngừng áp dụng; quản trị vẫn có thể tìm bằng bộ lọc Đã khóa và mở lại. Không xóa dữ liệu/lịch sử. Những chức năng xét tốt nghiệp tự động sau này phải lọc tiêu chuẩn đang mở và lưu phiên bản tiêu chuẩn đã sử dụng.
+**Khóa tiêu chuẩn** đánh dấu ngừng áp dụng; quản trị vẫn có thể tìm bằng bộ lọc Đã khóa và **Mở khóa tiêu chuẩn**. Không xóa dữ liệu/lịch sử. Những chức năng xét tốt nghiệp tự động sau này phải lọc tiêu chuẩn đang mở và lưu phiên bản tiêu chuẩn đã sử dụng.
 
 ## Triển khai và dữ liệu
 

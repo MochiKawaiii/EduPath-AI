@@ -55,10 +55,10 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
             <td><CareerWeightCell key={`${career.id}:${courseWeights.data?.revisionId ?? "loading"}:${item.skillId}`} state={courseWeights} skillId={item.skillId} skillName={item.skillName} /></td>
             <td>{item.isRequired ? "Bắt buộc" : "Ưu tiên"}</td>
             <td><ActionMenu label={`Thao tác với yêu cầu ${item.title}`} items={[
-              { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => { setSelected(item); setMode("detail"); } },
+              { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(item); setMode("detail"); } },
               ...(canManage ? [
-                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(item); setKind(item.skillId ? "skill" : "other"); setMode("edit"); } },
-                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(item); setMode("delete"); } },
+                { key: "edit", icon: "edit", label: "Chỉnh sửa yêu cầu", onSelect: () => { setSelected(item); setKind(item.skillId ? "skill" : "other"); setMode("edit"); } },
+                { key: "delete", icon: "trash", label: "Xóa yêu cầu", danger: true, onSelect: () => { setSelected(item); setMode("delete"); } },
               ] : []),
             ]} /></td>
           </tr>)}</tbody>
@@ -175,7 +175,7 @@ function RequirementDelete({ current, close, saved }: { current: CareerRequireme
           try { await careerRequest(`${endpoint}/${current.id}`, { method: "DELETE", headers: { "Content-Type": "application/json", "x-version": current.version }, body: JSON.stringify({ confirmed: true }) }); saved(); }
           catch (failure) { setError((failure as Error).message); }
           finally { setBusy(false); }
-        }}><Icon name="trash" /> {busy ? "Đang xóa…" : "Xóa"}</button>
+        }}><Icon name="trash" /> {busy ? "Đang xóa…" : "Xác nhận xóa"}</button>
       </div>
     </div>
   </Modal>;

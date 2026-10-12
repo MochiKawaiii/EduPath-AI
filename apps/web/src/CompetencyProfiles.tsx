@@ -30,30 +30,30 @@ export function CompetencyGroupsTab({ canManage, revision, onSaved }: TabProps) 
   return <section className="cm-workspace comp-workspace">
     <div className="cm-toolbar">
       <p>Phân nhóm các kỹ năng trong hồ sơ đánh giá năng lực.</p>
-      {canManage && <button className="am-primary" onClick={() => { setSelected(null); setMode("edit"); }}><Icon name="plus" /> Thêm nhóm năng lực</button>}
+      {canManage && <button className="am-primary" onClick={() => { setSelected(null); setMode("edit"); }}><Icon name="plus" /> Thêm nhóm kỹ năng</button>}
     </div>
     <section className="cm-panel">
       <div className="cm-filters">
-        <label className="cm-search">Tìm nhóm năng lực<input value={draft.q} maxLength={200} placeholder="Tên hoặc mô tả nhóm…" onChange={event => setDraft({ ...draft, q: event.target.value })} /></label>
+        <label className="cm-search">Tìm nhóm kỹ năng<input value={draft.q} maxLength={200} placeholder="Tên hoặc mô tả nhóm…" onChange={event => setDraft({ ...draft, q: event.target.value })} /></label>
         <label>Trạng thái<select value={draft.active} onChange={event => setDraft({ ...draft, active: event.target.value })}><option value="">Tất cả</option><option value="true">Đang sử dụng</option><option value="false">Ngừng sử dụng</option></select></label>
         <button className="am-outline" onClick={reset}><Icon name="refresh" /> Xóa bộ lọc</button>
       </div>
       <Status {...remote} />
       {remote.data && <>
-        <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Bảng nhóm năng lực"><table className="cm-table comp-group-table">
-          <thead><tr><th className="cm-stt">STT</th><th>Nhóm năng lực</th><th>Mô tả</th><th>Số kỹ năng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Bảng nhóm kỹ năng"><table className="cm-table comp-group-table">
+          <thead><tr><th className="cm-stt">STT</th><th>Nhóm kỹ năng</th><th>Mô tả</th><th>Số kỹ năng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
           <tbody>{items.slice((page - 1) * 10, page * 10).map((group, index) => <tr key={group.id}>
             <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
             <td><button className="am-name-link" onClick={() => { setSelected(group); setMode("detail"); }}>{group.name}</button></td>
             <td className="comp-description">{group.description || "Chưa bổ sung"}</td>
             <td>{group.skillCount}</td><td><ProfileState active={group.isActive} /></td>
             <td><ActionMenu label={`Thao tác với nhóm ${group.name}`} items={[
-              { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => { setSelected(group); setMode("detail"); } },
-              ...(canManage ? [{ key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(group); setMode("edit"); } }] : []),
+              { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(group); setMode("detail"); } },
+              ...(canManage ? [{ key: "edit", icon: "edit", label: "Chỉnh sửa nhóm", onSelect: () => { setSelected(group); setMode("edit"); } }] : []),
             ]} /></td>
           </tr>)}</tbody>
         </table></div>
-        {!items.length && <p className="am-empty">Không có nhóm năng lực phù hợp.</p>}
+        {!items.length && <p className="am-empty">Không có nhóm kỹ năng phù hợp.</p>}
         <Pagination total={items.length} page={page} setPage={setPage} />
       </>}
     </section>
@@ -66,7 +66,7 @@ function GroupDetails({ current, revision, canManage, close, edit }: { current: 
   const remote = useCompetencyData<GroupDetail>(`${COMPETENCY_API}/groups/${current.id}`, revision);
   const [page, setPage] = useState(1);
   const detail = remote.data;
-  return <Modal title={`Chi tiết nhóm năng lực — ${current.name}`} onClose={close}>
+  return <Modal title={`Chi tiết nhóm kỹ năng — ${current.name}`} onClose={close}>
     <div className="cm-dialog-body cm-form">
       <Status {...remote} />
       {detail && <>
@@ -79,7 +79,7 @@ function GroupDetails({ current, revision, canManage, close, edit }: { current: 
         {detail.skills && <section className="comp-section">
           <h3>Kỹ năng thuộc nhóm</h3>
           {detail.skills.length ? <>
-            <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Các kỹ năng thuộc nhóm năng lực"><table className="cm-table">
+            <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Các kỹ năng thuộc nhóm"><table className="cm-table">
               <thead><tr><th className="cm-stt">STT</th><th>Kỹ năng</th><th>Phạm vi đánh giá</th><th>Trạng thái</th></tr></thead>
               <tbody>{detail.skills.slice((page - 1) * 10, page * 10).map((skill, index) => <tr key={skill.id}><td className="cm-stt">{(page - 1) * 10 + index + 1}</td><td><strong>{skill.name}</strong></td><td className="comp-description">{skill.scope || "Chưa bổ sung."}</td><td><ProfileState active={skill.isActive} /></td></tr>)}</tbody>
             </table></div>
@@ -90,7 +90,7 @@ function GroupDetails({ current, revision, canManage, close, edit }: { current: 
       </>}
       <div className="cm-actions cm-dialog-actions">
         <button className="am-outline" onClick={close}><Icon name="close" /> Đóng</button>
-        {canManage && detail && <button className="am-primary" onClick={() => edit(detail)}><Icon name="edit" /> Chỉnh sửa</button>}
+        {canManage && detail && <button className="am-primary" onClick={() => edit(detail)}><Icon name="edit" /> Chỉnh sửa nhóm</button>}
       </div>
     </div>
   </Modal>;
@@ -100,7 +100,7 @@ function GroupEditor({ current, close, saved }: EditorProps<Group>) {
   const [form, setForm] = useState({ name: current?.name ?? "", description: current?.description ?? "", isActive: current?.isActive ?? true });
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const submitting = useRef(false);
-  return <Modal title={current ? "Chỉnh sửa nhóm năng lực" : "Thêm nhóm năng lực"} onClose={close} busy={busy}>
+  return <Modal title={current ? "Chỉnh sửa nhóm kỹ năng" : "Thêm nhóm kỹ năng"} onClose={close} busy={busy}>
     <form className="cm-dialog-body cm-form" onSubmit={async event => {
       event.preventDefault(); if (submitting.current) return;
       submitting.current = true; setBusy(true); setError("");
@@ -114,7 +114,7 @@ function GroupEditor({ current, close, saved }: EditorProps<Group>) {
       finally { submitting.current = false; setBusy(false); }
     }}>
       <fieldset className="comp-fields" disabled={busy}>
-        <label><RequiredLabel>Tên nhóm năng lực</RequiredLabel><input required maxLength={160} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
+        <label><RequiredLabel>Tên nhóm kỹ năng</RequiredLabel><input required maxLength={160} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
         <label>Mô tả<textarea rows={4} maxLength={2000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
         <label className="comp-check"><input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} /> Đang sử dụng</label>
         {current && <p className="comp-hint">Để ngừng sử dụng nhóm, cần điều chỉnh các cấu hình học phần đang áp dụng có kỹ năng thuộc nhóm này.</p>}
@@ -146,7 +146,7 @@ export function CompetencySkillsTab({ canManage, revision, onSaved }: TabProps) 
     <section className="cm-panel">
       <div className="cm-filters">
         <label className="cm-search">Tìm kỹ năng<input value={draft.q} maxLength={200} placeholder="Tên, mô tả hoặc phạm vi…" onChange={event => setDraft({ ...draft, q: event.target.value })} /></label>
-        <label>Nhóm năng lực<select value={draft.groupId} disabled={groups.loading} onChange={event => setDraft({ ...draft, groupId: event.target.value })}>
+        <label>Nhóm kỹ năng<select value={draft.groupId} disabled={groups.loading} onChange={event => setDraft({ ...draft, groupId: event.target.value })}>
           <option value="">Tất cả nhóm</option>{groups.data?.items.map(group => <option key={group.id} value={group.id}>{group.name}{group.isActive ? "" : " (ngừng sử dụng)"}</option>)}
         </select></label>
         <label>Trạng thái<select value={draft.active} onChange={event => setDraft({ ...draft, active: event.target.value })}><option value="">Tất cả</option><option value="true">Đang sử dụng</option><option value="false">Ngừng sử dụng</option></select></label>
@@ -156,7 +156,7 @@ export function CompetencySkillsTab({ canManage, revision, onSaved }: TabProps) 
       <Status {...remote} />
       {remote.data && <>
         <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Bảng hồ sơ năng lực"><table className="cm-table comp-skill-table">
-          <thead><tr><th className="cm-stt">STT</th><th>Kỹ năng</th><th>Nhóm năng lực</th><th>Phạm vi</th><th>Trạng thái</th><th>Liên kết</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th className="cm-stt">STT</th><th>Kỹ năng</th><th>Nhóm kỹ năng</th><th>Phạm vi</th><th>Trạng thái</th><th>Liên kết</th><th>Thao tác</th></tr></thead>
           <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map((skill, index) => <tr key={skill.id}>
             <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
             <td><button className="am-name-link" onClick={() => { setSelected(skill); setMode("detail"); }}>{skill.name}</button></td>
@@ -165,9 +165,9 @@ export function CompetencySkillsTab({ canManage, revision, onSaved }: TabProps) 
             <td><ProfileState active={skill.isActive} /></td>
             <td>{skill.courseCount} học phần<br />{skill.careerCount} nghề nghiệp</td>
             <td><ActionMenu label={`Thao tác với kỹ năng ${skill.name}`} items={[
-              { key: "detail", icon: "eye", label: "Chi tiết và lịch sử", onSelect: () => { setSelected(skill); setMode("detail"); } },
+              { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(skill); setMode("detail"); } },
               ...(canManage ? [
-                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(skill); setMode("edit"); } },
+                { key: "edit", icon: "edit", label: "Chỉnh sửa hồ sơ năng lực", onSelect: () => { setSelected(skill); setMode("edit"); } },
                 { key: "delete", icon: "trash", label: "Xóa hồ sơ năng lực", danger: true, onSelect: () => { setSelected(skill); setMode("delete"); } },
               ] : []),
             ]} /></td>
@@ -230,11 +230,11 @@ function SkillEditor({ current, revision, groups, close, saved }: EditorProps<Sk
         </>}
         <label><RequiredLabel>Tên kỹ năng</RequiredLabel><input required maxLength={100} readOnly={reusing} value={reusing ? selectedCatalogSkill?.name ?? "" : form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
         <label>Mô tả kỹ năng chung<textarea rows={3} maxLength={2000} readOnly={reusing} value={reusing ? selectedCatalogSkill?.description ?? "" : form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
-        <label><RequiredLabel>Nhóm năng lực</RequiredLabel><select required value={form.groupId} onChange={event => setForm({ ...form, groupId: event.target.value })}>
-          <option value="">Chọn nhóm năng lực</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}{group.isActive ? "" : " (ngừng sử dụng)"}</option>)}
+        <label><RequiredLabel>Nhóm kỹ năng</RequiredLabel><select required value={form.groupId} onChange={event => setForm({ ...form, groupId: event.target.value })}>
+          <option value="">Chọn nhóm kỹ năng</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}{group.isActive ? "" : " (ngừng sử dụng)"}</option>)}
           {current && !groups.some(group => group.id === current.groupId) && <option value={current.groupId}>{current.groupName}</option>}
         </select></label>
-        {!groups.length && <p className="comp-hint">Chưa tải được nhóm năng lực. Đóng hộp thoại và tải lại danh sách nhóm trước khi lưu.</p>}
+        {!groups.length && <p className="comp-hint">Chưa tải được nhóm kỹ năng. Đóng hộp thoại và tải lại danh sách nhóm trước khi lưu.</p>}
         <label>Phạm vi đánh giá<textarea rows={5} maxLength={4000} value={form.scope} placeholder="Nội dung và phạm vi đánh giá kỹ năng…" onChange={event => setForm({ ...form, scope: event.target.value })} /></label>
         <label className="comp-check"><input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} /> Đang sử dụng trong đánh giá năng lực</label>
         {current && <p className="comp-hint">Tên và mô tả dùng chung với quản lý nghề nghiệp. Việc chỉnh sửa sẽ cập nhật thông tin liên quan. Để ngừng sử dụng kỹ năng, cần điều chỉnh các cấu hình học phần đang áp dụng kỹ năng này.</p>}
@@ -253,13 +253,13 @@ function SkillDetails({ current, revision, canManage, close, edit }: { current: 
   const remote = useCompetencyData<SkillDetail>(`${COMPETENCY_API}/skills/${current.id}`, revision);
   const [page, setPage] = useState(1);
   const detail = remote.data;
-  return <Modal title={`Chi tiết năng lực — ${current.name}`} onClose={close}>
+  return <Modal title={`Chi tiết hồ sơ năng lực — ${current.name}`} onClose={close}>
     <div className="cm-dialog-body cm-form">
       <Status {...remote} />
       {detail && <>
         <dl className="comp-detail-grid">
           <div><dt>Tên kỹ năng</dt><dd>{detail.name}</dd></div>
-          <div><dt>Nhóm năng lực</dt><dd>{detail.groupName}{!detail.groupActive && <small className="comp-hint">Nhóm ngừng sử dụng</small>}</dd></div>
+          <div><dt>Nhóm kỹ năng</dt><dd>{detail.groupName}{!detail.groupActive && <small className="comp-hint">Nhóm ngừng sử dụng</small>}</dd></div>
           <div><dt>Mô tả kỹ năng chung</dt><dd className="comp-description">{detail.description || "Chưa bổ sung."}</dd></div>
           <div><dt>Phạm vi đánh giá</dt><dd className="comp-description">{detail.scope || "Chưa bổ sung."}</dd></div>
           <div><dt>Trạng thái hồ sơ</dt><dd><ProfileState active={detail.isActive} /></dd></div>
@@ -287,7 +287,7 @@ function SkillDetails({ current, revision, canManage, close, edit }: { current: 
       </>}
       <div className="cm-actions cm-dialog-actions">
         <button className="am-outline" onClick={close}><Icon name="close" /> Đóng</button>
-        {canManage && detail && <button className="am-primary" onClick={() => edit(detail)}><Icon name="edit" /> Chỉnh sửa</button>}
+        {canManage && detail && <button className="am-primary" onClick={() => edit(detail)}><Icon name="edit" /> Chỉnh sửa hồ sơ năng lực</button>}
       </div>
     </div>
   </Modal>;
@@ -302,13 +302,13 @@ function ProfileHistory({ entries, entity }: { entries: EventEntry[]; entity: "s
         const snapshot = entry.snapshot && typeof entry.snapshot === "object" ? entry.snapshot as Record<string, unknown> : {};
         return <li key={entry.id}>
           <div className="comp-history-meta"><time dateTime={entry.createdAt}>{competencyDate(entry.createdAt)}</time><span>{entry.actorName || "Hệ thống"}</span></div>
-          <p className="cm-prewrap">{entry.note || (entity === "group" ? "Cập nhật nhóm năng lực" : "Cập nhật hồ sơ năng lực")}</p>
+          <p className="cm-prewrap">{entry.note || (entity === "group" ? "Cập nhật nhóm kỹ năng" : "Cập nhật hồ sơ năng lực")}</p>
           {(typeof snapshot.name === "string" || typeof snapshot.scope === "string" || typeof snapshot.isActive === "boolean") && <details>
             <summary>Thông tin tại thời điểm thay đổi</summary>
             <dl className="comp-detail-grid comp-snapshot">
               {typeof snapshot.name === "string" && <div><dt>{entity === "group" ? "Tên nhóm" : "Tên kỹ năng"}</dt><dd>{snapshot.name}</dd></div>}
               {typeof snapshot.description === "string" && <div><dt>Mô tả</dt><dd className="comp-description">{snapshot.description || "Chưa bổ sung."}</dd></div>}
-              {typeof snapshot.groupName === "string" && <div><dt>Nhóm năng lực</dt><dd>{snapshot.groupName}</dd></div>}
+              {typeof snapshot.groupName === "string" && <div><dt>Nhóm kỹ năng</dt><dd>{snapshot.groupName}</dd></div>}
               {typeof snapshot.scope === "string" && <div><dt>Phạm vi</dt><dd className="comp-description">{snapshot.scope || "Chưa bổ sung."}</dd></div>}
               {typeof snapshot.skillCount === "number" && <div><dt>Số kỹ năng</dt><dd>{snapshot.skillCount}</dd></div>}
               {typeof snapshot.isActive === "boolean" && <div><dt>Trạng thái</dt><dd><ProfileState active={snapshot.isActive} /></dd></div>}

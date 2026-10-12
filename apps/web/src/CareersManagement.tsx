@@ -48,7 +48,7 @@ export default function CareersManagement({
       <div className="cm-toolbar">
         <p>Danh mục nghề nghiệp song ngữ để sinh viên lựa chọn định hướng.</p>
         <div className="cm-actions">
-        {canManage && <button className="am-primary" onClick={() => setLinksOpen(true)}><Icon name="plus" /> Kỹ năng liên kết</button>}
+        {canManage && <button className="am-primary" onClick={() => setLinksOpen(true)}><Icon name="plus" /> Liên kết kỹ năng</button>}
         {canManage && (
           <button
             className="am-primary"
@@ -137,10 +137,10 @@ export default function CareersManagement({
                           <ActionMenu
                             label={`Thao tác với ${c.nameVi}`}
                             items={[
-                              { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => setDetailId(c.id) },
+                              { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => setDetailId(c.id) },
                               ...(canManage ? [
-                                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(c); setMode("edit"); } },
-                                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(c); setMode("delete"); } },
+                                { key: "edit", icon: "edit", label: "Chỉnh sửa vị trí", onSelect: () => { setSelected(c); setMode("edit"); } },
+                                { key: "delete", icon: "trash", label: "Xóa vị trí", danger: true, onSelect: () => { setSelected(c); setMode("delete"); } },
                               ] : []),
                             ]}
                           />
@@ -178,7 +178,7 @@ function Detail({ id, fields, close, revision }: { id: string; fields: CareerFie
   const career = remote.data ?? lastCareer;
   return (
     <>
-      <div><button className="am-outline" onClick={close}><Icon name="back" /> Danh sách vị trí</button></div>
+      <div><button className="am-outline" onClick={close}><Icon name="back" /> Quay lại danh sách vị trí</button></div>
       <section className="cm-panel career-detail career-detail-panel">
         <Status {...remote} />
         {remote.data && (
@@ -230,7 +230,7 @@ function Editor({
     [error, setError] = useState("");
   return (
     <Modal
-      title={current ? "Sửa vị trí nghề nghiệp" : "Thêm vị trí nghề nghiệp"}
+      title={current ? "Chỉnh sửa vị trí nghề nghiệp" : "Thêm vị trí nghề nghiệp"}
       onClose={close}
       busy={busy}
     >
@@ -312,7 +312,7 @@ function Editor({
               }
             />
           </label>
-          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng bằng nút Kỹ năng liên kết trên danh sách vị trí.</small></div> : <p>Sau khi lưu, dùng nút Kỹ năng liên kết trên danh sách vị trí để thêm yêu cầu và liên kết kỹ năng.</p>}
+          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng bằng nút Liên kết kỹ năng trên danh sách vị trí.</small></div> : <p>Sau khi lưu, dùng nút Liên kết kỹ năng trên danh sách vị trí để thêm yêu cầu và liên kết kỹ năng.</p>}
         </fieldset>
         {error && (
           <p className="admin-error" role="alert">

@@ -354,7 +354,7 @@ function PlanView({
     <section className="cm-workspace">
       <div className="cm-toolbar">
         <button className="am-outline" onClick={onBack}>
-          <Icon name="back" /> Danh sách kế hoạch
+          <Icon name="back" /> Quay lại danh sách kế hoạch
         </button>
       </div>
       <Status {...remote} />
@@ -381,7 +381,7 @@ function PlanView({
             </div>
             {editable && (
               <button
-                    className="am-icon-btn cm-metadata-edit" title="Sửa thông tin" aria-label="Sửa thông tin"
+                    className="am-icon-btn cm-metadata-edit" title="Chỉnh sửa thông tin" aria-label="Chỉnh sửa thông tin"
                     onClick={() => setModal("metadata")}
                   >
                     <Icon name="edit" />
@@ -394,7 +394,7 @@ function PlanView({
                 className="am-outline"
                 href={`${endpoint}/${id}/source/${p.revisionId}`}
               >
-                <Icon name="download" /> Tải xuống định dạng Excel
+                <Icon name="download" /> Tải xuống Excel nguồn
               </a>
               {editable && (
                 <>
@@ -409,7 +409,7 @@ function PlanView({
                     onClick={() => setModal("status")}
                   >
                     <Icon name={p.isActive ? "lock" : "unlock"} />{" "}
-                    {p.isActive ? "Khóa kế hoạch" : "Mở kế hoạch"}
+                    {p.isActive ? "Khóa kế hoạch" : "Mở khóa kế hoạch"}
                   </button>
                 </>
               )}
@@ -655,7 +655,7 @@ function PlanStructure({
                               className="am-outline"
                               onClick={() => onItem(i)}
                             >
-                              <Icon name="eye" /> Chi tiết
+                              <Icon name="eye" /> Xem chi tiết
                             </button>
                           ) : (
                             <small>Dòng {i.sourceRow}</small>
@@ -834,7 +834,7 @@ function MetadataEditor({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   return (
-    <Modal title="Thông tin kế hoạch" busy={busy} onClose={onClose}>
+    <Modal title="Chỉnh sửa thông tin kế hoạch" busy={busy} onClose={onClose}>
       <form
         className="cm-dialog-body"
         onSubmit={async (e) => {
@@ -921,7 +921,7 @@ function StatusEditor({
     [error, setError] = useState("");
   return (
     <Modal
-      title={plan.isActive ? "Khóa kế hoạch đào tạo" : "Mở kế hoạch đào tạo"}
+      title={plan.isActive ? "Khóa kế hoạch đào tạo" : "Mở khóa kế hoạch đào tạo"}
       busy={busy}
       onClose={onClose}
       size="sm"
@@ -1223,7 +1223,7 @@ function ItemEditor({
               }
             }}
           >
-            <Icon name="close" /> {editing ? "Hủy sửa" : "Đóng"}
+            <Icon name="close" /> {editing ? "Hủy chỉnh sửa" : "Đóng"}
           </button>
           {canManage && (editing ? (
             <button

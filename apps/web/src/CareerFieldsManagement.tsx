@@ -36,10 +36,10 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
             <td className="cm-stt">{field.code}</td><td><strong>{field.name}</strong></td>
             <td className="career-description">{field.description || "Chưa bổ sung"}</td>
             <td><ActionMenu label={`Thao tác với lĩnh vực ${field.name}`} items={[
-              { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => { setSelected(field); setMode("detail"); } },
+              { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(field); setMode("detail"); } },
               ...(canManage ? [
-                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(field); setMode("edit"); } },
-                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(field); setMode("delete"); } },
+                { key: "edit", icon: "edit", label: "Chỉnh sửa lĩnh vực", onSelect: () => { setSelected(field); setMode("edit"); } },
+                { key: "delete", icon: "trash", label: "Xóa lĩnh vực", danger: true, onSelect: () => { setSelected(field); setMode("delete"); } },
               ] : []),
             ]} /></td>
           </tr>)}</tbody>
@@ -57,7 +57,7 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
         </dl>
         <div className="cm-actions cm-dialog-actions">
           <button className="am-outline" onClick={close}><Icon name="close" /> Đóng</button>
-          {canManage && <button className="am-primary" onClick={() => setMode("edit")}><Icon name="edit" /> Chỉnh sửa</button>}
+          {canManage && <button className="am-primary" onClick={() => setMode("edit")}><Icon name="edit" /> Chỉnh sửa lĩnh vực</button>}
         </div>
       </div>
     </Modal>}
