@@ -41,8 +41,9 @@ export function CompetencyGroupsTab({ canManage, revision, onSaved }: TabProps) 
       <Status {...remote} />
       {remote.data && <>
         <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Bảng nhóm năng lực"><table className="cm-table comp-group-table">
-          <thead><tr><th>Nhóm năng lực</th><th>Mô tả</th><th>Số kỹ năng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-          <tbody>{items.slice((page - 1) * 10, page * 10).map(group => <tr key={group.id}>
+          <thead><tr><th className="cm-stt">STT</th><th>Nhóm năng lực</th><th>Mô tả</th><th>Số kỹ năng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <tbody>{items.slice((page - 1) * 10, page * 10).map((group, index) => <tr key={group.id}>
+            <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
             <td><button className="am-name-link" onClick={() => { setSelected(group); setMode("detail"); }}>{group.name}</button></td>
             <td className="comp-description">{group.description || "Chưa bổ sung"}</td>
             <td>{group.skillCount}</td><td><ProfileState active={group.isActive} /></td>
@@ -79,8 +80,8 @@ function GroupDetails({ current, revision, canManage, close, edit }: { current: 
           <h3>Kỹ năng thuộc nhóm</h3>
           {detail.skills.length ? <>
             <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Các kỹ năng thuộc nhóm năng lực"><table className="cm-table">
-              <thead><tr><th>Kỹ năng</th><th>Phạm vi đánh giá</th><th>Trạng thái</th></tr></thead>
-              <tbody>{detail.skills.slice((page - 1) * 10, page * 10).map(skill => <tr key={skill.id}><td><strong>{skill.name}</strong></td><td className="comp-description">{skill.scope || "Chưa bổ sung."}</td><td><ProfileState active={skill.isActive} /></td></tr>)}</tbody>
+              <thead><tr><th className="cm-stt">STT</th><th>Kỹ năng</th><th>Phạm vi đánh giá</th><th>Trạng thái</th></tr></thead>
+              <tbody>{detail.skills.slice((page - 1) * 10, page * 10).map((skill, index) => <tr key={skill.id}><td className="cm-stt">{(page - 1) * 10 + index + 1}</td><td><strong>{skill.name}</strong></td><td className="comp-description">{skill.scope || "Chưa bổ sung."}</td><td><ProfileState active={skill.isActive} /></td></tr>)}</tbody>
             </table></div>
             <Pagination total={detail.skills.length} page={page} setPage={setPage} />
           </> : <p className="am-empty">Chưa có kỹ năng thuộc nhóm này.</p>}
@@ -155,8 +156,9 @@ export function CompetencySkillsTab({ canManage, revision, onSaved }: TabProps) 
       <Status {...remote} />
       {remote.data && <>
         <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Bảng hồ sơ năng lực"><table className="cm-table comp-skill-table">
-          <thead><tr><th>Kỹ năng</th><th>Nhóm năng lực</th><th>Phạm vi</th><th>Trạng thái</th><th>Liên kết</th><th>Thao tác</th></tr></thead>
-          <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map(skill => <tr key={skill.id}>
+          <thead><tr><th className="cm-stt">STT</th><th>Kỹ năng</th><th>Nhóm năng lực</th><th>Phạm vi</th><th>Trạng thái</th><th>Liên kết</th><th>Thao tác</th></tr></thead>
+          <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map((skill, index) => <tr key={skill.id}>
+            <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
             <td><button className="am-name-link" onClick={() => { setSelected(skill); setMode("detail"); }}>{skill.name}</button></td>
             <td>{skill.groupName}{!skill.groupActive && <small className="comp-hint">Nhóm ngừng sử dụng</small>}</td>
             <td className="comp-description">{skill.scope || "Chưa bổ sung"}</td>
@@ -269,8 +271,9 @@ function SkillDetails({ current, revision, canManage, close, edit }: { current: 
           <p className="comp-hint">Đóng góp được tính từ cấu hình đang áp dụng có trọng số lớn hơn 0. Mỗi dòng thuộc đúng khóa và phiên bản chương trình ghi trong bảng.</p>
           {detail.contributions.length ? <>
             <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Học phần đóng góp vào năng lực"><table className="cm-table">
-              <thead><tr><th>Khóa / phiên bản CTĐT</th><th>Học phần</th><th>Trọng số</th><th>Trạng thái cấu hình</th></tr></thead>
-              <tbody>{detail.contributions.slice((page - 1) * 10, page * 10).map(item => <tr key={`${item.revisionId}:${item.courseCode}`}>
+              <thead><tr><th className="cm-stt">STT</th><th>Khóa / phiên bản CTĐT</th><th>Học phần</th><th>Trọng số</th><th>Trạng thái cấu hình</th></tr></thead>
+              <tbody>{detail.contributions.slice((page - 1) * 10, page * 10).map((item, index) => <tr key={`${item.revisionId}:${item.courseCode}`}>
+                <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
                 <td><strong>{item.cohortCode} · Phiên bản {item.curriculumVersion}</strong><br />{item.curriculumName}{item.isCurrent && <small className="comp-hint">Phiên bản hiện hành</small>}</td>
                 <td><strong>{item.courseCode}</strong><br />{item.courseName}</td>
                 <td>{percentage(item.weight)}{item.weight === 0 && <small className="comp-hint">Không đóng góp</small>}</td>

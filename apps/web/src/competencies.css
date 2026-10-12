@@ -29,10 +29,10 @@
 .comp-summary .cm-warning { margin-bottom: 0; }
 .comp-summary summary { cursor: pointer; font-weight: 600; }
 .comp-empty-config { margin: 0; padding: 16px 20px; border: 1px solid var(--cm-line); background: var(--cm-soft); border-radius: 8px; color: var(--cm-muted); }
-.comp-course-table td:first-child { min-width: 240px; }
+.comp-course-table td:nth-child(2) { min-width: 240px; }
 .comp-group-table { min-width: 640px; }
 .comp-skill-table { min-width: 960px; }
-.comp-skill-table td:nth-child(3) { min-width: 280px; }
+.comp-skill-table td:nth-child(4) { min-width: 280px; }
 .comp-allocation-list { display: grid; gap: 16px; }
 .comp-allocation-row { display: grid; grid-template-columns: minmax(0, 1fr) 132px auto; align-items: end; gap: 12px; padding: 16px; background: var(--cm-soft); border: 1px solid var(--cm-line); border-radius: 8px; }
 .comp-allocation-row label { min-width: 0; }

@@ -110,6 +110,7 @@ export default function CareersManagement({
               <table className="cm-table">
                 <thead>
                   <tr>
+                    <th className="cm-stt">STT</th>
                     <th>Mã vị trí</th>
                     <th>Vị trí nghề nghiệp</th>
                     <th>Lĩnh vực</th>
@@ -120,8 +121,9 @@ export default function CareersManagement({
                 <tbody>
                   {list.data.items
                     .slice((page - 1) * 10, page * 10)
-                    .map((c) => (
+                    .map((c, index) => (
                       <tr key={c.id}>
+                        <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
                         <td className="career-code">{c.code}</td>
                         <td>
                           <strong>{c.nameVi}</strong>

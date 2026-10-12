@@ -157,6 +157,7 @@ export default function GraduationManagement({
               <table className="cm-table">
                 <thead>
                   <tr>
+                    <th className="cm-stt">STT</th>
                     <th>Tiêu chuẩn</th>
                     <th>Khóa</th>
                     <th>Chuyên ngành</th>
@@ -168,8 +169,9 @@ export default function GraduationManagement({
                 <tbody>
                   {list.data.items
                     .slice((page - 1) * 10, page * 10)
-                    .map((item) => (
+                    .map((item, index) => (
                       <tr key={item.id}>
+                        <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
                         <td>
                           <strong>{item.name}</strong>
                           <small>
@@ -510,6 +512,7 @@ function Conditions({
               <table className="cm-table">
                 <thead>
                   <tr>
+                    <th className="cm-stt">STT</th>
                     <th>Mã học phần</th>
                     <th>Tên học phần</th>
                     <th>TC</th>
@@ -518,8 +521,9 @@ function Conditions({
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((c) => (
+                  {items.map((c, index) => (
                     <tr key={c.id}>
+                      <td className="cm-stt">{index + 1}</td>
                       <td>{c.code}</td>
                       <td>{c.name}</td>
                       <td>{fmt(c.credits)}</td>

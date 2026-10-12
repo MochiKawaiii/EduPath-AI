@@ -29,8 +29,9 @@ export default function CareerSkillsManagement({ canManage }: { canManage: boole
       <Status {...remote} />
       {remote.data && <>
         <div className="cm-table-scroll"><table className="cm-table">
-          <thead><tr><th>Kỹ năng</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
-          <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map(skill => <tr key={skill.id}>
+          <thead><tr><th className="cm-stt">STT</th><th>Kỹ năng</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
+          <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map((skill, index) => <tr key={skill.id}>
+            <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
             <td><strong>{skill.name}</strong></td>
             <td className="career-description">{skill.description || "Chưa bổ sung"}</td>
             <td><ActionMenu label={`Thao tác với kỹ năng ${skill.name}`} items={[

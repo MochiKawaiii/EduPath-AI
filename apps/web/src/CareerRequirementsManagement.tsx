@@ -47,8 +47,9 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
       <Status {...remote} /><Status {...skills} />
       {remote.data && <>
         <div className="cm-table-scroll"><table className="cm-table career-requirement-table">
-          <thead><tr><th>Yêu cầu</th><th>Kỹ năng</th><th>Trọng số học phần</th><th>Tính chất</th><th>Thao tác</th></tr></thead>
-          <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map(item => <tr key={item.id}>
+          <thead><tr><th className="cm-stt">STT</th><th>Yêu cầu</th><th>Kỹ năng</th><th>Trọng số học phần</th><th>Tính chất</th><th>Thao tác</th></tr></thead>
+          <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map((item, index) => <tr key={item.id}>
+            <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
             <td><strong>{item.title}</strong><small className="career-requirement-summary">{item.description || "Chưa bổ sung mô tả"}</small></td>
             <td>{item.skillName || "—"}</td>
             <td><CareerWeightCell key={`${career.id}:${courseWeights.data?.revisionId ?? "loading"}:${item.skillId}`} state={courseWeights} skillId={item.skillId} skillName={item.skillName} /></td>

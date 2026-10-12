@@ -237,6 +237,7 @@ export default function CurriculaManagement({
               <table className="cm-table">
                 <thead>
                   <tr>
+                    <th className="cm-stt">STT</th>
                     <th>Chương trình đào tạo</th>
                     <th>Khóa</th>
                     <th>Học phần</th>
@@ -246,8 +247,9 @@ export default function CurriculaManagement({
                   </tr>
                 </thead>
                 <tbody>
-                  {remote.data.items.map((c) => (
+                  {remote.data.items.map((c, index) => (
                     <tr key={c.id}>
+                      <td className="cm-stt">{index + 1}</td>
                       <td>
                         <strong>{c.name}</strong>
                         <small>
@@ -449,6 +451,7 @@ function ImportDialog({
                 <table className="cm-table">
                   <thead>
                     <tr>
+                      <th className="cm-stt">STT</th>
                       <th>Mã</th>
                       <th>Học phần</th>
                       <th>Tín chỉ</th>
@@ -457,8 +460,9 @@ function ImportDialog({
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.courses.map((c) => (
+                    {preview.courses.map((c, index) => (
                       <tr key={`${c.code}-${c.position}-${c.sourceRow}`}>
+                        <td className="cm-stt">{index + 1}</td>
                         <td>{c.code}</td>
                         <td>{c.name}</td>
                         <td>{c.credits}</td>
@@ -756,6 +760,7 @@ function CurriculumView({
                   <table className="cm-table">
                     <thead>
                       <tr>
+                        <th className="cm-stt">STT</th>
                         <th>Học phần</th>
                         <th>Loại điều kiện</th>
                         <th>Nội dung</th>
@@ -763,8 +768,9 @@ function CurriculumView({
                       </tr>
                     </thead>
                     <tbody>
-                      {current.data.relations.map((r) => (
+                      {current.data.relations.map((r, index) => (
                         <tr key={r.courseCode + r.kind}>
+                          <td className="cm-stt">{index + 1}</td>
                           <td>{r.courseCode}</td>
                           <td>
                             {r.kind === "prior" ? "Học trước" : "Tiên quyết"}
@@ -917,6 +923,25 @@ function Courses({
       (!filters.specialty || c.specialty === filters.specialty) &&
       (!filters.semester || String(c.semester) === filters.semester),
   );
+  const blocks = [
+    ...data.groups,
+    ...(data.courses.some(
+      (c) => !data.groups.some((g) => g.id === c.groupId),
+    )
+      ? [{ id: "", label: "Học phần chưa phân khối" }]
+      : []),
+  ].filter(
+    (g) =>
+      (!filters.block || filters.block === g.id) &&
+      (rows.some((c) => c.groupId === g.id) ||
+        (!filters.q && !filters.specialty && !filters.semester)),
+  );
+  // STT runs through the whole table in display order, across the blocks.
+  const stt = new Map(
+    blocks
+      .flatMap((g) => rows.filter((c) => c.groupId === g.id))
+      .map((c, index) => [c, index + 1]),
+  );
   return (
     <>
       <div className="cm-filters">
@@ -982,6 +1007,7 @@ function Courses({
         <table className="cm-table cm-courses">
           <thead>
             <tr>
+              <th className="cm-stt">STT</th>
               <th>Mã học phần</th>
               <th>Tên học phần</th>
               <th>TC</th>
@@ -991,24 +1017,10 @@ function Courses({
             </tr>
           </thead>
           <tbody>
-            {[
-              ...data.groups,
-              ...(data.courses.some(
-                (c) => !data.groups.some((g) => g.id === c.groupId),
-              )
-                ? [{ id: "", label: "Học phần chưa phân khối" }]
-                : []),
-            ]
-              .filter(
-                (g) =>
-                  (!filters.block || filters.block === g.id) &&
-                  (rows.some((c) => c.groupId === g.id) ||
-                    (!filters.q && !filters.specialty && !filters.semester)),
-              )
-              .map((g) => (
+            {blocks.map((g) => (
                 <Fragment key={g.id}>
                   <tr className="cm-group-row">
-                    <th colSpan={2}>{g.label}</th>
+                    <th colSpan={3}>{g.label}</th>
                     <td colSpan={3}>
                           <span className="cm-block-credits">
                             {"credits" in g && g.credits !== null
@@ -1056,6 +1068,7 @@ function Courses({
                     .map((c) => (
                       <Fragment key={`${c.code}-${c.position}-${c.sourceRow}`}>
                         <tr>
+                          <td className="cm-stt">{stt.get(c)}</td>
                           <td>{c.code}</td>
                           <td>
                             <strong>{c.name}</strong>

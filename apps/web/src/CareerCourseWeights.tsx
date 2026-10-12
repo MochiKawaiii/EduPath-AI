@@ -58,9 +58,9 @@ export function CareerWeightCell({ state, skillId, skillName }: { state: WeightS
         {courses[0]?.scope && <p>Phạm vi kỹ năng: {courses[0].scope}</p>}
         <p>Mỗi tỷ lệ thuộc phân bổ 100% của một học phần. Các tỷ lệ dưới đây không cộng thành trọng số của nghề nghiệp.</p>
         <div className="cm-table-scroll"><table className="cm-table">
-          <thead><tr><th>Mã học phần</th><th>Tên học phần</th><th>Trọng số</th></tr></thead>
-          <tbody>{courses.map(course => <tr key={course.courseCode}>
-            <td>{course.courseCode}</td><td>{course.courseName}</td><td><strong>{percentage(course.weight)}</strong></td>
+          <thead><tr><th className="cm-stt">STT</th><th>Mã học phần</th><th>Tên học phần</th><th>Trọng số</th></tr></thead>
+          <tbody>{courses.map((course, index) => <tr key={course.courseCode}>
+            <td className="cm-stt">{index + 1}</td><td>{course.courseCode}</td><td>{course.courseName}</td><td><strong>{percentage(course.weight)}</strong></td>
           </tr>)}</tbody>
         </table></div>
         <div className="cm-actions cm-dialog-actions"><button className="am-outline" type="button" onClick={() => setOpen(false)}><Icon name="close" /> Đóng</button></div>

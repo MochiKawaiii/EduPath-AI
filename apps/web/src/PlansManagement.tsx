@@ -229,6 +229,7 @@ export default function PlansManagement({ canManage }: { canManage: boolean }) {
               <table className="cm-table">
                 <thead>
                   <tr>
+                    <th className="cm-stt">STT</th>
                     <th>Kế hoạch đào tạo</th>
                     <th>Khóa</th>
                     <th>Lượt môn</th>
@@ -238,8 +239,9 @@ export default function PlansManagement({ canManage }: { canManage: boolean }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {remote.data.items.map((p) => (
+                  {remote.data.items.map((p, index) => (
                     <tr key={p.id}>
+                      <td className="cm-stt">{index + 1}</td>
                       <td>
                         <strong>{p.name}</strong>
                         <small>
@@ -546,6 +548,12 @@ function PlanStructure({
       (!filters.term || i.termCode === filters.term) &&
       (!filters.group || labels.get(i.sectionId) === filters.group),
   );
+  // STT runs through the whole table in display order, across the terms.
+  const stt = new Map(
+    data.terms
+      .flatMap((t) => items.filter((i) => i.termCode === t.code))
+      .map((i, index) => [i.id, index + 1]),
+  );
   return (
     <>
       <div className="cm-filters">
@@ -595,6 +603,7 @@ function PlanStructure({
         <table className="cm-table cm-courses">
           <thead>
             <tr>
+              <th className="cm-stt">STT</th>
               <th>Mã học phần</th>
               <th>Tên học phần</th>
               <th>TC</th>
@@ -608,7 +617,7 @@ function PlanStructure({
             .map((t) => (
               <tbody key={t.code}>
                 <tr className="pm-term-row">
-                  <th colSpan={6}>
+                  <th colSpan={7}>
                     Năm {t.studyYear} · Học kỳ {t.semester}
                     <span>
                       {t.code} · {t.sourceCredits ?? "—"} tín chỉ
@@ -621,12 +630,13 @@ function PlanStructure({
                     <Fragment key={i.id}>
                       {i.sectionId !== all[index - 1]?.sectionId && (
                         <tr className="cm-group-row">
-                          <th colSpan={6}>
+                          <th colSpan={7}>
                             {labels.get(i.sectionId) ?? "Các học phần trong kỳ"}
                           </th>
                         </tr>
                       )}
                       <tr>
+                        <td className="cm-stt">{stt.get(i.id)}</td>
                         <td>{i.code || "Chưa có mã"}</td>
                         <td>
                           <strong>{i.name}</strong>

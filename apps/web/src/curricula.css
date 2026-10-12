@@ -221,8 +221,17 @@
   line-height: 1.6;
 }
 
-.cm-table td:first-child {
+.cm-table td:first-child:not(.cm-stt),
+.cm-table td.cm-stt + td {
   min-width: 140px;
+}
+
+/* Row number (STT): narrow, muted, never the wide label column. */
+.cm-table :is(th, td).cm-stt {
+  width: 56px;
+  min-width: 0;
+  color: var(--cm-muted);
+  white-space: nowrap;
 }
 
 .cm-table strong {
@@ -253,7 +262,7 @@
   border-block: 1px solid #ebd9df;
 }
 
-.cm-courses td:nth-child(2) {
+.cm-courses tr:not(.cm-group-row) td:nth-child(3) {
   min-width: 210px;
 }
 

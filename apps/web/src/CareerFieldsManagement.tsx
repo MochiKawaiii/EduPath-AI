@@ -31,9 +31,9 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
       <Status {...remote} />
       {remote.data && <>
         <div className="cm-table-scroll"><table className="cm-table">
-          <thead><tr><th>STT</th><th>Lĩnh vực nghề nghiệp</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th className="cm-stt">STT</th><th>Lĩnh vực nghề nghiệp</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
           <tbody>{items.slice((page - 1) * 10, page * 10).map(field => <tr key={field.id}>
-            <td>{field.code}</td><td><strong>{field.name}</strong></td>
+            <td className="cm-stt">{field.code}</td><td><strong>{field.name}</strong></td>
             <td className="career-description">{field.description || "Chưa bổ sung"}</td>
             <td><ActionMenu label={`Thao tác với lĩnh vực ${field.name}`} items={[
               { key: "detail", icon: "eye", label: "Chi tiết", onSelect: () => { setSelected(field); setMode("detail"); } },
