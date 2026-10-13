@@ -20,21 +20,22 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
   const add = () => { setSelected(null); setMode("edit"); };
   const items = remote.data?.items.filter(field => searchTerm(`${field.code} ${field.name} ${field.description}`).includes(searchTerm(query))) ?? [];
   return <section className="cm-workspace career-workspace">
-    <div className="cm-toolbar">
-      <p>Quản lý lĩnh vực để phân nhóm các vị trí nghề nghiệp.</p>
-    </div>
     <section className="cm-panel">
-      <div className="cm-filters">
+      <div className="career-list-heading">
+        <h2>Lĩnh vực nghề nghiệp{remote.data && <span className="am-count">{items.length}</span>}</h2>
+        <p>Quản lý lĩnh vực để phân nhóm các vị trí nghề nghiệp.</p>
+      </div>
+      <div className="cm-filters career-catalog-filters">
         <label className="cm-search">Tìm lĩnh vực<input value={query} maxLength={200} placeholder="Số thứ tự hoặc tên lĩnh vực…" onChange={event => { setQuery(event.target.value); setPage(1); }} /></label>
         <button className="am-outline" onClick={() => { setQuery(""); setPage(1); }}><Icon name="refresh" /> Xóa bộ lọc</button>
       </div>
       <Status {...remote} />
       {remote.data && <>
-        <div className="cm-table-scroll"><table className="cm-table">
-          <thead><tr><th className="cm-stt">STT</th><th>Lĩnh vực nghề nghiệp</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
+        <div className="cm-table-scroll"><table className="cm-table career-catalog-table">
+          <thead><tr><th className="cm-stt">STT</th><th>Tên lĩnh vực</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
           <tbody>{items.slice((page - 1) * 10, page * 10).map(field => <tr key={field.id}>
             <td className="cm-stt">{field.code}</td><td><strong>{field.name}</strong></td>
-            <td className="career-description">{field.description || "Chưa bổ sung"}</td>
+            <td><div className="career-clip" title={field.description || undefined}>{field.description || <span className="career-empty">Chưa bổ sung</span>}</div></td>
             <td><ActionMenu label={`Thao tác với lĩnh vực ${field.name}`} items={[
               { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(field); setMode("detail"); } },
               ...(canManage ? [

@@ -25,7 +25,8 @@ describe.each(pages)("%s page", (_name, add, Page, row) => {
   it("adds from the row menu, not from a button above the table", () => {
     const html = render([row]);
     expect([...html.matchAll(/<li>([^<]*)<\/li>/g)].map(match => match[1])).toEqual(["Xem chi tiết", "Chỉnh sửa", add, "Xóa"]);
-    expect(html.match(/<div class="cm-toolbar">.*?<\/div>/s)?.[0]).not.toContain("<button");
+    expect(html.match(/<div class="career-list-heading">.*?<\/div>/s)?.[0]).not.toContain("<button");
+    expect(html).toContain('<span class="am-count">1</span>');
   });
 
   it("offers the add button under the table when there are no rows", () => {

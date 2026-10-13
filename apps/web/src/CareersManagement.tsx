@@ -49,10 +49,11 @@ export default function CareersManagement({
   return (
     <section className="cm-workspace career-workspace">
       {linksCareerId !== null ? <CareerLinksManagement key={linksCareerId} initialCareerId={linksCareerId} canManage={canManage} revision={revision} saved={() => setRevision(current => current + 1)} close={() => setLinksCareerId(null)} /> : detailId ? <Detail key={detailId} id={detailId} fields={fields.data?.items ?? []} revision={revision} close={() => setDetailId(null)} /> : <>
-      <div className="cm-toolbar">
-        <p>Danh mục nghề nghiệp song ngữ để sinh viên lựa chọn định hướng.</p>
-      </div>
       <section className="cm-panel">
+        <div className="career-list-heading">
+          <h2>Vị trí nghề nghiệp{list.data && <span className="am-count">{list.data.items.length}</span>}</h2>
+          <p>Danh mục nghề nghiệp song ngữ để sinh viên lựa chọn định hướng.</p>
+        </div>
         <div className="cm-filters">
           <label className="cm-search">
             Tìm vị trí

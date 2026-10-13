@@ -18,22 +18,23 @@ export default function CareerSkillsManagement({ canManage }: { canManage: boole
   const saved = () => { close(); setRevision(value => value + 1); };
   const add = () => { setSelected(null); setMode("edit"); };
   return <section className="cm-workspace career-workspace">
-    <div className="cm-toolbar">
-      <p>Quản lý kỹ năng dùng chung với các vị trí nghề nghiệp và mục Năng lực.</p>
-    </div>
     <section className="cm-panel">
-      <div className="cm-filters">
+      <div className="career-list-heading">
+        <h2>Kỹ năng dùng chung{remote.data && <span className="am-count">{remote.data.items.length}</span>}</h2>
+        <p>Quản lý kỹ năng dùng chung với các vị trí nghề nghiệp và mục Năng lực.</p>
+      </div>
+      <div className="cm-filters career-catalog-filters">
         <label className="cm-search">Tìm kỹ năng<input value={draft.q} maxLength={200} placeholder="Tên hoặc mô tả kỹ năng…" onChange={event => setDraft({ q: event.target.value })} /></label>
         <button className="am-outline" onClick={reset}><Icon name="refresh" /> Xóa bộ lọc</button>
       </div>
       <Status {...remote} />
       {remote.data && <>
-        <div className="cm-table-scroll"><table className="cm-table">
-          <thead><tr><th className="cm-stt">STT</th><th>Kỹ năng</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
+        <div className="cm-table-scroll"><table className="cm-table career-catalog-table">
+          <thead><tr><th className="cm-stt">STT</th><th>Tên kỹ năng</th><th>Mô tả</th><th>Thao tác</th></tr></thead>
           <tbody>{remote.data.items.slice((page - 1) * 10, page * 10).map((skill, index) => <tr key={skill.id}>
             <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
             <td><strong>{skill.name}</strong></td>
-            <td className="career-description">{skill.description || "Chưa bổ sung"}</td>
+            <td><div className="career-clip" title={skill.description || undefined}>{skill.description || <span className="career-empty">Chưa bổ sung</span>}</div></td>
             <td><ActionMenu label={`Thao tác với kỹ năng ${skill.name}`} items={[
               { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(skill); setMode("detail"); } },
               ...(canManage ? [

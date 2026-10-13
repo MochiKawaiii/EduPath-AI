@@ -82,6 +82,23 @@
   margin: 6px 0 0;
   font-weight: 600;
 }
+/* Catalog pages (Nghề nghiệp, Lĩnh vực, Kỹ năng): the card opens with a heading, then a compact filter row, then the table. */
+.career-workspace .career-list-heading { padding: 24px 24px 0; }
+.career-workspace .career-list-heading h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; font-size: 18px; letter-spacing: -0.3px; }
+.career-workspace .career-list-heading .am-count { margin: 0; }
+.career-workspace .career-list-heading p { margin: 0; color: var(--cm-muted); font-size: 13px; line-height: 1.6; }
+.career-workspace .career-list-heading + .cm-filters { padding-top: 18px; }
+.career-catalog-table { table-layout: fixed; min-width: 640px; }
+.career-catalog-table :is(th, td).cm-stt { width: 72px; }
+.career-catalog-table th:nth-child(2) { width: 22%; }
+.career-catalog-table :is(th, td):last-child { width: 104px; text-align: center; }
+.career-catalog-table td { padding-block: 16px; }
+.career-catalog-table tbody tr:hover { background: #fcf6f8; }
+.career-clip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.career-empty { color: var(--cm-muted); }
+@media (min-width: 601px) {
+  .cm-filters.career-catalog-filters .cm-search { flex: 0 1 440px; }
+}
 .career-description {
   white-space: pre-wrap;
 }
