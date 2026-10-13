@@ -10,7 +10,7 @@ const endpoint = "/api/admin/careers/skills";
 
 export default function CareerSkillsManagement({ canManage }: { canManage: boolean }) {
   const [revision, setRevision] = useState(0);
-  const { draft, setDraft, filters, page, setPage, reset } = useLiveFilters({ q: "" });
+  const { draft, setDraft, filters, page, setPage } = useLiveFilters({ q: "" });
   const remote = useData<{ items: ManagedCareerSkill[] }>(`${endpoint}?${new URLSearchParams(filters)}`, revision);
   const [selected, setSelected] = useState<ManagedCareerSkill | null>(null);
   const [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
@@ -24,8 +24,7 @@ export default function CareerSkillsManagement({ canManage }: { canManage: boole
         <p>Quản lý kỹ năng dùng chung với các vị trí nghề nghiệp và mục Năng lực.</p>
       </div>
       <div className="cm-filters career-catalog-filters">
-        <label className="cm-search">Tìm kỹ năng<input value={draft.q} maxLength={200} placeholder="Tên hoặc mô tả kỹ năng…" onChange={event => setDraft({ q: event.target.value })} /></label>
-        <button className="am-outline" onClick={reset}><Icon name="refresh" /> Xóa bộ lọc</button>
+        <label className="cm-search">Tìm kỹ năng<input type="search" value={draft.q} maxLength={200} placeholder="Tên hoặc mô tả kỹ năng…" onChange={event => setDraft({ q: event.target.value })} /></label>
       </div>
       <Status {...remote} />
       {remote.data && <>

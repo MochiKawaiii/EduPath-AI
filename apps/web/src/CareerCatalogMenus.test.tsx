@@ -29,6 +29,12 @@ describe.each(pages)("%s page", (_name, add, Page, row) => {
     expect(html).toContain('<span class="am-count">1</span>');
   });
 
+  it("has just a search box, so no clear-filter button", () => {
+    const html = render([row]);
+    expect(html).toContain('type="search"');
+    expect(html).not.toContain("Xóa bộ lọc");
+  });
+
   it("offers the add button under the table when there are no rows", () => {
     expect(render([])).toMatch(new RegExp(`<div class="am-empty"><p>[^<]*</p><button class="am-primary"[^>]*>.*?${add}</button>`, "s"));
   });

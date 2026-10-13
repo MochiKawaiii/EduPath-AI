@@ -26,8 +26,7 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
         <p>Quản lý lĩnh vực để phân nhóm các vị trí nghề nghiệp.</p>
       </div>
       <div className="cm-filters career-catalog-filters">
-        <label className="cm-search">Tìm lĩnh vực<input value={query} maxLength={200} placeholder="Số thứ tự hoặc tên lĩnh vực…" onChange={event => { setQuery(event.target.value); setPage(1); }} /></label>
-        <button className="am-outline" onClick={() => { setQuery(""); setPage(1); }}><Icon name="refresh" /> Xóa bộ lọc</button>
+        <label className="cm-search">Tìm lĩnh vực<input type="search" value={query} maxLength={200} placeholder="Số thứ tự hoặc tên lĩnh vực…" onChange={event => { setQuery(event.target.value); setPage(1); }} /></label>
       </div>
       <Status {...remote} />
       {remote.data && <>
