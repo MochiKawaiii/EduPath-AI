@@ -1,6 +1,6 @@
 # Worker AI (Ollama + Gemma 4 E4B)
 
-Worker này chạy trên máy cá nhân có GPU. Nó lấy job AI từ API EduPath, gọi Ollama ở chính máy này, rồi gửi kết quả về API. Có hai loại job: nhận xét năng lực cho sinh viên (`competency_assessment`) và đề xuất kỹ năng cho vị trí nghề nghiệp ở trang quản trị (`career_skill_suggestion`, xem `docs/career-ai-suggestions.md`). Dữ liệu chỉ đi giữa API và máy chạy worker; Ollama chỉ nghe trên `127.0.0.1`.
+Worker này chạy trên máy cá nhân có GPU. Nó lấy job AI từ API EduPath, gọi Ollama ở chính máy này, rồi gửi kết quả về API. Có ba loại job: nhận xét năng lực cho sinh viên (`competency_assessment`, xem `docs/competency-assessment.md`), đề xuất kỹ năng cho vị trí nghề nghiệp ở trang quản trị (`career_skill_suggestion`, xem `docs/career-ai-suggestions.md`) và lời khuyên điều kiện xét tốt nghiệp cho sinh viên, tạo tự động khi sinh viên import bảng điểm hoặc mở trang Điều kiện xét tốt nghiệp (`graduation_advice`, xem `docs/graduation-advice.md`). Dữ liệu chỉ đi giữa API và máy chạy worker; Ollama chỉ nghe trên `127.0.0.1`.
 
 Mã nguồn nằm ở `apps/api/src/ai-worker/`. Cấu hình nằm ở `services/ai/.env` (không commit).
 
@@ -66,12 +66,16 @@ npm run ai-worker --workspace @edupath/api
 
 Worker ghi log dạng JSON, mỗi dòng một sự kiện (`job_claimed`, `generation_finished`, `job_finished`...). Log chỉ chứa mã job, loại job (`kind`), mã lỗi và số liệu thời gian; không bao giờ ghi prompt hay nội dung nhận xét. Nhấn `Ctrl+C` để dừng; job đang chạy dở sẽ được API giao lại sau khi hết hạn lease (15 phút).
 
-**Sau mỗi lần cập nhật mã nguồn, khởi động lại worker** (`Ctrl+C` rồi chạy lại). Worker chạy từ bản cũ vẫn làm nhận xét năng lực bình thường nhưng không báo hỗ trợ đề xuất kỹ năng, nên trang Quản lý nghề nghiệp sẽ báo worker chưa hỗ trợ và job đề xuất nằm chờ.
+**Sau mỗi lần cập nhật mã nguồn, khởi động lại worker** (`Ctrl+C` rồi chạy lại). Worker chỉ báo cho API những loại job có trong mã nguồn lúc nó khởi động. Worker chạy từ bản cũ vẫn làm nhận xét năng lực bình thường, nhưng:
+- bản trước lời khuyên tốt nghiệp không báo `graduation_advice`: lời khuyên nằm chờ trong hàng đợi và trang Điều kiện xét tốt nghiệp của sinh viên hiện trạng thái "Máy AI đang chạy phiên bản cũ…" (API trả `worker.supportsAdvice: false`) cho tới khi worker được khởi động lại;
+- bản trước đề xuất kỹ năng không báo `career_skill_suggestion`: trang Quản lý nghề nghiệp báo worker chưa hỗ trợ và job đề xuất nằm chờ.
+
+Khởi động lại là đủ, không cần đổi `services/ai/.env`.
 
 Cách worker làm việc:
 - Khi khởi động, nạp model một lần với đúng `num_ctx` và `num_gpu` như job thật để job đầu không phải nạp lại.
 - Gửi heartbeat mỗi 20 giây khi Ollama sẵn sàng; trang của sinh viên dựa vào đó để báo "worker đang hoạt động".
-- Khi rảnh, hỏi job mới mỗi 5 giây; gặp lỗi mạng thì chờ 15 giây. Worker báo cho API các loại job nó làm được; job đề xuất kỹ năng được nhận trước vì admin đang chờ trên trang.
+- Khi rảnh, hỏi job mới mỗi 5 giây; gặp lỗi mạng thì chờ 15 giây. Worker báo cho API các loại job nó làm được; API giao job theo thứ tự đề xuất kỹ năng (admin đang chờ trên trang) → lời khuyên tốt nghiệp (sinh viên có thể đang mở trang) → nhận xét năng lực.
 - Trong lúc sinh, gia hạn lease khoảng 3 phút một lần.
 - Nếu model trả về JSON hỏng, thử lại đúng 1 lần. Không thử lại khi bị cắt do hết `num_predict` (`ai_output_truncated`) hoặc quá thời gian (`ai_timeout`).
 
@@ -87,7 +91,9 @@ Prompt tổng hợp khoảng 5.750 token (bảng markdown tiếng Việt giống
 | 40 | 48,8 | 1.404 | 70 giây | 3,4 GB |
 | 42 | không nạp được (thiếu VRAM) | | | |
 
-Khi chạy thật với `OLLAMA_NUM_GPU=38` và model đã được nạp sẵn lúc khởi động, một job mất khoảng 46 giây.
+Khi chạy thật với `OLLAMA_NUM_GPU=38` và model đã được nạp sẵn lúc khởi động, một job nhận xét năng lực mất khoảng 46 giây.
+
+Lời khuyên xét tốt nghiệp ngắn hơn nhiều: trên cùng laptop, với model đã được nạp sẵn, 8 lần chạy thật `gemma4:e4b` trên hai hồ sơ sinh viên tổng hợp đều qua kiểm tra phía server, không mục nào bị loại; mỗi job mất 13–16 giây, khoảng 1.800 token vào và 580–760 token ra (`num_predict` 2048). Đề xuất kỹ năng nghề nghiệp mất khoảng 25–40 giây mỗi vị trí (xem `docs/career-ai-suggestions.md`).
 
 Khuyến nghị: `OLLAMA_NUM_GPU=38`. Mức 40 nhanh hơn khoảng 5% nhưng chỉ còn khoảng 650 MB VRAM dự phòng; 42 không chạy được. Giữ cố định giá trị đã chọn, vì đổi giá trị sẽ khiến Ollama nạp lại model. Nếu VRAM bị chương trình khác chiếm (trình duyệt dùng GPU, OCR...) và Ollama báo lỗi bộ nhớ, giảm xuống 34. Giữ `AI_TIMEOUT_MS=600000`: đủ cho trường hợp nạp model chậm (đã gặp 135 giây) cộng với chế độ Ollama tự chọn (khoảng 6 phút cho 4.096 token).
 
@@ -105,7 +111,7 @@ Khuyến nghị: `OLLAMA_NUM_GPU=38`. Mức 40 nhanh hơn khoảng 5% nhưng ch�
 
 **Chậm bất thường.** Xem `%LOCALAPPDATA%\Ollama\server.log`: kiểm tra Ollama dùng GPU NVIDIA (không phải iGPU Intel) và số lớp được offload. Chạy `ollama ps` để xem tỉ lệ CPU/GPU. Đóng bớt ứng dụng dùng GPU.
 
-**`ai_output_truncated`.** Model viết quá `num_predict` (4096 token). Bấm "Tạo lại nhận xét" trên trang; nếu lặp lại thường xuyên, báo lại để rút gọn prompt.
+**`ai_output_truncated`.** Model viết quá `num_predict` của job (nhận xét năng lực 4096, đề xuất kỹ năng 3072, lời khuyên tốt nghiệp 2048 token). Bấm "Tạo lại nhận xét" trên trang Đánh giá năng lực hoặc "Thử lại" trên trang Điều kiện xét tốt nghiệp; nếu lặp lại thường xuyên, báo lại để rút gọn prompt.
 
 **`ai_timeout`.** Một lần sinh vượt `AI_TIMEOUT_MS` hoặc 120 giây không có dữ liệu mới. Thường do model chạy hoàn toàn trên CPU; kiểm tra `OLLAMA_NUM_GPU` và VRAM còn trống.
 
