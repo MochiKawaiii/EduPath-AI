@@ -5,7 +5,7 @@ describe("admin section navigation", () => {
     expect(adminNavigation.map(item => item.path)).toEqual(["/quantri/tai-khoan", "/quantri/sinh-vien", "/quantri/chuong-trinh", "/quantri/tieu-chuan-tot-nghiep", "/quantri/ke-hoach", "/quantri/vi-tri-nghe-nghiep", "/quantri/linh-vuc-nghe-nghiep", "/quantri/ky-nang", "/quantri/danh-gia-nang-luc"]);
   });
   it("uses short sidebar names, which are also the page title and breadcrumb", () => {
-    expect(adminNavigation.map(item => item.label)).toEqual(["Tài khoản", "Sinh viên", "Chương trình đào tạo", "Tiêu chuẩn xét tốt nghiệp", "Kế hoạch đào tạo", "Nghề nghiệp", "Lĩnh vực", "Kỹ năng", "Năng lực"]);
+    expect(adminNavigation.map(item => item.label)).toEqual(["Tài khoản", "Sinh viên", "Chương trình", "Tốt nghiệp", "Kế hoạch", "Nghề nghiệp", "Lĩnh vực", "Kỹ năng", "Năng lực"]);
   });
   it.each(["/quantri/sinh-vien", "/quantri/sinh-vien/"])("resolves direct student link %s", path => {
     expect(resolveAdminPage(path).label).toBe("Sinh viên");

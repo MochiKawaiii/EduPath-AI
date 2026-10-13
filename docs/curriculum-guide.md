@@ -1,6 +1,6 @@
 # Quản lý khung chương trình đào tạo
 
-Truy cập **Quản trị → Chương trình đào tạo** tại `/quantri/chuong-trinh`.
+Truy cập **Quản trị → Chương trình** tại `/quantri/chuong-trinh`.
 
 ## Sáu chức năng
 
