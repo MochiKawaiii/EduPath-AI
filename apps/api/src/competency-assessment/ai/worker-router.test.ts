@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DatabasePool } from "../../db/pool.js";
 import { buildCareerSuggestionInput, CAREER_SUGGESTION_PROMPT_VERSION } from "../../careers/ai-suggestions/prompt.js";
 import { careerSource, fixtureId } from "../../careers/ai-suggestions/test-fixture.js";
+import { buildGraduationAdviceInput, GRADUATION_ADVICE_PROMPT_VERSION } from "../../graduation/advice/prompt.js";
+import { syntheticGraduation } from "../../graduation/advice/test-fixture.js";
 import { buildAiInput } from "./prompt.js";
 import { syntheticResult } from "./test-fixture.js";
 import { createCompetencyAiExpiry, createCompetencyWorkerRouter, expireCompetencyAiJobs } from "./worker-router.js";
@@ -362,5 +364,119 @@ describe("career skill suggestion jobs", () => {
     const done = setup(withCareer(careerRow({ status: "completed", valid: null, ai_input: null })));
     await request(done.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(careerOutput([suggestion("S002")]))).expect(200, { ok: true });
     expect(careerUpdate(done.run)).toBeUndefined();
+  });
+});
+
+describe("graduation advice jobs", () => {
+  const ALL = ["competency_assessment", "career_skill_suggestion", "graduation_advice"];
+  const adviceInput = buildGraduationAdviceInput(syntheticGraduation());
+  const careerInput = buildCareerSuggestionInput(careerSource());
+  const adviceClaim = (s: string) => s.includes("UPDATE stu_grad_advice j SET status='processing'");
+  const careerClaim = (s: string) => s.includes("UPDATE career_ai_suggestions j SET status='processing'");
+  const competencyClaim = (s: string) => s.includes("UPDATE stu_comp_ai_jobs j SET status='processing'");
+  const queued = (which: { career?: boolean; advice?: boolean; competency?: boolean }): Handler => (s) =>
+    careerClaim(s) && which.career ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput: careerInput }] }
+      : adviceClaim(s) && which.advice ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput: adviceInput }] }
+        : competencyClaim(s) && which.competency ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput }] } : undefined;
+  const claim = (app: express.Express, body?: object) => {
+    const req = request(app).post("/w/claim").set("Authorization", AUTH);
+    return (body === undefined ? req : req.send(body)).expect(200);
+  };
+  const adviceOutput = {
+    summary: "Bạn còn thiếu 2 môn ở Học phần bắt buộc.",
+    advice: [{ focus: "G1", text: "Hãy đăng ký Đồ án thực tập (71ITIN40304)." }],
+    nextSteps: ["Trao đổi với cố vấn học tập."]
+  };
+  const adviceRow = (extra: Row = {}): Row => ({ status: "processing", lease_token: LEASE, valid: true, ai_input: adviceInput, ...extra });
+  /** The id is in neither the competency nor the career table. */
+  const withAdvice = (row: Row | null, career: Row | null = null): Handler => (s) =>
+    s.includes("FROM stu_grad_advice WHERE id=$1 FOR UPDATE") ? { rows: row ? [row] : [] }
+      : s.includes("FROM career_ai_suggestions WHERE id=$1 FOR UPDATE") ? { rows: career ? [career] : [] } : undefined;
+  const adviceUpdate = (run: ReturnType<typeof setup>["run"]) => run.mock.calls.find(([s]) => s.startsWith("UPDATE stu_grad_advice SET status=$2"));
+
+  it("never gives a graduation job to a worker that does not advertise the kind", async () => {
+    for (const body of [undefined, {}, { kinds: ["competency_assessment"] }, { kinds: ["competency_assessment", "career_skill_suggestion"] }]) {
+      const { app, sql } = setup(queued({ advice: true, competency: true }));
+      expect((await claim(app, body)).body.job.kind).toBe("competency_assessment");
+      expect(sql().some(adviceClaim)).toBe(false);
+    }
+    const careerOnly = setup(queued({ advice: true }));
+    expect((await claim(careerOnly.app, { kinds: ["career_skill_suggestion"] })).body).toEqual({ job: null });
+    expect(careerOnly.sql().some(adviceClaim)).toBe(false);
+  });
+
+  it("gives a new worker career jobs first, then graduation advice without its key map, then competency jobs", async () => {
+    const all = setup(queued({ career: true, advice: true, competency: true }));
+    expect((await claim(all.app, { kinds: ALL })).body.job.kind).toBe("career_skill_suggestion");
+    expect(all.sql().some(adviceClaim)).toBe(false);
+
+    const advice = setup(queued({ advice: true, competency: true }));
+    const res = await claim(advice.app, { kinds: ALL });
+    expect(res.body.job).toEqual({ kind: "graduation_advice", id: JOB, leaseToken: LEASE, promptVersion: GRADUATION_ADVICE_PROMPT_VERSION,
+      system: adviceInput.system, user: adviceInput.user, schema: adviceInput.schema, options: adviceInput.options });
+    expect(JSON.stringify(res.body)).not.toMatch(/"keys"|row-10|row-92/);
+    expect(advice.sql().some(competencyClaim)).toBe(false);
+    const claimCall = advice.run.mock.calls.find(([s]) => adviceClaim(s))!;
+    expect(claimCall[0]).toContain("ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1");
+    expect((claimCall[1] as unknown[]).slice(1)).toEqual([2, 15]);
+
+    const competency = setup(queued({ competency: true }));
+    expect((await claim(competency.app, { kinds: ALL })).body.job.kind).toBe("competency_assessment");
+    const adviceOnly = setup(queued({ competency: true }));
+    expect((await claim(adviceOnly.app, { kinds: ["graduation_advice"] })).body).toEqual({ job: null });
+    expect(adviceOnly.sql().some(competencyClaim)).toBe(false);
+  });
+
+  it("expires stuck graduation advice in the claim housekeeping", async () => {
+    const { app, run } = setup();
+    await claim(app, {});
+    const expiry = run.mock.calls.find(([s]) => s.startsWith("UPDATE stu_grad_advice SET status='failed'"))!;
+    expect(expiry[0]).toContain("(status='queued' AND created_at<now()-interval '24 hours')");
+    expect(expiry[0]).toContain("ai_input=NULL");
+    expect(expiry[1]).toEqual([2, "worker_timeout"]);
+  });
+
+  it("extends a graduation job after the competency and career tables miss it", async () => {
+    const until = new Date("2026-10-13T10:00:00Z");
+    const { app, run } = setup((s) => (s.startsWith("UPDATE stu_grad_advice SET lease_until") ? { rows: [{ leaseUntil: until }] } : undefined));
+    await request(app).post(`/w/${JOB}/extend`).set("Authorization", AUTH).send({ leaseToken: LEASE }).expect(200, { leaseUntil: until.toISOString() });
+    const order = run.mock.calls.map(([s]) => s.split(" ").slice(0, 2).join(" "));
+    expect(order).toEqual(["UPDATE stu_comp_ai_jobs", "UPDATE career_ai_suggestions", "UPDATE stu_grad_advice"]);
+    expect(run.mock.calls[2]![1]).toEqual([JOB, LEASE, 15]);
+    await request(setup().app).post(`/w/${JOB}/extend`).set("Authorization", AUTH).send({ leaseToken: LEASE }).expect(409, { error: "job_expired" });
+  });
+
+  it("completes a graduation job after the competency and career tables miss it", async () => {
+    const { app, run, sql } = setup(withAdvice(adviceRow()));
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(adviceOutput)).expect(200, { ok: true });
+    const update = adviceUpdate(run)!;
+    expect(update[0]).toContain("ai_input=NULL");
+    expect((update[1] as unknown[]).slice(0, 3)).toEqual([JOB, "completed", null]);
+    expect(JSON.parse((update[1] as unknown[])[3] as string)).toEqual({
+      summary: adviceOutput.summary, advice: [{ focus: "G1", label: "Học phần bắt buộc", text: adviceOutput.advice[0]!.text }], nextSteps: adviceOutput.nextSteps
+    });
+    expect(sql().at(-1)).toBe("COMMIT");
+    expect(sql().some((s) => s.includes("stu_comp_assessments"))).toBe(false);
+    const errored = setup(withAdvice(adviceRow()));
+    await request(errored.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send({ leaseToken: LEASE, error: "ai_output_truncated" }).expect(200);
+    expect((adviceUpdate(errored.run)![1] as unknown[]).slice(0, 3)).toEqual([JOB, "failed", "ai_output_truncated"]);
+  });
+
+  it("returns 409 job_expired for a lost graduation lease, an unknown id, or an id the career table rejects", async () => {
+    for (const handler of [withAdvice(adviceRow({ lease_token: OTHER_LEASE })), withAdvice(adviceRow({ status: "cancelled", lease_token: null })), withAdvice(null),
+      withAdvice(adviceRow(), { status: "cancelled", lease_token: null, valid: null, ai_input: null })]) {
+      const { app, run, sql } = setup(handler);
+      await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(adviceOutput)).expect(409, { error: "job_expired" });
+      expect(adviceUpdate(run)).toBeUndefined();
+      expect(sql()).toContain("ROLLBACK");
+    }
+    // An id the career table knows is never looked up in the advice table.
+    const career = setup(withAdvice(adviceRow(), { status: "cancelled", lease_token: null, valid: null, ai_input: null }));
+    await request(career.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(adviceOutput)).expect(409);
+    expect(career.sql().some((s) => s.includes("FROM stu_grad_advice WHERE id=$1"))).toBe(false);
+    // Same lease after completion: idempotent.
+    const done = setup(withAdvice(adviceRow({ status: "completed", valid: null, ai_input: null })));
+    await request(done.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(adviceOutput)).expect(200, { ok: true });
+    expect(adviceUpdate(done.run)).toBeUndefined();
   });
 });

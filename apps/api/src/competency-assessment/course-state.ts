@@ -79,9 +79,22 @@ export function printedSummaryNumber(section: TranscriptSection | undefined, lab
   return Number(values[0]);
 }
 
-/** "Tổng số tín chỉ tích lũy" printed on the latest graded term. */
+/**
+ * Folded label of the printed cumulative credits (E5). Both parsers keep the printed text before
+ * the colon as the label: transcript-parser.ts splits each "- label: value" line into its two
+ * columns, ocr-adapter.ts splits every raw summary cell line the same way. The VLU layout prints,
+ * per term, "Số tín chỉ đạt học kỳ", "Tổng số tín chỉ đăng ký", "Tổng số tín chỉ tích lũy",
+ * "Điểm TB học kỳ/học tập/tích lũy (Hệ 4|10)" and the "Xếp loại …" lines (the OCR pipeline's
+ * SUMMARY_FIELDS in services/ocr/test_ocr.py lists the same set; the test fixtures use "Tổng số tín
+ * chỉ tích lũy", "Số tín chỉ đạt học kỳ" and "Điểm TB … (Hệ 4|10)"). Accepted: "Tổng số tín chỉ
+ * tích lũy" and "Số tín chỉ tích lũy" (also "TC" for "tín chỉ" and "đã tích lũy"), with the spaces
+ * OCR may drop; never a per-term line ("… đạt học kỳ", "… đăng ký", or any "tích lũy … học kỳ/HK").
+ */
+export const CUMULATIVE_CREDITS_LABEL = /^[^a-z0-9]*(?:tong\s*)?so\s*(?:tin\s*chi|tc)\s*(?:da\s*)?tich\s*luy(?![a-z])(?!.*(?:hoc\s*ky|\bhk))/;
+
+/** "Tổng số tín chỉ tích lũy" printed on the latest graded term; null when missing, NaN when unreadable or conflicting. */
 export const printedCumulativeCredits = (data: TranscriptData) =>
-  printedSummaryNumber(latestResultSection(data), (label) => /tong so tin chi tich luy/.test(label), 1000);
+  printedSummaryNumber(latestResultSection(data), (label) => CUMULATIVE_CREDITS_LABEL.test(label), 1000);
 
 export type Attempt = {
   code: string;
@@ -105,7 +118,7 @@ export type TranscriptCourseState = Exclude<CourseState, "not_taken" | "not_in_c
 export type TranscriptCourseRecord = {
   code: string;
   attempts: Attempt[];
-  /** MT first, then the best passing attempt, then the best attempt (graduation-scores.ts rule). */
+  /** MT first, then the best passing attempt, then the best attempt. */
   selected: Attempt;
   state: TranscriptCourseState;
   /** The pass/fail state rests on a letter-grade inference. */
@@ -215,6 +228,44 @@ export function conditionOnlyCodes(standard: Pick<GraduationData, "courses"> | n
 
 export const isConditionOnly = (code: string, codes: ReadonlySet<string>) =>
   codes.has(courseKey(code)) || CONDITION_ONLY_CODE_PATTERN.test(courseKey(code));
+
+/** One row per CTĐT code (the first one), rows without a code dropped: the competency table and the graduation page agree. */
+export function uniqueCurriculumCourses<T extends Pick<CurriculumCourseInput, "code">>(courses: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return courses.filter((course) => {
+    const code = courseKey(course.code);
+    if (!code || seen.has(code)) return false;
+    seen.add(code);
+    return true;
+  });
+}
+
+/** CTĐT credit per code (first row per code); a missing, negative or non-finite credit reads 0, as in the competency table. */
+export const curriculumCreditMap = (courses: readonly Pick<CurriculumCourseInput, "code" | "credits">[]) =>
+  new Map(uniqueCurriculumCourses(courses).map((course) =>
+    [courseKey(course.code), Number.isFinite(course.credits) && course.credits > 0 ? course.credits : 0] as const));
+
+/**
+ * E4 credit estimate when no total is printed: passed/MT (certain) and graded-with-unknown-result
+ * credits of the codes in the program (standard ∪ CTĐT, see programCreditMap in graduation.ts),
+ * condition-only courses and conditional attempts excluded. Credits: the program credit (standard
+ * ?? CTĐT), else the transcript credit of the selected attempt; codes outside the program (AV0,
+ * transferred rows of other programs) are not accumulated, as on the printed transcript.
+ */
+export function estimateProgramCredits(
+  records: ReadonlyMap<string, TranscriptCourseRecord>,
+  programCredits: ReadonlyMap<string, number | null>,
+  conditionCodes: ReadonlySet<string>,
+): { certain: number; unknown: number } {
+  let certain = 0, unknown = 0;
+  for (const record of records.values()) {
+    if (!programCredits.has(record.code) || isConditionOnly(record.code, conditionCodes) || record.attempts.some((attempt) => attempt.conditional)) continue;
+    const credits = programCredits.get(record.code) ?? (record.selected.credits > 0 ? record.selected.credits : 0);
+    if (isPassedState(record.state)) certain += credits;
+    else if (record.state === "graded_unknown") unknown += credits;
+  }
+  return { certain, unknown };
+}
 
 /**
  * Credits of the CTĐT courses that are certainly passed (passed/MT) and of those graded with

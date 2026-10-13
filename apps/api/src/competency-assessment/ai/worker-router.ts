@@ -2,8 +2,9 @@
 // /api/worker/competency-assessments BEFORE the global JSON parser: the key is checked
 // before any body is read, then this router parses JSON itself (512 kB).
 // The same endpoints also serve career skill suggestions (careers/ai-suggestions/jobs.ts) to
-// workers that advertise the "career_skill_suggestion" kind; extend/complete find the id in
-// either job table.
+// workers that advertise the "career_skill_suggestion" kind and graduation advice
+// (graduation/advice/jobs.ts) to workers that advertise "graduation_advice"; extend/complete
+// find the id in any of the job tables.
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import express, { Router, type ErrorRequestHandler, type RequestHandler } from "express";
 import { z } from "zod";
@@ -14,6 +15,12 @@ import {
   createCareerSuggestionExpiry,
   extendCareerSuggestion
 } from "../../careers/ai-suggestions/jobs.js";
+import {
+  claimGraduationAdvice,
+  completeGraduationAdvice,
+  createGraduationAdviceExpiry,
+  extendGraduationAdvice
+} from "../../graduation/advice/jobs.js";
 import { cleanAiOutputKeys, keyNamesFrom } from "./key-cleanup.js";
 import { validateAiOutput, validationContextFromAiInput } from "./validate.js";
 import {
@@ -23,6 +30,7 @@ import {
   AI_WORKER_ERROR_CODES,
   CAREER_SKILL_SUGGESTION_KIND,
   COMPETENCY_ASSESSMENT_KIND,
+  GRADUATION_ADVICE_KIND,
   normalizeJobKinds,
   type AiJobKind
 } from "./worker-protocol.js";
@@ -98,6 +106,7 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
   const expected = aiWorkerKey ? hash(`Bearer ${aiWorkerKey}`) : null;
   const housekeeping = createCompetencyAiExpiry();
   const careerHousekeeping = createCareerSuggestionExpiry();
+  const graduationHousekeeping = createGraduationAdviceExpiry();
 
   const authenticate: RequestHandler = (req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -128,29 +137,34 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
     res.json({ ok: true });
   });
 
+  /** Only what the worker needs: key maps (career catalog/linked, graduation keys) stay on the server. */
+  const workerJob = (kind: AiJobKind, claimed: { id: string; leaseToken: string; aiInput: Record<string, unknown> }) => ({
+    kind,
+    id: claimed.id,
+    leaseToken: claimed.leaseToken,
+    promptVersion: claimed.aiInput.promptVersion,
+    system: claimed.aiInput.system,
+    user: claimed.aiInput.user,
+    schema: claimed.aiInput.schema,
+    options: claimed.aiInput.options
+  });
+
   router.post("/claim", async (req, res) => {
     const kinds = jobKinds(req.body);
     await heartbeat(kinds);
     await housekeeping(db);
     await careerHousekeeping(db);
+    await graduationHousekeeping(db);
     // Career suggestions first: an admin is waiting on the page and these jobs are rare.
     if (kinds.includes(CAREER_SKILL_SUGGESTION_KIND)) {
       const career = await claimCareerSuggestion(db, randomUUID());
-      if (career) {
-        const input = career.aiInput;
-        // The key map (catalog/linked) stays on the server.
-        res.json({ job: {
-          kind: CAREER_SKILL_SUGGESTION_KIND,
-          id: career.id,
-          leaseToken: career.leaseToken,
-          promptVersion: input.promptVersion,
-          system: input.system,
-          user: input.user,
-          schema: input.schema,
-          options: input.options
-        } });
-        return;
-      }
+      if (career) { res.json({ job: workerJob(CAREER_SKILL_SUGGESTION_KIND, career) }); return; }
+    }
+    // Then graduation advice (a student may be waiting on the page), before the competency-only
+    // return below: a worker that does not advertise this kind never receives it.
+    if (kinds.includes(GRADUATION_ADVICE_KIND)) {
+      const advice = await claimGraduationAdvice(db, randomUUID());
+      if (advice) { res.json({ job: workerJob(GRADUATION_ADVICE_KIND, advice) }); return; }
     }
     if (!kinds.includes(COMPETENCY_ASSESSMENT_KIND)) { res.json({ job: null }); return; }
     const result = await db.query<{ id: string; leaseToken: string; aiInput: Record<string, unknown> }>(`WITH candidate AS (
@@ -187,7 +201,8 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
       `UPDATE stu_comp_ai_jobs SET lease_until=now()+make_interval(mins => $3),updated_at=now()
         WHERE id=$1 AND status='processing' AND lease_token=$2 AND lease_until>now() RETURNING lease_until AS "leaseUntil"`,
       [id, body.data.leaseToken, AI_JOB_LEASE_MINUTES]);
-    const leaseUntil = result.rows[0]?.leaseUntil ?? await extendCareerSuggestion(db, id, body.data.leaseToken);
+    const leaseUntil = result.rows[0]?.leaseUntil ?? await extendCareerSuggestion(db, id, body.data.leaseToken)
+      ?? await extendGraduationAdvice(db, id, body.data.leaseToken);
     if (!leaseUntil) throw new WorkerError("job_expired", 409);
     res.json({ leaseUntil: new Date(leaseUntil).toISOString() });
   });
@@ -209,8 +224,10 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
         return;
       }
       if (!job) {
-        // Not a competency job: the id may be a career skill suggestion.
-        if (await completeCareerSuggestion(client, id, input) !== "ok") throw new WorkerError("job_expired", 409);
+        // Not a competency job: the id may be a career skill suggestion, else a graduation advice.
+        const career = await completeCareerSuggestion(client, id, input);
+        const outcome = career === "missing" ? await completeGraduationAdvice(client, id, input) : career;
+        if (outcome !== "ok") throw new WorkerError("job_expired", 409);
         await client.query("COMMIT");
         res.json({ ok: true });
         return;

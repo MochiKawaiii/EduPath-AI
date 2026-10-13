@@ -81,13 +81,13 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
       "Trong Nhóm bắt buộc, bạn cần đạt toàn bộ các môn được liệt kê. Những môn có dấu (*) vẫn phải đạt nếu nằm trong nhóm bắt buộc, nhưng không cộng vào tín chỉ tích lũy và điểm trung bình. Ví dụ, các môn GDQP có dấu (*) vẫn là những môn cần hoàn thành.",
       "Nhóm tự chọn được xét theo số tín chỉ yêu cầu của từng nhóm. Ví dụ, nếu TC002 yêu cầu 2 tín chỉ và mỗi lựa chọn là một môn 2 tín chỉ, bạn chỉ cần đạt một môn trong nhóm. Không cần học tất cả các môn trong danh sách. Môn có dấu (*) ở nhóm tự chọn vẫn giúp hoàn thành yêu cầu của nhóm, nhưng không cộng vào tín chỉ tích lũy chung."
     ],
-    note: "Hãy đọc dòng Đã đạt và Yêu cầu ở đầu mỗi nhóm để biết mình còn thiếu bao nhiêu tín chỉ. Các nhóm khác có thể yêu cầu số tín chỉ khác nhau, tùy tiêu chuẩn bạn đang xem."
+    note: "Hãy đọc dòng Đã đạt và Yêu cầu ở đầu mỗi nhóm để biết mình còn thiếu bao nhiêu tín chỉ. Các nhóm khác có thể yêu cầu số tín chỉ khác nhau, tùy tiêu chuẩn của khóa và chuyên ngành của bạn."
   },
   {
     question: "Thông báo đủ điều kiện xét tốt nghiệp có phải là kết quả chính thức không?",
     answer: [
-      "Thông báo giúp bạn tự đối chiếu tiến độ học tập với các nhóm môn trong tiêu chuẩn đang xem. Nhóm bắt buộc cần đạt đủ các môn; mỗi nhóm tự chọn cần đủ số tín chỉ yêu cầu. Khi một nhóm chưa hoàn thành, bạn có thể xem danh sách môn và phần tiến độ để biết còn thiếu gì.",
-      "Trước khi xem kết quả, hãy chọn đúng tiêu chuẩn của khóa, ngành và chuyên ngành của mình, đồng thời tải lên bảng điểm đầy đủ. Nếu bảng điểm thiếu học kỳ hoặc chưa có kết quả mới nhất, thông báo có thể chưa phản ánh đúng việc học của bạn."
+      "Thông báo giúp bạn tự đối chiếu tiến độ học tập với các nhóm môn trong tiêu chuẩn của khóa và chuyên ngành của bạn. Nhóm bắt buộc cần đạt đủ các môn; mỗi nhóm tự chọn cần đủ số tín chỉ yêu cầu. Khi một nhóm chưa hoàn thành, bạn có thể xem danh sách môn và phần tiến độ để biết còn thiếu gì.",
+      "Tiêu chuẩn được chọn tự động theo khóa trong tài khoản và chuyên ngành trong hồ sơ của bạn, vì vậy hãy kiểm tra chuyên ngành trong hồ sơ và tải lên bảng điểm đầy đủ. Nếu bảng điểm thiếu học kỳ hoặc chưa có kết quả mới nhất, thông báo có thể chưa phản ánh đúng việc học của bạn."
     ],
     note: "Kết quả xét tốt nghiệp chính thức do nhà trường công bố. Bạn nên đối chiếu thêm các thông báo của trường và liên hệ cố vấn học tập nếu cần xác nhận trường hợp cụ thể."
   },

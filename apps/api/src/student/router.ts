@@ -6,9 +6,10 @@ import type { DatabasePool } from "../db/pool.js";
 import type { AuthenticatedUser } from "../auth/types.js";
 import { requireAuthentication } from "../middleware/authorization.js";
 import { parseTranscript, TranscriptError, type TranscriptData } from "./transcript-parser.js";
-import { enqueueTranscript, expireJobs, jobColumns } from "./transcript-jobs.js";
+import { enqueueTranscript, expireJobs, jobColumns, runAfterTranscriptImport, type TranscriptImportOptions } from "./transcript-jobs.js";
 import { recordTranscriptConsent, TRANSCRIPT_POLICY_VERSION, withdrawTranscriptConsent } from "./consent.js";
 import { deleteCompetencyData } from "../competency-assessment/repository.js";
+import { deleteGraduationAdvice } from "../graduation/advice/jobs.js";
 
 const transcriptColumns = `version, filename, file_size AS "fileSize", parsed_data AS data,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
@@ -19,7 +20,7 @@ async function lockStudent(client: PoolClient, user: AuthenticatedUser) {
   if (!active.rowCount) throw new TranscriptError("insufficient_role", 403);
 }
 
-export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigin: string, ocrEnabled = false) {
+export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigin: string, ocrEnabled = false, options: TranscriptImportOptions = {}) {
   const router = Router();
   router.use(requireAuthentication);
   router.use((req, res, next) => {
@@ -107,6 +108,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
     if (ocrEnabled) await expireJobs(pool!);
     const data = ocrEnabled ? undefined : await parseTranscript(req.body);
     const client = await pool!.connect();
+    let imported = false;
     try {
       await client.query("BEGIN");
       await lockStudent(client, req.session.user!);
@@ -124,10 +126,14 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
         RETURNING ${transcriptColumns}`, [req.session.user!.userId, randomUUID(), filename, req.body, req.body.length, createHash("sha256").update(req.body).digest("hex"), JSON.stringify(data)]);
       // Results computed from the previous transcript no longer apply.
       await deleteCompetencyData(client, req.session.user!.userId);
+      await deleteGraduationAdvice(client, req.session.user!.userId);
       await client.query("COMMIT");
+      imported = true;
       res.status(existing.rowCount ? 200 : 201).json({ transcript: result.rows[0] });
     } catch (error) { await client.query("ROLLBACK"); throw error; }
     finally { client.release(); }
+    // Committed: queue graduation advice for the new transcript (best-effort, after the response).
+    if (imported) runAfterTranscriptImport(options.afterTranscriptImport, req.session.user!.userId);
   });
   router.delete("/transcript", async (req, res) => {
     const input = z.object({ version: z.uuid(), confirmed: z.literal(true) }).strict().safeParse(req.body);
@@ -140,6 +146,7 @@ export function createStudentDataRouter(pool: DatabasePool | undefined, webOrigi
       const deleted = await client.query("DELETE FROM student_transcripts WHERE user_id=$1 AND version=$2", [req.session.user!.userId, input.data.version]);
       if (!deleted.rowCount) throw new TranscriptError("transcript_changed", 409);
       await deleteCompetencyData(client, req.session.user!.userId);
+      await deleteGraduationAdvice(client, req.session.user!.userId);
       await withdrawTranscriptConsent(client, req.session.user!.userId);
       await client.query("COMMIT"); res.json({ deleted: true });
     } catch (error) { await client.query("ROLLBACK"); throw error; }

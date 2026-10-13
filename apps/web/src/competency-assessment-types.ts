@@ -326,8 +326,11 @@ export type PlanProgressResult = {
 
 export type GraduationGroupCheck = {
   groupId: string;
+  /** The group name; a name shared by several groups adds " · n học phần, gồm <first code>" (comp-calc-v5). */
   label: string;
   kind: "mandatory" | "elective";
+  /** "TC306" when the name holds a TCxxx code, else null; absent in results stored before comp-calc-v5. */
+  code?: string | null;
   unit: "môn" | "TC";
   /** Certainly completed (passed/MT). */
   lower: number | null;
@@ -356,7 +359,10 @@ export type GraduationCredits = {
   upper: number | null;
   required: number;
   status: TriState;
-  /** "calculated" = estimated from passed CTĐT courses without condition-only courses. */
+  /**
+   * "calculated" = estimated from the passed courses of the program (standard ∪ CTĐT) without
+   * condition-only courses; also used when the printed total is unreadable (comp-calc-v5).
+   */
   source: "printed" | "calculated";
 };
 

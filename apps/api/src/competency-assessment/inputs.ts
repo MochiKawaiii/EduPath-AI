@@ -1,15 +1,14 @@
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
-import type { GraduationData } from "../graduation/model.js";
+import { normalizeCohortCode, profileSpecialty, resolveCohortStandard } from "../graduation/resolve.js";
 import { identity as planIdentity, type PlanData } from "../plans/model.js";
 import type { TranscriptData } from "../student/transcript-parser.js";
 import { courseKey, transcriptCourses } from "./course-state.js";
 import { physicalEducationGroupsFor } from "./plan-progress.js";
-import { isSpecialtyCode, resolveGraduationStandard } from "./specialty.js";
 import { SCOPE_MAX_LENGTH } from "./constants.js";
 import type {
   AssessmentInputs, CareerInput, CurriculumCourseInput, CurriculumRelationInput,
-  GraduationStandardInput, PlanResolution, PlanRevisionInput, WeightsInput,
+  PlanResolution, PlanRevisionInput, WeightsInput,
 } from "./types.js";
 
 /** A request-level failure of the competency assessment API: `{ error: code }` with this HTTP status. */
@@ -32,9 +31,9 @@ export async function readAssessmentInputs(db: Db, userId: string, options: { pr
     "SELECT version,parsed_data AS data FROM student_transcripts WHERE user_id=$1", [userId]);
   if (!transcript.rows[0]) throw new AssessmentError("transcript_required", 409);
   const profile = student.rows[0];
-  const cohortCode = profile?.cohort_code?.trim().toUpperCase();
+  const cohortCode = normalizeCohortCode(profile?.cohort_code);
   if (!cohortCode) throw new AssessmentError("cohort_unknown", 409);
-  const specialty = isSpecialtyCode(profile?.specialty) ? profile.specialty : null;
+  const specialty = profileSpecialty(profile?.specialty);
 
   /* Curriculum: the single active one of the cohort, current revision. */
   const curricula = await db.query<{ id: string; identity_key: string; revision_id: string; version: number; name: string | null; admission_year: unknown }>(
@@ -83,17 +82,8 @@ export async function readAssessmentInputs(db: Db, userId: string, options: { pr
     groups: groups.rows.map((row) => ({ id: row.id, name: row.name })),
   };
 
-  /* Graduation standard: active, same cohort, current revision; resolved by specialty. */
-  const standards = await db.query<{ id: string; revision_id: string; version: number; data: GraduationData }>(
-    `SELECT g.id,g.current_revision AS revision_id,r.version,r.data FROM graduation_standards g
-     JOIN graduation_revisions r ON r.id=g.current_revision WHERE g.is_active AND g.cohort_code=$1 ORDER BY g.id`, [cohortCode]);
-  const resolved = resolveGraduationStandard(standards.rows, specialty, (row) => ({
-    specialty: row.data.specialty ?? "", classBlock: row.data.classBlock ?? "", standardCode: row.data.standardCode ?? "",
-  }));
-  const standard: GraduationStandardInput | null = resolved.standard ? {
-    id: resolved.standard.id, revisionId: resolved.standard.revision_id, version: resolved.standard.version,
-    data: { ...resolved.standard.data, gpaScale: resolved.standard.data.gpaScale ?? 4 },
-  } : null;
+  /* Graduation standard: active, same cohort, current revision; resolved by specialty (shared resolver, D3). */
+  const resolved = await resolveCohortStandard(db, cohortCode, specialty);
 
   /* Training plan: active, same cohort; several -> the one linked to this curriculum. */
   const plans = await db.query<{ id: string; revision_id: string; version: number; data: PlanData; linked: boolean }>(
@@ -152,7 +142,7 @@ export async function readAssessmentInputs(db: Db, userId: string, options: { pr
       courses: curriculumCourses, relations: curriculumRelations,
     },
     weights,
-    graduation: { resolution: resolved.resolution, standard },
+    graduation: { resolution: resolved.resolution, standard: resolved.standard },
     plan: { resolution: planResolution, revision: planRevision },
     career,
     catalogNames,

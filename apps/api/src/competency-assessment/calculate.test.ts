@@ -199,10 +199,34 @@ describe("calculateAssessment on the synthetic CNPM student", () => {
 
   it("matches the CNPM standard and reports graduation with bounds", () => {
     expect(result.graduation).toMatchObject({ resolution: "specialty", status: "fail", gpa: { actual: 2.85, source: "printed", status: "pass" }, credits: { lower: 27, source: "printed" } });
-    expect(result.graduation.groups.map((group) => [group.label, group.curriculumElectiveCode, group.status])).toEqual([
-      ["Học phần bắt buộc", null, "fail"], ["Nhóm tự chọn TC102", "TC002", "pass"], ["Nhóm tự chọn TC102", "TC102", "pass"],
-      ["Nhóm tự chọn TC209", "TC309", "pass"], ["Nhóm tự chọn TC306", "TC406", "fail"],
+    // comp-calc-v5: the two "Nhóm tự chọn TC102" groups are told apart by size and first code.
+    expect(result.graduation.groups.map((group) => [group.label, group.code, group.curriculumElectiveCode, group.status])).toEqual([
+      ["Học phần bắt buộc", null, null, "fail"],
+      ["Nhóm tự chọn TC102 · 2 học phần, gồm 71PEKC10062", "TC102", "TC002", "pass"],
+      ["Nhóm tự chọn TC102 · 2 học phần, gồm 71PEBA10052", "TC102", "TC102", "pass"],
+      ["Nhóm tự chọn TC209", "TC209", "TC309", "pass"], ["Nhóm tự chọn TC306", "TC306", "TC406", "fail"],
     ]);
+  });
+
+  it("estimates graduation credits over the program when no total is printed (comp-calc-v5)", () => {
+    const terms = syntheticStudentTerms().map((term) => ({ ...term, summaries: [] as [string, string][] }));
+    const estimated = calculateAssessment(syntheticInputs({ terms }));
+    // Passed/MT standard ∪ CTĐT courses without GDTC/GDQP: the 27 credits the transcript prints elsewhere.
+    expect(estimated.graduation.credits).toMatchObject({ lower: 27, upper: 27, source: "calculated", status: "fail" });
+    expect(estimated.transcript.creditCheck).toMatchObject({ computed: 27, printed: null, status: "unavailable" });
+    // The synthetic standard copies the CTĐT credits, so the program only shows when they differ: here
+    // 71ITSE30503 has 4 credits in the standard (3 in the CTĐT) and this CTĐT lacks 71ITSE30103.
+    const inputs = syntheticInputs({ terms });
+    const standard = inputs.graduation.standard!;
+    inputs.graduation.standard = {
+      ...standard,
+      data: { ...standard.data, courses: standard.data.courses.map((course) => (course.code === "71ITSE30503" ? { ...course, credits: 4 } : course)) },
+    };
+    inputs.curriculum.courses = inputs.curriculum.courses.filter((course) => course.code !== "71ITSE30103");
+    const program = calculateAssessment(inputs);
+    // Program (programCreditMap): 27 − 3 + 4 = 28; the CTĐT credits alone give 24, as the competency's own cross-check does.
+    expect(program.graduation.credits).toEqual({ lower: 28, upper: 28, required: 126, status: "fail", source: "calculated" });
+    expect(program.transcript.creditCheck).toMatchObject({ computed: 24, printed: null, status: "unavailable" });
   });
 
   it("reports progress against the training plan", () => {

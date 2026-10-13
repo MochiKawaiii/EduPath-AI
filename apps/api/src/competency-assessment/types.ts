@@ -109,7 +109,8 @@ export type WeightsInput = {
  * - "specialty_unset": specialty unset and no single general standard (K29) — not blocking;
  * - "not_found": no standard for the cohort/specialty;
  * - "ambiguous": several standards match.
- * resolveGraduationStandard() in specialty.ts implements this rule.
+ * resolveGraduationStandard() in specialty.ts implements this rule; graduation/resolve.ts reads the
+ * candidates for every caller (competency inputs, student graduation page, graduation advice).
  */
 export type GraduationResolution = "specialty" | "general" | "specialty_unset" | "not_found" | "ambiguous";
 
@@ -511,8 +512,11 @@ export type PlanProgressResult = {
 
 export type GraduationGroupCheck = {
   groupId: string;
+  /** The group name; a name shared by several groups adds " · n học phần, gồm <first code>" (comp-calc-v5). */
   label: string;
   kind: "mandatory" | "elective";
+  /** "TC306" when the name holds a TCxxx code, else null (comp-calc-v5). */
+  code: string | null;
   unit: "môn" | "TC";
   /** Certainly completed (passed/MT). */
   lower: number | null;
@@ -541,7 +545,10 @@ export type GraduationCredits = {
   upper: number | null;
   required: number;
   status: TriState;
-  /** "calculated" = estimated from passed CTĐT courses without condition-only courses. */
+  /**
+   * "calculated" = estimated from the passed courses of the program (standard ∪ CTĐT) without
+   * condition-only courses; also used when the printed total is unreadable (comp-calc-v5).
+   */
   source: "printed" | "calculated";
 };
 

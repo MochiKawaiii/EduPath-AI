@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { DatabasePool } from "../db/pool.js";
 import { requireAuthentication } from "../middleware/authorization.js";
 import type { GraduationData } from "./model.js";
-import { isSpecialtyCode, resolveGraduationStandard } from "../competency-assessment/specialty.js";
+import { loadStudentGraduation, type StudentGraduation } from "./student-graduation.js";
 
 /** Only the conditions a student needs; source workbook details and review notes stay in the admin portal. */
 export function studentGraduationData(data: GraduationData) {
@@ -41,6 +41,28 @@ export function studentGraduationData(data: GraduationData) {
   };
 }
 
+/**
+ * GET /api/student/graduation (design §4): the student's own standard only — resolved from the
+ * cohort in the account and the specialty in the profile — with the server-side evaluation. There
+ * is no way to read another cohort's or specialty's standard (the former GET /:id is gone).
+ */
+export function studentGraduationResponse(loaded: StudentGraduation) {
+  const standard = loaded.standard;
+  return {
+    profile: loaded.profile,
+    resolution: loaded.resolution,
+    standard: standard
+      ? { id: standard.id, revisionId: standard.revisionId, version: standard.version, ...studentGraduationData(standard.data) }
+      : null,
+    transcript: loaded.transcript,
+    evaluation: loaded.evaluation,
+    specialtySuggestion: loaded.specialtySuggestion,
+  };
+}
+
+/** Body of GET /api/student/graduation (the web mirrors it). */
+export type StudentGraduationResponse = ReturnType<typeof studentGraduationResponse>;
+
 export function createStudentGraduationRouter(pool: DatabasePool | undefined) {
   const router = Router();
   router.use(requireAuthentication);
@@ -68,56 +90,7 @@ export function createStudentGraduationRouter(pool: DatabasePool | undefined) {
   });
   router.get("/", async (req, res) => {
     z.object({}).strict().parse(req.query);
-    const [result, profile] = await Promise.all([
-      pool!.query(`SELECT c.id,c.cohort_code AS "cohortCode",r.data->>'name' AS name,
-        r.data->>'major' AS major,r.data->>'specialty' AS specialty,
-        r.data->>'classBlock' AS "classBlock",(r.data->>'minimumCredits')::numeric AS "minimumCredits"
-        FROM graduation_standards c JOIN graduation_revisions r ON r.id=c.current_revision
-        WHERE c.is_active ORDER BY c.cohort_code DESC,r.data->>'name',c.id`),
-      pool!.query("SELECT cohort_code,specialty FROM student_profiles WHERE user_id=$1", [
-        req.session.user!.userId,
-      ]),
-    ]);
-    const profileCohort = profile.rows[0]?.cohort_code ?? null;
-    const specialty = profile.rows[0]?.specialty;
-    const matches = result.rows.filter(
-      (row) => row.cohortCode === profileCohort,
-    );
-    // Several standards per cohort (one per specialty, 7480201-0x): pick the student's
-    // specialty, or the single general standard when the specialty is unset.
-    const resolved = matches.length > 1
-      ? resolveGraduationStandard(matches, isSpecialtyCode(specialty) ? specialty : null, (row) => ({
-        specialty: row.specialty ?? "", classBlock: row.classBlock ?? "", standardCode: "",
-      })).standard
-      : matches[0];
-    res.json({
-      items: result.rows,
-      profileCohort,
-      suggestedId: resolved?.id ?? null,
-    });
-  });
-  router.get("/:id", async (req, res) => {
-    const id = z.uuid().parse(req.params.id);
-    z.object({}).strict().parse(req.query);
-    const result = await pool!.query<{
-      id: string;
-      version: number;
-      data: GraduationData;
-    }>(
-      `SELECT c.id,r.version,r.data FROM graduation_standards c JOIN graduation_revisions r ON r.id=c.current_revision
-       WHERE c.id=$1 AND c.is_active`,
-      [id],
-    );
-    const current = result.rows[0];
-    if (!current) {
-      res.status(404).json({ error: "standard_unavailable" });
-      return;
-    }
-    res.json({
-      id: current.id,
-      version: current.version,
-      ...studentGraduationData(current.data),
-    });
+    res.json(studentGraduationResponse(await loadStudentGraduation(pool!, req.session.user!.userId)));
   });
   const errors: ErrorRequestHandler = (error, _req, res, next) => {
     if (error instanceof z.ZodError) {

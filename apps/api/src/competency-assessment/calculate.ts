@@ -6,9 +6,9 @@ import {
 } from "./constants.js";
 import {
   conditionOnlyCodes, courseKey, creditCrossCheck, currentTermCode, curriculumTermCode, deriveElectiveGroups, electiveCodeOf,
-  isAttemptedState, isConditionOnly, isPassedState, isStudiedState, type TranscriptCourseRecord, transcriptCourses,
+  isAttemptedState, isConditionOnly, isPassedState, isStudiedState, type TranscriptCourseRecord, transcriptCourses, uniqueCurriculumCourses,
 } from "./course-state.js";
-import { assessGraduation, electiveQuotas } from "./graduation.js";
+import { assessGraduation, electiveQuotas, programCreditMap } from "./graduation.js";
 import { physicalEducationGroupsFor, planProgress, type PlanCourseInfo } from "./plan-progress.js";
 import {
   classifyCurriculumSpecialty, type CurriculumSpecialtyClass, fold, specialtyBlocks, specialtyConflict, specialtyCounts,
@@ -193,8 +193,7 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
   const transcript = inputs.transcript.data;
 
   /* ---- 1. one shared per-course state table (§7.1, §7.2) ---- */
-  const curriculumCourses = inputs.curriculum.courses.filter((course, index, all) =>
-    courseKey(course.code) && all.findIndex((other) => courseKey(other.code) === courseKey(course.code)) === index);
+  const curriculumCourses = uniqueCurriculumCourses(inputs.curriculum.courses);
   const electives = deriveElectiveGroups(curriculumCourses);
   const quotas = electiveQuotas(electives, standardData);
   const conditionCodes = conditionOnlyCodes(standardData, curriculumCourses);
@@ -616,10 +615,11 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
     progress = planProgress({ plan: planRevision.data, physicalEducationGroups: peGroups, currentTerm, courses: planCourses, quotas });
   }
 
-  /* ---- 10. graduation (§7.9) ---- */
+  /* ---- 10. graduation (§7.9): the graduation page's engine, inputs built like graduationInputs() ---- */
   const curriculumCredits = new Map([...table.values()].map((row) => [row.code, row.credits]));
   const graduation = assessGraduation({
-    resolution: inputs.graduation.resolution, standard: graduationStandard, transcript, records, curriculumCredits, electives, conditionCodes,
+    resolution: inputs.graduation.resolution, standard: graduationStandard, transcript, records,
+    programCredits: programCreditMap(standardData, curriculumCredits), electives, conditionCodes,
   });
 
   /* ---- 11. transcript summary and warnings (§5, §7.10) ---- */

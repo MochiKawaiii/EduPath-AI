@@ -9,7 +9,14 @@
  * 84.99999999999999, i.e. Khá and below Bắt buộc 85), and 0–100 scores are stored rounded down to
  * 2 decimals, so the whole number the page shows never reaches a level the score has not reached.
  */
-export const CALC_VERSION = "comp-calc-v4";
+/**
+ * v5: graduation.ts is the one engine of the competency assessment and the graduation page:
+ * repeated group names are labelled with their size and first code; a met lower bound passes even
+ * without an upper bound; course credits fall back standard → CTĐT → transcript; the credit estimate
+ * accumulates the program (standard ∪ CTĐT), so cohorts without a CTĐT no longer estimate 0; the
+ * printed total also reads "Số tín chỉ tích lũy" and an unreadable one falls back to the estimate.
+ */
+export const CALC_VERSION = "comp-calc-v5";
 
 /** Skill, group and overall levels (0–100 scale), classified on unrounded values. */
 export const LEVEL_THRESHOLDS = { proficient: 85, good: 70, basic: 50 } as const;

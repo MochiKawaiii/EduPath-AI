@@ -6,6 +6,21 @@ import type { DatabasePool } from "../db/pool.js";
 import { TranscriptError } from "./transcript-parser.js";
 import { mapOcrTranscript } from "./ocr-adapter.js";
 import { deleteCompetencyData } from "../competency-assessment/repository.js";
+import { adviceErrorCode, deleteGraduationAdvice } from "../graduation/advice/jobs.js";
+
+/** Runs once a transcript import or replacement has COMMITTED (graduation advice, design §5.7). */
+export type TranscriptImportHook = (userId: string) => Promise<unknown>;
+export type TranscriptImportOptions = { afterTranscriptImport?: TranscriptImportHook | undefined };
+/**
+ * Starts the hook after the response without waiting for it: it can neither fail nor delay the
+ * import. A failure is logged with an error code only, never data.
+ */
+export function runAfterTranscriptImport(hook: TranscriptImportHook | undefined, userId: string): void {
+  if (!hook) return;
+  void Promise.resolve().then(() => hook(userId)).catch((error: unknown) => {
+    console.error(`[transcript] post-import hook failed (${adviceErrorCode(error)})`);
+  });
+}
 
 export const jobColumns = `id,filename,status,error_code AS "errorCode",created_at AS "createdAt",updated_at AS "updatedAt"`;
 export async function expireJobs(pool: Pick<DatabasePool, "query">) {
@@ -25,7 +40,7 @@ export async function enqueueTranscript(client: PoolClient, userId: string, file
   return result.rows[0];
 }
 
-export function createTranscriptWorkerRouter(pool: DatabasePool | undefined, key: string | undefined) {
+export function createTranscriptWorkerRouter(pool: DatabasePool | undefined, key: string | undefined, options: TranscriptImportOptions = {}) {
   const router = Router();
   router.use((req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -55,6 +70,7 @@ export function createTranscriptWorkerRouter(pool: DatabasePool | undefined, key
     let errorCode: string | undefined = input.data.error;
     if (!errorCode) { try { parsed = mapOcrTranscript(input.data.result); } catch (e) { if (e instanceof TranscriptError) errorCode = e.code; else throw e; } }
     const client = await pool!.connect();
+    let imported: string | null = null;
     try {
       await client.query("BEGIN");
       const owner = await client.query<{ user_id: string }>("SELECT user_id FROM transcript_jobs WHERE id=$1", [req.params.id]);
@@ -76,10 +92,14 @@ export function createTranscriptWorkerRouter(pool: DatabasePool | undefined, key
           [uid, randomUUID(), job.filename, job.pdf_data, job.pdf_data.length, createHash("sha256").update(job.pdf_data).digest("hex"), JSON.stringify(parsed)]);
         // Results computed from the replaced transcript no longer apply.
         await deleteCompetencyData(client, uid);
+        await deleteGraduationAdvice(client, uid);
       }
       await client.query("UPDATE transcript_jobs SET status=$2,error_code=$3,pdf_data=NULL,updated_at=now() WHERE id=$1", [req.params.id, errorCode ? "failed" : "completed", errorCode ?? null]);
       await client.query("COMMIT"); res.json({ ok: true });
+      if (!errorCode && parsed) imported = uid;
     } catch (e) { await client.query("ROLLBACK"); throw e; } finally { client.release(); }
+    // Committed: queue graduation advice for the new transcript (best-effort).
+    if (imported) runAfterTranscriptImport(options.afterTranscriptImport, imported);
   });
   const errors: ErrorRequestHandler = (e, _req, res, next) => { if (e instanceof TranscriptError) { res.status(e.status).json({ error: e.code }); return; } next(e); };
   router.use(errors);

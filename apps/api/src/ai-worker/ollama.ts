@@ -1,4 +1,4 @@
-import { CAREER_SKILL_SUGGESTION_KIND, type AiJobKind } from "../competency-assessment/ai/worker-protocol.js";
+import { CAREER_SKILL_SUGGESTION_KIND, GRADUATION_ADVICE_KIND, type AiJobKind } from "../competency-assessment/ai/worker-protocol.js";
 
 /** Error codes the worker may report to the API (contract C3). */
 export const AI_ERROR_CODES = ["ai_timeout", "ai_output_truncated", "invalid_ai_output", "ollama_unavailable", "ai_failed"] as const;
@@ -299,9 +299,31 @@ export function parseCareerSuggestionOutput(content: string): Record<string, unk
   return output;
 }
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+/**
+ * Quick local check of a graduation advice: a JSON object with a non-empty "summary" string, an
+ * "advice" array of objects with a string "text" and a "nextSteps" array of strings. The API
+ * drops bad items and validates the rest.
+ */
+export function parseGraduationAdviceOutput(content: string): Record<string, unknown> {
+  const output = parseJsonObject(content);
+  if (typeof output.summary !== "string" || output.summary.trim() === "") throw new AiWorkerError("invalid_ai_output", "summary");
+  const advice = output.advice;
+  if (!Array.isArray(advice) || advice.some((item) => !isPlainObject(item) || typeof item.text !== "string")) {
+    throw new AiWorkerError("invalid_ai_output", "advice");
+  }
+  const nextSteps = output.nextSteps;
+  if (!Array.isArray(nextSteps) || nextSteps.some((step) => typeof step !== "string")) throw new AiWorkerError("invalid_ai_output", "nextSteps");
+  return output;
+}
+
 /** The local output check for a job kind. */
 export function parseJobOutput(kind: AiJobKind, content: string): Record<string, unknown> {
-  return kind === CAREER_SKILL_SUGGESTION_KIND ? parseCareerSuggestionOutput(content) : parseAiOutput(content);
+  if (kind === CAREER_SKILL_SUGGESTION_KIND) return parseCareerSuggestionOutput(content);
+  if (kind === GRADUATION_ADVICE_KIND) return parseGraduationAdviceOutput(content);
+  return parseAiOutput(content);
 }
 
 export interface OllamaModelInfo {

@@ -225,6 +225,19 @@ describe("processJob job kinds", () => {
     expect(completions[0]?.body).toEqual({ leaseToken: "lease-1", error: "invalid_ai_output" });
   });
 
+  it("checks a graduation advice job with its own shape and retries a job that returned another shape", async () => {
+    const adviceJob: ClaimedJob = { ...job, kind: "graduation_advice", promptVersion: "grad-advice-v1" };
+    const adviceOutput = { summary: "Tóm tắt", advice: [{ focus: "G1", text: "Lời khuyên" }], nextSteps: ["Việc cần làm"] };
+    const logs: string[] = [];
+    const done = fakeClient();
+    const chat = vi.fn<OllamaPort["chat"]>().mockResolvedValueOnce(ok(JSON.stringify(validOutput))).mockResolvedValueOnce(ok(JSON.stringify(adviceOutput)));
+    expect(await processJob(adviceJob, info, deps(done.client, chat, logs), new AbortController().signal)).toBe("completed");
+    expect(chat).toHaveBeenCalledTimes(2);
+    expect(done.completions[0]?.body).toMatchObject({ leaseToken: "lease-1", output: adviceOutput });
+    expect(logs.map((line) => JSON.parse(line) as Record<string, unknown>).find((event) => event.event === "job_finished")).toMatchObject({ kind: "graduation_advice" });
+    expect(logs.join("\n")).not.toMatch(/BÍ MẬT|Lời khuyên/);
+  });
+
   it("treats a job without kind as a competency assessment", async () => {
     const logs: string[] = [];
     const { client } = fakeClient();

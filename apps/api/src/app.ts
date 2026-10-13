@@ -2,6 +2,8 @@ import { createCareersRouter } from "./careers/router.js";
 import { createCompetenciesRouter } from "./competencies/router.js";
 import { createGraduationRouter } from "./graduation/router.js";
 import { createStudentGraduationRouter } from "./graduation/student-router.js";
+import { createGraduationAdviceRouter } from "./graduation/advice/router.js";
+import { ensureGraduationAdviceAfterImport } from "./graduation/advice/jobs.js";
 import { createStudentPlansRouter } from "./plans/student-router.js";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -69,7 +71,13 @@ export function createApp({
       crossOriginResourcePolicy: { policy: "same-site" }
     })
   );
-  app.use("/api/worker/transcripts", createTranscriptWorkerRouter(databasePool,config.ocrWorkerKey));
+  // Graduation advice is AI work: queued only when AI_WORKER_KEY is configured. A committed
+  // transcript import (native upload or OCR) queues it best-effort for the new transcript.
+  const graduationAdviceEnabled = Boolean(config.aiWorkerKey);
+  const afterTranscriptImport = databasePool && graduationAdviceEnabled
+    ? (userId: string) => ensureGraduationAdviceAfterImport(databasePool, userId)
+    : undefined;
+  app.use("/api/worker/transcripts", createTranscriptWorkerRouter(databasePool,config.ocrWorkerKey, { afterTranscriptImport }));
   // The AI worker router authenticates before parsing its own body, so it must come before express.json.
   app.use("/api/worker/competency-assessments", createCompetencyWorkerRouter(databasePool, config.aiWorkerKey));
   app.use("/api/admin/graduation", express.json({ limit: "2mb" }));
@@ -179,12 +187,14 @@ export function createApp({
   app.use("/api/admin/graduation", createGraduationRouter(databasePool, config.webOrigin));
   app.use("/api/admin/plans", createPlansRouter(databasePool, config.webOrigin));
   app.use("/api/student/plans", createStudentPlansRouter(databasePool));
+  // Before the read-only graduation router, which answers every non-GET with 405.
+  app.use("/api/student/graduation/advice", createGraduationAdviceRouter(databasePool, config.webOrigin, { enabled: graduationAdviceEnabled }));
   app.use("/api/student/graduation", createStudentGraduationRouter(databasePool));
   app.use("/api/student/curricula", createStudentCurriculaRouter(databasePool));
   // AI comments are queued only when AI_WORKER_KEY is configured; otherwise ai_status is 'disabled'.
   app.use("/api/student/competency-assessments", createCompetencyAssessmentRouter(databasePool, config.webOrigin,
     createCompetencyAiQueue({ enabled: Boolean(config.aiWorkerKey) }), { promptVersion: PROMPT_VERSION }));
-  app.use("/api/student", createStudentDataRouter(databasePool, config.webOrigin,Boolean(config.ocrWorkerKey)));
+  app.use("/api/student", createStudentDataRouter(databasePool, config.webOrigin,Boolean(config.ocrWorkerKey), { afterTranscriptImport }));
   app.use("/api/admin/students", createStudentProfilesRouter(studentProfileRepository, adminAccountRepository));
 
   if (config.nodeEnv === "production") {

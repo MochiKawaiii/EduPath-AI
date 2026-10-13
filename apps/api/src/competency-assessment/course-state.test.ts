@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { TranscriptData } from "../student/transcript-parser.js";
 import { FAIL_LETTERS, PASS_LETTERS } from "./constants.js";
 import {
-  attemptOutcome, conditionOnlyCodes, courseState, creditCrossCheck, currentTermCode, curriculumTermCode, deriveElectiveGroups,
-  electiveCodeOf, isConditionOnly, selectAttempt, termCode, transcriptCourses,
+  attemptOutcome, conditionOnlyCodes, courseState, creditCrossCheck, currentTermCode, curriculumCreditMap, curriculumTermCode, deriveElectiveGroups,
+  electiveCodeOf, estimateProgramCredits, isConditionOnly, printedCumulativeCredits, selectAttempt, termCode, transcriptCourses, uniqueCurriculumCourses,
 } from "./course-state.js";
 
 type ResultCase = { name: string; result: string | null; letter: string | null; expected: "pass" | "fail" | "unknown"; inferred: boolean };
@@ -184,5 +184,65 @@ describe("credit cross-check (spec §5)", () => {
     expect(creditCrossCheck(mismatch, transcriptCourses(mismatch), credits, conditionCodes)).toEqual({ computed: 6, printed: 9, status: "mismatch" });
     const missing = transcript([{ year: "2023-2024", semester: "HK01", rows }]);
     expect(creditCrossCheck(missing, transcriptCourses(missing), credits, conditionCodes)).toEqual({ computed: 6, printed: null, status: "unavailable" });
+  });
+});
+
+describe("printed cumulative credits (E5)", () => {
+  const printed = (summaries: [string, string][]) =>
+    printedCumulativeCredits(transcript([{ year: "2023-2024", semester: "HK01", rows: [{ code: "A1" }], summaries }]));
+
+  it("accepts the cumulative label forms of both parsers", () => {
+    // Native layout / OCR adapter labels: the printed text before the colon.
+    for (const label of ["Tổng số tín chỉ tích lũy", "Số tín chỉ tích lũy", "TỔNG SỐ TÍN CHỈ TÍCH LŨY", "Tổngsốtínchỉtíchlũy",
+      "Tổng số TC tích lũy", "Số tín chỉ đã tích lũy", "Tổng số tín chỉ tích lũy (TC)"]) {
+      expect({ label, value: printed([[label, "30"]]) }).toEqual({ label, value: 30 });
+    }
+  });
+
+  it("never reads a per-term line", () => {
+    for (const label of ["Số tín chỉ đạt học kỳ", "Tổng số tín chỉ đăng ký", "Số tín chỉ tích lũy học kỳ", "Số tín chỉ tích lũy HK1",
+      "Điểm TB tích lũy (Hệ 4)", "Số tín chỉ tích lũy tối thiểu học kỳ"]) {
+      expect({ label, value: printed([[label, "30"]]) }).toEqual({ label, value: null });
+    }
+    expect(printed([["Số tín chỉ đạt học kỳ", "18"], ["Tổng số tín chỉ tích lũy", "60"]])).toBe(60);
+  });
+
+  it("is NaN when unreadable or conflicting, and reads only the latest graded term", () => {
+    expect(printed([["Tổng số tín chỉ tích lũy", "?"]])).toBeNaN();
+    expect(printed([["Tổng số tín chỉ tích lũy", "60"], ["Số tín chỉ tích lũy", "61"]])).toBeNaN();
+    expect(printed([["Tổng số tín chỉ tích lũy", "60"], ["Số tín chỉ tích lũy", "60,0"]])).toBe(60);
+    const older = transcript([
+      { year: "2023-2024", semester: "HK01", rows: [{ code: "A1" }], summaries: [["Tổng số tín chỉ tích lũy", "3"]] },
+      { year: "2023-2024", semester: "HK02", rows: [{ code: "A2" }] },
+    ]);
+    expect(printedCumulativeCredits(older)).toBeNull();
+  });
+});
+
+describe("program credit estimate (E4)", () => {
+  const conditionCodes = new Set(["71NAD110013"]);
+
+  it("accumulates program codes only, skips condition-only courses and conditional attempts, and falls back to transcript credits", () => {
+    const data = transcript([
+      { rows: [{ code: "71ENG010012", credits: 2, score10: null, letter: "MT" }] },
+      { year: "2023-2024", semester: "HK01", rows: [
+        { code: "71ITBS10103", letter: "A" }, { code: "71NAD110013", letter: "B" }, { code: "71PEKC10062", credits: 2, letter: "A" },
+        { code: "71ITSE30103", credits: 4, letter: "B" }, { code: "71ITIS30203", letter: null, score10: 6, score4: 2 },
+        { code: "71ITSE30603", letter: "B", conditional: true }, { code: "71ITXX99903", letter: "A" }, { code: "71ITSE30903", credits: 0, letter: "C" },
+      ] },
+    ]);
+    const program = new Map<string, number | null>([
+      ["71ITBS10103", 3], ["71NAD110013", 3], ["71PEKC10062", 2], ["71ITSE30103", null], ["71ITIS30203", 3], ["71ITSE30603", 3], ["71ITSE30903", null],
+    ]);
+    // 71ITBS10103 3 + 71ITSE30103 4 (transcript credit, program credit unknown); 71ITIS30203 is graded with an unreadable result.
+    expect(estimateProgramCredits(transcriptCourses(data), program, conditionCodes)).toEqual({ certain: 7, unknown: 3 });
+  });
+
+  it("keeps the first CTĐT row per code and reads a bad CTĐT credit as 0", () => {
+    const courses = [
+      { code: " 71itbs10103 ", credits: 3 }, { code: "71ITBS10103", credits: 4 }, { code: "", credits: 2 }, { code: "71ITSE30103", credits: Number.NaN },
+    ];
+    expect(uniqueCurriculumCourses(courses).map((course) => course.code)).toEqual([" 71itbs10103 ", "71ITSE30103"]);
+    expect(Object.fromEntries(curriculumCreditMap(courses))).toEqual({ "71ITBS10103": 3, "71ITSE30103": 0 });
   });
 });

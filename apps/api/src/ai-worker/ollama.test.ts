@@ -8,6 +8,7 @@ import {
   ollamaChat,
   parseAiOutput,
   parseCareerSuggestionOutput,
+  parseGraduationAdviceOutput,
   parseJobOutput,
   type FetchLike,
   type OllamaJob,
@@ -253,6 +254,38 @@ describe("parseCareerSuggestionOutput", () => {
     expect(parseJobOutput("career_skill_suggestion", JSON.stringify(career))).toEqual(career);
     expect(() => parseJobOutput("competency_assessment", JSON.stringify(career))).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
     expect(() => parseJobOutput("career_skill_suggestion", JSON.stringify(validOutput))).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
+  });
+});
+
+describe("parseGraduationAdviceOutput", () => {
+  const advice = {
+    summary: "Bạn còn thiếu một số điều kiện.",
+    advice: [{ focus: "G1", text: "Hãy học các học phần bắt buộc còn thiếu." }],
+    nextSteps: ["Xem lịch mở lớp."]
+  };
+
+  it("accepts a summary, advice objects with a text and next steps (empty lists are left to the API)", () => {
+    expect(parseGraduationAdviceOutput(JSON.stringify(advice))).toEqual(advice);
+    expect(parseGraduationAdviceOutput(JSON.stringify({ ...advice, advice: [], nextSteps: [] }))).toMatchObject({ advice: [], nextSteps: [] });
+  });
+
+  it.each([
+    ["not json", "{\"summary\":"],
+    ["array", "[]"],
+    ["blank summary", JSON.stringify({ ...advice, summary: "  " })],
+    ["summary not a string", JSON.stringify({ ...advice, summary: 1 })],
+    ["advice missing", JSON.stringify({ summary: advice.summary, nextSteps: advice.nextSteps })],
+    ["advice item without text", JSON.stringify({ ...advice, advice: [{ focus: "G1" }] })],
+    ["advice item not an object", JSON.stringify({ ...advice, advice: ["Học lại"] })],
+    ["nextSteps not strings", JSON.stringify({ ...advice, nextSteps: [{ text: "x" }] })]
+  ])("rejects %s as invalid_ai_output", (_name, content) => {
+    expect(() => parseGraduationAdviceOutput(content)).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
+  });
+
+  it("is the check of the graduation_advice kind", () => {
+    expect(parseJobOutput("graduation_advice", JSON.stringify(advice))).toEqual(advice);
+    expect(() => parseJobOutput("graduation_advice", JSON.stringify(validOutput))).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
+    expect(() => parseJobOutput("competency_assessment", JSON.stringify(advice))).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
   });
 });
 

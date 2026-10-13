@@ -150,7 +150,7 @@ export default function StudentProfileEditor({
                 {SPECIALTIES.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
                 <option value="">Chưa xác định</option>
               </select>
-              <small>Dùng để chọn đúng tiêu chuẩn tốt nghiệp và học phần chuyên ngành khi đánh giá năng lực.</small>
+              <small>Cùng với khóa, dùng để chọn tiêu chuẩn xét tốt nghiệp của bạn và học phần chuyên ngành khi đánh giá năng lực.</small>
             </label>}
             <label className="sr-wide">
               Sở thích
