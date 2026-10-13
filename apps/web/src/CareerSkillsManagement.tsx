@@ -16,10 +16,10 @@ export default function CareerSkillsManagement({ canManage }: { canManage: boole
   const [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
   const close = () => { setMode(null); setSelected(null); };
   const saved = () => { close(); setRevision(value => value + 1); };
+  const add = () => { setSelected(null); setMode("edit"); };
   return <section className="cm-workspace career-workspace">
     <div className="cm-toolbar">
       <p>Quản lý kỹ năng dùng chung với các vị trí nghề nghiệp và mục Năng lực.</p>
-      {canManage && <button className="am-primary" onClick={() => { setSelected(null); setMode("edit"); }}><Icon name="plus" /> Thêm kỹ năng</button>}
     </div>
     <section className="cm-panel">
       <div className="cm-filters">
@@ -38,12 +38,17 @@ export default function CareerSkillsManagement({ canManage }: { canManage: boole
               { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(skill); setMode("detail"); } },
               ...(canManage ? [
                 { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(skill); setMode("edit"); } },
+                { key: "add", icon: "plus", label: "Thêm kỹ năng", onSelect: add },
                 { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(skill); setMode("delete"); } },
               ] : []),
             ]} /></td>
           </tr>)}</tbody>
         </table></div>
-        {!remote.data.items.length && <p className="am-empty">Không có kỹ năng phù hợp.</p>}
+        {!remote.data.items.length && <div className="am-empty">
+          <p>Không có kỹ năng phù hợp.</p>
+          {/* Adding lives in each row's menu; with no rows, offer it here. */}
+          {canManage && <button className="am-primary" onClick={add}><Icon name="plus" /> Thêm kỹ năng</button>}
+        </div>}
         <Pagination total={remote.data.items.length} page={page} setPage={setPage} />
       </>}
     </section>

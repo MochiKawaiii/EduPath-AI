@@ -7,8 +7,8 @@ const steps = [
 ];
 
 const guidance: Record<string, string> = {
-  "/quantri/linh-vuc-nghe-nghiep": "Tạo lĩnh vực để phân nhóm các vị trí. Trong mục Nghề nghiệp, mỗi vị trí chọn một lĩnh vực và liên kết các kỹ năng từ mục Kỹ năng.",
-  "/quantri/ky-nang": "Chuẩn bị kho kỹ năng dùng chung cho nhiều vị trí. Vào mục Nghề nghiệp, mở menu Thao tác của từng vị trí và chọn Liên kết kỹ năng để gắn kỹ năng, chọn tính chất Bắt buộc hoặc Ưu tiên.",
+  "/quantri/linh-vuc-nghe-nghiep": "Tạo lĩnh vực để phân nhóm các vị trí; Thêm lĩnh vực nằm trong menu Thao tác (⋮) của từng dòng. Trong mục Nghề nghiệp, mỗi vị trí chọn một lĩnh vực và liên kết các kỹ năng từ mục Kỹ năng.",
+  "/quantri/ky-nang": "Chuẩn bị kho kỹ năng dùng chung cho nhiều vị trí; Thêm kỹ năng nằm trong menu Thao tác (⋮) của từng dòng. Vào mục Nghề nghiệp, mở menu Thao tác của từng vị trí và chọn Liên kết kỹ năng để gắn kỹ năng, chọn tính chất Bắt buộc hoặc Ưu tiên.",
   "/quantri/vi-tri-nghe-nghiep": "Thêm vị trí nghề nghiệp và Liên kết kỹ năng nằm trong menu Thao tác (⋮) của từng dòng. Khi thêm vị trí, chọn lĩnh vực đã có; sau khi lưu, chọn Liên kết kỹ năng để gắn kỹ năng từ danh mục chung. Bạn có thể dùng ngay lĩnh vực và kỹ năng đã có. Nút AI đề xuất kỹ năng gợi ý sẵn danh sách kỹ năng để bạn chọn, sửa rồi mới lưu.",
 };
 

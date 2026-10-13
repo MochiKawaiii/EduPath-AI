@@ -46,7 +46,7 @@ Khi deploy với `DATABASE_AUTO_MIGRATE=true`, backend áp dụng migration và 
 
 ## Lĩnh vực — AD-FIELD-01..04
 
-Mục **Lĩnh vực** trong menu trái mở trang danh sách và tìm kiếm với cột **STT** được cấp tự động. Cột **Thao tác** dùng nút ba chấm dọc; bấm để mở menu **Xem chi tiết**, **Chỉnh sửa** và **Xóa**. Hộp thoại chi tiết hiển thị số thứ tự, tên và mô tả lĩnh vực. Quản trị viên và các vai trò khoa, bộ môn, giảng viên đều có thể thêm, chỉnh sửa tên/mô tả và xóa lĩnh vực. Form chỉ nhập tên và mô tả; hủy hoặc lưu sẽ đóng hộp thoại và giữ danh sách, bộ lọc đang xem.
+Mục **Lĩnh vực** trong menu trái mở trang danh sách và tìm kiếm với cột **STT** được cấp tự động. Cột **Thao tác** dùng nút ba chấm dọc; bấm để mở menu **Xem chi tiết**, **Chỉnh sửa**, **Thêm lĩnh vực** và **Xóa**; không có nút thêm riêng ở đầu trang, và khi danh sách trống nút **Thêm lĩnh vực** hiện ngay dưới bảng. Hộp thoại chi tiết hiển thị số thứ tự, tên và mô tả lĩnh vực. Quản trị viên và các vai trò khoa, bộ môn, giảng viên đều có thể thêm, chỉnh sửa tên/mô tả và xóa lĩnh vực. Form chỉ nhập tên và mô tả; hủy hoặc lưu sẽ đóng hộp thoại và giữ danh sách, bộ lọc đang xem.
 
 Migration `015_career_fields.sql` chuyển 6 lĩnh vực hiện có thành danh mục trong database và giữ liên kết với các vị trí đã có. Hai trang quản lý dùng chung dữ liệu lĩnh vực; lưu thay đổi tải lại danh mục, và khi chuyển sang trang Nghề nghiệp, trang này lấy danh mục mới nhất cho bộ lọc, form và nhãn lĩnh vực của các vị trí đã liên kết. Tên lĩnh vực cập nhật cũng xuất hiện trong danh sách chọn nghề nghiệp của sinh viên.
 
@@ -56,7 +56,7 @@ API quản lý gồm `GET/POST /api/admin/careers/fields` và `PATCH/DELETE /api
 
 ## Kỹ năng
 
-Mục **Kỹ năng** tại `/quantri/ky-nang` quản lý danh mục kỹ năng dùng chung trong database: tìm theo tên/mô tả, thêm, xem chi tiết, chỉnh sửa và xóa qua menu ba chấm dọc. Quản trị viên và các vai trò khoa, bộ môn, giảng viên đều được quản lý. Hủy/Đóng ở trái, Lưu/Xóa ở phải.
+Mục **Kỹ năng** tại `/quantri/ky-nang` quản lý danh mục kỹ năng dùng chung trong database: tìm theo tên/mô tả; menu ba chấm dọc ở cột **Thao tác** có **Xem chi tiết**, **Chỉnh sửa**, **Thêm kỹ năng** và **Xóa**. Không có nút thêm riêng ở đầu trang; khi danh sách trống, nút **Thêm kỹ năng** hiện ngay dưới bảng. Quản trị viên và các vai trò khoa, bộ môn, giảng viên đều được quản lý. Hủy/Đóng ở trái, Lưu/Xóa ở phải.
 
 Migration `019_career_skill_management.sql` bổ sung mô tả, phiên bản và trạng thái ngừng sử dụng cho kỹ năng hiện có; giữ nguyên danh sách và các liên kết. Đổi tên cập nhật tên kỹ năng ở yêu cầu nghề nghiệp, cache kỹ năng và tìm kiếm của nghề, cùng danh mục sinh viên. Chỉ đổi tiêu đề yêu cầu nếu tiêu đề đang trùng tên kỹ năng cũ; giữ các tiêu đề tùy chỉnh, mô tả, mức yêu cầu và tính chất. Kỹ năng còn liên kết với vị trí đang hoạt động bị chặn xóa; cần vào **Nghề nghiệp**, mở **Thao tác → Liên kết kỹ năng** của vị trí và gỡ liên kết trước. Xóa giữ dữ liệu lịch sử và loại kỹ năng khỏi dropdown, không cho liên kết mới bằng ID đã xóa.
 

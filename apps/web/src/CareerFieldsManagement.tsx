@@ -17,11 +17,11 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
   const [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
   const close = () => { setMode(null); setSelected(null); };
   const onSaved = () => { close(); setRevision(value => value + 1); };
+  const add = () => { setSelected(null); setMode("edit"); };
   const items = remote.data?.items.filter(field => searchTerm(`${field.code} ${field.name} ${field.description}`).includes(searchTerm(query))) ?? [];
   return <section className="cm-workspace career-workspace">
     <div className="cm-toolbar">
       <p>Quản lý lĩnh vực để phân nhóm các vị trí nghề nghiệp.</p>
-      {canManage && <button className="am-primary" onClick={() => { setSelected(null); setMode("edit"); }}><Icon name="plus" /> Thêm lĩnh vực</button>}
     </div>
     <section className="cm-panel">
       <div className="cm-filters">
@@ -39,12 +39,17 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
               { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(field); setMode("detail"); } },
               ...(canManage ? [
                 { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(field); setMode("edit"); } },
+                { key: "add", icon: "plus", label: "Thêm lĩnh vực", onSelect: add },
                 { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(field); setMode("delete"); } },
               ] : []),
             ]} /></td>
           </tr>)}</tbody>
         </table></div>
-        {!items.length && <p className="am-empty">Không có lĩnh vực phù hợp.</p>}
+        {!items.length && <div className="am-empty">
+          <p>Không có lĩnh vực phù hợp.</p>
+          {/* Adding lives in each row's menu; with no rows, offer it here. */}
+          {canManage && <button className="am-primary" onClick={add}><Icon name="plus" /> Thêm lĩnh vực</button>}
+        </div>}
         <Pagination total={items.length} page={page} setPage={setPage} />
       </>}
     </section>
