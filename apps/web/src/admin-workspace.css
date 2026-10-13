@@ -495,61 +495,9 @@
   margin-top: 28px;
 }
 
-.am-field {
-  display: block;
-  font-size: 13px;
-  font-weight: 650;
-  margin-top: 22px;
-}
-
 .am-required {
   margin-left: 3px;
   color: #ad1638;
-}
-
-.am-field input {
-  display: block;
-  width: 100%;
-  margin-top: 10px;
-  min-height: 46px;
-  padding: 12px;
-  border: 1px solid #d8d4dc;
-  border-radius: 6px;
-  font: inherit;
-  font-size: 14px;
-  background: #fff;
-}
-
-.am-field input[readonly] {
-  background: #f6f5f8;
-  color: #6c6670;
-}
-
-.am-field-help {
-  color: var(--am-muted);
-  font-size: 11px;
-  line-height: 1.8;
-}
-
-.am-confirm {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 18px;
-  margin: 26px 0;
-  border-radius: 6px;
-  background: #fcf2f5;
-  font-size: 12px;
-  line-height: 1.8;
-  color: #7d2c42;
-}
-
-.am-confirm input {
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
-  flex-shrink: 0;
-  accent-color: #b51639;
 }
 
 .am-form-actions {
@@ -741,8 +689,7 @@
     flex-basis: 100%;
   }
 
-  .am-search input,
-  .am-field input {
+  .am-search input {
     font-size: 16px;
   }
 
@@ -792,8 +739,7 @@
 }
 
 .am-filters input,
-.am-filters select,
-.am-field select {
+.am-filters select {
   box-sizing: border-box;
   min-width: 0;
   width: 100%;
@@ -891,12 +837,6 @@
 
 .am-dialog .am-create-layout {
   padding: 20px;
-}
-
-.am-change-form {
-  padding: 24px;
-  font-size: 14px;
-  line-height: 1.8;
 }
 
 .am-detail-grid {

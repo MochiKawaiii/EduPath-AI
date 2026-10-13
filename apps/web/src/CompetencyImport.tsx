@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Icon } from "./admin-account-shared";
+import { Icon, RequiredLabel } from "./admin-account-shared";
 import { COMPETENCY_API, competencyRequest, importActionLabels, percentage, type CurriculumRevision, type ImportCounts, type ImportIssue, type ImportPreview, type ImportResult } from "./competency-types";
 
 const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -84,7 +84,7 @@ export function CompetencyImportTab({ curriculum, canManage, revision, onSaved, 
     {!canManage ? <p className="comp-hint">Tài khoản của bạn được xem cấu hình. Chỉ người có quyền quản trị mới được nhập dữ liệu.</p> : <>
       <div className="cm-form-grid">
         <label className="cm-upload">Tệp nguồn Excel<input type="file" accept=".xlsx" disabled={busy === "import"} onChange={event => { invalidate(); setFile(event.target.files?.[0] ?? null); }} />{file && <span>{file.name} · {(file.size / 1024).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} KB</span>}</label>
-        <label>Khóa nguồn<input value={sourceCohort} maxLength={20} disabled={busy === "import"} placeholder="Ví dụ: K29" onChange={event => { invalidate(); setSourceCohort(event.target.value); }} /><small>Nhập rõ khóa của tệp. Khóa nguồn phải trùng với {curriculum.cohortCode}; mã khóa trong tên tệp cũng được đối chiếu.</small></label>
+        <label><RequiredLabel>Khóa nguồn</RequiredLabel><input required value={sourceCohort} maxLength={20} disabled={busy === "import"} placeholder="Ví dụ: K29" onChange={event => { invalidate(); setSourceCohort(event.target.value); }} /><small>Nhập rõ khóa của tệp. Khóa nguồn phải trùng với {curriculum.cohortCode}; mã khóa trong tên tệp cũng được đối chiếu.</small></label>
       </div>
       {!sourceValid && <p className="cm-warning" role="alert">Khóa nguồn phải theo dạng K29 và trùng với khóa {curriculum.cohortCode} đã chọn.</p>}
       <div className="cm-actions comp-preview-actions"><button className="am-outline" disabled={!file || !!busy || !sourceValid} onClick={() => void inspect()}><Icon name="eye" />{busy === "preview" ? "Đang đọc và kiểm tra…" : "Xem trước và kiểm tra"}</button>{busy && <span role="status">{busy === "import" ? "Đang nhập toàn bộ dữ liệu…" : "Đang phân tích tệp Excel…"}</span>}</div>
@@ -98,9 +98,9 @@ export function CompetencyImportTab({ curriculum, canManage, revision, onSaved, 
       <IssueList title="Cảnh báo cần rà soát" items={preview.warnings} />
       <ImportChanges preview={preview} />
       {!preview.canImport && <p className="admin-error" role="alert">Bản xem trước chưa đủ điều kiện nhập. Hãy sửa tất cả lỗi trong tệp rồi xem trước lại.</p>}
-      {preview.warnings.length > 0 && <label className="comp-check"><input type="checkbox" checked={confirmWarnings} disabled={!!busy} onChange={event => setConfirmWarnings(event.target.checked)} /><span>Tôi đã rà soát toàn bộ {preview.warnings.length} cảnh báo và xác nhận dùng dữ liệu của tệp nguồn.</span></label>}
-      {preview.requiresOverwrite && <div className="cm-warning"><p>Tệp sẽ cập nhật hồ sơ hoặc cấu hình đã có thay đổi thủ công. Kiểm tra các dòng “Cập nhật” trước khi cho phép ghi đè.</p><label className="comp-check"><input type="checkbox" checked={confirmOverwrite} disabled={!!busy} onChange={event => setConfirmOverwrite(event.target.checked)} /><span>Tôi xác nhận ghi đè các thay đổi được liệt kê trong bản xem trước.</span></label></div>}
-      <div className="cm-actions comp-preview-actions"><button className="am-primary" disabled={!!busy || !mayImport} onClick={() => void apply()}><Icon name="save" />{busy === "import" ? "Đang nhập…" : "Xác nhận nhập dữ liệu"}</button><span className="comp-hint">Nhập đồng thời toàn bộ tệp sau khi kiểm tra. Thay tệp, khóa hoặc phiên bản sẽ yêu cầu xem trước lại.</span></div>
+      {preview.warnings.length > 0 && <label className="cm-check"><input type="checkbox" checked={confirmWarnings} disabled={!!busy} onChange={event => setConfirmWarnings(event.target.checked)} /><span>Tôi đã rà soát toàn bộ {preview.warnings.length} cảnh báo và xác nhận dùng dữ liệu của tệp nguồn.</span></label>}
+      {preview.requiresOverwrite && <div className="cm-warning"><p>Tệp sẽ cập nhật hồ sơ hoặc cấu hình đã có thay đổi thủ công. Kiểm tra các dòng “Cập nhật” trước khi cho phép ghi đè.</p><label className="cm-check"><input type="checkbox" checked={confirmOverwrite} disabled={!!busy} onChange={event => setConfirmOverwrite(event.target.checked)} /><span>Tôi xác nhận ghi đè các thay đổi được liệt kê trong bản xem trước.</span></label></div>}
+      <div className="cm-actions comp-preview-actions"><button className="am-primary" disabled={!!busy || !mayImport} onClick={() => void apply()}><Icon name="save" />{busy === "import" ? "Đang lưu…" : "Lưu danh mục và trọng số"}</button><span className="comp-hint">Nhập đồng thời toàn bộ tệp sau khi kiểm tra. Thay tệp, khóa hoặc phiên bản sẽ yêu cầu xem trước lại.</span></div>
     </>}
   </section>;
 }

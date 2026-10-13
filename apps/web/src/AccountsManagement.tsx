@@ -44,14 +44,14 @@ function ChangeAccount({ account, mode, onClose, onSaved }: { account: Account; 
   const errorRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
   const title = mode === "role" ? "Phân quyền theo vai trò" : account.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản";
-  return <Modal title={title} onClose={onClose} busy={busy}><form className="am-change-form" onSubmit={(event) => {
+  return <Modal title={title} onClose={onClose} busy={busy}><form className="cm-dialog-body cm-form" onSubmit={(event) => {
     event.preventDefault(); if (busy) return; setBusy(true); setError(null);
     void fetch(`/api/admin/accounts/${account.id}`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...(mode === "role" ? { role } : { isActive: !account.isActive }), confirmed }) }).then(readResponse).then(onSaved).catch((err) => setError(err.message)).finally(() => setBusy(false));
   }}><p><strong>{account.name}</strong><br />{account.email ?? account.username}</p>{error && <p className="admin-error" role="alert" ref={errorRef} tabIndex={-1}>{error}</p>}
-    {mode === "role" && <label className="am-field">Vai trò mới<select value={role} disabled={busy} onChange={(e) => setRole(e.target.value as Account["role"])}>{Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
+    {mode === "role" && <label>Vai trò mới<select value={role} disabled={busy} onChange={(e) => setRole(e.target.value as Account["role"])}>{Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
     <p>Thao tác chỉ áp dụng trong EduPath, không thay đổi tài khoản Microsoft. Các phiên EduPath hiện tại của người dùng sẽ bị thu hồi; người dùng cần đăng nhập lại.</p>
-    <label className="am-confirm"><input type="checkbox" required checked={confirmed} disabled={busy} onChange={(e) => setConfirmed(e.target.checked)} /><span>Tôi xác nhận {title.toLowerCase()} cho tài khoản này.</span></label>
-    <div className="am-form-actions"><button className="am-quiet" type="button" onClick={onClose} disabled={busy}>Hủy</button><button className="am-primary" disabled={busy || (mode === "role" && role === account.role)}>{busy ? "Đang lưu…" : "Xác nhận"}</button></div>
+    <label className="cm-check"><input type="checkbox" required checked={confirmed} disabled={busy} onChange={(e) => setConfirmed(e.target.checked)} /><span>Tôi xác nhận {title.toLowerCase()} cho tài khoản này.</span></label>
+    <div className="cm-actions cm-dialog-actions"><button className="am-outline" type="button" onClick={onClose} disabled={busy}><Icon name="close" /> Hủy</button><button className="am-primary" disabled={busy || (mode === "role" && role === account.role)}><Icon name={mode === "role" ? "save" : account.isActive ? "lock" : "unlock"} /> {busy ? "Đang lưu…" : mode === "role" ? "Lưu vai trò" : account.isActive ? "Xác nhận khóa" : "Xác nhận mở khóa"}</button></div>
   </form></Modal>;
 }
 type MenuAction = "detail" | "history" | "role" | "lock";

@@ -517,7 +517,7 @@ function ImportDialog({
               }
               onClick={() => void save()}
             >
-              <Icon name="save" /> Lưu khung CTĐT
+              <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu khung CTĐT"}
             </button>
           </div>
         )}
@@ -1181,7 +1181,7 @@ function DeleteCourseDialog({
     (r) => r.courseCode !== course.code && r.targetCodes.includes(course.code),
   );
   return (
-    <Modal title="Xóa học phần khỏi khung" onClose={onClose} busy={busy}>
+    <Modal title="Xóa học phần khỏi khung" onClose={onClose} busy={busy} size="sm">
       <div className="cm-dialog-body cm-form">
         <p>
           Bạn muốn xóa{" "}
@@ -1324,6 +1324,9 @@ function MetadataDialog({
           Ngành và khóa giữ nguyên để bảo toàn liên kết dữ liệu. Thêm, chỉnh sửa
           hoặc xóa học phần bằng menu … ở từng khối kiến thức.
         </p>
+        <p className="cm-help">
+          Lưu sẽ tạo phiên bản mới; bản hiện tại vẫn được giữ trong lịch sử.
+        </p>
         {error && (
           <p className="admin-error cm-prewrap" role="alert">
             {error}
@@ -1339,7 +1342,7 @@ function MetadataDialog({
             <Icon name="close" /> Hủy
           </button>
           <button className="am-primary" disabled={busy}>
-            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu thông tin khung"}
           </button>
         </div>
       </form>
@@ -1407,7 +1410,7 @@ function StatusDialog({
               }
             }}
           >
-            <Icon name={current.isActive ? "lock" : "unlock"} /> {busy ? "Đang lưu…" : "Xác nhận"}
+            <Icon name={current.isActive ? "lock" : "unlock"} /> {busy ? "Đang lưu…" : current.isActive ? "Xác nhận khóa" : "Xác nhận mở khóa"}
           </button>
         </div>
       </div>
@@ -1711,6 +1714,11 @@ function CourseDialog({
             </details>
           </>
         )}
+        {editing && (
+          <p className="cm-help">
+            Lưu sẽ tạo phiên bản mới; bản hiện tại vẫn được giữ trong lịch sử.
+          </p>
+        )}
         {error && (
           <p role="alert" className="admin-error cm-prewrap">
             {error}
@@ -1745,7 +1753,7 @@ function CourseDialog({
                   className="am-primary"
                   disabled={busy}
                 >
-                  <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+                  <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu học phần"}
                 </button>
               ) : (
                 <button

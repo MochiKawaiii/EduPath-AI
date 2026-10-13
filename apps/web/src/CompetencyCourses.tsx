@@ -98,7 +98,7 @@ function CourseConfiguration({ initial, canManage, startEditing, close, saved, b
     <p><span className={`comp-state comp-state-${current.status}`}>{statusLabels[current.status]}</span>{current.status === "archived" && <span className="comp-hint"> Cấu hình đã lưu trữ, không đóng góp vào năng lực. Chọn chỉnh sửa để tạo trạng thái mới.</span>}</p>
     {duplicateCode && <p className="cm-warning" role="alert">Mã học phần xuất hiện {current.occurrenceCount} lần trong phiên bản chương trình. Cần rà soát khung trước khi lưu trọng số.</p>}
     {editing && <><p className="comp-hint">Nhập phần trăm cho toàn bộ danh sách. Áp dụng cần ít nhất một kỹ năng, tổng 100% và mọi kỹ năng đang hoạt động. Trọng số 0% được giữ nhưng không đóng góp.</p><Status {...skills} /></>}
-    <fieldset className="comp-fields" disabled={busy || !editing}>
+    <fieldset className="cm-fields" disabled={busy || !editing}>
       <div className="comp-allocation-list">
         {rows.map((row, index) => {
           const selected = options.find(skill => skill.id === row.skillId);
@@ -130,7 +130,7 @@ function ArchiveConfiguration({ initial, canManage, close, saved, busy, setBusy 
   const [current] = useState(initial);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
-  return <div className="cm-form"><h3>Lưu trữ toàn bộ cấu hình</h3><p>Cấu hình có {current.links.length} liên kết kỹ năng. Lưu trữ sẽ dừng đóng góp vào đánh giá năng lực và giữ trọng số cùng lịch sử để đối chiếu.</p><label className="comp-check"><input type="checkbox" checked={confirmed} disabled={busy || !canManage} onChange={event => setConfirmed(event.target.checked)} /><span>Tôi xác nhận lưu trữ cấu hình của {current.courseCode} trong phiên bản đã chọn.</span></label>{error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}<div className="cm-actions cm-dialog-actions"><button className="am-outline" disabled={busy} onClick={close}>Hủy</button><button className="am-primary am-delete" disabled={busy || !canManage || !confirmed || !current.version || current.status === "archived"} onClick={async () => {
+  return <div className="cm-form"><h3>Lưu trữ toàn bộ cấu hình</h3><p>Cấu hình có {current.links.length} liên kết kỹ năng. Lưu trữ sẽ dừng đóng góp vào đánh giá năng lực và giữ trọng số cùng lịch sử để đối chiếu.</p><label className="cm-check"><input type="checkbox" checked={confirmed} disabled={busy || !canManage} onChange={event => setConfirmed(event.target.checked)} /><span>Tôi xác nhận lưu trữ cấu hình của {current.courseCode} trong phiên bản đã chọn.</span></label>{error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}<div className="cm-actions cm-dialog-actions"><button className="am-outline" disabled={busy} onClick={close}>Hủy</button><button className="am-primary am-delete" disabled={busy || !canManage || !confirmed || !current.version || current.status === "archived"} onClick={async () => {
     if (busy || !canManage || !current.version || !confirmed) return;
     setBusy(true); setError("");
     try { await competencyRequest(courseUrl(current.revisionId, current.courseCode), { method: "DELETE", headers: { "Content-Type": "application/json", "x-version": current.version }, body: JSON.stringify({ confirmed: true }) }); saved(); }

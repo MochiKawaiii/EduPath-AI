@@ -428,7 +428,7 @@ function PlanView({
             <div className="cm-tabs" aria-label="Nội dung kế hoạch đào tạo">
               {[
                 ["items", "Phân bổ học phần"],
-                ["warnings", `Cảnh cáo (${p.data.warnings.length})`],
+                ["warnings", `Cảnh báo (${p.data.warnings.length})`],
                 ["history", "Lịch sử phiên bản"],
               ].map(([value, label]) => (
                 <button
@@ -790,7 +790,7 @@ function ImportPlan({
             <Summary data={preview.data} />
             <Warnings data={preview.data} />
             <PlanStructure data={preview.data} />
-            <label className="am-confirm">
+            <label className="cm-check">
               <input
                 type="checkbox"
                 checked={confirmed}
@@ -810,7 +810,7 @@ function ImportPlan({
                 disabled={!confirmed || busy}
                 onClick={() => void act(true)}
               >
-                <Icon name="save" /> Lưu kế hoạch
+                <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu kế hoạch"}
               </button>
             </div>
           </>
@@ -836,7 +836,7 @@ function MetadataEditor({
   return (
     <Modal title="Chỉnh sửa thông tin kế hoạch" busy={busy} onClose={onClose}>
       <form
-        className="cm-dialog-body"
+        className="cm-dialog-body cm-form"
         onSubmit={async (e) => {
           e.preventDefault();
           if (busy) return;
@@ -863,7 +863,7 @@ function MetadataEditor({
           }
         }}
       >
-        <label className="am-field">
+        <label>
           <RequiredLabel>Tên kế hoạch</RequiredLabel>
           <input
             required
@@ -872,7 +872,7 @@ function MetadataEditor({
             onChange={(e) => setName(e.target.value)}
           />
         </label>
-        <label className="am-field">
+        <label>
           Tổng tín chỉ kế hoạch
           <input
             type="number"
@@ -883,7 +883,7 @@ function MetadataEditor({
             onChange={(e) => setTotal(e.target.value)}
           />
         </label>
-        <label className="am-field">
+        <label>
           Ghi chú
           <textarea
             maxLength={12000}
@@ -891,6 +891,9 @@ function MetadataEditor({
             onChange={(e) => setNotes(e.target.value)}
           />
         </label>
+        <p className="cm-help">
+          Lưu sẽ tạo phiên bản mới; bản hiện tại vẫn được giữ trong lịch sử.
+        </p>
         {error && (
           <p className="admin-error pm-prewrap" role="alert">
             {error}
@@ -901,7 +904,7 @@ function MetadataEditor({
             <Icon name="close" /> Hủy
           </button>
           <button type="submit" className="am-primary" disabled={busy}>
-            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu thông tin kế hoạch"}
           </button>
         </div>
       </form>
@@ -965,7 +968,7 @@ function StatusEditor({
               }
             }}
           >
-            <Icon name={plan.isActive ? "lock" : "unlock"} /> {busy ? "Đang lưu…" : "Xác nhận"}
+            <Icon name={plan.isActive ? "lock" : "unlock"} /> {busy ? "Đang lưu…" : plan.isActive ? "Xác nhận khóa" : "Xác nhận mở khóa"}
           </button>
         </div>
       </div>
@@ -1010,7 +1013,7 @@ function ItemEditor({
       busy={busy}
     >
       <form
-        className="cm-dialog-body"
+        className="cm-dialog-body cm-form"
         onSubmit={async (e) => {
           e.preventDefault();
           if (busy || !canManage || !editing) return;
@@ -1044,7 +1047,7 @@ function ItemEditor({
         {editing ? (
           <>
             <div className="pm-edit-grid">
-              <label className="am-field">
+              <label>
                 Năm / Học kỳ
                 <select
                   value={form.termCode}
@@ -1068,7 +1071,7 @@ function ItemEditor({
                   ))}
                 </select>
               </label>
-              <label className="am-field">
+              <label>
                 Nhóm môn
                 <select
                   value={form.sectionId}
@@ -1086,7 +1089,7 @@ function ItemEditor({
                     ))}
                 </select>
               </label>
-              <label className="am-field">
+              <label>
                 Tín chỉ (để trống nếu chưa xác định)
                 <input
                   type="number"
@@ -1105,7 +1108,7 @@ function ItemEditor({
               </label>
             </div>
             {textFields.map(([key, label]) => (
-              <label className="am-field" key={key}>
+              <label key={key}>
                 {key === "name" ? <RequiredLabel>{label}</RequiredLabel> : label}
                 <textarea
                   rows={key === "prerequisite" || key === "prior" ? 4 : 2}
@@ -1124,7 +1127,7 @@ function ItemEditor({
             ))}
             <div className="pm-edit-grid">
               {hours.map(([key, label]) => (
-                <label className="am-field" key={key}>
+                <label key={key}>
                   Giờ {label.toLowerCase()}
                   <input
                     type="number"

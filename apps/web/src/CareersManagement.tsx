@@ -257,7 +257,7 @@ function Editor({
           }
         }}
       >
-        <fieldset disabled={busy} className="career-fields">
+        <fieldset disabled={busy} className="cm-fields">
           <p className="career-code-note">
             {current ? <>Mã vị trí: <strong>{current.code}</strong> · Mã được giữ nguyên khi cập nhật.</> : "Mã vị trí được cấp tự động khi lưu (NN001, NN002…)."}
           </p>

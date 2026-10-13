@@ -412,7 +412,7 @@ function ImportDialog({
               disabled={busy || !preview || !selected.length}
               onClick={() => void save()}
             >
-              <Icon name="save" /> Xác nhận lưu {selected.length} tiêu chuẩn
+              <Icon name="save" /> {busy ? "Đang lưu…" : `Lưu ${selected.length} tiêu chuẩn`}
             </button>
           </div>
         )}
@@ -932,6 +932,9 @@ function EditDialog({
             </label>
           </>
         )}
+        <p className="cm-help">
+          Lưu sẽ tạo phiên bản mới; bản hiện tại vẫn được giữ trong lịch sử.
+        </p>
         {error && (
           <p className="admin-error" role="alert">
             {error}
@@ -947,7 +950,7 @@ function EditDialog({
             <Icon name="close" /> Hủy
           </button>
           <button type="submit" className="am-primary" disabled={busy}>
-            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu phiên bản mới"}
+            <Icon name="save" /> {busy ? "Đang lưu…" : group ? "Lưu nhóm điều kiện" : course ? "Lưu học phần" : "Lưu thông tin tiêu chuẩn"}
           </button>
         </div>
       </form>
@@ -1037,7 +1040,7 @@ function StatusDialog({
               }
             }}
           >
-            <Icon name={current.isActive ? "lock" : "unlock"} /> Xác nhận
+            <Icon name={current.isActive ? "lock" : "unlock"} /> {busy ? "Đang lưu…" : current.isActive ? "Xác nhận khóa" : "Xác nhận mở khóa"}
           </button>
         </div>
       </div>

@@ -113,17 +113,17 @@ function GroupEditor({ current, close, saved }: EditorProps<Group>) {
       } catch (failure) { setError((failure as Error).message); }
       finally { submitting.current = false; setBusy(false); }
     }}>
-      <fieldset className="comp-fields" disabled={busy}>
+      <fieldset className="cm-fields" disabled={busy}>
         <label><RequiredLabel>Tên nhóm kỹ năng</RequiredLabel><input required maxLength={160} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
         <label>Mô tả<textarea rows={4} maxLength={2000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
-        <label className="comp-check"><input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} /> Đang sử dụng</label>
+        <label className="cm-check"><input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} /> Đang sử dụng</label>
         {current && <p className="comp-hint">Để ngừng sử dụng nhóm, cần điều chỉnh các cấu hình học phần đang áp dụng có kỹ năng thuộc nhóm này.</p>}
       </fieldset>
       {error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}
       <div className="cm-actions cm-dialog-actions">
         <button type="button" className="am-outline" disabled={busy} onClick={close}><Icon name="close" /> Hủy</button>
         {error && <button type="button" className="am-outline" disabled={busy} onClick={saved}><Icon name="refresh" /> Đóng và tải lại</button>}
-        <button className="am-primary" disabled={busy}><Icon name="save" /> {busy ? "Đang lưu…" : "Lưu nhóm"}</button>
+        <button className="am-primary" disabled={busy}><Icon name="save" /> {busy ? "Đang lưu…" : "Lưu nhóm kỹ năng"}</button>
       </div>
     </form>
   </Modal>;
@@ -213,7 +213,7 @@ function SkillEditor({ current, revision, groups, close, saved }: EditorProps<Sk
       } catch (failure) { setError((failure as Error).message); }
       finally { submitting.current = false; setBusy(false); }
     }}>
-      <fieldset className="comp-fields" disabled={busy}>
+      <fieldset className="cm-fields" disabled={busy}>
         {!current && <>
           <label>Nguồn kỹ năng<select value={source} onChange={event => {
             setSource(event.target.value as "new" | "existing"); setExistingSkillId(""); setCatalogQuery(""); setForm({ ...form, name: "", description: "" }); setError("");
@@ -236,7 +236,7 @@ function SkillEditor({ current, revision, groups, close, saved }: EditorProps<Sk
         </select></label>
         {!groups.length && <p className="comp-hint">Chưa tải được nhóm kỹ năng. Đóng hộp thoại và tải lại danh sách nhóm trước khi lưu.</p>}
         <label>Phạm vi đánh giá<textarea rows={5} maxLength={4000} value={form.scope} placeholder="Nội dung và phạm vi đánh giá kỹ năng…" onChange={event => setForm({ ...form, scope: event.target.value })} /></label>
-        <label className="comp-check"><input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} /> Đang sử dụng trong đánh giá năng lực</label>
+        <label className="cm-check"><input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} /> Đang sử dụng trong đánh giá năng lực</label>
         {current && <p className="comp-hint">Tên và mô tả dùng chung với quản lý nghề nghiệp. Việc chỉnh sửa sẽ cập nhật thông tin liên quan. Để ngừng sử dụng kỹ năng, cần điều chỉnh các cấu hình học phần đang áp dụng kỹ năng này.</p>}
       </fieldset>
       {error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}
@@ -337,7 +337,7 @@ function SkillDelete({ current, close, saved }: { current: Skill; close: () => v
       <strong>{current.name}</strong>
       <p>Hồ sơ sẽ được gỡ khỏi danh mục đánh giá năng lực. Kỹ năng chung và các liên kết nghề nghiệp vẫn được giữ lại.</p>
       <p className="comp-hint">Cần điều chỉnh hoặc lưu trữ các cấu hình học phần đang áp dụng kỹ năng này trước khi xóa hồ sơ.</p>
-      <label className="comp-check"><input type="checkbox" required checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} /> Tôi xác nhận xóa hồ sơ năng lực này.</label>
+      <label className="cm-check"><input type="checkbox" required checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} /> Tôi xác nhận xóa hồ sơ năng lực này.</label>
       {error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}
       <div className="cm-actions cm-dialog-actions">
         <button type="button" className="am-outline" disabled={busy} onClick={close}><Icon name="close" /> Hủy</button>

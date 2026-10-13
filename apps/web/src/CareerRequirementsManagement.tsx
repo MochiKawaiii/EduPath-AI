@@ -129,7 +129,7 @@ function RequirementEditor({ current, kind, career, catalog, close, saved }: {
       } catch (failure) { setError((failure as Error).message); if (isSkill) linked.retry(); }
       finally { setBusy(false); }
     }}>
-      <fieldset disabled={busy} className="career-fields">
+      <fieldset disabled={busy} className="cm-fields">
         <div><strong>Vị trí nghề nghiệp</strong><p>{career.nameVi}</p></div>
         {isSkill && <>
           <section className="career-linked-skills" aria-label="Kỹ năng đã liên kết">
@@ -156,7 +156,7 @@ function RequirementEditor({ current, kind, career, catalog, close, saved }: {
       {error && !duplicate && <p className="admin-error" role="alert">{error}</p>}
       <div className="cm-actions cm-dialog-actions">
         <button type="button" className="am-outline" disabled={busy} onClick={close}><Icon name="close" /> Hủy</button>
-        <button className="am-primary" disabled={busy || !ready || duplicate}><Icon name="save" /> {busy ? "Đang lưu…" : "Lưu thay đổi"}</button>
+        <button className="am-primary" disabled={busy || !ready || duplicate}><Icon name="save" /> {busy ? "Đang lưu…" : isSkill ? "Lưu liên kết kỹ năng" : "Lưu yêu cầu nghề nghiệp"}</button>
       </div>
     </form>
   </Modal>;

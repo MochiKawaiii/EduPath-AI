@@ -80,7 +80,7 @@ function SkillEditor({ current, close, saved }: { current: ManagedCareerSkill | 
       } catch (failure) { setError((failure as Error).message); }
       finally { setBusy(false); }
     }}>
-      <fieldset className="career-fields" disabled={busy}>
+      <fieldset className="cm-fields" disabled={busy}>
         <label><RequiredLabel>Tên kỹ năng</RequiredLabel><input required maxLength={100} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Ví dụ: SQL, Docker, Phân tích dữ liệu" /></label>
         <label>Mô tả<textarea rows={4} maxLength={2000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
         {current && <p>Đổi tên kỹ năng sẽ cập nhật tên trong mục Nghề nghiệp và mục Năng lực; các liên kết giữ nguyên ID.</p>}

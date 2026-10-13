@@ -88,7 +88,7 @@ function FieldEditor({ current, close, saved }: { current: CareerField | null; c
       } catch (failure) { setError((failure as Error).message); }
       finally { setBusy(false); }
     }}>
-      <fieldset className="career-fields" disabled={busy}>
+      <fieldset className="cm-fields" disabled={busy}>
         <p>{current ? `Số thứ tự: ${current.code}` : "Số thứ tự được cấp tự động khi lưu."}</p>
         <label><RequiredLabel>Tên lĩnh vực</RequiredLabel><input required maxLength={160} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
         <label>Mô tả<textarea rows={4} maxLength={2000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
