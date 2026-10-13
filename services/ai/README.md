@@ -68,7 +68,7 @@ Worker ghi log dạng JSON, mỗi dòng một sự kiện (`job_claimed`, `gener
 
 **Sau mỗi lần cập nhật mã nguồn, khởi động lại worker** (`Ctrl+C` rồi chạy lại). Worker chỉ báo cho API những loại job có trong mã nguồn lúc nó khởi động. Worker chạy từ bản cũ vẫn làm nhận xét năng lực bình thường, nhưng:
 - bản trước lời khuyên tốt nghiệp không báo `graduation_advice`: lời khuyên nằm chờ trong hàng đợi và trang Điều kiện xét tốt nghiệp của sinh viên hiện trạng thái "Máy AI đang chạy phiên bản cũ…" (API trả `worker.supportsAdvice: false`) cho tới khi worker được khởi động lại;
-- bản trước đề xuất kỹ năng không báo `career_skill_suggestion`: trang Quản lý nghề nghiệp báo worker chưa hỗ trợ và job đề xuất nằm chờ.
+- bản trước đề xuất kỹ năng không báo `career_skill_suggestion`: trang Nghề nghiệp báo worker chưa hỗ trợ và job đề xuất nằm chờ.
 
 Khởi động lại là đủ, không cần đổi `services/ai/.env`.
 

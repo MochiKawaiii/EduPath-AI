@@ -18,7 +18,7 @@ export default function CareerSkillsManagement({ canManage }: { canManage: boole
   const saved = () => { close(); setRevision(value => value + 1); };
   return <section className="cm-workspace career-workspace">
     <div className="cm-toolbar">
-      <p>Quản lý kỹ năng dùng chung với các vị trí nghề nghiệp và danh mục Đánh giá năng lực.</p>
+      <p>Quản lý kỹ năng dùng chung với các vị trí nghề nghiệp và mục Năng lực.</p>
       {canManage && <button className="am-primary" onClick={() => { setSelected(null); setMode("edit"); }}><Icon name="plus" /> Thêm kỹ năng</button>}
     </div>
     <section className="cm-panel">
@@ -78,7 +78,7 @@ function SkillEditor({ current, close, saved }: { current: ManagedCareerSkill | 
       <fieldset className="career-fields" disabled={busy}>
         <label><RequiredLabel>Tên kỹ năng</RequiredLabel><input required maxLength={100} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Ví dụ: SQL, Docker, Phân tích dữ liệu" /></label>
         <label>Mô tả<textarea rows={4} maxLength={2000} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
-        {current && <p>Đổi tên kỹ năng sẽ cập nhật tên trong Nghề nghiệp và Đánh giá năng lực; các liên kết giữ nguyên ID.</p>}
+        {current && <p>Đổi tên kỹ năng sẽ cập nhật tên trong mục Nghề nghiệp và mục Năng lực; các liên kết giữ nguyên ID.</p>}
       </fieldset>
       {error && <p className="admin-error" role="alert">{error}</p>}
       <div className="cm-actions cm-dialog-actions">
@@ -96,8 +96,8 @@ function SkillDelete({ current, close, saved }: { current: ManagedCareerSkill; c
   return <Modal title="Xóa kỹ năng" onClose={close} busy={busy} size="sm">
     <div className="cm-dialog-body cm-form">
       <strong>{current.name}</strong>
-      {current.careerCount > 0 && <p>Kỹ năng đang liên kết với {current.careerCount} vị trí nghề nghiệp. Vào Quản lý nghề nghiệp, mở menu Thao tác của từng vị trí → Liên kết kỹ năng và gỡ liên kết trước khi xóa.</p>}
-      {assessmentInUse && <p>Kỹ năng đang được dùng trong danh mục Đánh giá năng lực. Hãy lưu trữ các cấu hình học phần đang áp dụng và xóa hồ sơ khỏi danh mục đánh giá trước khi xóa kỹ năng dùng chung. Lịch sử vẫn được giữ nguyên.</p>}
+      {current.careerCount > 0 && <p>Kỹ năng đang liên kết với {current.careerCount} vị trí nghề nghiệp. Vào mục Nghề nghiệp, mở menu Thao tác của từng vị trí → Liên kết kỹ năng và gỡ liên kết trước khi xóa.</p>}
+      {assessmentInUse && <p>Kỹ năng đang được dùng trong mục Năng lực. Hãy lưu trữ các cấu hình học phần đang áp dụng và xóa hồ sơ khỏi danh mục đánh giá trước khi xóa kỹ năng dùng chung. Lịch sử vẫn được giữ nguyên.</p>}
       {!inUse && <p>Kỹ năng sẽ được xóa khỏi danh sách lựa chọn.</p>}
       {error && <p className="admin-error" role="alert">{error}</p>}
       <div className="cm-actions cm-dialog-actions">

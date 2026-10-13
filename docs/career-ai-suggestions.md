@@ -1,6 +1,6 @@
 # Tạo liên kết kỹ năng với nghề nghiệp (AI)
 
-Chức năng đi kèm AD-REQ-03 "Tạo liên kết kỹ năng với nghề nghiệp (thủ công)". Trong **Quản lý nghề nghiệp → một vị trí → Yêu cầu và kỹ năng**, admin nhờ LLM cục bộ (`gemma4:e4b` qua Ollama trên máy chạy worker AI, hiện là laptop của nhóm thực hiện đồ án, cùng worker với nhận xét năng lực) đề xuất kỹ năng cho vị trí đó. Admin xem lại danh sách, bỏ chọn hoặc xóa dòng, đổi kỹ năng, sửa **Nội dung yêu cầu** và **Mô tả**, đổi **Bắt buộc/Ưu tiên**, rồi chỉ lưu những dòng giữ lại. Không có gì được lưu nếu admin không bấm lưu; kết quả AI không bao giờ được áp dụng nguyên trạng một cách tự động.
+Chức năng đi kèm AD-REQ-03 "Tạo liên kết kỹ năng với nghề nghiệp (thủ công)". Trong **Nghề nghiệp → một vị trí → Yêu cầu và kỹ năng**, admin nhờ LLM cục bộ (`gemma4:e4b` qua Ollama trên máy chạy worker AI, hiện là laptop của nhóm thực hiện đồ án, cùng worker với nhận xét năng lực) đề xuất kỹ năng cho vị trí đó. Admin xem lại danh sách, bỏ chọn hoặc xóa dòng, đổi kỹ năng, sửa **Nội dung yêu cầu** và **Mô tả**, đổi **Bắt buộc/Ưu tiên**, rồi chỉ lưu những dòng giữ lại. Không có gì được lưu nếu admin không bấm lưu; kết quả AI không bao giờ được áp dụng nguyên trạng một cách tự động.
 
 ## Thành phần
 
@@ -12,7 +12,7 @@ Chức năng đi kèm AD-REQ-03 "Tạo liên kết kỹ năng với nghề nghi�
 | Hàng đợi | Xếp job trong giao dịch của admin; nhận/gia hạn/hoàn tất/hết hạn job cho worker | `apps/api/src/careers/ai-suggestions/jobs.ts` |
 | API admin | `/api/admin/careers/requirements/ai-suggestions` | `apps/api/src/careers/ai-suggestions/router.ts` |
 | Worker | Dùng chung giao thức `/api/worker/competency-assessments`, phân biệt bằng loại job | `apps/api/src/competency-assessment/ai/worker-router.ts`, `worker-protocol.ts`, `apps/api/src/ai-worker/` |
-| Giao diện | Mục AI trong panel "Yêu cầu và kỹ năng" của trang Quản lý nghề nghiệp | `apps/web/src/` (cạnh `CareerRequirementsManagement.tsx`) |
+| Giao diện | Mục AI trong panel "Yêu cầu và kỹ năng" của trang Nghề nghiệp | `apps/web/src/` (cạnh `CareerRequirementsManagement.tsx`) |
 
 ## Dữ liệu gửi cho mô hình
 
@@ -152,7 +152,7 @@ So sánh v1 và v2 bằng cách nhóm theo `prompt_version`.
 1. Backend có `AI_WORKER_KEY` trong `apps/api/.env` (tạo bằng `node scripts/setup-ai-worker.mjs`, xem `services/ai/README.md`). Dev server tự áp dụng migration 031 khi khởi động lại.
 2. Chạy worker: `npm run ai-worker -w @edupath/api` hoặc `services/ai/start-worker.ps1`.
 3. **Sau khi cập nhật mã nguồn, khởi động lại worker một lần.** Worker chỉ báo những loại job có trong mã nguồn lúc nó khởi động. Worker chạy từ bản trước đề xuất kỹ năng vẫn làm job nhận xét năng lực bình thường nhưng không báo hỗ trợ `career_skill_suggestion`, nên trang hiển thị worker chưa hỗ trợ đề xuất kỹ năng và job nghề nghiệp nằm chờ cho tới khi worker mới nhận. Tương tự, worker chạy từ bản trước lời khuyên tốt nghiệp không báo `graduation_advice`: lời khuyên nằm chờ và trang Điều kiện xét tốt nghiệp của sinh viên hiện trạng thái "Máy AI đang chạy phiên bản cũ…".
-4. Mở **Quản lý nghề nghiệp → một vị trí → Yêu cầu và kỹ năng** và yêu cầu AI đề xuất. Với danh mục local hiện tại (khoảng 130 kỹ năng chưa liên kết cho một vị trí), khối dữ liệu dài khoảng 10.000 ký tự (khoảng 4.000 token vào), ngắn hơn prompt nhận xét năng lực. Đo thực tế với `gemma4:e4b` trên RTX 3050 4 GB (`OLLAMA_NUM_GPU=38`): khoảng 25–40 giây mỗi vị trí từ lúc nhận việc đến lúc hoàn tất, 1.100–1.400 token ra.
+4. Mở **Nghề nghiệp → một vị trí → Yêu cầu và kỹ năng** và yêu cầu AI đề xuất. Với danh mục local hiện tại (khoảng 130 kỹ năng chưa liên kết cho một vị trí), khối dữ liệu dài khoảng 10.000 ký tự (khoảng 4.000 token vào), ngắn hơn prompt nhận xét năng lực. Đo thực tế với `gemma4:e4b` trên RTX 3050 4 GB (`OLLAMA_NUM_GPU=38`): khoảng 25–40 giây mỗi vị trí từ lúc nhận việc đến lúc hoàn tất, 1.100–1.400 token ra.
 
 ## Giao diện
 

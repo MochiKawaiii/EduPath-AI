@@ -78,7 +78,7 @@ Tên file nếu có khóa phải trùng khai báo nguồn và CTĐT đã chọn.
 
 ## Màn hình và vận hành
 
-Menu trái **Đánh giá năng lực**, đường dẫn **`/quantri/danh-gia-nang-luc`**, nằm trong `AdminWorkspace`. Bốn tab: **Nhóm kỹ năng**, **Danh mục kỹ năng**, **Trọng số học phần**, **Nhập từ Excel**. Không có dashboard mới. Dùng component Modal/ActionMenu/Pagination/Status/icon, CSS và màu của quản trị hiện tại; trọng số hiển thị %, cập nhật tổng trực tiếp. Mỗi thay đổi gọi API và lưu DB; có trạng thái tải/lỗi/rỗng/thành công, xác nhận xóa/gỡ/lưu trữ và lịch sử. Danh sách phân trang 10 dòng; bảng cuộn và form responsive.
+Menu trái **Năng lực**, đường dẫn **`/quantri/danh-gia-nang-luc`**, nằm trong `AdminWorkspace`. Bốn tab: **Nhóm kỹ năng**, **Danh mục kỹ năng**, **Trọng số học phần**, **Nhập từ Excel**. Không có dashboard mới. Dùng component Modal/ActionMenu/Pagination/Status/icon, CSS và màu của quản trị hiện tại; trọng số hiển thị %, cập nhật tổng trực tiếp. Mỗi thay đổi gọi API và lưu DB; có trạng thái tải/lỗi/rỗng/thành công, xác nhận xóa/gỡ/lưu trữ và lịch sử. Danh sách phân trang 10 dòng; bảng cuộn và form responsive.
 
 Ngoài giao diện, CLI không tự áp dụng dữ liệu:
 

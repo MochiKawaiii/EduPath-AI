@@ -251,7 +251,7 @@ function Review({ suggestion, career, catalog, linked, linkedState, refreshLinke
     </section>}
     {newRows.length > 0 && <section className="cai-section" aria-labelledby={`cai-${suggestion.id}-new`}>
       <h4 id={`cai-${suggestion.id}-new`}>Kỹ năng chưa có trong danh mục <span>({newRows.length.toLocaleString("vi-VN")})</span></h4>
-      <p className="cai-muted">Khi lưu, kỹ năng mới sẽ được thêm vào Danh sách kỹ năng.</p>
+      <p className="cai-muted">Khi lưu, kỹ năng mới sẽ được thêm vào mục Kỹ năng.</p>
       <ul className="cai-rows">{newRows.map(renderRow)}</ul>
     </section>}
     {suggestion.items.length > 0 && !rows.length && <p className="cai-empty">Bạn đã bỏ hết các đề xuất. Tạo lại đề xuất hoặc đóng hộp thoại.</p>}
