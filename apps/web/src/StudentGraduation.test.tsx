@@ -136,7 +136,7 @@ describe("StudentGraduation loading", () => {
     const failed = render({ data: null, error: "Không thể tải điều kiện xét tốt nghiệp. Vui lòng thử lại.", loading: false });
     expect(failed).toContain('role="alert"');
     expect(failed).toContain("Không thể tải điều kiện xét tốt nghiệp. Vui lòng thử lại.");
-    expect(failed).toContain("Tải lại");
+    expect(failed).toContain("Thử lại");
   });
 });
 

@@ -221,7 +221,7 @@ export default function LandingPage() {
   return (
     <div className="lp-page">
       <a className="lp-skip-link" href="#noi-dung">
-        Chuyển đến nội dung
+        Chuyển đến nội dung chính
       </a>
       <div className="lp-announcement">
         <span>Một hành trình học tập, mang dấu ấn của bạn.</span>

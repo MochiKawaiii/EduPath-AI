@@ -210,7 +210,7 @@ function reviewCredits(
     if (!courses.length || group.credits === null || courses.some((c) => c.type === "BBKTL")) continue;
     const calculated = creditsFor(courses);
     if (calculated !== null && Math.abs(calculated - group.credits) > 0.001)
-      warn(group.sourceRow, `${group.label}: yêu cầu ${group.credits} tín chỉ trong file, nhưng các môn và nhóm tự chọn có ${calculated} tín chỉ. Vẫn cho phép import; cần rà soát.`);
+      warn(group.sourceRow, `${group.label}: yêu cầu ${group.credits} tín chỉ trong tệp, nhưng các môn và nhóm tự chọn có ${calculated} tín chỉ. Vẫn cho phép import; cần rà soát.`);
   }
   const rootCode = (label: string) => label.replace(/^Khối kiến thức:\s*/i, "")
     .trim().match(/^([A-Z]+)[.:](?:\s|$)/i)?.[1]?.toUpperCase();
@@ -228,7 +228,7 @@ function reviewCredits(
     ? roots.reduce((sum, g) => sum + g.credits!, 0)
     : data.courses.some((c) => c.specialty) ? null : creditsFor(data.courses);
   if (calculated === null)
-    warn(null, "Chưa đủ quy định tín chỉ khối/tự chọn để đối chiếu tổng tín chỉ CTĐT; cần rà soát file nguồn. Vẫn cho phép import.");
+    warn(null, "Chưa đủ quy định tín chỉ khối/tự chọn để đối chiếu tổng tín chỉ CTĐT; cần rà soát tệp nguồn. Vẫn cho phép import.");
   else if (Math.abs(calculated - data.totalCredits) > 0.001)
     warn(null, `Tổng tín chỉ CTĐT ghi ${data.totalCredits}, nhưng tổng tín chỉ yêu cầu ${roots.length ? "các khối cấp cao nhất" : "các môn và nhóm tự chọn"} là ${calculated}. Vẫn cho phép import; cần rà soát.`);
 }

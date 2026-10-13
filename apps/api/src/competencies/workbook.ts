@@ -58,16 +58,16 @@ export function validateWorkbookRows(sheets: Record<string, unknown[][]>): Workb
   for (const code of codes) {
     const links = result.links.filter(link => link.courseCode === code), total = links.reduce((sum, link) => sum + link.weight, 0);
     if (links.length > 200) issue(result.errors, "course_skills", links[0]!.row, "too_many_course_skills", `${code}: tối đa 200 kỹ năng trong một phân bổ.`);
-    if (new Set(links.map(link => link.courseName)).size !== 1) issue(result.errors, "course_skills", links[0]!.row, "course_name_ambiguous", `${code} có nhiều tên trong cùng file.`);
+    if (new Set(links.map(link => link.courseName)).size !== 1) issue(result.errors, "course_skills", links[0]!.row, "course_name_ambiguous", `${code} có nhiều tên trong cùng tệp.`);
     if (Math.abs(total - 1) > WEIGHT_TOLERANCE) issue(result.errors, "course_skills", links[0]!.row, "weight_total_invalid", `${code}: tổng trọng số ${(total * 100).toFixed(4)}%, cần 100%.`);
     if (links.some(link => link.weight === 0)) issue(result.warnings, "course_skills", links[0]!.row, "zero_weight", `${code}: liên kết 0% được giữ để truy vết, không đóng góp vào năng lực.`);
   }
   for (const skill of result.skills) {
     const usage = new Set(result.links.filter(link => link.skillName === skill.name).map(link => link.courseCode)).size;
     if (usage === 0) issue(result.warnings, "skills", skill.row, "unlinked_skill", `${skill.name}: Chưa có học phần liên kết.`);
-    if (usage !== skill.declaredCourseCount) issue(result.warnings, "skills", skill.row, "usage_mismatch", `${skill.name}: file khai báo ${skill.declaredCourseCount} học phần, đối chiếu được ${usage}.`);
+    if (usage !== skill.declaredCourseCount) issue(result.warnings, "skills", skill.row, "usage_mismatch", `${skill.name}: tệp khai báo ${skill.declaredCourseCount} học phần, đối chiếu được ${usage}.`);
   }
-  if (!result.counts.skillRows || !result.counts.linkRows) issue(result.errors, "", null, "empty_workbook", "File phải có kỹ năng và liên kết học phần.");
+  if (!result.counts.skillRows || !result.counts.linkRows) issue(result.errors, "", null, "empty_workbook", "Tệp phải có kỹ năng và liên kết học phần.");
   result.groups = [...new Set(result.skills.map(skill => skill.group))];
   result.counts.courses = codes.length;
   return result;

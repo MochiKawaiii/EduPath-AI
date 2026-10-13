@@ -224,7 +224,7 @@ export async function readWorkbook(buffer: Buffer): Promise<PlanData> {
   if (external)
     warn(
       null,
-      "File có công thức tham chiếu workbook ngoài. Dùng kết quả đã lưu trong Excel; không tự tải hoặc tính lại nguồn ngoài. Ô trống giữ là chưa xác định.",
+      "Tệp có công thức tham chiếu workbook ngoài. Dùng kết quả đã lưu trong Excel; không tự tải hoặc tính lại nguồn ngoài. Ô trống giữ là chưa xác định.",
     );
   // Preserve rule text; do not silently interpret inconsistent choice counts.
   for (const s of data.sections) {

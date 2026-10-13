@@ -174,7 +174,7 @@ function Detail({ id, fields, close, revision }: { id: string; fields: CareerFie
   const career = remote.data ?? lastCareer;
   return (
     <>
-      <div><button className="am-outline" onClick={close}><Icon name="back" /> Quay lại danh sách vị trí</button></div>
+      <div><button className="am-outline" onClick={close}><Icon name="back" /> Trở về danh sách</button></div>
       <section className="cm-panel career-detail career-detail-panel">
         <Status {...remote} />
         {remote.data && (
@@ -325,7 +325,7 @@ function Editor({
             <Icon name="close" /> Hủy
           </button>
           <button type="submit" className="am-primary" disabled={busy || !fields.length}>
-            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu vị trí"}
+            <Icon name="save" /> {busy ? "Đang lưu…" : "Lưu vị trí nghề nghiệp"}
           </button>
         </div>
       </form>

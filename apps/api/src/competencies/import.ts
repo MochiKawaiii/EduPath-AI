@@ -30,7 +30,7 @@ async function contextFor(db:DatabasePool|PoolClient,source:Source):Promise<Cont
   // The supplied workbook has no cohort column. Require an explicit cohort declaration,
   // and reject conflicting cohort markers in the file name instead of guessing.
   const markers=[...source.filename.matchAll(/(?:^|[^a-z0-9])K(\d+)(?=$|[^a-z0-9])/gi)].map(match=>`K${match[1]}`);
-  if(markers.some(marker=>marker!==source.cohortCode)) throw new CompetencyError("cohort_mismatch",422,["Khóa trong tên file khác khóa đã chọn."]);
+  if(markers.some(marker=>marker!==source.cohortCode)) throw new CompetencyError("cohort_mismatch",422,["Khóa trong tên tệp khác khóa đã chọn."]);
   const groups=(await db.query("SELECT id,name,source_key,is_active,version FROM ad_comp_groups ORDER BY id")).rows;
   const canonical=(await db.query("SELECT id,name,description,version,deleted_at FROM career_skills ORDER BY id")).rows;
   const profiles=(await db.query("SELECT skill_id,legacy_skill_id,group_id,scope,is_active,deleted_at,version FROM ad_comp_skills ORDER BY skill_id")).rows;
@@ -93,7 +93,7 @@ export function makeImportPlan(data:WorkbookData,context:Context,source:Source):
     if(action==="update") requiresOverwrite=true;
     return {courseCode:code,courseName:course?.name??rows[0]!.courseName,rowCount:rows.length,totalWeight,action,changes};
   });
-  for(const course of context.courses) if(!data.links.some(link=>link.courseCode===course.code)) add(warnings,"course_skills",null,"unmapped_curriculum_course",`${course.code} — ${course.name}: chưa có phân bổ trong file; cấu hình đang có được giữ nguyên.`);
+  for(const course of context.courses) if(!data.links.some(link=>link.courseCode===course.code)) add(warnings,"course_skills",null,"unmapped_curriculum_course",`${course.code} — ${course.name}: chưa có phân bổ trong tệp; cấu hình đang có được giữ nguyên.`);
   const errorRows=new Set(errors.filter(issue=>issue.row!==null).map(issue=>`${issue.sheet}:${issue.row}`)).size;
   const counts={...data.counts,validRows:Math.max(0,data.counts.skillRows+data.counts.linkRows-errorRows),errorRows,
     groupsToCreate:data.groups.filter(name=>!groupFor(context,name)).length,

@@ -611,7 +611,7 @@ function CurriculumView({
     <section className="cm-workspace">
       <div className="cm-toolbar">
         <button className="am-outline" onClick={back}>
-          <Icon name="back" /> Quay lại danh sách khung
+          <Icon name="back" /> Trở về danh sách
         </button>
       </div>
       <Status {...remote} />
@@ -1025,7 +1025,7 @@ function Courses({
                           <span className="cm-block-credits">
                             {"credits" in g && g.credits !== null
                               ? `Yêu cầu: ${g.credits} tín chỉ`
-                              : "Chưa có số tín chỉ yêu cầu trong file"}
+                              : "Chưa có số tín chỉ yêu cầu trong tệp"}
                           </span>
                           {!!creditBlocks.get(g.id)?.courseCount && (
                             <span className="cm-block-credits">

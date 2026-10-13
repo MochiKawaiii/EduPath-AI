@@ -137,11 +137,11 @@ export default function StudentProfileEditor({
                 <span>{draftCareer ? `${draftCareer.nameVi} — ${draftCareer.nameEn}${draftCareer.deletedAt ? " (đã ngừng sử dụng)" : ""}` : "Chưa chọn vị trí nghề nghiệp."}</span>
                 {draft.careerPositionId && <>
                   {!draftCareer?.deletedAt && <button type="button" className="sr-career-icon" aria-label="Xem yêu cầu nghề nghiệp" title="Xem yêu cầu" onClick={() => setExplorer({ initialCareerId: draft.careerPositionId })}><Icon name="eye" /></button>}
-                  <button type="button" className="sr-career-icon sr-career-clear" aria-label="Bỏ chọn vị trí nghề nghiệp" title="Bỏ chọn" onClick={() => { setDraft({ ...draft, careerPositionId: "" }); setDraftCareer(null); }}><Icon name="close" /></button>
+                  <button type="button" className="sr-career-icon sr-career-clear" aria-label="Bỏ chọn nghề mục tiêu" title="Bỏ chọn" onClick={() => { setDraft({ ...draft, careerPositionId: "" }); setDraftCareer(null); }}><Icon name="close" /></button>
                 </>}
               </div>
               <div className="sr-actions">
-                <button type="button" className="sr-secondary sr-career-choose" onClick={() => setExplorer({})}>Chọn vị trí nghề nghiệp</button>
+                <button type="button" className="sr-secondary sr-career-choose" onClick={() => setExplorer({})}>Chọn nghề mục tiêu</button>
               </div>
             </div>
             {supportsSpecialty && <label>
@@ -204,7 +204,7 @@ export default function StudentProfileEditor({
               {profile.careerPositionId && !profile.careerPosition?.deletedAt && <button type="button" className="sr-career-icon" aria-label="Xem yêu cầu nghề nghiệp" title="Xem yêu cầu" onClick={() => setExplorer({ initialCareerId: profile.careerPositionId! })}><Icon name="eye" /></button>}
             </dd>
             <div className="sr-actions">
-              <button type="button" className="sr-secondary sr-career-choose" onClick={() => setExplorer({})}>Chọn vị trí nghề nghiệp</button>
+              <button type="button" className="sr-secondary sr-career-choose" onClick={() => setExplorer({})}>Chọn nghề mục tiêu</button>
             </div>
           </div>
           {supportsSpecialty && <div>

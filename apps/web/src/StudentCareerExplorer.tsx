@@ -60,7 +60,7 @@ export default function StudentCareerExplorer({ selectedId, initialCareerId, onS
     <header><h2 id="student-career-title">Khám phá nghề nghiệp</h2><button type="button" className="sr-secondary" disabled={saving} onClick={onClose} aria-label="Đóng khám phá nghề nghiệp">Đóng</button></header>
     <div className="sr-career-content">
       {detailId ? <>
-        <button type="button" className="sr-secondary" disabled={saving} onClick={() => { setSaveError(""); setDetailId(""); }}><Icon name="back" />Quay lại danh sách vị trí</button>
+        <button type="button" className="sr-secondary" disabled={saving} onClick={() => { setSaveError(""); setDetailId(""); }}><Icon name="back" />Trở về danh sách</button>
         <CareerDetail key={detailId} id={detailId} selectedId={selectedId} saving={saving} saveError={saveError} onSelect={career => void selectCareer(career)} onClose={onClose} />
       </> : <>
         <p>Chọn một vị trí trong danh sách rồi bấm Lưu mục tiêu để đặt mục tiêu nghề nghiệp. Bạn có thể xem yêu cầu để tìm hiểu thêm trước khi chọn.</p>
@@ -68,7 +68,7 @@ export default function StudentCareerExplorer({ selectedId, initialCareerId, onS
           <summary>Lĩnh vực nghề nghiệp</summary>
           {fields.data && <div className="sr-career-field-grid">{fields.data.items.map(field => <article key={field.id}>
             <h3>{field.name}</h3><p>{field.description || "Khám phá các vị trí trong lĩnh vực này."}</p>
-            <button type="button" className="sr-secondary" disabled={saving} aria-label={`Xem vị trí thuộc ${field.name}`} onClick={() => setDraft({ q: "", category: field.code })}>Xem vị trí</button>
+            <button type="button" className="sr-secondary" disabled={saving} aria-label={`Xem nghề nghiệp thuộc ${field.name}`} onClick={() => setDraft({ q: "", category: field.code })}>Xem nghề nghiệp</button>
           </article>)}</div>}
           {fields.data && !fields.data.items.length && <p>Chưa có lĩnh vực nghề nghiệp.</p>}
         </details>
@@ -105,7 +105,7 @@ export default function StudentCareerExplorer({ selectedId, initialCareerId, onS
 }
 
 function CareerStatus({ loading, error, retry }: { loading: boolean; error: string | null; retry: () => void }) {
-  return loading ? <p role="status">Đang tải nghề nghiệp…</p> : error ? <div className="sr-error" role="alert"><p>{error}</p><button type="button" onClick={retry}>Tải lại</button></div> : null;
+  return loading ? <p role="status">Đang tải nghề nghiệp…</p> : error ? <div className="sr-error" role="alert"><p>{error}</p><button type="button" onClick={retry}>Thử lại</button></div> : null;
 }
 
 function CareerDetail({ id, selectedId, saving, saveError, onSelect, onClose }: { id: string; selectedId: string; saving: boolean; saveError: string; onSelect: (career: StudentCareerDetail) => void; onClose: () => void }) {
@@ -127,7 +127,7 @@ function CareerDetail({ id, selectedId, saving, saveError, onSelect, onClose }: 
     </>}
     <div className="sr-actions sr-form-actions">
       <button type="button" className="sr-secondary" disabled={saving} onClick={onClose}><Icon name="close" />Hủy</button>
-      {career && <button type="button" className="sw-primary" disabled={saving || selectedId === career.id} onClick={() => onSelect(career)}><Icon name="check" />{saving ? "Đang lưu mục tiêu…" : selectedId === career.id ? "Đã chọn mục tiêu này" : "Chọn làm mục tiêu nghề nghiệp"}</button>}
+      {career && <button type="button" className="sw-primary" disabled={saving || selectedId === career.id} onClick={() => onSelect(career)}><Icon name="check" />{saving ? "Đang lưu mục tiêu…" : selectedId === career.id ? "Đã chọn mục tiêu này" : "Chọn nghề mục tiêu"}</button>}
     </div>
   </>;
 }

@@ -95,7 +95,7 @@ function ConsentDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: (
     <h2 id="scomp-consent-title">Đồng ý đánh giá năng lực</h2>
     <div id="scomp-consent-text">
       <p>EduPath sẽ dùng bảng điểm, khóa, chuyên ngành và nghề mục tiêu của bạn để tính điểm năng lực, khoảng trống kỹ năng và gợi ý học phần. Kết quả được lưu trong tài khoản của bạn (tối đa 20 lần gần nhất) đến khi bạn xóa.</p>
-      <p>Nếu nhận xét AI được bật, mô hình chạy cục bộ trên máy của nhóm phát triển chỉ nhận mã, tên học phần, điểm và kết quả đã tính — không nhận họ tên, MSSV, email hay file PDF.</p>
+      <p>Nếu nhận xét AI được bật, mô hình chạy cục bộ trên máy của nhóm phát triển chỉ nhận mã, tên học phần, điểm và kết quả đã tính — không nhận họ tên, MSSV, email hay tệp PDF.</p>
     </div>
     <label className="sr-confirm scomp-consent-check"><input type="checkbox" checked={checked} disabled={busy} onChange={(event) => setChecked(event.target.checked)} /><span>Tôi đồng ý để EduPath AI xử lý dữ liệu học tập của tôi cho việc đánh giá năng lực theo <a href={competencyPolicyHref} target="_blank" rel="noreferrer">Chính sách bảo mật</a>.</span></label>
     <div className="sr-actions sr-form-actions">
@@ -570,7 +570,7 @@ export default function StudentCompetency({ profile }: { profile: Profile | null
       {assessment && <p className="scomp-data-line">{dataUsedLine(assessment)}{warningCount > 0 && <> · <button type="button" className="scomp-link-button" onClick={() => scrollToSection("scomp-warnings")}>{warningCount.toLocaleString("vi-VN")} cảnh báo dữ liệu →</button></>}</p>}
       <p className="scomp-live" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
       {error && <div className="sr-error" role="alert">{error}</div>}
-      {live.error && !data && <div className="sr-error" role="alert">{live.error}<button type="button" onClick={() => setRevision((n) => n + 1)}>Tải lại</button></div>}
+      {live.error && !data && <div className="sr-error" role="alert">{live.error}<button type="button" onClick={() => setRevision((n) => n + 1)}>Thử lại</button></div>}
     </section>
     {live.loading && !data && <section className="sw-panel scomp-section scomp-loading" aria-busy="true"><p>Đang tải kết quả đánh giá…</p><div /><div /><div /></section>}
     {blocked && <section className="sw-panel scomp-section" aria-labelledby="scomp-blocked-title"><div className="sw-empty scomp-empty"><span className="scomp-empty-icon" aria-hidden="true"><Icon name={blocked === "transcript_required" ? "document" : "info"} /></span><h3 id="scomp-blocked-title">{PRECONDITION_COPY[blocked].title}</h3><p>{PRECONDITION_COPY[blocked].text}</p>{PRECONDITION_COPY[blocked].action && <a className="sw-outline" href={PRECONDITION_COPY[blocked].action!.href}>{PRECONDITION_COPY[blocked].action!.label}</a>}</div></section>}

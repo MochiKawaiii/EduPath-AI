@@ -34,7 +34,7 @@ const messages: Record<string, string> = {
   preview_changed:
     "Dữ liệu liên kết đã thay đổi. Hãy xem trước lại rồi xác nhận lưu.",
   plan_identity_mismatch:
-    "File thay thế phải cùng ngành và khóa với kế hoạch đang mở.",
+    "Tệp thay thế phải cùng ngành và khóa với kế hoạch đang mở.",
   review_warnings: "Hãy đọc và xác nhận các ghi chú trước khi lưu.",
   workbook_too_large: "Tệp vượt giới hạn 5 MB hoặc quá nhiều dữ liệu.",
   no_courses: "Không tìm thấy môn học trong kế hoạch.",
@@ -354,7 +354,7 @@ function PlanView({
     <section className="cm-workspace">
       <div className="cm-toolbar">
         <button className="am-outline" onClick={onBack}>
-          <Icon name="back" /> Quay lại danh sách kế hoạch
+          <Icon name="back" /> Trở về danh sách
         </button>
       </div>
       <Status {...remote} />
@@ -415,7 +415,7 @@ function PlanView({
               )}
             </div>
             <p className="cm-help">
-              Tệp nguồn: {p.sourceFilename}. Tín chỉ từng kỳ giữ theo file
+              Tệp nguồn: {p.sourceFilename}. Tín chỉ từng kỳ giữ theo tệp
               nguồn, không cộng mọi môn tự chọn hoặc chuyên ngành.
             </p>
           </div>
@@ -701,7 +701,7 @@ function ImportPlan({
     setError("");
     try {
       if (file.size > 5 * 1024 * 1024 || !/\.xlsx$/i.test(file.name))
-        throw new Error("Chọn file .xlsx tối đa 5 MB.");
+        throw new Error("Chọn tệp .xlsx tối đa 5 MB.");
       const result = await request<
         PlanDetail & { data: PlanData; previewHash: string }
       >(
@@ -741,7 +741,7 @@ function ImportPlan({
     >
       <div className="cm-dialog-body pm-import">
         <p>
-          Chọn kế hoạch hoàn chỉnh theo mẫu Khoa. Tên file bất kỳ; ngành và khóa
+          Chọn kế hoạch hoàn chỉnh theo mẫu Khoa. Tên tệp bất kỳ; ngành và khóa
           được đọc từ nội dung.
         </p>
         {target && (
@@ -751,7 +751,7 @@ function ImportPlan({
           </p>
         )}
         <label className="cm-upload">
-          File kế hoạch (.xlsx, tối đa 5 MB)
+          Tệp kế hoạch (.xlsx, tối đa 5 MB)
           <input
             type="file"
             accept=".xlsx"
@@ -1223,7 +1223,7 @@ function ItemEditor({
               }
             }}
           >
-            <Icon name="close" /> {editing ? "Hủy chỉnh sửa" : "Đóng"}
+            <Icon name="close" /> {editing ? "Hủy" : "Đóng"}
           </button>
           {canManage && (editing ? (
             <button

@@ -55,7 +55,7 @@ Vào **Chương trình đào tạo** trong menu bên trái hoặc menu tài kho�
 - Tìm tên hoặc mã học phần có/không dấu; lọc theo khối, bắt buộc/tự chọn, chuyên ngành, năm học, học kỳ 1–3. Bộ lọc cập nhật ngay khi chọn, tìm kiếm chờ 300 ms.
 - Chọn tên môn để xem tín chỉ, mô tả, loại môn, tiên quyết và học trước riêng biệt, cùng lịch học dự kiến/bộ môn/giờ học. Có thể mở môn được tham chiếu trong điều kiện để tra cứu tiếp.
 - Các mã hoặc điều kiện còn chưa rõ được ghi nhận là cần xác nhận với cố vấn học tập. Chức năng này chưa kết luận sinh viên đủ điều kiện đăng ký hay tốt nghiệp.
-- Trang tải lại khi trở về tab hoặc bấm **Tải lại** để nhận phiên bản/trạng thái mới nhất.
+- Trang tự tải lại khi quay về tab để nhận phiên bản/trạng thái mới nhất; nếu tải lỗi, bấm **Thử lại**.
 
 **Mô tả môn học:** ba file Excel ban đầu không có mô tả chi tiết. Quản trị viên bổ sung qua **Xem chi tiết** ở khung → **Xem chi tiết** ở học phần → **Chỉnh sửa học phần** → **Mô tả học phần**. Nội dung lưu trong phiên bản JSON của học phần và hiển thị ở cổng sinh viên. Không suy diễn mô tả từ tên môn hoặc lấy ghi chú thay mô tả; khi chưa có dữ liệu, trang thông báo chưa được cung cấp. Không cần migration mới cho trường tùy chọn này.
 

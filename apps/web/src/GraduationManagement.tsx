@@ -15,7 +15,7 @@ const errors: Record<string, string> = {
   invalid_workbook:
     "Tệp không đúng biểu mẫu tiêu chuẩn xét tốt nghiệp. Chọn Excel (.xls, .xlsx) hoặc ZIP chứa các biểu mẫu.",
   workbook_too_large:
-    "Tệp vượt giới hạn: tối đa 5 MB, 30 file trong ZIP và 50 sheet tiêu chuẩn.",
+    "Tệp vượt giới hạn: tối đa 5 MB, 30 tệp trong ZIP và 50 sheet tiêu chuẩn.",
   invalid_graduation_metadata:
     "Biểu mẫu thiếu tên tiêu chuẩn, khối lớp hoặc ngành đào tạo.",
   invalid_graduation_columns:
@@ -581,7 +581,7 @@ function Standard({
     <section className="cm-workspace grad-workspace">
       <div className="cm-toolbar">
         <button className="am-outline" onClick={back}>
-          <Icon name="back" /> Quay lại danh sách tiêu chuẩn
+          <Icon name="back" /> Trở về danh sách
         </button>
       </div>
       <Status {...remote} />

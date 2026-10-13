@@ -141,7 +141,7 @@ export default function PublicInformationPage({ page }: { page: "policy" | "faq"
 
   return (
     <div className={`lp-page pi-page${page === "policy" ? " pi-page-policy" : ""}`}>
-      <a className="lp-skip-link" href="#noi-dung">Chuyển đến nội dung</a>
+      <a className="lp-skip-link" href="#noi-dung">Chuyển đến nội dung chính</a>
       <header className="lp-header pi-header">
         <div className={`${page === "policy" ? "pi-policy-container" : "pi-container"} pi-header-inner`}>
           <EduPathBrand href="/" />

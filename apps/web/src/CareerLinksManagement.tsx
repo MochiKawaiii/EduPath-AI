@@ -21,7 +21,7 @@ export default function CareerLinksManagement({ canManage, revision, saved, clos
     }
   }, [remote.data, careerId]);
   return <>
-    <div><button className="am-outline" onClick={close}><Icon name="back" /> Quay lại danh sách vị trí</button></div>
+    <div><button className="am-outline" onClick={close}><Icon name="back" /> Trở về danh sách</button></div>
     <section className="cm-panel career-detail-panel cm-form">
       <div><h2>Liên kết kỹ năng</h2><p>Chọn vị trí nghề nghiệp để thêm, cập nhật hoặc gỡ liên kết kỹ năng và quản lý yêu cầu.</p></div>
       <Status {...remote} />

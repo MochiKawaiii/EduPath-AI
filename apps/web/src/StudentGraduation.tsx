@@ -472,7 +472,7 @@ export default function StudentGraduation() {
     {!data && !live.loading && <section className="sw-panel sg-section">
       <div className="sw-error sg-load-error" role="alert">
         <span>{live.error ?? "Không thể tải điều kiện xét tốt nghiệp. Vui lòng thử lại."}</span>
-        <button type="button" onClick={() => setRevision((value) => value + 1)}>Tải lại</button>
+        <button type="button" onClick={() => setRevision((value) => value + 1)}>Thử lại</button>
       </div>
     </section>}
     {data && <>
