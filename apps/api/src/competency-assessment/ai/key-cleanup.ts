@@ -59,7 +59,11 @@ export function cleanAiOutputKeys(output: AiOutput, names: ReadonlyMap<string, s
     summary: clean(output.summary),
     groupInsights: output.groupInsights.map((item) => ({ ...item, comment: clean(item.comment) })),
     strengths: output.strengths.map((item) => ({ ...item, comment: clean(item.comment) })),
-    improvements: output.improvements.map((item) => ({ ...item, comment: clean(item.comment) })),
+    improvements: output.improvements.map((item) => ({
+      ...item,
+      courses: item.courses.map((course) => ({ ...course, reason: clean(course.reason) })),
+      comment: clean(item.comment)
+    })),
     careerFit: { comment: clean(output.careerFit.comment) },
     gaps: output.gaps.map((gap) => ({
       ...gap,

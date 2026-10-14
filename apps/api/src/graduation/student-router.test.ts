@@ -2,6 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import type { AuthenticatedUser } from "../auth/types.js";
+import { CALC_VERSION } from "../competency-assessment/constants.js";
 import { syntheticCurriculum, syntheticStandards, syntheticStudentTerms, syntheticTranscript } from "../competency-assessment/fixtures/synthetic-k29.js";
 import type { DatabasePool } from "../db/pool.js";
 import type { GraduationData } from "./model.js";
@@ -141,7 +142,7 @@ describe("GET /api/student/graduation", () => {
       resolution: "specialty",
       transcript: { version: "00000000-0000-4000-8000-0000000000f1", updatedAt: "2026-10-01T08:00:00.000Z" },
       specialtySuggestion: null,
-      evaluation: { calcVersion: "comp-calc-v5", status: "fail", credits: { lower: 27, source: "printed" }, asOf: { latestTerm: "HK243" } },
+      evaluation: { calcVersion: CALC_VERSION, status: "fail", credits: { lower: 27, source: "printed" }, asOf: { latestTerm: "HK243" } },
     });
     expect(response.body.standard).toMatchObject({
       id: cnpm!.id, revisionId: cnpm!.revisionId, version: cnpm!.version, name: cnpm!.data.name, cohortCode: "K29",

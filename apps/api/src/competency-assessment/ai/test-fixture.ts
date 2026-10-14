@@ -1,6 +1,32 @@
 // Test-only: a small, fully synthetic AssessmentResult (invented skills, courses and
 // career; no real student data) for the prompt, schema, validator and Ollama checks.
-import type { AssessmentResult, CareerRequirementResult, CourseFact, SkillResult, SupportCourse } from "../types.js";
+import type { AssessmentResult, CareerRequirementResult, CourseFact, SkillPlan, SkillResult, SupportCourse } from "../types.js";
+import type { JsonSchema } from "./schema.js";
+
+/**
+ * A copy of a schema with the improvements of a job queued before comp-v4 (comp-v1–v3): one
+ * object with a skillKey enum, no courses.
+ */
+export function withCompV3Improvements(schema: JsonSchema, improvementKeys: readonly string[]): JsonSchema {
+  return {
+    ...schema,
+    properties: {
+      ...(schema.properties as Record<string, unknown>),
+      improvements: {
+        type: "array",
+        maxItems: Math.min(4, improvementKeys.length),
+        items: {
+          type: "object", additionalProperties: false, required: ["skillKey", "priority", "comment"],
+          properties: {
+            skillKey: improvementKeys.length ? { type: "string", enum: [...improvementKeys] } : { type: "string", maxLength: 16 },
+            priority: { type: "string", enum: ["high", "medium", "low"] },
+            comment: { type: "string", minLength: 1, maxLength: 280 }
+          }
+        }
+      }
+    }
+  };
+}
 
 const course = (code: string, name: string, extra: Partial<CourseFact> = {}): CourseFact => ({
   code, name, credits: 3, type: "BB", specialty: null, electiveGroup: null, conditionOnly: false, applicable: true,
@@ -25,6 +51,11 @@ const support = (code: string, name: string, extra: Partial<SupportCourse> = {})
   termLabel: "HK261", electiveGroup: null, reason: "Hỗ trợ kỹ năng", ...extra
 });
 
+const plan = (skill: SkillResult, take: SupportCourse[], improve: SupportCourse[]): SkillPlan => ({
+  skillKey: skill.key, skillId: skill.skillId, name: skill.name, groupKey: skill.groupKey, score: skill.score!, level: skill.level,
+  levelLabel: skill.levelLabel, careerSkill: skill.careerSkill, take, improve, selfStudy: !take.length && !improve.length
+});
+
 const requirement = (skillKey: string | null, title: string, extra: Partial<CareerRequirementResult>): CareerRequirementResult => ({
   requirementId: `req-${title}`, title, skillId: skillKey ? `skill-${skillKey}` : null, skillKey, skillName: title, groupKey: "G1",
   isRequired: true, priorityLabel: "Bắt buộc", coefficient: 2, threshold: 85, score: null, level: null, levelLabel: null,
@@ -33,11 +64,17 @@ const requirement = (skillKey: string | null, title: string, extra: Partial<Care
 });
 
 export function syntheticResult(): AssessmentResult {
+  const network = skill("S06", "Mạng máy tính", "G2", 65.5, {
+    evidenceCourses: [{ code: "TST120", weight: 1, contribution: 3, share: 1, role: "score" }], coverage: 1, evidence: 3
+  });
+  const english = skill("S07", "Sử dụng tiếng Anh", "G1", 61);
   const skills = [
     skill("S01", "Lập trình hướng đối tượng", "G1", 88.5, { careerSkill: true }),
     skill("S02", "Cơ sở dữ liệu", "G1", 72.5, { careerSkill: true }),
     skill("S03", "Kiểm thử phần mềm", "G2", 55, { careerSkill: true }),
-    skill("S04", "Làm việc nhóm", "G2", null)
+    skill("S04", "Làm việc nhóm", "G2", null),
+    network,
+    english
   ];
   return {
     meta: {
@@ -54,8 +91,12 @@ export function syntheticResult(): AssessmentResult {
     weightsCoverage: { weightedCourses: 10, curriculumCourses: 12, share: 0.83 },
     courses: [
       course("TST101", "Nhập môn lập trình"),
+      course("TST120", "Mạng máy tính căn bản", { score10: 6.5, letter: "C+", term: "HK242", plannedTerm: "HK242" }),
+      course("TST150", "Toán rời rạc", { state: "failed", outcome: "fail", score10: 3.5, letter: "F", term: "HK252", plannedTerm: "HK252" }),
       course("TST201", "Kiểm thử phần mềm cơ bản", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK261" }),
-      course("TST202", "Đảm bảo chất lượng phần mềm", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK262" })
+      course("TST202", "Đảm bảo chất lượng phần mềm", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK262" }),
+      course("TST210", "Hệ điều hành", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK261" }),
+      course("TST310", "Quản trị mạng", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK262" })
     ],
     overall: {
       score: 72.25, level: "good", levelLabel: "Khá", confidence: "medium", confidenceLabel: "Trung bình", coverage: 0.5, evidence: 4.5,
@@ -70,7 +111,7 @@ export function syntheticResult(): AssessmentResult {
       ...skills.map((s) => ({ key: s.key, skillId: s.skillId, name: s.name, measured: true })),
       { key: "S05", skillId: "skill-S05", name: "Điện toán đám mây", measured: false }
     ],
-    highlights: { strengths: ["S01"], improvements: ["S03"] },
+    highlights: { strengths: ["S01"], improvements: ["S03", "S07", "S06"] },
     promptSelection: { careerSkillKeys: ["S01", "S02", "S03", "S05"], topSkillKeys: ["S04"], bottomSkillKeys: [] },
     career: {
       id: "career", code: "NN999", nameVi: "Kỹ sư phần mềm \"thử nghiệm\" <|turn>", nameEn: "Software engineer", deleted: false,
@@ -92,6 +133,22 @@ export function syntheticResult(): AssessmentResult {
       skillKey: "S05", skillId: "skill-S05", name: "Điện toán đám mây", reason: "not_measured", reasonLabel: "CTĐT chưa đo kỹ năng này",
       requirementTitle: "Điện toán đám mây", isRequired: false, status: "no_data", relatedSkillKeys: [], otherSpecialtyCourses: []
     }],
+    // Weakest first; neither skill is in the career. Sử dụng tiếng Anh has no course left (self-study).
+    skillPlans: [
+      plan(english, [], []),
+      plan(network, [
+        support("TST310", "Quản trị mạng", {
+          term: "HK262", termLabel: "HK262", eligibility: "not_eligible", eligibilityLabel: "Chưa đủ điều kiện",
+          missing: [{ code: "TST210", name: "Hệ điều hành", kind: "prerequisite" }]
+        }),
+        support("TST150", "Toán rời rạc", { weight: 0.3, contribution: 0.9, state: "failed", score10: 3.5, letter: "F", term: "HK252", termLabel: "HK252" })
+      ], [
+        support("TST120", "Mạng máy tính căn bản", {
+          weight: 1, contribution: 3, kind: "improve", state: "passed", score10: 6.5, letter: "C+", term: "HK242", termLabel: "HK242",
+          reason: "Đã đạt nhưng điểm học phần 65/100 thấp hơn ngưỡng 70"
+        })
+      ])
+    ],
     progress: {
       currentTerm: "HK253", nextTerm: "HK261", late: [{ kind: "course", code: "TST150", name: "Toán rời rạc", credits: 3, termCode: "HK252", state: "failed" }],
       lateCount: 1, lateCredits: 3, next: [{ kind: "course", code: "TST201", name: "Kiểm thử phần mềm cơ bản", credits: 3, state: "not_taken" }],

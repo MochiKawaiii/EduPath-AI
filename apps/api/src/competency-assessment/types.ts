@@ -481,6 +481,29 @@ export type SelfStudyItem = {
   otherSpecialtyCourses: string[];
 };
 
+/**
+ * What to study for one scored skill below Khá that is not a career gap (comp-calc-v6).
+ * Career gaps (below/not studied/upcoming) keep their courses in CareerRequirementResult.
+ */
+export type SkillPlan = {
+  skillKey: string;
+  skillId: string;
+  name: string;
+  groupKey: string;
+  /** Stored like SkillResult.score: 2 decimals rounded down. */
+  score: number;
+  level: LevelCode;
+  levelLabel: string;
+  /** Required by the selected career (SkillResult.careerSkill). */
+  careerSkill: boolean;
+  /** Applicable courses not passed yet (a failed one is học lại), elective quota left; by credits × weight. */
+  take: SupportCourse[];
+  /** Passed courses whose own score is below Khá (học cải thiện), condition-only excluded; by credits × weight. */
+  improve: SupportCourse[];
+  /** No course to take or improve: self-study with a product as evidence. */
+  selfStudy: boolean;
+};
+
 export type PlanCourseRef = { code: string; name: string; credits: number | null; state: CourseState };
 
 export type LateEntry =
@@ -600,6 +623,11 @@ export type AssessmentResult = {
   courseSuggestions: CourseSuggestion[];
   /** "Kỹ năng cần tự học (CTĐT chưa đo)". */
   selfStudy: SelfStudyItem[];
+  /**
+   * Course plans of the scored skills below Khá that are not career gaps, condition-only excluded,
+   * weakest first like highlights.improvements, at most MAX_SKILL_PLANS (comp-calc-v6; absent before).
+   */
+  skillPlans: SkillPlan[];
   progress: PlanProgressResult | null;
   graduation: GraduationSummary;
   warnings: AssessmentWarning[];

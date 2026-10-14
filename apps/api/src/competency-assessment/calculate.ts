@@ -2,7 +2,7 @@ import { referencedCourseCodes } from "../curricula/course-codes.js";
 import {
   CALC_VERSION, CAREER_COEFFICIENTS, CAREER_THRESHOLDS, COVERAGE_BANDS, DEFICIT_BANDS, EVIDENCE_BANDS, FIT_BELOW_FLOOR,
   FIT_BELOW_MAX_CREDIT, FIT_LABEL_THRESHOLDS, FIT_MIN_DATA_SHARE, HIGHLIGHT_COUNT, LEVEL_THRESHOLDS, MAX_RELATED_SKILLS,
-  MAX_SUPPORT_COURSES, MIN_WEIGHTED_COURSE_SHARE, SCOPE_MAX_LENGTH,
+  MAX_SKILL_PLANS, MAX_SUPPORT_COURSES, MIN_WEIGHTED_COURSE_SHARE, SCOPE_MAX_LENGTH,
 } from "./constants.js";
 import {
   conditionOnlyCodes, courseKey, creditCrossCheck, currentTermCode, curriculumTermCode, deriveElectiveGroups, electiveCodeOf,
@@ -17,7 +17,7 @@ import {
 import type {
   AssessmentInputs, AssessmentResult, AssessmentWarning, AttemptOutcome, CareerRequirementResult, CareerResult, Confidence,
   CourseFact, CourseState, CourseSuggestion, DeficitBand, Eligibility, EvidenceRole, FitCode, GapStatus, GroupResult, LevelCode,
-  NotApplicableReason, PrerequisiteGap, SelfStudyItem, SelfStudyReason, SkillEvidenceRow, SkillResult, SupportCourse,
+  NotApplicableReason, PrerequisiteGap, SelfStudyItem, SelfStudyReason, SkillEvidenceRow, SkillPlan, SkillResult, SupportCourse,
 } from "./types.js";
 
 /* ----------------------------- labels ----------------------------- */
@@ -155,6 +155,9 @@ type Row = {
 };
 
 type Link = { row: Row; weight: number };
+
+/** Career requirement statuses that get course suggestions (supportCourses/improveCourses). */
+const CAREER_GAP_STATUSES: ReadonlySet<GapStatus> = new Set<GapStatus>(["below", "not_studied", "upcoming"]);
 
 type ElectiveState = { code: string; quota: number | null; fill: number; remaining: number | null; rows: Row[] };
 
@@ -468,6 +471,15 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
         : `${vn(row.credits)} tín chỉ × trọng số ${vn(weight)} cho kỹ năng này`,
     };
   };
+  const byContribution = (a: Link, b: Link) => b.row.credits * b.weight - a.row.credits * a.weight || compareCode(a.row.code, b.row.code);
+  /** Applicable courses still to study (a failed one is a retake), elective quota left; with prerequisites and term. */
+  const takeCourses = (links: readonly Link[], threshold: number) =>
+    links.filter((link) => link.row.applicable && !notChosen(link.row) && !isPassedState(link.row.state)).sort(byContribution)
+      .slice(0, MAX_SUPPORT_COURSES).map((link) => supportCourse(link.row, link.weight, "take", threshold));
+  /** Passed courses whose own score is below the threshold (học cải thiện); never a condition-only course. */
+  const improveCourses = (links: readonly Link[], threshold: number) =>
+    links.filter((link) => link.row.state === "passed" && link.row.score10 !== null && !link.row.conditionOnly && link.row.score10 * 10 < threshold)
+      .sort(byContribution).slice(0, MAX_SUPPORT_COURSES).map((link) => supportCourse(link.row, link.weight, "improve", threshold));
 
   /* ---- 7. career gaps and fit (§7.5, §7.6) ---- */
   const workById = new Map(work.map((skill) => [skill.skillId, skill]));
@@ -508,14 +520,8 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
       const band: DeficitBand | null = deficit !== null ? deficitBand(deficit) : status === "not_studied" ? "not_studied" : null;
       const level = skill ? levelOf(skill.score, skill.status === "exempt_only") : null;
       const coverage = skill && skill.all.den > 0 ? Math.min(1, skill.all.num / skill.all.den) : null;
-      const gap = status === "below" || status === "not_studied" || status === "upcoming";
-      const take = gap ? applicableLinks.filter((link) => !notChosen(link.row) && !isPassedState(link.row.state))
-        .sort((a, b) => b.row.credits * b.weight - a.row.credits * a.weight || compareCode(a.row.code, b.row.code))
-        .slice(0, MAX_SUPPORT_COURSES).map((link) => supportCourse(link.row, link.weight, "take", threshold)) : [];
-      const improve = status === "below" ? (skill?.links ?? []).filter((link) => link.row.state === "passed" && link.row.score10 !== null &&
-        !link.row.conditionOnly && link.row.score10 * 10 < threshold)
-        .sort((a, b) => b.row.credits * b.weight - a.row.credits * a.weight || compareCode(a.row.code, b.row.code))
-        .slice(0, MAX_SUPPORT_COURSES).map((link) => supportCourse(link.row, link.weight, "improve", threshold)) : [];
+      const take = CAREER_GAP_STATUSES.has(status) ? takeCourses(applicableLinks, threshold) : [];
+      const improve = status === "below" ? improveCourses(skill?.links ?? [], threshold) : [];
       let selfStudyReason: SelfStudyReason | null = null;
       if (status === "no_data" && skillKey) selfStudyReason = noDataReason === "other_specialty" ? "other_specialty" : "not_measured";
       else if (status === "not_studied" && applicableLinks.every((link) => notChosen(link.row))) selfStudyReason = "elective_quota_used";
@@ -699,12 +705,28 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
       progress.countMismatches.map((item) => `${item.termCode}: “${item.label}” có ${item.actual} môn`));
   }
 
-  /* ---- 12. highlights, prompt selection, directory, meta ---- */
+  /* ---- 12. highlights, prompt selection, course plans, directory, meta ---- */
   const ranked = skills.filter((skill) => skill.status === "scored" && !skill.conditionOnly);
-  const strengths = ranked.filter((skill) => rawScore.get(skill.key)!.score! >= LEVEL_THRESHOLDS.good).slice(0, HIGHLIGHT_COUNT).map((skill) => skill.key);
-  const improvements = ranked.filter((skill) => rawScore.get(skill.key)!.score! < LEVEL_THRESHOLDS.good)
-    .sort((a, b) => rawScore.get(a.key)!.score! - rawScore.get(b.key)!.score! || rawScore.get(b.key)!.evidence - rawScore.get(a.key)!.evidence || compareCode(a.key, b.key))
-    .slice(0, HIGHLIGHT_COUNT).map((skill) => skill.key);
+  const belowGood = (skill: SkillResult) => rawScore.get(skill.key)!.score! < LEVEL_THRESHOLDS.good;
+  /** Unrounded score ascending, evidence descending, key. */
+  const weakestFirst = (a: SkillResult, b: SkillResult) =>
+    rawScore.get(a.key)!.score! - rawScore.get(b.key)!.score! || rawScore.get(b.key)!.evidence - rawScore.get(a.key)!.evidence || compareCode(a.key, b.key);
+  const strengths = ranked.filter((skill) => !belowGood(skill)).slice(0, HIGHLIGHT_COUNT).map((skill) => skill.key);
+  const improvements = ranked.filter(belowGood).sort(weakestFirst).slice(0, HIGHLIGHT_COUNT).map((skill) => skill.key);
+  // comp-calc-v6: courses for the weak skills that no career gap covers (a career gap has its own).
+  const careerGapIds = new Set((careerResult?.requirements ?? []).filter((row) => CAREER_GAP_STATUSES.has(row.status))
+    .map((row) => row.skillId).filter((id): id is string => id !== null));
+  const linksByKey = new Map(work.map((skill) => [skill.key, skill.links]));
+  const skillPlans: SkillPlan[] = ranked.filter((skill) => belowGood(skill) && !careerGapIds.has(skill.skillId)).sort(weakestFirst)
+    .slice(0, MAX_SKILL_PLANS).map((skill) => {
+      const links = linksByKey.get(skill.key) ?? [];
+      const take = takeCourses(links, LEVEL_THRESHOLDS.good);
+      const improve = improveCourses(links, LEVEL_THRESHOLDS.good);
+      return {
+        skillKey: skill.key, skillId: skill.skillId, name: skill.name, groupKey: skill.groupKey, score: skill.score!,
+        level: skill.level, levelLabel: skill.levelLabel, careerSkill: skill.careerSkill, take, improve, selfStudy: !take.length && !improve.length,
+      };
+    });
   const careerSkillKeys = [...new Set((careerResult?.requirements ?? []).map((row) => row.skillKey).filter((key): key is string => key !== null))];
   const rest = ranked.filter((skill) => !careerSkillKeys.includes(skill.key));
   const topSkillKeys = rest.slice(0, HIGHLIGHT_COUNT).map((skill) => skill.key);
@@ -750,6 +772,7 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
     career: careerResult,
     courseSuggestions,
     selfStudy,
+    skillPlans,
     progress,
     graduation,
     warnings,

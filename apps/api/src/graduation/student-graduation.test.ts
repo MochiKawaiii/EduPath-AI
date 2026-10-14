@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import { describe, expect, it, vi } from "vitest";
 import { syntheticCurriculum, syntheticStandards, syntheticStudentTerms, syntheticTranscript } from "../competency-assessment/fixtures/synthetic-k29.js";
 import type { CurriculumCourseInput } from "../competency-assessment/types.js";
 import type { DatabasePool } from "../db/pool.js";
 import type { TranscriptData } from "../student/transcript-parser.js";
+import { GRADUATION_ADVICE_PROMPT_VERSION } from "./advice/prompt.js";
 import { evaluateGraduation, type GraduationEvaluation, type GraduationImprovementCandidate } from "./evaluation.js";
 import {
   canonicalJson, graduationFingerprint, graduationFingerprintFacts, loadStudentGraduation, readStudentGraduation,
@@ -155,8 +157,8 @@ describe("fingerprint", () => {
     const input = { profile: base.profile, standard: base.standard!, evaluation: base.evaluation! };
     const facts = graduationFingerprintFacts(input);
     expect(facts).toMatchObject({ standardRevisionId: base.standard!.revisionId, transcriptVersion, calcVersion: base.evaluation!.calcVersion, status: "fail" });
-    // Not-passed courses of the groups that are not passed, with their state.
-    expect(facts.groups[0]!.missing).toEqual([["71ITIN40304", "not_taken", 4, 0], ["71ITSE41203", "in_progress", 3, 1]]);
+    // Not-passed courses of the groups that are not passed, with their state (code, state, credits, attempts, condition-only).
+    expect(facts.groups[0]!.missing).toEqual([["71ITIN40304", "not_taken", 4, 0, false], ["71ITSE41203", "in_progress", 3, 1, false]]);
     expect(facts.groups[1]!.missing).toEqual([]);
     expect(graduationFingerprint({ ...input, standard: { revisionId: "other-revision" } })).not.toBe(base.fingerprint);
     expect(graduationFingerprint({ ...input, profile: { ...input.profile, cohortCode: "K30" } })).not.toBe(base.fingerprint);
@@ -194,6 +196,11 @@ describe("fingerprint", () => {
       ["warning count", edited((evaluation) => { evaluation.warnings[0]!.count = 12; })],
       // A new row: the listed row is the same object as the group's row, whose credits are a fact of their own.
       ["in-progress credits", edited((evaluation) => { evaluation.inProgress[0] = { ...evaluation.inProgress[0]!, credits: 4 }; })],
+      // A CTĐT that marks a missing course condition-only (the credit note of the advice leaves it out).
+      ["missing course condition-only", edited((evaluation) => {
+        const course = evaluation.groups[0]!.courses.find((row) => row.code === "71ITIN40304")!;
+        course.conditionOnly = true;
+      })],
       ["profile.specialty", graduationFingerprint({ ...input, profile: { ...input.profile, specialty: "CNDL" } })],
     ];
     for (const [fact, fingerprint] of facts) expect({ fact, changed: fingerprint !== hash }).toEqual({ fact, changed: true });
@@ -207,6 +214,17 @@ describe("fingerprint", () => {
       evaluation.warnings.push({ code: "credits_mismatch", printed: 27, computedLower, computedUpper: computedLower });
     });
     expect(mismatch(29)).not.toBe(mismatch(30));
+  });
+
+  it("carries the advice prompt version, so advice written by an older prompt is not current", async () => {
+    const base = await readStudentGraduation(fakeDb(), userId);
+    const input = { profile: base.profile, standard: base.standard!, evaluation: base.evaluation! };
+    const facts = graduationFingerprintFacts(input);
+    expect(facts).toMatchObject({ v: 2, promptVersion: GRADUATION_ADVICE_PROMPT_VERSION });
+    expect(GRADUATION_ADVICE_PROMPT_VERSION).toBe("grad-advice-v2");
+    const hash = (value: unknown) => createHash("sha256").update(canonicalJson(value)).digest("hex");
+    expect(hash(facts)).toBe(base.fingerprint);
+    expect(hash({ ...facts, promptVersion: "grad-advice-v1" })).not.toBe(base.fingerprint);
   });
 
   it("changes when only the CTĐT rows differ (same transcript version and standard revision)", async () => {

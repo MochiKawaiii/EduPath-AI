@@ -3,7 +3,7 @@ import { Icon } from "./student-icons";
 import { useLiveData } from "./use-live-data";
 import { competencyPolicyHref, policyVersion } from "./public-information";
 import type { StudentProfile } from "./StudentOverview";
-import { specialtyLabel, type AiStatus, type AssessmentResult, type AssessmentStatusResponse, type CareerRequirementResult, type CourseSuggestion, type LatestAssessmentResponse, type LevelCode, type SkillResult, type StoredAssessment } from "./competency-assessment-types";
+import { specialtyLabel, type AiStatus, type AssessmentResult, type AssessmentStatusResponse, type CareerRequirementResult, type CourseSuggestion, type LatestAssessmentResponse, type LevelCode, type SkillPlan, type SkillResult, type StoredAssessment, type SupportCourse } from "./competency-assessment-types";
 import {
   COMPETENCY_API, CONFIDENCE_LABELS, COURSE_STATE_LABELS, EMPTY_SKILL_FILTERS, LEVEL_COLUMNS, LEVEL_SCALE, PRECONDITION_COPY, PRIORITY_LABELS,
   aiErrorMessage, aiStateCopy, bucketSkills, canRegenerate, courseStanding, dataUsedLine, eligibilityDisplay, errorMessage, filterSkills, formatDateTime,
@@ -490,18 +490,49 @@ function CourseCard({ course, result }: { course: CourseSuggestion; result: Asse
   </li>;
 }
 
+/** One course of a weak skill: what to do with it, where the student stands, and whether it can be registered. */
+function PlanCourseLine({ course }: { course: SupportCourse }) {
+  const standing = courseStanding(course);
+  const action = course.kind === "improve" ? "Học cải thiện" : course.state === "failed" ? "Học lại" : course.state === "in_progress" ? "Đang học" : "Học mới";
+  return <li>
+    <div className="scomp-plan-course-head"><span className="scomp-plan-action">{action}</span><strong>{course.name}</strong><span className="scomp-code">{course.code} · {formatNumber(course.credits)} TC</span></div>
+    <div className="scomp-plan-course-facts">
+      <StatusText tone={standing.tone} glyph={STANDING_GLYPH[standing.tone]} text={standing.text} />
+      {course.kind === "take" && course.state !== "in_progress" && <StatusText {...eligibilityDisplay(course.eligibility, course.missing)} />}
+      {course.kind === "take" && <span>{course.term ? (course.termSource === "plan" ? `${course.term} theo KHĐT` : `${course.term} theo CTĐT`) : "Chưa xếp lịch"}</span>}
+    </div>
+  </li>;
+}
+
+function SkillPlans({ plans }: { plans: SkillPlan[] }) {
+  return <>
+    <h3 className="scomp-subtitle">Kỹ năng cần củng cố (dưới mức Khá)</h3>
+    <p className="scomp-meta">Kỹ năng ở mức Cơ bản hoặc Cần củng cố, kèm học phần cụ thể để học cải thiện hoặc học mới. Học phần đã đạt có thể đăng ký học cải thiện theo quy chế của trường.</p>
+    {plans.length ? <ul className="scomp-plan-cards">{plans.map((plan) => {
+      const courses = [...plan.improve, ...plan.take];
+      return <li key={plan.skillKey}>
+        <div className="scomp-course-head"><strong>Kỹ năng: {plan.name}</strong><LevelBadge level={plan.level} label={`${plan.levelLabel} · ${formatScore(plan.score)}`} /></div>
+        {courses.length ? <ul className="scomp-plan-courses">{courses.map((course) => <PlanCourseLine key={`${course.kind}:${course.code}`} course={course} />)}</ul>
+          : <p className="scomp-meta">Không còn học phần nào trong chương trình của bạn để học thêm cho kỹ năng này; hãy tự học và làm một sản phẩm nhỏ để kiểm chứng.</p>}
+      </li>;
+    })}</ul> : <p className="scomp-meta">Không có kỹ năng nào dưới mức Khá ngoài các kỹ năng nghề ở trên.</p>}
+  </>;
+}
+
 function CoursesSection({ result, ai }: { result: AssessmentResult; ai: MappedAiOutput | null }) {
   const take = result.courseSuggestions.filter((course) => course.kind === "take");
   const improve = result.courseSuggestions.filter((course) => course.kind === "improve");
   const aiTips = new Map((ai?.gaps ?? []).map((gap) => [gap.key, gap.selfStudy]));
   const courseNames = new Map(result.courses.map((course) => [course.code, course.name]));
-  return <Section id="scomp-courses" title="Học phần nên ưu tiên và tự học" description={result.career ? "Học phần cụ thể giúp bổ sung các kỹ năng nghề chưa đạt, xếp theo mức đóng góp cho kỹ năng; mỗi học phần ghi rõ bạn đã học chưa, điểm hiện tại và đã đủ điều kiện đăng ký chưa." : "Chọn nghề mục tiêu để nhận gợi ý học phần theo khoảng trống kỹ năng."}>
+  const plans = result.skillPlans;
+  return <Section id="scomp-courses" title="Học phần nên ưu tiên và tự học" description={result.career ? "Học phần cụ thể giúp bổ sung các kỹ năng nghề chưa đạt và củng cố các kỹ năng còn yếu; mỗi học phần ghi rõ bạn đã học chưa, điểm hiện tại và đã đủ điều kiện đăng ký chưa." : "Chọn nghề mục tiêu để nhận gợi ý học phần theo khoảng trống kỹ năng."}>
     {result.career && <>
       <h3 className="scomp-subtitle">Học phần nên học</h3>
       {take.length ? <ol className="scomp-course-list">{take.map((course) => <CourseCard key={course.code} course={course} result={result} />)}</ol> : <p className="scomp-meta">Không còn học phần nào cần học thêm cho các kỹ năng nghề chưa đạt.</p>}
       <h3 className="scomp-subtitle">Học cải thiện</h3>
       {improve.length ? <><p className="scomp-meta">Học phần bạn đã đạt nhưng điểm thấp hơn ngưỡng của kỹ năng nghề. Có thể đăng ký học cải thiện theo quy chế của trường.</p><ol className="scomp-course-list">{improve.map((course) => <CourseCard key={course.code} course={course} result={result} />)}</ol></> : <p className="scomp-meta">Không có học phần nào cần học cải thiện.</p>}
     </>}
+    {plans && <SkillPlans plans={plans} />}
     <h3 className="scomp-subtitle">Kỹ năng cần tự học (CTĐT chưa đo)</h3>
     {result.selfStudy.length ? <ul className="scomp-selfstudy">{result.selfStudy.map((item) => {
       const related = item.relatedSkillKeys.map((key) => skillName(result, key)).filter(Boolean);
@@ -548,7 +579,10 @@ function AiContent({ output }: { output: MappedAiOutput }) {
     {output.groupInsights.length > 0 && <div className="scomp-ai-block"><h3>Theo nhóm kỹ năng</h3><ul>{output.groupInsights.map((item) => <li key={item.key}><strong>{item.name}.</strong> {item.comment}</li>)}</ul></div>}
     <div className="scomp-ai-columns">
       {output.strengths.length > 0 && <div className="scomp-ai-block"><h3>Điểm mạnh</h3><ul>{output.strengths.map((item) => <li key={item.key}><strong>{item.name}.</strong> {item.comment}</li>)}</ul></div>}
-      {output.improvements.length > 0 && <div className="scomp-ai-block"><h3>Nên cải thiện</h3><ul>{output.improvements.map((item) => <li key={item.key}><strong>{item.name}</strong> <span className="scomp-priority">{PRIORITY_LABELS[item.priority]}</span>. {item.comment}</li>)}</ul></div>}
+      {output.improvements.length > 0 && <div className="scomp-ai-block"><h3>Nên cải thiện</h3><ul>{output.improvements.map((item) => <li key={item.key}>
+        <strong>{item.name}</strong> <span className="scomp-priority">{PRIORITY_LABELS[item.priority]}</span>. {item.comment}
+        {item.courses.length > 0 && <ul className="scomp-ai-sub">{item.courses.map((course) => <li key={course.code}>Học phần {course.name} ({course.code}){course.reason && `: ${course.reason}`}</li>)}</ul>}
+      </li>)}</ul></div>}
     </div>
     {output.progress && <div className="scomp-ai-block"><h3>Tiến độ học tập</h3><p className="scomp-prose">{output.progress}</p></div>}
     {output.nextSteps.length > 0 && <div className="scomp-ai-block"><h3>Bước tiếp theo</h3><ol>{output.nextSteps.map((step) => <li key={step}>{step}</li>)}</ol></div>}

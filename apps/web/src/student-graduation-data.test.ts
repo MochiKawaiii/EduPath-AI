@@ -278,6 +278,19 @@ describe("suggestions", () => {
     expect(next!.courses.map((entry) => entry.code)).toEqual(["71ITGR40303"]);
     expect(next!.note).toBe("Bạn đã học theo phương án này: Chuyên đề Tốt nghiệp 1 (đã đạt).");
     expect(next!.alternative).toBeUndefined();
+    // A replacement course in progress counts once it passes (same arithmetic as the advice prompt).
+    const ongoing = { ...thesisGroup, courses: [{ ...courses[0]!, state: "in_progress" as const }, courses[1]!, courses[2]!] };
+    const [half] = suggestionItems(evaluation({ status: "fail", groupStatus: "fail", groups: [ongoing] }));
+    expect(half!.text).toBe("Học thêm ít nhất 3 tín chỉ trong nhóm tự chọn TC306 theo phương án học phần thay thế đồ án tốt nghiệp mà bạn đã bắt đầu (ngoài học phần đang học).");
+    expect(half!.courses.map((entry) => entry.code)).toEqual(["71ITGR40303"]);
+    const closing = { ...started, courses: [{ ...courses[0]!, state: "passed" as const }, courses[1]!, { ...courses[2]!, state: "in_progress" as const }] };
+    const [last] = suggestionItems(evaluation({ status: "fail", groupStatus: "fail", groups: [closing] }));
+    expect(last!.text).toBe("Hoàn thành Chuyên đề Tốt nghiệp 2 đang học là đủ số tín chỉ của nhóm tự chọn TC306 theo phương án học phần thay thế đồ án tốt nghiệp.");
+    expect(last!.courses).toEqual([]);
+    expect(last!.note).toBe("Bạn đã học theo phương án này: Chuyên đề Tốt nghiệp 1 (đã đạt) và Chuyên đề Tốt nghiệp 2 (đang học).");
+    // A failed replacement does not start that path.
+    const failedOnce = { ...thesisGroup, courses: [{ ...courses[0]!, state: "failed" as const }, courses[1]!, courses[2]!] };
+    expect(thesisOption(failedOnce)?.path).toBe("not_started");
 
     const writing = { ...thesisGroup, courses: [courses[0]!, { ...courses[1]!, state: "in_progress" as const }, courses[2]!] };
     expect(thesisOption(writing)?.path).toBe("thesis_in_progress");

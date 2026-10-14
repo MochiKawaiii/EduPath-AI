@@ -102,6 +102,15 @@ export const fixtureResult: AssessmentResult = {
     { ...improveAlgorithms, skills: [{ key: "S04", status: "below" }], priority: 3.2, reason: improveAlgorithms.reason },
   ],
   selfStudy: [{ skillKey: "S09", skillId: "skill-S09", name: "Docker", reason: "not_measured", reasonLabel: "CTĐT chưa có học phần đo kỹ năng này", requirementTitle: "Docker", isRequired: false, status: "no_data", relatedSkillKeys: ["S08"], otherSpecialtyCourses: [] }],
+  skillPlans: [
+    {
+      skillKey: "S10", skillId: "skill-S10", name: "Sử dụng tiếng Anh", groupKey: "G2", score: 61.5, level: "basic", levelLabel: "Cơ bản", careerSkill: false,
+      improve: [{ ...improveAlgorithms, code: "TST110", name: "Tiếng Anh 2", credits: 3, score10: 5.8, letter: "C", reason: "Đã đạt nhưng điểm học phần 58/100 thấp hơn ngưỡng 70" }],
+      take: [{ ...supportTesting, code: "TST111", name: "Tiếng Anh chuyên ngành", eligibility: "eligible", eligibilityLabel: "Đủ điều kiện", missing: [], term: "HK261" }],
+      selfStudy: false,
+    },
+    { skillKey: "S11", skillId: "skill-S11", name: "Định tuyến mạng", groupKey: "G1", score: 48, level: "needs_work", levelLabel: "Cần củng cố", careerSkill: false, take: [], improve: [], selfStudy: true },
+  ],
   progress: {
     currentTerm: "HK252", nextTerm: "HK261",
     late: [{ kind: "course", code: "TST109", name: "Công nghệ phần mềm", credits: 3, termCode: "HK252", state: "not_taken" }],
@@ -127,7 +136,7 @@ export const fixtureAiOutput: AiOutput = {
   summary: "Bạn đang có nền tảng lập trình web rất tốt, thể hiện qua kết quả học phần Lập trình web. Phần cần chú ý nhất là thiết kế cơ sở dữ liệu và giải thuật.",
   groupInsights: [{ groupKey: "G1", comment: "Nhóm kiến thức chuyên môn ở mức Khá, kéo lên chủ yếu nhờ các học phần lập trình." }, { groupKey: "G9", comment: "Không ánh xạ được, phải bị bỏ." }],
   strengths: [{ skillKey: "S01", comment: "Điểm học phần Lập trình web cao cho thấy bạn làm chủ được giao diện và xử lý phía máy chủ." }],
-  improvements: [{ skillKey: "S04", priority: "high", comment: "Ôn lại các cấu trúc dữ liệu cơ bản và luyện bài tập có giới hạn thời gian." }],
+  improvements: [{ skillKey: "S04", priority: "high", comment: "Ôn lại các cấu trúc dữ liệu cơ bản và luyện bài tập có giới hạn thời gian.", courses: [{ courseCode: "TST102", reason: "Đã đạt với điểm 6,4; học cải thiện để nâng kỹ năng giải thuật." }, { courseCode: "XXX998", reason: "Không có trong danh sách, phải bị bỏ." }] }],
   careerFit: { comment: "Với nghề Lập trình viên web, bạn đã đạt kỹ năng lập trình web; cần nâng thiết kế cơ sở dữ liệu lên mức Thành thạo." },
   gaps: [{ skillKey: "S07", priority: "medium", explanation: "Học phần Kiểm thử phần mềm nằm ở học kỳ tới, nên chuẩn bị trước.", courses: [{ courseCode: "TST105", reason: "Đo trực tiếp kỹ năng kiểm thử." }, { courseCode: "XXX999", reason: "Không có trong danh sách, phải bị bỏ." }], selfStudy: ["Viết kiểm thử đơn vị cho một dự án cá nhân."] },
     { skillKey: "S09", priority: "low", explanation: "Chương trình chưa có học phần đo Docker.", courses: [], selfStudy: ["Đóng gói ứng dụng web của bạn bằng Docker."] }],

@@ -465,9 +465,12 @@ export function thesisOption(group: GraduationGroupEvaluation): ThesisOption | n
   const thesis = group.courses.find((course) => THESIS_NAME.test(foldName(course.name)) && course.credits !== null && course.credits >= required);
   if (!thesis) return null;
   const replacements = group.courses.filter((course) => course !== thesis);
-  const started = replacements.some((course) => isPassedState(course.state) || course.state === "in_progress" || course.state === "graded_unknown");
+  const started = replacements.some((course) => startsReplacementPath(course.state));
   return { thesis, replacements, path: thesis.state === "in_progress" ? "thesis_in_progress" : started ? "replacement" : "not_started" };
 }
+
+/** A replacement course in this state puts the student on the replacement path; a failed attempt does not. */
+const startsReplacementPath = (state: GradCourseState) => isPassedState(state) || state === "in_progress" || state === "graded_unknown";
 
 /** "đồ án tốt nghiệp" or "khóa luận tốt nghiệp", as the course is named. */
 const thesisKind = (thesis: Pick<GraduationCourseRow, "name">) => /khoa luan/.test(foldName(thesis.name)) ? "khóa luận tốt nghiệp" : "đồ án tốt nghiệp";
@@ -481,15 +484,22 @@ function thesisSuggestion(group: GraduationGroupEvaluation, option: ThesisOption
     return { key, text: `Hoàn thành ${thesis.name}${credits} bạn đang học: học phần này đủ số tín chỉ của ${title}.`, coursesLabel: null, courses: [suggestionCourse(thesis, 0)], note: null };
   }
   if (path === "replacement") {
-    const done = replacements.filter((course) => isPassedState(course.state) || course.state === "in_progress" || course.state === "graded_unknown");
+    // Same arithmetic as the advice prompt: courses in progress or without a result count once they pass.
+    const started = replacements.filter((course) => startsReplacementPath(course.state));
+    const pending = started.filter((course) => !isPassedState(course.state));
+    const pendingCredits = pending.every((course) => course.credits !== null) ? pending.reduce((sum, course) => sum + course.credits!, 0) : null;
+    const need = !pending.length ? group.remaining : group.remaining === null || pendingCredits === null ? null : Math.max(0, group.remaining - pendingCredits);
+    const rest = need !== null && need <= 0 ? [] : replacements.filter((course) => !startsReplacementPath(course.state));
     return {
       key,
-      text: group.remaining !== null && group.remaining > 0
-        ? `Học thêm ít nhất ${formatNumber(group.remaining)} tín chỉ trong ${title} theo phương án học phần thay thế ${thesisKind(thesis)} mà bạn đã bắt đầu.`
-        : `Hoàn thành ${title} theo phương án học phần thay thế ${thesisKind(thesis)} mà bạn đã bắt đầu.`,
-      coursesLabel: "Học phần thay thế còn lại:",
-      courses: replacements.filter((course) => !isPassedState(course.state)).map(suggestionCourse),
-      note: `Bạn đã học theo phương án này: ${joinVi(done.map((course) => `${course.name} (${courseStateText(course).toLowerCase()})`))}.`,
+      text: need !== null && need <= 0 && pending.length
+        ? `Hoàn thành ${joinVi(pending.map((course) => course.name))} đang học là đủ số tín chỉ của ${title} theo phương án học phần thay thế ${thesisKind(thesis)}.`
+        : need !== null && need > 0
+          ? `Học thêm ít nhất ${formatNumber(need)} tín chỉ trong ${title} theo phương án học phần thay thế ${thesisKind(thesis)} mà bạn đã bắt đầu${pending.length ? ` (ngoài ${pending.length > 1 ? "các học phần" : "học phần"} đang học)` : ""}.`
+          : `Hoàn thành ${title} theo phương án học phần thay thế ${thesisKind(thesis)} mà bạn đã bắt đầu.`,
+      coursesLabel: rest.length ? "Học phần thay thế còn lại:" : null,
+      courses: rest.map(suggestionCourse),
+      note: `Bạn đã học theo phương án này: ${joinVi(started.map((course) => `${course.name} (${courseStateText(course).toLowerCase()})`))}.`,
     };
   }
   const open = replacements.filter((course) => !isPassedState(course.state));

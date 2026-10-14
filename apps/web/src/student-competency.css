@@ -247,6 +247,16 @@
 .scomp-page .scomp-grad-unresolved { display: grid; gap: 8px; justify-items: start; }
 .scomp-page .scomp-doc-link { color: var(--ep-action, #a7123b); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
+/* Weak skills and their courses (comp-calc-v6) */
+.scomp-page .scomp-plan-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.scomp-page .scomp-plan-cards > li { display: grid; align-content: start; gap: 10px; padding: 14px; border: 1px solid var(--sw-border); border-radius: 8px; background: #fff; }
+.scomp-page .scomp-plan-courses { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.scomp-page .scomp-plan-courses > li { display: grid; gap: 4px; padding: 8px 10px; border-radius: 6px; background: #f8fafc; font-size: 13px; }
+.scomp-page .scomp-plan-course-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.scomp-page .scomp-plan-action { padding: 0 6px; border: 1px solid #c9d6ea; border-radius: 4px; color: var(--scomp-l4); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.scomp-page .scomp-plan-course-facts { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--sw-muted); font-size: 12px; }
+.scomp-page .scomp-plan-course-facts .scomp-status { white-space: normal; }
+
 /* Skill gap summary */
 .scomp-page .sgap-missing { display: grid; gap: 8px; }
 .scomp-page .sgap-missing ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -300,7 +310,8 @@
   .scomp-page .scomp-skill > summary .scomp-skill-score { grid-column: 3; grid-row: 1; }
   .scomp-page .scomp-skill-body { padding-left: 14px; }
   .scomp-page .scomp-course-list,
-  .scomp-page .scomp-selfstudy { grid-template-columns: 1fr; }
+  .scomp-page .scomp-selfstudy,
+  .scomp-page .scomp-plan-cards { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   .scomp-page * { scroll-behavior: auto !important; transition: none !important; }

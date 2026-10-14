@@ -29,18 +29,25 @@ export type AiValidationContext = OutputSchemaContext & {
 
 const text = (max: number) => z.string().max(max).refine((value) => value.trim().length > 0, "empty");
 const priority = z.enum(AI_PRIORITIES);
+const courseChoice = z.object({ courseCode: z.string().max(32), reason: text(L.courseReason) }).strict();
 
 export const aiOutputSchema = z.object({
   summary: text(L.summary),
   groupInsights: z.array(z.object({ groupKey: z.string().max(16), comment: text(L.groupComment) }).strict()).max(L.groupInsights),
   strengths: z.array(z.object({ skillKey: z.string().max(16), comment: text(L.skillComment) }).strict()).max(L.strengths),
-  improvements: z.array(z.object({ skillKey: z.string().max(16), priority, comment: text(L.skillComment) }).strict()).max(L.improvements),
+  improvements: z.array(z.object({
+    skillKey: z.string().max(16),
+    priority,
+    // comp-v4. Missing only from the output of a job queued before it (its schema has no courses): read as [].
+    courses: z.array(courseChoice).max(L.improvementCourses).optional(),
+    comment: text(L.skillComment)
+  }).strict()).max(L.improvements),
   careerFit: z.object({ comment: text(L.careerFit) }).strict(),
   gaps: z.array(z.object({
     skillKey: z.string().max(16),
     priority,
     explanation: text(L.gapExplanation),
-    courses: z.array(z.object({ courseCode: z.string().max(32), reason: text(L.courseReason) }).strict()).max(L.gapCourses),
+    courses: z.array(courseChoice).max(L.gapCourses),
     selfStudy: z.array(text(L.selfStudyItem)).max(L.selfStudy)
   }).strict()).max(L.gaps),
   progress: text(L.progress),
@@ -105,17 +112,30 @@ export function validateAiOutput(raw: unknown, context: AiValidationContext): Ai
     const issue = parsed.error.issues[0];
     return fail("schema", issue ? issue.path.join(".") : "");
   }
-  const output = parsed.data as AiOutput;
+  const output: AiOutput = {
+    ...parsed.data,
+    improvements: parsed.data.improvements.map(({ skillKey, priority, courses, comment }) => ({ skillKey, priority, courses: courses ?? [], comment }))
+  };
   const groups = new Set(context.groupKeys);
   const strengthKeys = new Set(context.strengthKeys);
   const improvementKeys = new Set(context.improvementKeys);
+  const improvementCourses = new Map(context.improvementSkills.map((skill) => [skill.key, new Set(skill.courseCodes)]));
   const gapCourses = new Map(context.gapSkills.map((gap) => [gap.key, new Set(gap.courseCodes)]));
 
   const seen = (values: readonly string[]) => values.findIndex((value, index) => values.indexOf(value) !== index);
 
   for (const [index, item] of output.groupInsights.entries()) if (!groups.has(item.groupKey)) return fail("unknown_group_key", `groupInsights.${index}.groupKey`);
   for (const [index, item] of output.strengths.entries()) if (!strengthKeys.has(item.skillKey)) return fail("unknown_skill_key", `strengths.${index}.skillKey`);
-  for (const [index, item] of output.improvements.entries()) if (!improvementKeys.has(item.skillKey)) return fail("unknown_skill_key", `improvements.${index}.skillKey`);
+  for (const [index, item] of output.improvements.entries()) {
+    if (!improvementKeys.has(item.skillKey)) return fail("unknown_skill_key", `improvements.${index}.skillKey`);
+    // Only the courses listed for exactly this skill (its plan or career gap), like gaps.
+    const allowed = improvementCourses.get(item.skillKey);
+    for (const [courseIndex, course] of item.courses.entries()) {
+      if (!allowed?.has(course.courseCode)) return fail("foreign_course", `improvements.${index}.courses.${courseIndex}.courseCode`);
+    }
+    const duplicateCourse = seen(item.courses.map((course) => course.courseCode));
+    if (duplicateCourse >= 0) return fail("duplicate", `improvements.${index}.courses.${duplicateCourse}.courseCode`);
+  }
   for (const [index, gap] of output.gaps.entries()) {
     const allowed = gapCourses.get(gap.skillKey);
     if (!allowed) return fail("unknown_gap_skill", `gaps.${index}.skillKey`);
@@ -143,7 +163,10 @@ export function validateAiOutput(raw: unknown, context: AiValidationContext): Ai
     ["summary", output.summary],
     ...output.groupInsights.map((item, i): [string, string] => [`groupInsights.${i}.comment`, item.comment]),
     ...output.strengths.map((item, i): [string, string] => [`strengths.${i}.comment`, item.comment]),
-    ...output.improvements.map((item, i): [string, string] => [`improvements.${i}.comment`, item.comment]),
+    ...output.improvements.flatMap((item, i): [string, string][] => [
+      ...item.courses.map((course, j): [string, string] => [`improvements.${i}.courses.${j}.reason`, course.reason]),
+      [`improvements.${i}.comment`, item.comment]
+    ]),
     ["careerFit.comment", output.careerFit.comment],
     ...output.gaps.flatMap((gap, i): [string, string][] => [
       [`gaps.${i}.explanation`, gap.explanation],

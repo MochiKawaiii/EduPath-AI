@@ -76,6 +76,9 @@ describe("StudentCompetency — Đánh giá năng lực", () => {
     expect(html).toContain("Nên cải thiện");
     expect(html).not.toContain("Với nghề mục tiêu");
     expect(html).not.toContain("Không ánh xạ được");
+    // comp-v4: each improvement names its course; codes outside the engine's list are dropped.
+    expect(html).toContain("Học phần Cấu trúc dữ liệu và giải thuật (TST102): Đã đạt với điểm 6,4; học cải thiện để nâng kỹ năng giải thuật.");
+    expect(html).not.toContain("XXX998");
   });
   it("keeps the full computed result when AI is disabled", () => {
     const html = render({ assessment: fixtureAssessment("disabled"), aiEnabled: false, workerOnline: false });
@@ -237,6 +240,23 @@ describe("StudentCompetency — Khoảng trống kỹ năng", () => {
     expect(html).toContain("Kỹ năng: Docker");
     expect(html).toContain("Không có học phần nào trong chương trình đào tạo của bạn để đăng ký cho kỹ năng này.");
     expect(html).toContain("Đóng gói ứng dụng web của bạn bằng Docker.");
+  });
+  it("gives each weak skill its courses: retake, take with prerequisites checked, or self-study", () => {
+    const html = withAi("completed", "gap");
+    const plans = html.slice(html.indexOf("Kỹ năng cần củng cố (dưới mức Khá)"), html.indexOf("Kỹ năng cần tự học (CTĐT chưa đo)"));
+    expect(plans).toContain("Kỹ năng: Sử dụng tiếng Anh");
+    expect(plans).toContain("Cơ bản · 61");
+    expect(plans).toMatch(/scomp-plan-action">Học cải thiện<\/span><strong>Tiếng Anh 2<\/strong>/);
+    expect(plans).toContain("✓</span> Đã học, đạt · điểm 5,8 (C)");
+    expect(plans).toMatch(/scomp-plan-action">Học mới<\/span><strong>Tiếng Anh chuyên ngành<\/strong>/);
+    expect(plans).toContain("✓</span> Đủ điều kiện đăng ký");
+    expect(plans).toContain("HK261 theo KHĐT");
+    expect(plans).toContain("Kỹ năng: Định tuyến mạng");
+    expect(plans).toContain("Không còn học phần nào trong chương trình của bạn để học thêm cho kỹ năng này");
+    // Results stored before comp-calc-v6 have no plans: the part is left out, nothing breaks.
+    const assessment = fixtureAssessment("completed");
+    const old = render({ assessment: { ...assessment, result: { ...fixtureResult, skillPlans: undefined } }, aiEnabled: true, workerOnline: true }, { view: "gap" });
+    expect(old).not.toContain("Kỹ năng cần củng cố (dưới mức Khá)");
   });
   it("does not praise a career that has no requirements yet", () => {
     const assessment = fixtureAssessment("completed");

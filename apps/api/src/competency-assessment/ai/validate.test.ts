@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAiInput } from "./prompt.js";
-import { syntheticResult } from "./test-fixture.js";
+import { syntheticResult, withCompV3Improvements } from "./test-fixture.js";
 import { hasForbiddenContent, numbersIn, termCodeNumbers, validateAiOutput, validationContextFromAiInput, type AiOutput } from "./validate.js";
 
 const input = buildAiInput(syntheticResult());
@@ -10,7 +10,16 @@ const valid = (): AiOutput => ({
   summary: "Bạn có nền tảng lập trình hướng đối tượng vững với điểm 88, nhưng kiểm thử phần mềm mới đạt 55 trên ngưỡng 85.",
   groupInsights: [{ groupKey: "G1", comment: "Nhóm kỹ thuật phần mềm đạt 80, mức Khá." }],
   strengths: [{ skillKey: "S01", comment: "Học phần Nhập môn lập trình đạt 8.5 cho thấy bạn nắm chắc nền tảng." }],
-  improvements: [{ skillKey: "S03", priority: "high", comment: "Kiểm thử phần mềm còn thiếu 30 điểm so với ngưỡng của nghề." }],
+  improvements: [
+    {
+      skillKey: "S03", priority: "high", courses: [{ courseCode: "TST201", reason: "Chưa học, đủ điều kiện đăng ký ở HK261." }],
+      comment: "Kiểm thử phần mềm còn thiếu 30 điểm so với ngưỡng của nghề; hãy đăng ký Kiểm thử phần mềm cơ bản."
+    },
+    {
+      skillKey: "S06", priority: "medium", courses: [{ courseCode: "TST120", reason: "Đã đạt 6,5 (C+), có thể học cải thiện." }],
+      comment: "Mạng máy tính mới 65 điểm; học cải thiện Mạng máy tính căn bản để nâng điểm."
+    }
+  ],
   careerFit: { comment: "Bạn đạt 2/4 kỹ năng của nghề, mức Khá phù hợp." },
   gaps: [
     { skillKey: "S03", priority: "high", explanation: "Đây là kỹ năng bắt buộc của nghề.", courses: [{ courseCode: "TST201", reason: "Học ở HK261." }], selfStudy: ["Viết bộ kiểm thử cho một dự án cá nhân."] },
@@ -60,8 +69,38 @@ describe("validateAiOutput", () => {
     expect(reasonOf({ ...valid(), improvements: [{ skillKey: "S01", priority: "low", comment: "Ôn lại." }] })).toBe("unknown_skill_key@improvements.0.skillKey");
     expect(reasonOf({ ...valid(), strengths: [{ skillKey: "S04", comment: "Tốt." }] })).toBe("unknown_skill_key@strengths.0.skillKey");
     // Cross-list conflict, checked even if a stored schema allowed both (e.g. a comp-v1 job).
-    const loose = { ...context, strengthKeys: ["S01", "S03"], improvementKeys: ["S01", "S03"] };
+    const loose = { ...context, strengthKeys: ["S01", "S03"], improvementKeys: ["S01", "S03", "S06"] };
     expect(validateAiOutput({ ...valid(), strengths: [{ skillKey: "S03", comment: "Tốt." }] }, loose)).toMatchObject({ ok: false, error: { reason: "conflicting_skill", path: "strengths.0.skillKey" } });
+  });
+
+  it("allows an improvement only the courses listed for exactly that skill (comp-v4)", () => {
+    const improvements = (courses: AiOutput["improvements"][number]["courses"], skillKey = "S06") =>
+      ({ ...valid(), improvements: [{ skillKey, priority: "high" as const, courses, comment: "Học cải thiện Mạng máy tính căn bản." }] });
+    // Take, retake and improve courses of the plan; at most 2.
+    expect(reasonOf(improvements([{ courseCode: "TST310", reason: "Cần đạt trước Hệ điều hành." }, { courseCode: "TST150", reason: "Chưa đạt, học lại." }]))).toBe("ok");
+    expect(reasonOf(improvements([{ courseCode: "TST201", reason: "Học mới." }]))).toBe("foreign_course@improvements.0.courses.0.courseCode");
+    expect(reasonOf(improvements([{ courseCode: "XYZ999", reason: "Học thêm." }]))).toBe("foreign_course@improvements.0.courses.0.courseCode");
+    // S07 has no course left: courses must stay empty.
+    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "Ôn lại." }], "S07"))).toBe("foreign_course@improvements.0.courses.0.courseCode");
+    expect(reasonOf(improvements([], "S07"))).toBe("ok");
+    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "A." }, { courseCode: "TST120", reason: "B." }]))).toBe("duplicate@improvements.0.courses.1.courseCode");
+    const three = ["TST310", "TST150", "TST120"].map((courseCode) => ({ courseCode, reason: "Học." }));
+    expect(reasonOf(improvements(three))).toBe("schema@improvements.0.courses");
+    // Reasons are checked like every other text.
+    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "Học cải thiện để đạt 9,5." }]))).toBe("invented_number@improvements.0.courses.0.reason");
+    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "Xem www.example.org." }]))).toBe("forbidden_content@improvements.0.courses.0.reason");
+    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "" }]))).toBe("schema@improvements.0.courses.0.reason");
+  });
+
+  it("validates the output of a job queued before comp-v4 against its own schema", () => {
+    const legacyInput = { ...input, schema: withCompV3Improvements(input.schema, ["S03", "S06"]) };
+    const legacy = validationContextFromAiInput(legacyInput)!;
+    const old = { ...valid(), improvements: [{ skillKey: "S03", priority: "high", comment: "Kiểm thử phần mềm còn thiếu 30 điểm." }] };
+    // No courses in the old schema: stored as an empty list.
+    expect(validateAiOutput(old, legacy)).toEqual({ ok: true, output: { ...old, improvements: [{ ...old.improvements[0]!, courses: [] }] } });
+    expect(validateAiOutput(valid(), legacy)).toMatchObject({ ok: false, error: { reason: "foreign_course", path: "improvements.0.courses.0.courseCode" } });
+    // A current job never lacks courses (its grammar requires them), but a missing list reads as empty.
+    expect(validateAiOutput(old, context)).toMatchObject({ ok: true, output: { improvements: [{ skillKey: "S03", courses: [] }] } });
   });
 
   it("rejects course codes in free text that are not in the data block", () => {

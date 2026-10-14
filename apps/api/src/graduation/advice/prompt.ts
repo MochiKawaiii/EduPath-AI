@@ -12,9 +12,11 @@ import type {
   GradCourseState, GradStatus, GraduationCourseRow, GraduationEvaluation, GraduationGroupEvaluation, GraduationWarning,
 } from "../evaluation.js";
 import type { StudentGraduation, StudentGraduationProfile } from "../student-graduation.js";
+import { startsReplacementPath, thesisNoun, thesisOption, type ThesisOption } from "../thesis.js";
 import { buildGraduationAdviceSchema, GRADUATION_ADVICE_LIMITS as L } from "./schema.js";
 
-export const GRADUATION_ADVICE_PROMPT_VERSION = "grad-advice-v1";
+/** Part of the advice fingerprint (student-graduation.ts): a new version re-queues every student's advice. */
+export const GRADUATION_ADVICE_PROMPT_VERSION = "grad-advice-v2";
 
 /** Ollama options sent with every job (worker adds think/stream/truncate/keep_alive/model). num_ctx must stay 16384. */
 export const GRADUATION_ADVICE_OPTIONS = { num_ctx: 16384, num_predict: 2048, temperature: 0.3, top_p: 0.95, top_k: 64 } as const;
@@ -58,7 +60,10 @@ Nội dung lời khuyên:
 - Thứ tự ưu tiên: các điều kiện chưa đạt, rồi học phần đang học, rồi điểm trung bình tích lũy, cuối cùng là cảnh báo dữ liệu.
 - Nhóm bắt buộc chưa đạt: nêu các học phần còn phải học hoặc học lại trong mục [4].
 - Nhóm tự chọn chưa đạt: nói rõ còn thiếu bao nhiêu tín chỉ, gợi ý chọn học trong các học phần được liệt kê của đúng nhóm đó, và nhắc bạn xem lịch mở lớp, điều kiện tiên quyết, trao đổi với cố vấn học tập trước khi đăng ký.
-- Tổng số tín chỉ tích lũy chưa đạt: nêu số tín chỉ còn thiếu đúng như trong dữ liệu.
+- Nhóm tự chọn có đồ án hoặc khóa luận tốt nghiệp (dữ liệu ghi "phương án chính" và "phương án thay thế"): khuyên bạn làm đồ án hoặc khóa luận tốt nghiệp (gọi đúng tên học phần trong dữ liệu) là phương án chính, vì một học phần này đã đủ số tín chỉ của nhóm. Chỉ nhắc các học phần thay thế như phương án dự phòng khi bạn không làm đồ án hoặc khóa luận tốt nghiệp theo quy định của Khoa, và phải nói rõ đó là lý do. Không tự khẳng định bạn không đủ điều kiện làm đồ án hoặc khóa luận tốt nghiệp. Nhắc bạn xác nhận điều kiện đăng ký với cố vấn học tập hoặc Khoa.
+- Dữ liệu ghi bạn đã bắt đầu phương án học phần thay thế: khuyên học tiếp các học phần thay thế được liệt kê cho đủ tín chỉ của nhóm; không khuyên chuyển sang làm đồ án hoặc khóa luận tốt nghiệp.
+- Dữ liệu ghi bạn đang làm đồ án hoặc khóa luận tốt nghiệp: khuyên hoàn thành tốt học phần đó, vì như vậy là đủ tín chỉ của nhóm.
+- Tổng số tín chỉ tích lũy chưa đạt: nêu số tín chỉ còn thiếu đúng như trong dữ liệu. Nếu dữ liệu ghi hoàn thành các nhóm chưa đạt sẽ đủ tổng số tín chỉ tích lũy, hãy nói rõ điều đó; nếu dữ liệu ghi còn cần thêm tín chỉ ngoài các nhóm chưa đạt, nêu đúng số tín chỉ đó.
 - Điểm trung bình tích lũy chưa đạt: gợi ý học cải thiện hoặc học lại các học phần ở mục [6].
 - Học phần đang học: nhắc bạn hoàn thành tốt để được tính vào kết quả.
 - Có cảnh báo dữ liệu: nói ngắn gọn cảnh báo đó ảnh hưởng thế nào và gợi ý kiểm tra lại bảng điểm.
@@ -79,7 +84,8 @@ Chỉ trả về một đối tượng JSON đúng cấu trúc sau, không thêm
 /* ------------------------------------------------------------------------ */
 
 type AdviceFacts = { profile: StudentGraduationProfile; standard: GraduationStandardInput; evaluation: GraduationEvaluation };
-type Condition = GraduationAdviceKey & { status: GradStatus; line: string };
+/** One condition of section [3]: its line, and for CREDITS the note on what the failing groups cover. */
+type Condition = GraduationAdviceKey & { status: GradStatus; line: string; note?: string };
 
 const VERDICTS: Record<GradStatus, string> = {
   pass: "Đủ các điều kiện xét tốt nghiệp theo tiêu chuẩn của khóa (tham khảo)",
@@ -143,6 +149,52 @@ function groupCondition(group: GraduationGroupEvaluation, index: number): Condit
   };
 }
 
+/** Tolerance of the credit comparisons (float noise of half credits). */
+const CREDIT_EPSILON = 1e-9;
+
+/**
+ * Credits that completing the failing groups adds to the total: the remaining credits of each
+ * failing elective group (none for a group of condition-only courses: GDTC/GDQP never accumulate)
+ * plus the credits of the not-passed, non-condition courses of each failing mandatory group. Null
+ * when a credit is unknown or an elective group mixes condition-only and other courses.
+ */
+function failingGroupCredits(groups: readonly GraduationGroupEvaluation[]): number | null {
+  let total = 0;
+  for (const group of groups) {
+    if (group.kind === "mandatory") {
+      for (const course of group.courses) {
+        if (isPassedState(course.state) || course.conditionOnly) continue;
+        if (course.credits === null) return null;
+        total += course.credits;
+      }
+      continue;
+    }
+    const conditionOnly = group.courses.filter((course) => course.conditionOnly).length;
+    if (conditionOnly && conditionOnly === group.courses.length) continue;
+    if (conditionOnly || group.remaining === null) return null;
+    total += group.remaining;
+  }
+  return total;
+}
+
+/**
+ * The note under a failing CREDITS line: whether completing the failing groups also completes the
+ * total, or how many credits are still needed beyond them. Null when the total does not fail, no
+ * group fails or the credits are unknown.
+ */
+function creditsNote(evaluation: GraduationEvaluation): string | null {
+  const credits = evaluation.credits;
+  if (credits?.status !== "fail" || credits.remaining === null || credits.remaining <= CREDIT_EPSILON) return null;
+  const failing = evaluation.groups.flatMap((group, index) => (group.status === "fail" ? [{ group, key: `G${index + 1}` }] : []));
+  const covered = failing.length ? failingGroupCredits(failing.map((item) => item.group)) : null;
+  if (covered === null) return null;
+  const keys = failing.map((item) => item.key).join(", ");
+  const beyond = credits.remaining - covered;
+  return beyond <= CREDIT_EPSILON
+    ? `- Hoàn thành các nhóm chưa đạt (${keys}) sẽ đủ tổng số tín chỉ tích lũy`
+    : `- Ngoài các nhóm chưa đạt (${keys}), còn cần thêm ${formatNumber(beyond)} TC`;
+}
+
 /** The conditions of the data block in order: groups (G1…), then CREDITS (when the standard has a minimum), then GPA. */
 function conditions(evaluation: GraduationEvaluation): Condition[] {
   const list = evaluation.groups.map(groupCondition);
@@ -150,10 +202,12 @@ function conditions(evaluation: GraduationEvaluation): Condition[] {
   if (credits) {
     const source = credits.source === "printed" ? "theo bảng điểm" : "ước tính từ các học phần";
     const remaining = credits.remaining === null ? null : formatNumber(credits.remaining);
+    const note = creditsNote(evaluation);
     list.push({
       key: CREDITS_KEY, groupId: null, label: CREDITS_LABEL, status: credits.status,
       line: `[${CREDITS_KEY}] ${CREDITS_LABEL} (${source}): ${progressText(credits.lower, credits.upper, credits.required, "TC")} — ` +
         statusText(credits.status, remaining, "TC"),
+      ...(note ? { note } : {}),
     });
   }
   const gpa = evaluation.gpa;
@@ -192,6 +246,83 @@ function warningText(warning: GraduationWarning): string {
   }
 }
 
+/* Section [4] -------------------------------------------------------------- */
+
+/** Indent of the course lines under a lead line. */
+const SUB = "  ";
+
+/** The courses not passed: the ones a student can act on first (STATE_ORDER), then in standard order. */
+function notPassed(courses: readonly GraduationCourseRow[]): GraduationCourseRow[] {
+  return courses
+    .map((course, order) => ({ course, order }))
+    .filter(({ course }) => !isPassedState(course.state))
+    .sort((a, b) => STATE_ORDER[a.course.state] - STATE_ORDER[b.course.state] || a.order - b.order)
+    .map(({ course }) => course);
+}
+
+/** One "- course" line per course, at most MAX_MISSING_COURSES_PER_GROUP. */
+function courseLines(courses: readonly GraduationCourseRow[], indent = ""): string[] {
+  const lines = courses.slice(0, MAX_MISSING_COURSES_PER_GROUP).map((course) => `${indent}- ${courseLine(course)}`);
+  if (courses.length > MAX_MISSING_COURSES_PER_GROUP) lines.push(`${indent}… và ${courses.length - MAX_MISSING_COURSES_PER_GROUP} học phần khác`);
+  return lines;
+}
+
+/** "cho đủ 6 TC" (+ suffix), or "cho đủ tín chỉ của nhóm" without a positive amount. */
+const creditsToReach = (value: number | null, suffix = "") =>
+  value !== null && value > CREDIT_EPSILON ? `cho đủ ${formatNumber(value)} TC${suffix}` : "cho đủ tín chỉ của nhóm";
+
+/**
+ * A group with a thesis option (thesis.ts). Not started: the thesis is the main option and the
+ * replacement courses the fallback for a student who does not do it under the Khoa's rules.
+ * Replacement path taken: its courses so far, what the pending ones would leave, and the
+ * replacement courses left (the thesis is not offered again). Thesis in progress: it completes the group.
+ */
+function thesisLines(group: GraduationGroupEvaluation, head: string, option: ThesisOption): string[] {
+  const noun = thesisNoun(option.thesis);
+  if (option.path === "thesis_in_progress") {
+    return [`${head}: bạn đang làm ${noun}`, `- ${courseLine(option.thesis)} — hoàn thành học phần này là đủ số tín chỉ của nhóm`];
+  }
+  if (option.path === "not_started") {
+    return [
+      `${head}: ${noun} hoặc học phần thay thế`,
+      `- phương án chính: ${courseLine(option.thesis)} — một học phần đủ số tín chỉ của nhóm`,
+      `- phương án thay thế (chỉ khi bạn không làm ${noun} theo quy định của Khoa): ` +
+        `chọn các học phần sau ${creditsToReach(group.remaining ?? group.required)}:`,
+      ...courseLines(notPassed(option.replacements), SUB),
+    ];
+  }
+  const started = option.replacements.filter((course) => startsReplacementPath(course.state));
+  const lines = [`${head}: bạn đã bắt đầu phương án học phần thay thế ${noun}`, "- học phần thay thế đã học hoặc đang học:", ...courseLines(started, SUB)];
+  // Credits still missing once the courses in progress or graded without a result pass.
+  const pending = started.filter((course) => !isPassedState(course.state));
+  let need = group.remaining;
+  if (pending.length) {
+    const pendingCredits = pending.every((course) => course.credits !== null) ? pending.reduce((sum, course) => sum + course.credits!, 0) : null;
+    need = need === null || pendingCredits === null ? null : Math.max(0, need - pendingCredits);
+    const states = new Set(pending.map((course) => course.state));
+    const which = states.size > 1 ? "đang học hoặc chưa rõ kết quả" : states.has("in_progress") ? "đang học" : "chưa rõ kết quả";
+    const lead = pending.length > 1 ? `- nếu các học phần ${which} ở trên đều đạt` : `- nếu học phần ${which} ở trên đạt`;
+    if (need !== null && need <= CREDIT_EPSILON) return [...lines, `${lead}, nhóm sẽ đủ số tín chỉ`];
+    if (need !== null) lines.push(`${lead}, còn cần thêm ${formatNumber(need)} TC`);
+  }
+  const rest = notPassed(option.replacements.filter((course) => !startsReplacementPath(course.state)));
+  if (!rest.length) return [...lines, "- không còn học phần thay thế nào khác trong nhóm"];
+  return [...lines, `- chọn học tiếp trong các học phần thay thế sau ${creditsToReach(need, " còn thiếu")}:`, ...courseLines(rest, SUB)];
+}
+
+/** Section [4] for one group that is not passed: its not-passed courses, or its thesis option. */
+function groupLines(group: GraduationGroupEvaluation, key: string): string[] {
+  const head = `[${key}] ${sanitizeText(group.label)}`;
+  const option = thesisOption(group);
+  // A thesis already passed (in a group that other courses leave undecided) reads as a plain group.
+  if (option && !isPassedState(option.thesis.state)) return thesisLines(group, head, option);
+  const missing = notPassed(group.courses);
+  return [
+    group.kind === "mandatory" ? `${head}: các học phần bắt buộc chưa đạt` : `${head}: các học phần có thể chọn để đủ tín chỉ`,
+    ...(missing.length ? courseLines(missing) : ["- Không có học phần nào chưa đạt trong nhóm."]),
+  ];
+}
+
 /** Renders the user message: a delimited data block (design §5.6, sections [1]–[7]). */
 export function renderGraduationDataBlock(facts: AdviceFacts, list: readonly Condition[] = conditions(facts.evaluation)): string {
   const { profile, standard, evaluation } = facts;
@@ -215,26 +346,12 @@ export function renderGraduationDataBlock(facts: AdviceFacts, list: readonly Con
   if (evaluation.needsImprovement) push("Các nhóm học phần đã đạt nhưng điểm trung bình tích lũy chưa đạt.");
 
   push("", "[3. CÁC ĐIỀU KIỆN]");
-  for (const item of list) push(item.line);
+  for (const item of list) push(item.line, ...(item.note ? [item.note] : []));
 
   push("", "[4. HỌC PHẦN CÒN THIẾU THEO NHÓM] (chỉ các nhóm chưa đạt hoặc chưa xác định)");
   const open = evaluation.groups.filter((group) => group.status !== "pass");
   if (!open.length) push("Không có: mọi nhóm học phần đều đạt.");
-  for (const group of open) {
-    const key = keyOfGroup.get(group.id)!;
-    const label = sanitizeText(group.label);
-    push(group.kind === "mandatory"
-      ? `[${key}] ${label}: các học phần bắt buộc chưa đạt`
-      : `[${key}] ${label}: các học phần có thể chọn để đủ tín chỉ`);
-    const missing = group.courses
-      .map((course, order) => ({ course, order }))
-      .filter(({ course }) => !isPassedState(course.state))
-      .sort((a, b) => STATE_ORDER[a.course.state] - STATE_ORDER[b.course.state] || a.order - b.order)
-      .map(({ course }) => course);
-    if (!missing.length) push("- Không có học phần nào chưa đạt trong nhóm.");
-    for (const course of missing.slice(0, MAX_MISSING_COURSES_PER_GROUP)) push(`- ${courseLine(course)}`);
-    if (missing.length > MAX_MISSING_COURSES_PER_GROUP) push(`… và ${missing.length - MAX_MISSING_COURSES_PER_GROUP} học phần khác`);
-  }
+  for (const group of open) push(...groupLines(group, keyOfGroup.get(group.id)!));
 
   push("", "[5. HỌC PHẦN ĐANG HỌC] (chưa có kết quả, chưa tính là đạt)");
   if (!evaluation.inProgress.length) push("Không có.");

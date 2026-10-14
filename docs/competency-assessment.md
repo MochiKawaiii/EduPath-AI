@@ -1,6 +1,15 @@
 # Đánh giá năng lực sinh viên và nhận xét AI
 
-Trang `#competency` của cổng sinh viên tính năng lực từ bảng điểm, so với nghề mục tiêu, gợi ý học phần và (nếu bật) kèm nhận xét tiếng Việt do một LLM chạy cục bộ viết.
+Cổng sinh viên tính năng lực từ bảng điểm, so với nghề mục tiêu, gợi ý học phần và (nếu bật) kèm nhận xét tiếng Việt do một LLM chạy cục bộ viết. Một lần đánh giá được lưu và hiển thị trên hai trang riêng, theo hai nhóm chức năng:
+
+| Trang | Nhóm chức năng | Nội dung |
+|---|---|---|
+| `#competency` "Đánh giá năng lực" | STU-COMP | Điểm tổng, điểm và mức theo nhóm kỹ năng; "Bảng phân tích mức độ thành thạo theo nhóm kỹ năng" (ý nghĩa kết quả, số kỹ năng ở từng mức của mỗi nhóm, bấm số để lọc danh sách, học phần minh chứng của từng kỹ năng); phần nhận xét AI về năng lực; tiến độ so với KHĐT (chậm: đỏ, đúng kế hoạch: xanh); xét tốt nghiệp tham khảo; cảnh báo dữ liệu và cách tính điểm. Nút "Xóa kết quả đánh giá" chỉ có ở trang này. |
+| `#skill-gap` "Khoảng trống kỹ năng" | STU-GAP | Mức phù hợp với nghề mục tiêu và kỹ năng còn thiếu cùng mức thiếu hụt; phần nhận xét AI về khoảng trống (`careerFit`, `gaps`); báo cáo chi tiết khoảng trống (bảng điểm hiện tại so với ngưỡng); học phần nên ưu tiên (mỗi học phần ghi tình trạng của sinh viên: chưa học, đã học và điểm, cần học lại, và điều kiện đăng ký), học cải thiện, kỹ năng cần tự học; cách tính mức phù hợp. |
+
+Cả hai trang dùng cùng component `StudentCompetency` (thuộc tính `view`), cùng nút "Đánh giá lại" và cùng hộp thoại đồng ý.
+
+Phần "Xét tốt nghiệp (tham khảo)" của trang `#competency` **không** đọc bản xét tốt nghiệp lưu kèm kết quả đánh giá: nó gọi `GET /api/student/graduation` như trang `#graduation` (đánh giá tính trên server mỗi lần mở trang) và dùng cùng hàm hiển thị (`verdictHeadline`, `suggestionItems`, `criteriaRows` trong `apps/web/src/student-graduation-data.ts`), nên hai màn hình luôn cùng tiêu chí, cùng thứ tự (các nhóm, điểm trung bình, tổng số tín chỉ tích lũy ở cuối), cùng số liệu và cùng lý do chưa đạt. Phần này mở đầu bằng "Căn cứ:" và tên tiêu chuẩn viết đầy đủ (`standardDocumentName`, liên kết sang `#graduation`), rồi câu kết luận kèm nút "Xem chi tiết", danh sách "Nên làm" và bảng tiêu chí. Nhóm tự chọn tốt nghiệp có Đồ án/Khóa luận tốt nghiệp (ví dụ TC306 của K29) được gợi ý theo quy tắc `thesisOption`: đồ án là phương án chính, học phần thay thế chỉ là phương án dự phòng khi sinh viên không làm đồ án theo quy định của Khoa (hoặc là đường tiếp tục nếu đã bắt đầu học phần thay thế). Khi các nhóm chưa đạt đã bù đủ số tín chỉ tích lũy còn thiếu, câu kết luận nói một lần thay vì cộng trùng.
 
 ## Kiến trúc: "Hệ thống AI" lai
 
@@ -10,7 +19,7 @@ Trang `#competency` của cổng sinh viên tính năng lực từ bảng điể
 | Thu thập dữ liệu | Đọc ảnh chụp nhất quán (REPEATABLE READ READ ONLY): hồ sơ, bảng điểm, CTĐT, trọng số, tiêu chuẩn tốt nghiệp (bộ chọn chung với trang Điều kiện xét tốt nghiệp), KHĐT, nghề mục tiêu. | `inputs.ts`, `apps/api/src/graduation/resolve.ts` |
 | Lưu trữ và API | Lưu kết quả (tối đa 20 bản/sinh viên), đồng ý, hàng đợi AI. | `repository.ts`, `router.ts`, `ai/queue.ts` |
 | LLM cục bộ | `gemma4:e4b` qua Ollama trên máy chạy worker AI (hiện là laptop của nhóm thực hiện đồ án, GPU RTX 3050 4 GB); chỉ diễn giải số liệu đã tính, đầu ra bị ràng buộc bằng JSON schema và kiểm tra lại phía server. | `ai/prompt.ts`, `ai/schema.ts`, `ai/validate.ts`, `ai/worker-router.ts`, `apps/api/src/ai-worker/` |
-| Giao diện | Trang `#competency`, hộp thoại đồng ý, trạng thái nhận xét AI. | `apps/web/src/StudentCompetency.tsx`, `student-competency-data.ts` |
+| Giao diện | Trang `#competency` và `#skill-gap`, hộp thoại đồng ý, trạng thái nhận xét AI, xét tốt nghiệp đọc từ trang `#graduation`. | `apps/web/src/StudentCompetency.tsx`, `student-competency-data.ts`, `student-graduation-data.ts`, `student-graduation-api.ts` |
 
 ### Chức năng → thành phần
 
@@ -25,7 +34,7 @@ Trang `#competency` của cổng sinh viên tính năng lực từ bảng điể
 | Nhận xét AI | `ai/*`, `apps/api/src/ai-worker/*`, `services/ai/` |
 | Lời khuyên xét tốt nghiệp (AI, trang `#graduation`) | `apps/api/src/graduation/advice/*`, cùng worker; xem `docs/graduation-advice.md` |
 
-## Công thức và ngưỡng (`CALC_VERSION = "comp-calc-v5"`)
+## Công thức và ngưỡng (`CALC_VERSION = "comp-calc-v6"`)
 
 > comp-calc-v2: kỹ năng dưới ngưỡng còn học phần **Học cải thiện** không bị liệt kê là "Không còn học phần nào trong CTĐT để học thêm" (chỉ khi không còn học phần học mới lẫn học cải thiện).
 >
@@ -34,6 +43,8 @@ Trang `#competency` của cổng sinh viên tính năng lực từ bảng điể
 > comp-calc-v4: điểm tính ra được làm sạch nhiễu số thực trước khi xếp mức (`snapScore`; ví dụ mọi học phần 8,5 điểm từng ra 84,99999999999999, tức "Khá" và chưa đạt Bắt buộc 85), và điểm thang 100 được lưu **làm tròn xuống** 2 chữ số (`floorScore`) thay vì làm tròn thường, nên số nguyên trang hiển thị không bao giờ đạt một mức mà điểm thật chưa đạt (84,996 lưu 84,99, hiển thị 84, thiếu 1).
 >
 > comp-calc-v5: phần xét tốt nghiệp dùng chung một bộ máy với trang Điều kiện xét tốt nghiệp (E1–E5 ở mục "Xét tốt nghiệp: bộ máy dùng chung" bên dưới), nên số liệu xét tốt nghiệp của kết quả mới có thể khác kết quả v4 của cùng bảng điểm. Điểm kỹ năng, nhóm, tổng và mức phù hợp nghề không đổi.
+>
+> comp-calc-v6: thêm `skillPlans` — với mỗi kỹ năng có điểm dưới mức Khá (70), không phải môn điều kiện và không phải khoảng trống của nghề mục tiêu (khoảng trống nghề đã có gợi ý riêng), hệ thống liệt kê học phần cụ thể: `take` (học phần áp dụng cho sinh viên, chưa đạt, không thuộc nhóm tự chọn đã chọn đủ; kèm kiểm tra tiên quyết/học trước, học kỳ dự kiến; học phần F là học lại) và `improve` (học phần đã đạt với điểm × 10 dưới 70, để học cải thiện); không còn học phần nào → `selfStudy`. Tối đa 8 kỹ năng (`MAX_SKILL_PLANS`), yếu nhất trước, mỗi danh sách tối đa 5 học phần. Điểm kỹ năng, nhóm, tổng, mức phù hợp và xét tốt nghiệp không đổi.
 
 - `cr` = tín chỉ theo CTĐT, `w` = trọng số kỹ năng trong học phần.
 - **Điểm kỹ năng (0–100)** = `10 × Σ(score10 × cr × w) / Σ(cr × w)` trên các học phần có điểm; mỗi học phần lấy lần học được chọn (lần đạt có điểm cao nhất, nên lần F trước đó bị bỏ qua sau khi học lại đạt; lần F chỉ được tính khi học phần chưa từng đạt); MT tính là đã học nhưng không vào trung bình.
@@ -42,6 +53,7 @@ Trang `#competency` của cổng sinh viên tính năng lực từ bảng điể
 - **Độ tin cậy** = min(dải độ phủ 30%/70%, dải minh chứng Σ cr·w 1,0/2,5).
 - **Nhóm và tổng**: loại GDTC/GDQP (môn điều kiện); điểm tổng = trung bình các nhóm có dữ liệu.
 - **Nghề**: Ưu tiên ≥70, Bắt buộc ≥85; hệ số 1/2. Điểm từng yêu cầu: đạt = 1; dưới ngưỡng = 0,5 × clamp((điểm − 40)/(ngưỡng − 40), 0, 1); chưa học = 0; "Sắp học" và "Chưa đủ dữ liệu" bị loại. Nhãn: ≥0,80 Phù hợp, ≥0,50 Khá phù hợp, còn lại Cần bổ sung nhiều; phần hệ số có dữ liệu < 50% → Chưa đủ dữ liệu.
+- **Kỹ năng cần củng cố** (comp-calc-v6): kỹ năng dưới Khá ngoài khoảng trống nghề → học phần học mới/học lại (có kiểm tra điều kiện đăng ký) và học cải thiện (điểm học phần dưới 70), hiển thị ở trang `#skill-gap` mục "Kỹ năng cần củng cố (dưới mức Khá)".
 - Mọi ngưỡng nằm trong `constants.ts`; đổi ngưỡng phải tăng `CALC_VERSION`.
 
 ### Chọn phiên bản dữ liệu
@@ -84,9 +96,10 @@ Xóa hoặc thay bảng điểm (kể cả qua OCR) xóa toàn bộ kết quả 
 
 - Server bật hàng đợi khi có `AI_WORKER_KEY` (≥ 32 ký tự, khác `OCR_WORKER_KEY`) trong `apps/api/.env` hoặc trên Render.
 - Mỗi sinh viên có tối đa một job đang chờ; bản mới hủy job cũ. Quá 25 job chờ toàn hệ thống → `deferred`.
-- Prompt hiện tại là `comp-v3` (`PROMPT_VERSION` trong `ai/prompt.ts`); kết quả lưu trước đó có thể mang `comp-v2`. Hai mục dưới đây mô tả những gì `comp-v2` đưa vào (vẫn giữ nguyên trong `comp-v3`) và những gì `comp-v3` thêm.
+- Prompt hiện tại là `comp-v4` (`PROMPT_VERSION` trong `ai/prompt.ts`); kết quả lưu trước đó có thể mang `comp-v3` hoặc `comp-v2`. Các mục dưới đây mô tả những gì `comp-v2`, `comp-v3` đưa vào (vẫn giữ nguyên) và những gì `comp-v4` thêm.
 - `comp-v2` (bản trước, các quy tắc vẫn áp dụng): system prompt cố định + khối dữ liệu đã làm sạch (bỏ token đặc biệt Gemma, ký tự điều khiển). Schema JSON được dựng riêng cho từng job: enum nhóm; enum **điểm mạnh** (kỹ năng mức Khá trở lên, không dưới ngưỡng nghề) tách khỏi enum **cần cải thiện** (dưới Khá hoặc dưới ngưỡng nghề); mã học phần theo từng kỹ năng khoảng trống. Khối dữ liệu chỉ ghi học phần đã học là "minh chứng" (đang học / sắp học ghi riêng), không gửi chỉ số phù hợp dạng số. Validator từ chối mã học phần trong văn bản không có trong khối dữ liệu (`foreign_course`) và kỹ năng vừa là điểm mạnh vừa cần cải thiện/khoảng trống (`conflicting_skill`); trang web còn thay khóa S…/G… lọt vào văn bản bằng tên.
 - `comp-v3` (bản hiện tại) thêm: khối dữ liệu ghi số **đúng như trang hiển thị** — điểm thang 100 (tổng, nhóm, kỹ năng, ngưỡng và điểm của yêu cầu nghề) là số nguyên làm tròn xuống như `formatScore`, mức thiếu làm tròn lên (tối thiểu 1) như `deficitPoints`, độ phủ là phần trăm nguyên, điểm học phần/tín chỉ/điểm trung bình tích lũy tối đa 2 chữ số thập phân. Validator lấy tập số cho phép từ khối dữ liệu nên "83,92" bị từ chối (`invented_number`). Học kỳ ghi bằng chữ ("học kỳ 3 năm học 2025–2026", từ mã HKyyS: yy = năm bắt đầu % 100, S = học kỳ); nếu mô hình vẫn viết mã của một học kỳ có trong dữ liệu (HK253) thì vẫn chấp nhận, mã bịa (HK271) bị từ chối. Prompt giải thích priority: high = "Cần làm sớm", medium = "Nên làm", low = "Có thể để sau" (nhãn trên trang; tránh trùng với tính chất "Ưu tiên" của yêu cầu nghề).
+- `comp-v4` (bản hiện tại, theo góp ý "kết quả AI chưa nói sinh viên cần học môn gì" và "nhận xét còn chung chung"): mỗi mục `improvements` có thêm `courses` (tối đa 2 `{ courseCode, reason }`, đứng trước `comment` trong schema để mô hình chọn học phần trước rồi mới viết), mã học phần chỉ được lấy từ danh sách của đúng kỹ năng đó (kế hoạch `skillPlans` của kỹ năng, rồi học phần của khoảng trống nghề) — schema dựng nhánh `anyOf` theo từng kỹ năng, validator từ chối học phần của kỹ năng khác. Với kết quả comp-calc-v6, chỉ kỹ năng có kế hoạch học phần hoặc dưới ngưỡng nghề mới được nêu là cần cải thiện, nên mỗi mục luôn có học phần để nêu (hoặc thật sự không có, khi đó gợi ý tự học kèm sản phẩm kiểm chứng). Khối dữ liệu: mục [6] mới "Kỹ năng cần cải thiện" liệt kê học phần bằng lời (chưa học / chưa đạt – cần học lại / đang học / đã đạt, điểm 6,5 (C+) – có thể học cải thiện; đủ điều kiện đăng ký hoặc "cần đạt trước …"; học kỳ dự kiến); mục [3] gửi thêm các kỹ năng có kế hoạch và 1–2 kỹ năng thấp nhất của mỗi nhóm dưới Khá, mục [2] ghi "kỹ năng thấp nhất của nhóm"; **bỏ hẳn mục xét tốt nghiệp** (trang `#competency` hiển thị xét tốt nghiệp từ trang `#graduation`, có lời khuyên AI riêng), `progress` chỉ nói về tiến độ so với KHĐT (mục [8]). System prompt thêm quy tắc 9–13: không viết câu chung chung ("nền tảng yếu", "cần tập trung"…) mà không kèm việc cụ thể; mỗi mục cần cải thiện và mỗi bước tiếp theo phải nêu tên học phần (học mới, học lại, học cải thiện hoặc ôn lại) của đúng kỹ năng, chỉ gợi ý tự học khi không có học phần; học phần chưa đủ điều kiện phải nói cần đạt học phần tiên quyết nào trước; nhóm dưới Khá phải nêu kỹ năng thấp nhất và học phần nên làm; không nhận xét về xét tốt nghiệp. Nhận xét lưu trước comp-v4 không có `courses` (trang web coi là rỗng); job comp-v3 đang chờ vẫn hoàn tất với schema cũ.
 - Trước khi lưu `ai_output`, server (`ai/key-cleanup.ts`) gỡ khóa S…/G… khỏi văn bản: khóa đứng cạnh chính tên của nó bị bỏ cùng dấu nối ("API (S12)" → "API", "(API - S12)" → "(API)", "S12 - API" → "API"), khóa trong ngoặc ở chỗ khác bị bỏ, khóa trần được thay bằng tên. Trang web chạy cùng quy tắc (`cleanKeyText`) cho các nhận xét lưu trước comp-v3.
 - Server kiểm tra lại đầu ra: schema Zod strict, danh sách khóa và mã cho phép, không URL/email/HTML, mọi con số trong văn bản phải có trong khối dữ liệu. Sai → `invalid_ai_output`, không hiển thị.
 
@@ -131,3 +144,4 @@ Kiểm thử đầu-cuối (`node scripts/verify-competency-assessment.mjs --wit
 - Khoảng 30 kỹ năng nghề chưa có học phần đo (hiện là "Chưa đủ dữ liệu").
 - Chưa có yêu cầu nghề nào được đánh dấu "Bắt buộc".
 - Lịch sử theo thời gian (STU-COMP-07/STU-GAP-07) chưa làm; kết quả đã lưu nhãn phiên bản để làm sau.
+- Kết quả và nhận xét lưu trước comp-calc-v6/comp-v4 giữ nguyên cho đến khi sinh viên bấm "Đánh giá lại" (trang `#skill-gap` khi đó không có mục "Kỹ năng cần củng cố").

@@ -295,6 +295,24 @@ export type SelfStudyItem = {
   otherSpecialtyCourses: string[];
 };
 
+/**
+ * comp-calc-v6: what to do for a skill below Khá that is not a career gap: courses to take (with
+ * prerequisites checked) or to retake for a better grade, or self-study when no course is left.
+ */
+export type SkillPlan = {
+  skillKey: string;
+  skillId: string;
+  name: string;
+  groupKey: string;
+  score: number | null;
+  level: LevelCode;
+  levelLabel: string;
+  careerSkill: boolean;
+  take: SupportCourse[];
+  improve: SupportCourse[];
+  selfStudy: boolean;
+};
+
 export type PlanCourseRef = { code: string; name: string; credits: number | null; state: CourseState };
 
 export type LateEntry =
@@ -414,6 +432,8 @@ export type AssessmentResult = {
   courseSuggestions: CourseSuggestion[];
   /** "Kỹ năng cần tự học (CTĐT chưa đo)". */
   selfStudy: SelfStudyItem[];
+  /** Weak skills outside the career gaps with their courses (comp-calc-v6; absent in older results). */
+  skillPlans?: SkillPlan[];
   progress: PlanProgressResult | null;
   graduation: GraduationSummary;
   warnings: AssessmentWarning[];
@@ -431,7 +451,8 @@ export type AiOutput = {
   summary: string;
   groupInsights: { groupKey: string; comment: string }[];
   strengths: { skillKey: string; comment: string }[];
-  improvements: { skillKey: string; priority: AiPriority; comment: string }[];
+  /** courses: comp-v4 and later (the course to take, retake or review for that skill). */
+  improvements: { skillKey: string; priority: AiPriority; comment: string; courses?: { courseCode: string; reason: string }[] }[];
   careerFit: { comment: string };
   gaps: { skillKey: string; priority: AiPriority; explanation: string; courses: { courseCode: string; reason: string }[]; selfStudy: string[] }[];
   progress: string;

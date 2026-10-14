@@ -7,7 +7,7 @@ import { careerSource, fixtureId } from "../../careers/ai-suggestions/test-fixtu
 import { buildGraduationAdviceInput, GRADUATION_ADVICE_PROMPT_VERSION } from "../../graduation/advice/prompt.js";
 import { syntheticGraduation } from "../../graduation/advice/test-fixture.js";
 import { buildAiInput } from "./prompt.js";
-import { syntheticResult } from "./test-fixture.js";
+import { syntheticResult, withCompV3Improvements } from "./test-fixture.js";
 import { createCompetencyAiExpiry, createCompetencyWorkerRouter, expireCompetencyAiJobs } from "./worker-router.js";
 
 const KEY = "k".repeat(40);
@@ -88,7 +88,7 @@ describe("heartbeat and claim", () => {
   it("claims the oldest job with SKIP LOCKED, a 15 minute lease and returns the stored input", async () => {
     const { app, run, sql } = setup((s) => (s.includes("FOR UPDATE SKIP LOCKED") ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput }] } : undefined));
     const res = await request(app).post("/w/claim").set("Authorization", AUTH).expect(200);
-    expect(res.body.job).toEqual({ kind: "competency_assessment", id: JOB, leaseToken: LEASE, promptVersion: "comp-v3", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
+    expect(res.body.job).toEqual({ kind: "competency_assessment", id: JOB, leaseToken: LEASE, promptVersion: "comp-v4", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
     const claim = run.mock.calls.find(([s]) => s.includes("SKIP LOCKED"))!;
     expect(claim[0]).toContain("ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1");
     expect(claim[0]).toContain("status='processing' AND lease_until<now() AND attempts<$2");
@@ -171,7 +171,7 @@ describe("complete", () => {
     await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success()).expect(200, { ok: true });
     const calls = run.mock.calls.map(([s, p]) => [s, p] as const);
     const assessment = calls.find(([s]) => s.includes("SET ai_status='completed'"))!;
-    expect(assessment[1]).toEqual([ASSESSMENT, USER, JSON.stringify(validOutput()), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "comp-v3"]);
+    expect(assessment[1]).toEqual([ASSESSMENT, USER, JSON.stringify(validOutput()), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "comp-v4"]);
     const job = calls.find(([s]) => s.startsWith("UPDATE stu_comp_ai_jobs SET status=$2"))!;
     expect(job[0]).toContain("ai_input=NULL");
     expect(job[1]).toEqual([JOB, "completed", null, JSON.stringify({ eval_count: 900, total_ms: 120000 })]);
@@ -197,6 +197,31 @@ describe("complete", () => {
     expect(stored.nextSteps[0]).toBe("Ôn Kiểm thử phần mềm.");
     expect(stored.gaps[0].skillKey).toBe("S03");
     expect(JSON.stringify([stored.summary, stored.strengths[0].comment, stored.nextSteps])).not.toMatch(/\b[SG]\d/);
+  });
+
+  it("stores improvement courses picked from the skill's own list, with keys cleaned from their reasons (comp-v4)", async () => {
+    const result = syntheticResult();
+    const { app, run } = setup(withJob(jobRow(), { skills: result.skillDirectory, groups: result.groups }));
+    const improvement = { skillKey: "S06", priority: "high", courses: [{ courseCode: "TST120", reason: "Đã đạt 6,5 (C+), học cải thiện để nâng S06." }], comment: "Học cải thiện Mạng máy tính căn bản." };
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success({ ...validOutput(), improvements: [improvement] })).expect(200, { ok: true });
+    const stored = JSON.parse((run.mock.calls.find(([s]) => s.includes("SET ai_status='completed'"))![1] as unknown[])[2] as string);
+    expect(stored.improvements).toEqual([{ ...improvement, courses: [{ courseCode: "TST120", reason: "Đã đạt 6,5 (C+), học cải thiện để nâng Mạng máy tính." }] }]);
+
+    // A course of another skill (TST201 belongs to S03) fails the job.
+    const foreign = setup(withJob(jobRow()));
+    const wrong = { ...improvement, courses: [{ courseCode: "TST201", reason: "Học mới." }] };
+    await request(foreign.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success({ ...validOutput(), improvements: [wrong] })).expect(200, { ok: true });
+    expect(foreign.run.mock.calls.find(([s]) => s.includes("SET ai_status='failed'"))![1]).toEqual([ASSESSMENT, USER, "invalid_ai_output"]);
+  });
+
+  it("still completes a job queued before comp-v4 with its own schema and prompt version", async () => {
+    const legacyInput = { ...aiInput, schema: withCompV3Improvements(aiInput.schema, ["S03"]), promptVersion: "comp-v3" };
+    const { app, run } = setup(withJob(jobRow({ ai_input: legacyInput })));
+    const output = { ...validOutput(), improvements: [{ skillKey: "S03", priority: "high", comment: "Kiểm thử phần mềm cần thêm sản phẩm." }] };
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(output)).expect(200, { ok: true });
+    const params = run.mock.calls.find(([s]) => s.includes("SET ai_status='completed'"))![1] as unknown[];
+    expect(JSON.parse(params[2] as string).improvements).toEqual([{ ...output.improvements[0], courses: [] }]);
+    expect(params[6]).toBe("comp-v3");
   });
 
   it("fails the assessment with invalid_ai_output when the output does not validate", async () => {

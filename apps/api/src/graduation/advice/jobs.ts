@@ -4,6 +4,9 @@
 // when the student opens the graduation page (POST /ensure) and, best-effort, right after a
 // transcript import commits. One pending row per student; the newest MAX_ADVICE_PER_USER rows
 // are kept, and every row goes with a transcript replace or delete (deleteGraduationAdvice).
+// Rows are keyed by the page's fingerprint (student-graduation.ts graduationFingerprint), which
+// also carries GRADUATION_ADVICE_PROMPT_VERSION: advice written by an older prompt is not current,
+// so the next page open queues fresh advice.
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import {

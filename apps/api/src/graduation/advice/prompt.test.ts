@@ -9,7 +9,10 @@ import {
   graduationAdviceKeys, MAX_MISSING_COURSES_PER_GROUP,
 } from "./prompt.js";
 import { buildGraduationAdviceSchema } from "./schema.js";
-import { ADVICE_TRANSCRIPT_VERSION, gpaFailingTerms, syntheticGraduation, termsWithSummaries, unevaluatedGraduation } from "./test-fixture.js";
+import {
+  ADVICE_TRANSCRIPT_VERSION, gpaFailingTerms, K29_THESIS_COURSES, syntheticGraduation, termsWithRows, termsWithSummaries, THESIS_GROUP_ID,
+  unevaluatedGraduation, withThesisGroup,
+} from "./test-fixture.js";
 
 // Synthetic K29 data only (fixtures/synthetic-k29.json); no real student record.
 
@@ -20,19 +23,40 @@ const section = (user: string, title: string) => {
   return rest.slice(0, end + 1).split("\n").filter(Boolean);
 };
 
+/** The lines of one group in section [4], its "[Gn] …" line first. */
+const groupBlock = (user: string, key: string) => {
+  const lines = section(user, "4. HỌC PHẦN CÒN THIẾU").slice(1);
+  const start = lines.findIndex((line) => line.startsWith(`[${key}] `));
+  if (start < 0) return [];
+  const end = lines.findIndex((line, index) => index > start && /^\[G\d+\] /.test(line));
+  return lines.slice(start, end < 0 ? undefined : end);
+};
+
 describe("buildGraduationAdviceInput", () => {
   const graduation = syntheticGraduation();
   const input = buildGraduationAdviceInput(graduation);
 
-  it("uses the grad-advice-v1 prompt and the fixed Ollama options (num_ctx 16384)", () => {
-    expect(input.promptVersion).toBe("grad-advice-v1");
-    expect(GRADUATION_ADVICE_PROMPT_VERSION).toBe("grad-advice-v1");
+  it("uses the grad-advice-v2 prompt and the fixed Ollama options (num_ctx 16384)", () => {
+    expect(input.promptVersion).toBe("grad-advice-v2");
+    expect(GRADUATION_ADVICE_PROMPT_VERSION).toBe("grad-advice-v2");
     expect(input.options).toEqual({ num_ctx: 16384, num_predict: 2048, temperature: 0.3, top_p: 0.95, top_k: 64 });
     expect(input.options).not.toBe(GRADUATION_ADVICE_OPTIONS);
     expect(input.system).toBe(GRADUATION_ADVICE_SYSTEM_PROMPT);
     expect(input.system).toMatch(/kết quả xét tốt nghiệp chính thức do nhà trường công bố/i);
     expect(input.system).toContain('gọi sinh viên là "bạn"');
     expect(input.system).toMatch(/không dùng markdown, không dùng emoji, không đưa đường link/);
+  });
+
+  it("tells the model to advise the thesis first and the replacement courses only as a stated fallback", () => {
+    const system = input.system;
+    expect(system).toContain('dữ liệu ghi "phương án chính" và "phương án thay thế"');
+    expect(system).toContain("khuyên bạn làm đồ án hoặc khóa luận tốt nghiệp (gọi đúng tên học phần trong dữ liệu) là phương án chính, vì một học phần này đã đủ số tín chỉ của nhóm");
+    expect(system).toContain("Chỉ nhắc các học phần thay thế như phương án dự phòng khi bạn không làm đồ án hoặc khóa luận tốt nghiệp theo quy định của Khoa, và phải nói rõ đó là lý do.");
+    expect(system).toContain("Không tự khẳng định bạn không đủ điều kiện làm đồ án hoặc khóa luận tốt nghiệp.");
+    expect(system).toContain("Nhắc bạn xác nhận điều kiện đăng ký với cố vấn học tập hoặc Khoa.");
+    expect(system).toContain("Dữ liệu ghi bạn đã bắt đầu phương án học phần thay thế: khuyên học tiếp các học phần thay thế được liệt kê cho đủ tín chỉ của nhóm");
+    expect(system).toContain("Dữ liệu ghi bạn đang làm đồ án hoặc khóa luận tốt nghiệp: khuyên hoàn thành tốt học phần đó");
+    expect(system).toContain("Nếu dữ liệu ghi hoàn thành các nhóm chưa đạt sẽ đủ tổng số tín chỉ tích lũy, hãy nói rõ điều đó");
   });
 
   it("delimits the data block and keeps sections [1] to [7] in order", () => {
@@ -69,19 +93,22 @@ describe("buildGraduationAdviceInput", () => {
       "[G4] Nhóm tự chọn TC209 (tự chọn, tính theo tín chỉ; CTĐT: TC309): đã đạt 6/6 TC — đạt",
       "[G5] Nhóm tự chọn TC306 (tự chọn, tính theo tín chỉ; CTĐT: TC406): đã đạt 0/6 TC — chưa đạt, còn thiếu 6 TC",
       "[CREDITS] Tổng số tín chỉ tích lũy (theo bảng điểm): đã đạt 27/126 TC — chưa đạt, còn thiếu 99 TC",
+      // 99 − (3 + 4 TC of the two missing mandatory courses + 6 TC of Nhóm tự chọn TC306).
+      "- Ngoài các nhóm chưa đạt (G1, G5), còn cần thêm 86 TC",
       "[GPA] Điểm trung bình tích lũy (thang 4, theo bảng điểm): 2,85, yêu cầu tối thiểu 2 — đạt",
     ]);
   });
 
-  it("lists the courses still missing in each group that is not passed, ongoing ones first", () => {
+  it("lists the courses still missing in each group that is not passed, ongoing ones first, and the thesis option", () => {
     expect(section(input.user, "4. HỌC PHẦN CÒN THIẾU").slice(1)).toEqual([
       "[G1] Học phần bắt buộc: các học phần bắt buộc chưa đạt",
       "- 71ITSE41203 Kiểm thử phần mềm (3 TC): đang học",
       "- 71ITIN40304 Đồ án thực tập (4 TC): chưa học",
-      "[G5] Nhóm tự chọn TC306: các học phần có thể chọn để đủ tín chỉ",
-      "- 71ITGR40206 Đồ án Tốt nghiệp (6 TC): chưa học",
-      "- 71ITGR40203 Chuyên đề Tốt nghiệp 1 (3 TC): chưa học",
-      "- 71ITIS30403 Quản lý và phát triển các hệ thống thông tin (3 TC): chưa học",
+      "[G5] Nhóm tự chọn TC306: đồ án tốt nghiệp hoặc học phần thay thế",
+      "- phương án chính: 71ITGR40206 Đồ án Tốt nghiệp (6 TC): chưa học — một học phần đủ số tín chỉ của nhóm",
+      "- phương án thay thế (chỉ khi bạn không làm đồ án tốt nghiệp theo quy định của Khoa): chọn các học phần sau cho đủ 6 TC:",
+      "  - 71ITGR40203 Chuyên đề Tốt nghiệp 1 (3 TC): chưa học",
+      "  - 71ITIS30403 Quản lý và phát triển các hệ thống thông tin (3 TC): chưa học",
     ]);
     expect(section(input.user, "5. HỌC PHẦN ĐANG HỌC").slice(1)).toEqual([
       "- 71ITSE41203 Kiểm thử phần mềm (3 TC), thuộc [G1], học kỳ 1 năm học 2025–2026",
@@ -108,12 +135,28 @@ describe("buildGraduationAdviceInput", () => {
       profile, resolution: "specialty", standard, transcript, evaluation, specialtySuggestion: null,
       fingerprint: graduationFingerprint({ profile, standard, evaluation }),
     }).user;
-    const lines = section(user, "4. HỌC PHẦN CÒN THIẾU");
-    const g5 = lines.slice(lines.findIndex((line) => line.startsWith("[G5]")) + 1);
-    expect(g5).toHaveLength(MAX_MISSING_COURSES_PER_GROUP + 1);
-    expect(g5[0]).toBe("- 71ITIS30403 Quản lý và phát triển các hệ thống thông tin (3 TC): chưa đạt (đã học 1 lần)");
-    expect(g5[1]).toBe("- 71ITGR40206 Đồ án Tốt nghiệp (6 TC): chưa học");
-    expect(g5.at(-1)).toBe("… và 5 học phần khác");
+    // The thesis option: the 16 replacement courses are capped, a failed one first.
+    const g5 = groupBlock(user, "G5").slice(1);
+    expect(g5).toHaveLength(2 + MAX_MISSING_COURSES_PER_GROUP + 1);
+    expect(g5.slice(0, 4)).toEqual([
+      "- phương án chính: 71ITGR40206 Đồ án Tốt nghiệp (6 TC): chưa học — một học phần đủ số tín chỉ của nhóm",
+      "- phương án thay thế (chỉ khi bạn không làm đồ án tốt nghiệp theo quy định của Khoa): chọn các học phần sau cho đủ 6 TC:",
+      "  - 71ITIS30403 Quản lý và phát triển các hệ thống thông tin (3 TC): chưa đạt (đã học 1 lần)",
+      "  - 71ITGR40203 Chuyên đề Tốt nghiệp 1 (3 TC): chưa học",
+    ]);
+    expect(g5.at(-1)).toBe("  … và 4 học phần khác");
+
+    // A group without a thesis course lists its 17 not-passed courses as before.
+    const renamed = { ...standard, data: { ...standard.data, courses: standard.data.courses.map((course) => course.code === "71ITGR40206" ? { ...course, name: "Đồ án chuyên ngành" } : course) } };
+    const plain = buildGraduationAdviceInput({
+      ...syntheticGraduation(), standard: renamed, evaluation: evaluateGraduation({ standard: renamed, transcript, curriculumCourses: syntheticCurriculum().courses }),
+    }).user;
+    const flat = groupBlock(plain, "G5");
+    expect(flat[0]).toBe("[G5] Nhóm tự chọn TC306: các học phần có thể chọn để đủ tín chỉ");
+    expect(flat.slice(1)).toHaveLength(MAX_MISSING_COURSES_PER_GROUP + 1);
+    expect(flat[1]).toBe("- 71ITIS30403 Quản lý và phát triển các hệ thống thông tin (3 TC): chưa đạt (đã học 1 lần)");
+    expect(flat[2]).toBe("- 71ITGR40206 Đồ án chuyên ngành (6 TC): chưa học");
+    expect(flat.at(-1)).toBe("… và 5 học phần khác");
   });
 
   it("suggests GPA retakes as học lại or học cải thiện and writes the GPA shortfall rounded up", () => {
@@ -185,6 +228,145 @@ describe("buildGraduationAdviceInput", () => {
 
   it("throws without an evaluation", () => {
     expect(() => buildGraduationAdviceInput(unevaluatedGraduation())).toThrow("graduation_advice_requires_evaluation");
+  });
+});
+
+describe("the thesis option of Nhóm tự chọn TC306 in section [4]", () => {
+  const k29 = withThesisGroup(K29_THESIS_COURSES);
+  const g5 = (terms: Parameters<typeof termsWithRows>[0], standard = k29) =>
+    groupBlock(buildGraduationAdviceInput(syntheticGraduation({ standard, terms: termsWithRows(terms) })).user, "G5");
+
+  it("offers Đồ án Tốt nghiệp first and the replacement courses only for a student who does not do it (not started)", () => {
+    expect(g5({})).toEqual([
+      "[G5] Nhóm tự chọn TC306: đồ án tốt nghiệp hoặc học phần thay thế",
+      "- phương án chính: 71ITGR40206 Đồ án Tốt nghiệp (6 TC): chưa học — một học phần đủ số tín chỉ của nhóm",
+      "- phương án thay thế (chỉ khi bạn không làm đồ án tốt nghiệp theo quy định của Khoa): chọn các học phần sau cho đủ 6 TC:",
+      "  - 71ITGR40203 Chuyên đề Tốt nghiệp 1 (3 TC): chưa học",
+      "  - 71ITGR40303 Chuyên đề Tốt nghiệp 2 (3 TC): chưa học",
+      "  - 71ITIS30403 Quản lý và phát triển các hệ thống thông tin (3 TC): chưa học",
+      "  - 71ITIS30603 Chuyên đề Tối ưu hóa máy tìm kiếm (3 TC): chưa học",
+    ]);
+    // A failed replacement course does not start the replacement path: it is listed first.
+    expect(g5({ "2024-2025 HK03": [["71ITGR40303", 3, 3, 0, "F"]] }).slice(1, 4)).toEqual([
+      "- phương án chính: 71ITGR40206 Đồ án Tốt nghiệp (6 TC): chưa học — một học phần đủ số tín chỉ của nhóm",
+      "- phương án thay thế (chỉ khi bạn không làm đồ án tốt nghiệp theo quy định của Khoa): chọn các học phần sau cho đủ 6 TC:",
+      "  - 71ITGR40303 Chuyên đề Tốt nghiệp 2 (3 TC): chưa đạt (đã học 1 lần)",
+    ]);
+  });
+
+  it("names Khóa luận tốt nghiệp in K28 Nhóm tự chọn TC306_Tự chọn tốt nghiệp", () => {
+    const k28 = withThesisGroup([
+      ["71ITGR40106", "Khóa luận tốt nghiệp", 6], ["71ITGR40203", "Chuyên đề Tốt nghiệp 1", 3], ["71ITGR40303", "Chuyên đề Tốt nghiệp 2", 3],
+      ["71ITIS30403", "Quản lý và phát triển các hệ thống thông tin", 3],
+    ], "Nhóm tự chọn TC306_Tự chọn tốt nghiệp");
+    expect(g5({}, k28).slice(0, 3)).toEqual([
+      "[G5] Nhóm tự chọn TC306_Tự chọn tốt nghiệp: khóa luận tốt nghiệp hoặc học phần thay thế",
+      "- phương án chính: 71ITGR40106 Khóa luận tốt nghiệp (6 TC): chưa học — một học phần đủ số tín chỉ của nhóm",
+      "- phương án thay thế (chỉ khi bạn không làm khóa luận tốt nghiệp theo quy định của Khoa): chọn các học phần sau cho đủ 6 TC:",
+    ]);
+  });
+
+  it("follows a replacement path already taken: its courses so far, then the replacement courses left, never the thesis", () => {
+    const passed = g5({ "2024-2025 HK01": [["71ITIS30403", 3, 3, 0, "F"]], "2024-2025 HK03": [["71ITGR40203", 3, 8, 3.5, "B+"]] });
+    expect(passed).toEqual([
+      "[G5] Nhóm tự chọn TC306: bạn đã bắt đầu phương án học phần thay thế đồ án tốt nghiệp",
+      "- học phần thay thế đã học hoặc đang học:",
+      "  - 71ITGR40203 Chuyên đề Tốt nghiệp 1 (3 TC): đạt",
+      "- chọn học tiếp trong các học phần thay thế sau cho đủ 3 TC còn thiếu:",
+      "  - 71ITIS30403 Quản lý và phát triển các hệ thống thông tin (3 TC): chưa đạt (đã học 1 lần)",
+      "  - 71ITGR40303 Chuyên đề Tốt nghiệp 2 (3 TC): chưa học",
+      "  - 71ITIS30603 Chuyên đề Tối ưu hóa máy tìm kiếm (3 TC): chưa học",
+    ]);
+    expect(passed.join("\n")).not.toMatch(/71ITGR40206|phương án chính/);
+  });
+
+  it("counts the replacement courses in progress or without a result before asking for more", () => {
+    expect(g5({ "2025-2026 HK01": [["71ITGR40203", 3]] })).toEqual([
+      "[G5] Nhóm tự chọn TC306: bạn đã bắt đầu phương án học phần thay thế đồ án tốt nghiệp",
+      "- học phần thay thế đã học hoặc đang học:",
+      "  - 71ITGR40203 Chuyên đề Tốt nghiệp 1 (3 TC): đang học",
+      "- nếu học phần đang học ở trên đạt, còn cần thêm 3 TC",
+      "- chọn học tiếp trong các học phần thay thế sau cho đủ 3 TC còn thiếu:",
+      "  - 71ITGR40303 Chuyên đề Tốt nghiệp 2 (3 TC): chưa học",
+      "  - 71ITIS30403 Quản lý và phát triển các hệ thống thông tin (3 TC): chưa học",
+      "  - 71ITIS30603 Chuyên đề Tối ưu hóa máy tìm kiếm (3 TC): chưa học",
+    ]);
+    expect(g5({ "2025-2026 HK01": [["71ITGR40203", 3], ["71ITGR40303", 3]] })).toEqual([
+      "[G5] Nhóm tự chọn TC306: bạn đã bắt đầu phương án học phần thay thế đồ án tốt nghiệp",
+      "- học phần thay thế đã học hoặc đang học:",
+      "  - 71ITGR40203 Chuyên đề Tốt nghiệp 1 (3 TC): đang học",
+      "  - 71ITGR40303 Chuyên đề Tốt nghiệp 2 (3 TC): đang học",
+      "- nếu các học phần đang học ở trên đều đạt, nhóm sẽ đủ số tín chỉ",
+    ]);
+    // A score without a letter or result: graded with an unknown result.
+    expect(g5({ "2024-2025 HK03": [["71ITGR40203", 3, 7]], "2025-2026 HK01": [["71ITIS30603", 3]] }).slice(1, 5)).toEqual([
+      "- học phần thay thế đã học hoặc đang học:",
+      "  - 71ITGR40203 Chuyên đề Tốt nghiệp 1 (3 TC): chưa rõ kết quả",
+      "  - 71ITIS30603 Chuyên đề Tối ưu hóa máy tìm kiếm (3 TC): đang học",
+      "- nếu các học phần đang học hoặc chưa rõ kết quả ở trên đều đạt, nhóm sẽ đủ số tín chỉ",
+    ]);
+  });
+
+  it("says a thesis in progress completes the group", () => {
+    const user = buildGraduationAdviceInput(syntheticGraduation({ standard: k29, terms: termsWithRows({ "2025-2026 HK01": [["71ITGR40206", 6]] }) })).user;
+    expect(groupBlock(user, "G5")).toEqual([
+      "[G5] Nhóm tự chọn TC306: bạn đang làm đồ án tốt nghiệp",
+      "- 71ITGR40206 Đồ án Tốt nghiệp (6 TC): đang học — hoàn thành học phần này là đủ số tín chỉ của nhóm",
+    ]);
+    expect(section(user, "5. HỌC PHẦN ĐANG HỌC")).toContain("- 71ITGR40206 Đồ án Tốt nghiệp (6 TC), thuộc [G5], học kỳ 1 năm học 2025–2026");
+  });
+
+  it("lists a group whose thesis already passed but another course is undecided as a plain group", () => {
+    // A passed course with no credit anywhere leaves the group undecided.
+    const standard = withThesisGroup([...K29_THESIS_COURSES, ["71ITXX40903", "Học phần tổng hợp", null]]);
+    const terms = { "2024-2025 HK03": [["71ITGR40206", 6, 8.5, 3.7, "A"], ["71ITXX40903", 0, 8, 3.5, "B+"]] } satisfies Parameters<typeof termsWithRows>[0];
+    const graduation = syntheticGraduation({ standard, terms: termsWithRows(terms) });
+    expect(graduation.evaluation.groups.find((group) => group.id === THESIS_GROUP_ID)?.status).toBe("unknown");
+    expect(g5(terms, standard)).toEqual([
+      "[G5] Nhóm tự chọn TC306: các học phần có thể chọn để đủ tín chỉ",
+      "- 71ITGR40203 Chuyên đề Tốt nghiệp 1 (3 TC): chưa học",
+      "- 71ITGR40303 Chuyên đề Tốt nghiệp 2 (3 TC): chưa học",
+      "- 71ITIS30403 Quản lý và phát triển các hệ thống thông tin (3 TC): chưa học",
+      "- 71ITIS30603 Chuyên đề Tối ưu hóa máy tìm kiếm (3 TC): chưa học",
+    ]);
+  });
+});
+
+describe("the note under a failing total-credits condition", () => {
+  const credits = (graduation: ReturnType<typeof syntheticGraduation>) => {
+    const lines = section(buildGraduationAdviceInput(graduation).user, "3. CÁC ĐIỀU KIỆN");
+    return lines.slice(lines.findIndex((line) => line.startsWith("[CREDITS]")), lines.findIndex((line) => line.startsWith("[GPA]")));
+  };
+  const minimum = (minimumCredits: number) => syntheticGraduation({ standard: (data) => ({ ...data, minimumCredits }) });
+
+  it("says when completing the failing groups also completes the total", () => {
+    // 40 − 27 = 13 TC = 3 + 4 TC of Học phần bắt buộc + 6 TC of Nhóm tự chọn TC306.
+    expect(credits(minimum(40))).toEqual([
+      "[CREDITS] Tổng số tín chỉ tích lũy (theo bảng điểm): đã đạt 27/40 TC — chưa đạt, còn thiếu 13 TC",
+      "- Hoàn thành các nhóm chưa đạt (G1, G5) sẽ đủ tổng số tín chỉ tích lũy",
+    ]);
+    expect(credits(minimum(41))[1]).toBe("- Ngoài các nhóm chưa đạt (G1, G5), còn cần thêm 1 TC");
+  });
+
+  it("adds no credits for a failing group of condition-only courses (GDTC)", () => {
+    const terms = syntheticStudentTerms().map((term) => ({ ...term, rows: term.rows.filter(([code]) => code !== "71PETT10012") }));
+    const graduation = syntheticGraduation({ terms });
+    expect(graduation.evaluation.groups[2]).toMatchObject({ status: "fail", remaining: 2 });
+    expect(credits(graduation)[1]).toBe("- Ngoài các nhóm chưa đạt (G1, G3, G5), còn cần thêm 86 TC");
+  });
+
+  it("is left out when the total passes, no group fails or a credit is unknown", () => {
+    expect(credits(minimum(27))).toEqual(["[CREDITS] Tổng số tín chỉ tích lũy (theo bảng điểm): đã đạt 27/27 TC — đạt"]);
+    const base = syntheticGraduation();
+    const evaluation = structuredClone(base.evaluation);
+    for (const group of evaluation.groups) Object.assign(group, { status: "pass", remaining: null });
+    expect(credits({ ...base, evaluation })).toHaveLength(1);
+    // A missing mandatory course without a credit in the standard, the CTĐT or the transcript.
+    const unknown = syntheticGraduation({ standard: (data) => ({
+      ...data, courses: [...data.courses, { id: "c-row-10-71ITXX49903", groupId: "row-10", code: "71ITXX49903", name: "Học phần tổng hợp", credits: null, conditionOnly: false, sourceRow: 400 }],
+    }) });
+    expect(unknown.evaluation.groups[0]).toMatchObject({ status: "fail", remaining: 3 });
+    expect(credits(unknown)).toHaveLength(1);
   });
 });
 

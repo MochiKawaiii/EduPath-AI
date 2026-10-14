@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DatabasePool } from "../../db/pool.js";
+import { canonicalJson, graduationFingerprintFacts } from "../student-graduation.js";
 import {
   adviceErrorCode, adviceNeeded, autoRetryDue, claimGraduationAdvice, completeGraduationAdvice, createGraduationAdviceExpiry, currentAdvice,
   deleteGraduationAdvice, ensureGraduationAdvice, ensureGraduationAdviceAfterImport, expireGraduationAdvice, extendGraduationAdvice,
@@ -106,6 +108,19 @@ describe("ensureGraduationAdvice", () => {
       graduation.evaluation.calcVersion, FINGERPRINT]);
     expect(JSON.parse(params[8] as string)).toEqual(buildGraduationAdviceInput(graduation));
     expect(params[9]).toBe(GRADUATION_ADVICE_PROMPT_VERSION);
+  });
+
+  it("queues fresh advice when the stored one was written by an older prompt for the same facts", async () => {
+    const facts = graduationFingerprintFacts(graduation);
+    const older = createHash("sha256").update(canonicalJson({ ...facts, promptVersion: "grad-advice-v1" })).digest("hex");
+    expect(older).not.toBe(FINGERPRINT);
+    const stored = row({ fingerprint: older, status: "completed", id: "older" });
+    expect(adviceNeeded([stored], FINGERPRINT)).toBe(true);
+    const { client, calls, sql } = fakeClient({ rows: [stored] });
+    expect(await ensureGraduationAdvice(client, USER, { read: reader() })).toMatchObject({ kind: "stored", created: true, row: { fingerprint: FINGERPRINT } });
+    const insert = calls().find(([text]) => text.startsWith("INSERT INTO stu_grad_advice"))!;
+    expect((insert[1] as unknown[])[9]).toBe("grad-advice-v2");
+    expect(writes(sql())).toHaveLength(3);
   });
 
   it("re-queues failed or cancelled advice by itself once, a minute after it finished", async () => {

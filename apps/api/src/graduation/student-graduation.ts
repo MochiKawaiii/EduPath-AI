@@ -5,6 +5,7 @@ import { classifyCurriculumSpecialty, specialtyCounts, suggestSpecialty } from "
 import type { CurriculumCourseInput, GraduationStandardInput, SpecialtyCode } from "../competency-assessment/types.js";
 import type { DatabasePool } from "../db/pool.js";
 import type { TranscriptData } from "../student/transcript-parser.js";
+import { GRADUATION_ADVICE_PROMPT_VERSION } from "./advice/prompt.js";
 import { evaluateGraduation, type GraduationEvaluation } from "./evaluation.js";
 import { normalizeCohortCode, profileSpecialty, resolveStudentStandard, type StudentGraduationResolution } from "./resolve.js";
 
@@ -129,19 +130,22 @@ export type GraduationFingerprintInput = {
 };
 
 /**
- * The facts an AI advice is written from: profile (cohort, specialty), standard revision,
+ * The facts an AI advice is written from: the advice prompt version (a new prompt re-queues the
+ * advice of every student on the next page open), profile (cohort, specialty), standard revision,
  * transcript version and latest term, calcVersion, every status, the bounds/requirement/remaining
- * of each group, credits and GPA, the not-passed courses (code, state, credits, attempts) of the
- * groups that are not passed, the in-progress courses (code, credits), the unknown-result course
- * codes, the improvement candidates (code, state, credits) and the data warnings with their numbers.
- * What is read from the transcript or the standard alone is covered by their versions; the explicit
- * facts also catch a changed CTĐT (credits, elective codes) or profile.
+ * of each group, credits and GPA, the not-passed courses (code, state, credits, attempts,
+ * condition-only) of the groups that are not passed, the in-progress courses (code, credits), the
+ * unknown-result course codes, the improvement candidates (code, state, credits) and the data
+ * warnings with their numbers. What is read from the transcript or the standard alone is covered by
+ * their versions; the explicit facts also catch a changed CTĐT (credits, elective codes,
+ * condition-only courses) or profile.
  */
 export function graduationFingerprintFacts({ profile, standard, evaluation }: GraduationFingerprintInput) {
   const credits = evaluation.credits;
   const gpa = evaluation.gpa;
   return {
-    v: 1,
+    v: 2,
+    promptVersion: GRADUATION_ADVICE_PROMPT_VERSION,
     cohortCode: profile.cohortCode,
     specialty: profile.specialty,
     standardRevisionId: standard.revisionId,
@@ -155,7 +159,7 @@ export function graduationFingerprintFacts({ profile, standard, evaluation }: Gr
       id: group.id, label: group.label, code: group.code, curriculumElectiveCode: group.curriculumElectiveCode, unit: group.unit,
       status: group.status, lower: group.lower, upper: group.upper, required: group.required, remaining: group.remaining,
       missing: group.status === "pass" ? [] : group.courses.filter((course) => !isPassedState(course.state))
-        .map((course) => [course.code, course.state, course.credits, course.attempts]),
+        .map((course) => [course.code, course.state, course.credits, course.attempts, course.conditionOnly]),
     })),
     credits: credits && {
       lower: credits.lower, upper: credits.upper, required: credits.required, status: credits.status, source: credits.source, remaining: credits.remaining,

@@ -290,7 +290,7 @@ export type MappedAiOutput = {
   summary: string;
   groupInsights: { key: string; name: string; comment: string }[];
   strengths: { key: string; name: string; comment: string }[];
-  improvements: { key: string; name: string; priority: AiPriority; comment: string }[];
+  improvements: { key: string; name: string; priority: AiPriority; comment: string; courses: { code: string; name: string; reason: string }[] }[];
   careerFit: string;
   gaps: { key: string; name: string; priority: AiPriority; explanation: string; courses: { code: string; name: string; reason: string }[]; selfStudy: string[] }[];
   progress: string;
@@ -354,6 +354,8 @@ export function mapAiOutput(output: AiOutput | null | undefined, result: Assessm
   const weak = new Set([...list<{ skillKey?: unknown }>(output.improvements), ...list<{ skillKey?: unknown }>(output.gaps)].map((item) => item?.skillKey));
   const courses = new Map(result.courses.map((course) => [course.code, course.name]));
   for (const course of result.courseSuggestions) courses.set(course.code, course.name);
+  const courseList = (value: unknown) => list<{ courseCode: string; reason: string }>(value).filter((course) => courses.has(course?.courseCode))
+    .map((course) => ({ code: course.courseCode, name: courses.get(course.courseCode)!, reason: text(course.reason) }));
   const mapped: MappedAiOutput = {
     summary: text(output.summary),
     groupInsights: list<AiOutput["groupInsights"][number]>(output.groupInsights)
@@ -364,14 +366,13 @@ export function mapAiOutput(output: AiOutput | null | undefined, result: Assessm
       .map((item) => ({ key: item.skillKey, name: skills.get(item.skillKey)!, comment: text(item.comment) })),
     improvements: list<AiOutput["improvements"][number]>(output.improvements)
       .filter((item) => skills.has(item?.skillKey) && text(item.comment))
-      .map((item) => ({ key: item.skillKey, name: skills.get(item.skillKey)!, priority: priority(item.priority), comment: text(item.comment) })),
+      .map((item) => ({ key: item.skillKey, name: skills.get(item.skillKey)!, priority: priority(item.priority), comment: text(item.comment), courses: courseList(item.courses) })),
     careerFit: text(output.careerFit?.comment),
     gaps: list<AiOutput["gaps"][number]>(output.gaps)
       .filter((item) => skills.has(item?.skillKey))
       .map((item) => ({
         key: item.skillKey, name: skills.get(item.skillKey)!, priority: priority(item.priority), explanation: text(item.explanation),
-        courses: list<{ courseCode: string; reason: string }>(item.courses).filter((course) => courses.has(course?.courseCode))
-          .map((course) => ({ code: course.courseCode, name: courses.get(course.courseCode)!, reason: text(course.reason) })),
+        courses: courseList(item.courses),
         selfStudy: list<unknown>(item.selfStudy).map(text).filter(Boolean),
       }))
       .filter((item) => item.explanation || item.courses.length || item.selfStudy.length),
