@@ -17,7 +17,8 @@
  * printed total also reads "Số tín chỉ tích lũy" and an unreadable one falls back to the estimate.
  */
 /** v6: skillPlans gives every scored skill below Khá outside the career gaps its courses to take, retake or improve. */
-export const CALC_VERSION = "comp-calc-v6";
+/** v7: with a career, plans only deepen its met skills below Thành thạo; thesis replacement courses are never suggested off that path. */
+export const CALC_VERSION = "comp-calc-v7";
 
 /** Skill, group and overall levels (0–100 scale), classified on unrounded values. */
 export const LEVEL_THRESHOLDS = { proficient: 85, good: 70, basic: 50 } as const;
@@ -43,7 +44,7 @@ export const DEFICIT_BANDS = { near: 5, moderate: 15 } as const;
 
 /** At most this many course candidates (and improvement candidates) per skill. */
 export const MAX_SUPPORT_COURSES = 5;
-/** At most this many weak skills outside the career gaps get a course plan (skillPlans), weakest first. */
+/** At most this many skills get a course plan (skillPlans), weakest first. */
 export const MAX_SKILL_PLANS = 8;
 /** Warn when fewer curriculum courses than this share have skill weights. */
 export const MIN_WEIGHTED_COURSE_SHARE = 0.8;

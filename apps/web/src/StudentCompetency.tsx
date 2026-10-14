@@ -6,9 +6,9 @@ import type { StudentProfile } from "./StudentOverview";
 import { specialtyLabel, type AiStatus, type AssessmentResult, type AssessmentStatusResponse, type CareerRequirementResult, type CourseSuggestion, type LatestAssessmentResponse, type LevelCode, type SkillPlan, type SkillResult, type StoredAssessment, type SupportCourse } from "./competency-assessment-types";
 import {
   COMPETENCY_API, CONFIDENCE_LABELS, COURSE_STATE_LABELS, EMPTY_SKILL_FILTERS, LEVEL_COLUMNS, LEVEL_SCALE, PRECONDITION_COPY, PRIORITY_LABELS,
-  aiErrorMessage, aiStateCopy, bucketSkills, canRegenerate, courseStanding, dataUsedLine, eligibilityDisplay, errorMessage, filterSkills, formatDateTime,
+  aiErrorMessage, aiStateCopy, bucketSkills, canRegenerate, careerSkillKeys, courseStanding, dataUsedLine, eligibilityDisplay, errorMessage, filterSkills, formatDateTime,
   formatNumber, formatPercent, formatScore, gapStatusDisplay, groupEvidenceCounts, isGap, isPreconditionError, levelSentence, levelStep, levelSummary, mapAiOutput, modelLabel,
-  scoreDifference, shouldPoll, skillName, sortRequirements, type MappedAiOutput, type PreconditionError, type SkillFilters, type StatusTone,
+  plansFor, scoreDifference, shouldPoll, skillName, sortRequirements, type MappedAiOutput, type PreconditionError, type SkillFilters, type StatusTone,
 } from "./student-competency-data";
 import { readGraduation } from "./student-graduation-api";
 import {
@@ -504,18 +504,23 @@ function PlanCourseLine({ course }: { course: SupportCourse }) {
   </li>;
 }
 
-function SkillPlans({ plans }: { plans: SkillPlan[] }) {
+function SkillPlans({ plans, career }: { plans: SkillPlan[]; career: string | null }) {
+  const deepen = career !== null;
   return <>
-    <h3 className="scomp-subtitle">Kỹ năng cần củng cố (dưới mức Khá)</h3>
-    <p className="scomp-meta">Kỹ năng ở mức Cơ bản hoặc Cần củng cố, kèm học phần cụ thể để học cải thiện hoặc học mới. Học phần đã đạt có thể đăng ký học cải thiện theo quy chế của trường.</p>
+    <h3 className="scomp-subtitle">{deepen ? "Nâng kỹ năng của nghề lên mức Thành thạo" : "Kỹ năng cần củng cố (dưới mức Khá)"}</h3>
+    <p className="scomp-meta">{deepen
+      ? `Kỹ năng nghề ${career} bạn đã đạt ngưỡng nhưng chưa đạt mức Thành thạo (từ 85), kèm học phần còn có thể học. Khi không còn học phần, hãy rèn thêm bằng một dự án gắn với nghề.`
+      : "Kỹ năng ở mức Cơ bản hoặc Cần củng cố, kèm học phần cụ thể để học cải thiện hoặc học mới. Học phần đã đạt có thể đăng ký học cải thiện theo quy chế của trường."}</p>
     {plans.length ? <ul className="scomp-plan-cards">{plans.map((plan) => {
       const courses = [...plan.improve, ...plan.take];
       return <li key={plan.skillKey}>
         <div className="scomp-course-head"><strong>Kỹ năng: {plan.name}</strong><LevelBadge level={plan.level} label={`${plan.levelLabel} · ${formatScore(plan.score)}`} /></div>
         {courses.length ? <ul className="scomp-plan-courses">{courses.map((course) => <PlanCourseLine key={`${course.kind}:${course.code}`} course={course} />)}</ul>
-          : <p className="scomp-meta">Không còn học phần nào trong chương trình của bạn để học thêm cho kỹ năng này; hãy tự học và làm một sản phẩm nhỏ để kiểm chứng.</p>}
+          : <p className="scomp-meta">{deepen
+            ? "Bạn đã học hết học phần đo kỹ năng này trong chương trình; hãy làm một dự án nhỏ gắn với nghề để rèn thêm và có sản phẩm minh chứng."
+            : "Không còn học phần nào trong chương trình của bạn để học thêm cho kỹ năng này; hãy tự học và làm một sản phẩm nhỏ để kiểm chứng."}</p>}
       </li>;
-    })}</ul> : <p className="scomp-meta">Không có kỹ năng nào dưới mức Khá ngoài các kỹ năng nghề ở trên.</p>}
+    })}</ul> : <p className="scomp-meta">{deepen ? "Mọi kỹ năng của nghề đã đạt mức Thành thạo hoặc còn là khoảng trống ở trên." : "Không có kỹ năng nào dưới mức Khá."}</p>}
   </>;
 }
 
@@ -524,15 +529,15 @@ function CoursesSection({ result, ai }: { result: AssessmentResult; ai: MappedAi
   const improve = result.courseSuggestions.filter((course) => course.kind === "improve");
   const aiTips = new Map((ai?.gaps ?? []).map((gap) => [gap.key, gap.selfStudy]));
   const courseNames = new Map(result.courses.map((course) => [course.code, course.name]));
-  const plans = result.skillPlans;
-  return <Section id="scomp-courses" title="Học phần nên ưu tiên và tự học" description={result.career ? "Học phần cụ thể giúp bổ sung các kỹ năng nghề chưa đạt và củng cố các kỹ năng còn yếu; mỗi học phần ghi rõ bạn đã học chưa, điểm hiện tại và đã đủ điều kiện đăng ký chưa." : "Chọn nghề mục tiêu để nhận gợi ý học phần theo khoảng trống kỹ năng."}>
+  const plans = plansFor(result);
+  return <Section id="scomp-courses" title="Học phần nên ưu tiên và tự học" description={result.career ? `Học phần cụ thể cho các kỹ năng của nghề ${result.career.nameVi}: kỹ năng chưa đạt ngưỡng và kỹ năng có thể nâng lên mức Thành thạo. Mỗi học phần ghi rõ bạn đã học chưa, điểm hiện tại và đã đủ điều kiện đăng ký chưa.` : "Chọn nghề mục tiêu để nhận gợi ý học phần theo khoảng trống kỹ năng."}>
     {result.career && <>
       <h3 className="scomp-subtitle">Học phần nên học</h3>
       {take.length ? <ol className="scomp-course-list">{take.map((course) => <CourseCard key={course.code} course={course} result={result} />)}</ol> : <p className="scomp-meta">Không còn học phần nào cần học thêm cho các kỹ năng nghề chưa đạt.</p>}
       <h3 className="scomp-subtitle">Học cải thiện</h3>
       {improve.length ? <><p className="scomp-meta">Học phần bạn đã đạt nhưng điểm thấp hơn ngưỡng của kỹ năng nghề. Có thể đăng ký học cải thiện theo quy chế của trường.</p><ol className="scomp-course-list">{improve.map((course) => <CourseCard key={course.code} course={course} result={result} />)}</ol></> : <p className="scomp-meta">Không có học phần nào cần học cải thiện.</p>}
     </>}
-    {plans && <SkillPlans plans={plans} />}
+    {plans.length > 0 && <SkillPlans plans={plans} career={result.career?.nameVi ?? null} />}
     <h3 className="scomp-subtitle">Kỹ năng cần tự học (CTĐT chưa đo)</h3>
     {result.selfStudy.length ? <ul className="scomp-selfstudy">{result.selfStudy.map((item) => {
       const related = item.relatedSkillKeys.map((key) => skillName(result, key)).filter(Boolean);
@@ -558,7 +563,7 @@ function AiPanel({ assessment, aiEnabled, workerOnline, busy, onRegenerate, onCa
   const copy = aiStateCopy(ai.status, workerOnline, aiEnabled);
   return <section id="scomp-ai" tabIndex={-1} className="sw-panel scomp-section scomp-ai" aria-labelledby="scomp-ai-title">
     <div className="scomp-section-heading"><div className="scomp-ai-heading"><span className="scomp-ai-icon"><Icon name="spark" /></span><h2 id="scomp-ai-title">{view === "gap" ? "Nhận xét từ EduPath AI về khoảng trống kỹ năng" : "Nhận xét từ EduPath AI"}</h2><span className="scomp-ai-tag">AI</span></div></div>
-    {mapped ? view === "gap" ? <AiGapContent output={mapped} hasCareer={Boolean(result.career)} /> : <AiContent output={mapped} /> : <div className={`scomp-ai-state${pending ? " scomp-ai-pending" : ""}${ai.status === "failed" ? " scomp-ai-failed" : ""}`}>
+    {mapped ? view === "gap" ? <AiGapContent output={mapped} hasCareer={Boolean(result.career)} careerKeys={careerSkillKeys(result)} /> : <AiContent output={mapped} /> : <div className={`scomp-ai-state${pending ? " scomp-ai-pending" : ""}${ai.status === "failed" ? " scomp-ai-failed" : ""}`}>
       {pending && <span className="sr-job-spinner" aria-hidden="true" />}
       <strong>{ai.status === "completed" ? "Chưa hiển thị được nhận xét" : copy.title}</strong>
       <p>{ai.status === "failed" ? `${aiErrorMessage(ai.errorCode)} ${copy.text}` : ai.status === "completed" ? "Nhận xét đã lưu không đọc được. Kết quả tính toán bên dưới vẫn đầy đủ." : copy.text}</p>
@@ -589,15 +594,24 @@ function AiContent({ output }: { output: MappedAiOutput }) {
   </div>;
 }
 
-/** The gap part of the AI comment: fit with the target career and the gaps worth closing first, with their courses. */
-function AiGapContent({ output, hasCareer }: { output: MappedAiOutput; hasCareer: boolean }) {
-  if (!output.careerFit && !output.gaps.length) return <p className="scomp-meta">{hasCareer ? "Nhận xét lần này không có phần riêng về khoảng trống kỹ năng. Kết quả tính toán bên dưới vẫn đầy đủ." : "Chọn nghề mục tiêu rồi đánh giá lại để nhận nhận xét về khoảng trống kỹ năng."}</p>;
+/**
+ * The gap part of the AI comment: fit with the target career, the gaps worth closing first with their
+ * courses, and the AI's advice on raising the career's own skills (never the skills outside the career).
+ */
+function AiGapContent({ output, hasCareer, careerKeys }: { output: MappedAiOutput; hasCareer: boolean; careerKeys: Set<string> }) {
+  const gapKeys = new Set(output.gaps.map((gap) => gap.key));
+  const raise = output.improvements.filter((item) => careerKeys.has(item.key) && !gapKeys.has(item.key));
+  if (!output.careerFit && !output.gaps.length && !raise.length) return <p className="scomp-meta">{hasCareer ? "Nhận xét lần này không có phần riêng về khoảng trống kỹ năng. Kết quả tính toán bên dưới vẫn đầy đủ." : "Chọn nghề mục tiêu rồi đánh giá lại để nhận nhận xét về khoảng trống kỹ năng."}</p>;
   return <div className="scomp-ai-body">
     {output.careerFit && <div className="scomp-ai-block"><h3>Với nghề mục tiêu</h3><p className="scomp-prose">{output.careerFit}</p></div>}
     {output.gaps.length > 0 && <div className="scomp-ai-block"><h3>Khoảng trống nên ưu tiên</h3><ul>{output.gaps.map((gap) => <li key={gap.key}>
       <strong>{gap.name}</strong> <span className="scomp-priority">{PRIORITY_LABELS[gap.priority]}</span>{gap.explanation && <>. {gap.explanation}</>}
       {gap.courses.length > 0 && <ul className="scomp-ai-sub">{gap.courses.map((course) => <li key={course.code}>Học phần {course.name} ({course.code}){course.reason && `: ${course.reason}`}</li>)}</ul>}
       {gap.selfStudy.length > 0 && <ul className="scomp-ai-sub">{gap.selfStudy.map((tip) => <li key={tip}>Tự học: {tip}</li>)}</ul>}
+    </li>)}</ul></div>}
+    {raise.length > 0 && <div className="scomp-ai-block"><h3>Nâng kỹ năng của nghề</h3><ul>{raise.map((item) => <li key={item.key}>
+      <strong>{item.name}</strong> <span className="scomp-priority">{PRIORITY_LABELS[item.priority]}</span>. {item.comment}
+      {item.courses.length > 0 && <ul className="scomp-ai-sub">{item.courses.map((course) => <li key={course.code}>Học phần {course.name} ({course.code}){course.reason && `: ${course.reason}`}</li>)}</ul>}
     </li>)}</ul></div>}
   </div>;
 }

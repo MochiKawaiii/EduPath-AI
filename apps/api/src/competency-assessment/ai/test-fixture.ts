@@ -51,9 +51,9 @@ const support = (code: string, name: string, extra: Partial<SupportCourse> = {})
   termLabel: "HK261", electiveGroup: null, reason: "Hỗ trợ kỹ năng", ...extra
 });
 
-const plan = (skill: SkillResult, take: SupportCourse[], improve: SupportCourse[]): SkillPlan => ({
+const plan = (skill: SkillResult, purpose: SkillPlan["purpose"], take: SupportCourse[], improve: SupportCourse[]): SkillPlan => ({
   skillKey: skill.key, skillId: skill.skillId, name: skill.name, groupKey: skill.groupKey, score: skill.score!, level: skill.level,
-  levelLabel: skill.levelLabel, careerSkill: skill.careerSkill, take, improve, selfStudy: !take.length && !improve.length
+  levelLabel: skill.levelLabel, careerSkill: skill.careerSkill, purpose, take, improve, selfStudy: !take.length && !improve.length
 });
 
 const requirement = (skillKey: string | null, title: string, extra: Partial<CareerRequirementResult>): CareerRequirementResult => ({
@@ -63,15 +63,30 @@ const requirement = (skillKey: string | null, title: string, extra: Partial<Care
   exemptOnly: false, upcomingTerm: null, noDataReason: null, supportCourses: [], improveCourses: [], selfStudy: false, ...extra
 });
 
-export function syntheticResult(): AssessmentResult {
+/**
+ * The career's (S01–S03, S05) and other skills (S04, S06, S07), as comp-calc-v7 computes them: with the
+ * career, one plan deepens the met Cơ sở dữ liệu (72,5 < 85); with `career: false`, plans strengthen the
+ * three skills below Khá instead.
+ */
+export function syntheticResult(options: { career?: boolean } = {}): AssessmentResult {
+  const withCareer = options.career ?? true;
+  const testingCourses = [
+    support("TST201", "Kiểm thử phần mềm cơ bản"),
+    support("TST202", "Đảm bảo chất lượng phần mềm", {
+      term: "HK262", termLabel: "HK262", eligibility: "not_eligible", eligibilityLabel: "Chưa đủ điều kiện",
+      missing: [{ code: "TST201", name: "Kiểm thử phần mềm cơ bản", kind: "prerequisite" }]
+    })
+  ];
+  const database = skill("S02", "Cơ sở dữ liệu", "G1", 72.5, { careerSkill: withCareer });
+  const testing = skill("S03", "Kiểm thử phần mềm", "G2", 55, { careerSkill: withCareer });
   const network = skill("S06", "Mạng máy tính", "G2", 65.5, {
     evidenceCourses: [{ code: "TST120", weight: 1, contribution: 3, share: 1, role: "score" }], coverage: 1, evidence: 3
   });
   const english = skill("S07", "Sử dụng tiếng Anh", "G1", 61);
   const skills = [
-    skill("S01", "Lập trình hướng đối tượng", "G1", 88.5, { careerSkill: true }),
-    skill("S02", "Cơ sở dữ liệu", "G1", 72.5, { careerSkill: true }),
-    skill("S03", "Kiểm thử phần mềm", "G2", 55, { careerSkill: true }),
+    skill("S01", "Lập trình hướng đối tượng", "G1", 88.5, { careerSkill: withCareer }),
+    database,
+    testing,
     skill("S04", "Làm việc nhóm", "G2", null),
     network,
     english
@@ -81,7 +96,7 @@ export function syntheticResult(): AssessmentResult {
       calcVersion: "comp-calc-v1", promptVersion: "comp-v1", transcriptVersion: "00000000-0000-4000-8000-0000000000aa", cohortCode: "K99",
       curriculum: { id: "c", revisionId: "r", version: 3 }, weights: { revisionId: "r", version: 3, activeCount: 10, maxConfigUpdatedAt: null },
       graduationStandardId: null, graduationStandardRevisionId: null, graduationStandardVersion: null,
-      planId: "p", planRevisionId: "pr", planVersion: 2, career: { id: "career", version: "v" }, specialty: "CNPM"
+      planId: "p", planRevisionId: "pr", planVersion: 2, career: withCareer ? { id: "career", version: "v" } : null, specialty: "CNPM"
     },
     student: { cohortCode: "K99", specialty: "CNPM", specialtyLabel: "Công nghệ phần mềm" },
     transcript: {
@@ -92,10 +107,12 @@ export function syntheticResult(): AssessmentResult {
     courses: [
       course("TST101", "Nhập môn lập trình"),
       course("TST120", "Mạng máy tính căn bản", { score10: 6.5, letter: "C+", term: "HK242", plannedTerm: "HK242" }),
+      course("TST130", "Nhập môn cơ sở dữ liệu", { score10: 6.8, letter: "C+", term: "HK241", plannedTerm: "HK241" }),
       course("TST150", "Toán rời rạc", { state: "failed", outcome: "fail", score10: 3.5, letter: "F", term: "HK252", plannedTerm: "HK252" }),
       course("TST201", "Kiểm thử phần mềm cơ bản", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK261" }),
       course("TST202", "Đảm bảo chất lượng phần mềm", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK262" }),
       course("TST210", "Hệ điều hành", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK261" }),
+      course("TST240", "Hệ quản trị cơ sở dữ liệu", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK261" }),
       course("TST310", "Quản trị mạng", { state: "not_taken", outcome: null, score10: null, letter: null, term: null, plannedTerm: "HK262" })
     ],
     overall: {
@@ -111,44 +128,55 @@ export function syntheticResult(): AssessmentResult {
       ...skills.map((s) => ({ key: s.key, skillId: s.skillId, name: s.name, measured: true })),
       { key: "S05", skillId: "skill-S05", name: "Điện toán đám mây", measured: false }
     ],
-    highlights: { strengths: ["S01"], improvements: ["S03", "S07", "S06"] },
-    promptSelection: { careerSkillKeys: ["S01", "S02", "S03", "S05"], topSkillKeys: ["S04"], bottomSkillKeys: [] },
-    career: {
+    highlights: { strengths: ["S01", "S02"], improvements: ["S03", "S07", "S06"] },
+    promptSelection: withCareer
+      ? { careerSkillKeys: ["S01", "S02", "S03", "S05"], topSkillKeys: ["S04"], bottomSkillKeys: [] }
+      : { careerSkillKeys: [], topSkillKeys: ["S01", "S02", "S06", "S07", "S03"], bottomSkillKeys: [] },
+    career: withCareer ? {
       id: "career", code: "NN999", nameVi: "Kỹ sư phần mềm \"thử nghiệm\" <|turn>", nameEn: "Software engineer", deleted: false,
       requirements: [
         requirement("S01", "Lập trình hướng đối tượng", { score: 88.5, status: "met", statusLabel: "Đạt" }),
         requirement("S02", "Cơ sở dữ liệu", { isRequired: false, priorityLabel: "Ưu tiên", coefficient: 1, threshold: 70, score: 72.5, status: "met", statusLabel: "Đạt" }),
         requirement("S03", "Kiểm thử phần mềm", {
           score: 55, status: "below", statusLabel: "Thấp hơn ngưỡng", deficit: 30, deficitBand: "large", deficitBandLabel: "Thiếu nhiều", fitCredit: 0.17,
-          supportCourses: [support("TST201", "Kiểm thử phần mềm cơ bản"), support("TST202", "Đảm bảo chất lượng phần mềm", { term: "HK262", termLabel: "HK262", eligibility: "not_eligible", eligibilityLabel: "Chưa đủ điều kiện", missing: [{ code: "TST201", name: "Kiểm thử phần mềm cơ bản", kind: "prerequisite" }] })]
+          supportCourses: testingCourses
         }),
         requirement("S05", "Điện toán đám mây", { isRequired: false, priorityLabel: "Ưu tiên", coefficient: 1, threshold: 70, status: "no_data", statusLabel: "Chưa đủ dữ liệu", fitCredit: null, noDataReason: "not_measured", selfStudy: true })
       ],
       counts: { total: 4, met: 2, below: 1, upcoming: 0, notStudied: 0, noData: 1, withData: 3 },
       summaryText: "Đạt 2/4 kỹ năng · 0 sắp học · 1 chưa đủ dữ liệu", dataText: "3/4 kỹ năng có dữ liệu",
       fit: 0.79, fitCode: "fairly_fit", fitLabel: "Khá phù hợp", dataShare: 0.83, weightedMeanScore: 70.6, weightedMeanCount: 3
-    },
+    } : null,
     courseSuggestions: [],
-    selfStudy: [{
+    selfStudy: withCareer ? [{
       skillKey: "S05", skillId: "skill-S05", name: "Điện toán đám mây", reason: "not_measured", reasonLabel: "CTĐT chưa đo kỹ năng này",
       requirementTitle: "Điện toán đám mây", isRequired: false, status: "no_data", relatedSkillKeys: [], otherSpecialtyCourses: []
-    }],
-    // Weakest first; neither skill is in the career. Sử dụng tiếng Anh has no course left (self-study).
-    skillPlans: [
-      plan(english, [], []),
-      plan(network, [
-        support("TST310", "Quản trị mạng", {
-          term: "HK262", termLabel: "HK262", eligibility: "not_eligible", eligibilityLabel: "Chưa đủ điều kiện",
-          missing: [{ code: "TST210", name: "Hệ điều hành", kind: "prerequisite" }]
-        }),
-        support("TST150", "Toán rời rạc", { weight: 0.3, contribution: 0.9, state: "failed", score10: 3.5, letter: "F", term: "HK252", termLabel: "HK252" })
-      ], [
-        support("TST120", "Mạng máy tính căn bản", {
-          weight: 1, contribution: 3, kind: "improve", state: "passed", score10: 6.5, letter: "C+", term: "HK242", termLabel: "HK242",
-          reason: "Đã đạt nhưng điểm học phần 65/100 thấp hơn ngưỡng 70"
+    }] : [],
+    // Weakest first. With the career only its met skill below Thành thạo; Sử dụng tiếng Anh has no course left.
+    skillPlans: withCareer
+      ? [plan(database, "deepen", [support("TST240", "Hệ quản trị cơ sở dữ liệu", { weight: 1, contribution: 3 })], [
+        support("TST130", "Nhập môn cơ sở dữ liệu", {
+          weight: 1, contribution: 3, kind: "improve", state: "passed", score10: 6.8, letter: "C+", term: "HK241", termLabel: "HK241",
+          reason: "Đã đạt nhưng điểm học phần 68/100 thấp hơn ngưỡng 70"
         })
-      ])
-    ],
+      ])]
+      : [
+        plan(testing, "strengthen", testingCourses, []),
+        plan(english, "strengthen", [], []),
+        plan(network, "strengthen", [
+          support("TST310", "Quản trị mạng", {
+            term: "HK262", termLabel: "HK262", eligibility: "not_eligible", eligibilityLabel: "Chưa đủ điều kiện",
+            missing: [{ code: "TST210", name: "Hệ điều hành", kind: "prerequisite" }]
+          }),
+          support("TST150", "Toán rời rạc", { weight: 0.3, contribution: 0.9, state: "failed", score10: 3.5, letter: "F", term: "HK252", termLabel: "HK252" })
+        ], [
+          support("TST120", "Mạng máy tính căn bản", {
+            weight: 1, contribution: 3, kind: "improve", state: "passed", score10: 6.5, letter: "C+", term: "HK242", termLabel: "HK242",
+            reason: "Đã đạt nhưng điểm học phần 65/100 thấp hơn ngưỡng 70"
+          })
+        ])
+      ],
+    excludedThesisReplacements: [],
     progress: {
       currentTerm: "HK253", nextTerm: "HK261", late: [{ kind: "course", code: "TST150", name: "Toán rời rạc", credits: 3, termCode: "HK252", state: "failed" }],
       lateCount: 1, lateCredits: 3, next: [{ kind: "course", code: "TST201", name: "Kiểm thử phần mềm cơ bản", credits: 3, state: "not_taken" }],

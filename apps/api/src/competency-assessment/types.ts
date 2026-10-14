@@ -482,8 +482,9 @@ export type SelfStudyItem = {
 };
 
 /**
- * What to study for one scored skill below Khá that is not a career gap (comp-calc-v6).
- * Career gaps (below/not studied/upcoming) keep their courses in CareerRequirementResult.
+ * What to study for one scored skill that is not a career gap (comp-calc-v6). With a career, one of
+ * its met skills below Thành thạo ("deepen", comp-calc-v7); without one, a skill below Khá
+ * ("strengthen"). Career gaps (below/not studied/upcoming) keep their courses in CareerRequirementResult.
  */
 export type SkillPlan = {
   skillKey: string;
@@ -496,7 +497,12 @@ export type SkillPlan = {
   levelLabel: string;
   /** Required by the selected career (SkillResult.careerSkill). */
   careerSkill: boolean;
-  /** Applicable courses not passed yet (a failed one is học lại), elective quota left; by credits × weight. */
+  /** comp-calc-v7; a v6 plan has none and strengthens a skill below Khá. */
+  purpose: "deepen" | "strengthen";
+  /**
+   * Applicable courses not passed yet (a failed one is học lại), elective quota left, no thesis
+   * replacement unless the student is on that path; by credits × weight.
+   */
   take: SupportCourse[];
   /** Passed courses whose own score is below Khá (học cải thiện), condition-only excluded; by credits × weight. */
   improve: SupportCourse[];
@@ -624,10 +630,17 @@ export type AssessmentResult = {
   /** "Kỹ năng cần tự học (CTĐT chưa đo)". */
   selfStudy: SelfStudyItem[];
   /**
-   * Course plans of the scored skills below Khá that are not career gaps, condition-only excluded,
-   * weakest first like highlights.improvements, at most MAX_SKILL_PLANS (comp-calc-v6; absent before).
+   * Course plans, condition-only skills excluded, weakest first like highlights.improvements, at most
+   * MAX_SKILL_PLANS (comp-calc-v6; absent before). With a career only its met skills below Thành thạo
+   * ("deepen", v7); without one the scored skills below Khá ("strengthen").
    */
   skillPlans: SkillPlan[];
+  /**
+   * Courses of a thesis elective group other than the thesis (the graduation/thesis.ts rule), left out
+   * of every course suggestion while the student is not on that replacement path; sorted by code,
+   * empty when there is none (comp-calc-v7; absent before).
+   */
+  excludedThesisReplacements: string[];
   progress: PlanProgressResult | null;
   graduation: GraduationSummary;
   warnings: AssessmentWarning[];

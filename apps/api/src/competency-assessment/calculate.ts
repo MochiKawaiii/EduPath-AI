@@ -1,4 +1,5 @@
 import { referencedCourseCodes } from "../curricula/course-codes.js";
+import { startsReplacementPath, THESIS_NAME_PATTERN } from "../graduation/thesis.js";
 import {
   CALC_VERSION, CAREER_COEFFICIENTS, CAREER_THRESHOLDS, COVERAGE_BANDS, DEFICIT_BANDS, EVIDENCE_BANDS, FIT_BELOW_FLOOR,
   FIT_BELOW_MAX_CREDIT, FIT_LABEL_THRESHOLDS, FIT_MIN_DATA_SHARE, HIGHLIGHT_COUNT, LEVEL_THRESHOLDS, MAX_RELATED_SKILLS,
@@ -249,6 +250,22 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
   }
   const notChosen = (row: Row) => row.electiveCode !== null && electiveStates.get(row.electiveCode)?.remaining === 0 && !isAttemptedState(row.state);
   const quotaUnknownGroups = [...electiveStates.values()].filter((group) => group.quota === null && group.rows.length).map((group) => group.code).sort(compareCode);
+  // comp-calc-v7, the graduation/thesis.ts rule: in an elective group whose quota one thesis course
+  // ("Đồ án/Khóa luận tốt nghiệp") completes alone, the other courses replace the thesis. They are
+  // never suggested (advisor rule) unless the student is on that path: a replacement passed, exempt,
+  // in progress or graded (a failed one does not count) and the thesis itself not in progress.
+  const excludedThesisReplacements = new Set<string>();
+  for (const elective of electives) {
+    const quota = quotas.get(elective.code)?.quota ?? null;
+    if (quota === null) continue;
+    const rows = elective.courseCodes.map((code) => table.get(code)).filter((row): row is Row => row !== undefined);
+    const thesis = rows.find((row) => row.credits >= quota && THESIS_NAME_PATTERN.test(fold(row.name)));
+    if (!thesis) continue;
+    const replacements = rows.filter((row) => row !== thesis);
+    const replacementPath = thesis.state !== "in_progress" &&
+      replacements.some((row) => row.state !== "not_in_curriculum" && startsReplacementPath(row.state));
+    if (!replacementPath) for (const row of replacements) excludedThesisReplacements.add(row.code);
+  }
 
   /* ---- 2. weights (§2.3): matched by code, credits from the current CTĐT ---- */
   const groupsById = new Map(inputs.weights.groups.map((group) => [group.id, group]));
@@ -472,10 +489,13 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
     };
   };
   const byContribution = (a: Link, b: Link) => b.row.credits * b.weight - a.row.credits * a.weight || compareCode(a.row.code, b.row.code);
-  /** Applicable courses still to study (a failed one is a retake), elective quota left; with prerequisites and term. */
+  /**
+   * Applicable courses still to study (a failed one is a retake), elective quota left, no thesis
+   * replacement off that path (v7); with prerequisites and term.
+   */
   const takeCourses = (links: readonly Link[], threshold: number) =>
-    links.filter((link) => link.row.applicable && !notChosen(link.row) && !isPassedState(link.row.state)).sort(byContribution)
-      .slice(0, MAX_SUPPORT_COURSES).map((link) => supportCourse(link.row, link.weight, "take", threshold));
+    links.filter((link) => link.row.applicable && !notChosen(link.row) && !isPassedState(link.row.state) && !excludedThesisReplacements.has(link.row.code))
+      .sort(byContribution).slice(0, MAX_SUPPORT_COURSES).map((link) => supportCourse(link.row, link.weight, "take", threshold));
   /** Passed courses whose own score is below the threshold (học cải thiện); never a condition-only course. */
   const improveCourses = (links: readonly Link[], threshold: number) =>
     links.filter((link) => link.row.state === "passed" && link.row.score10 !== null && !link.row.conditionOnly && link.row.score10 * 10 < threshold)
@@ -713,20 +733,29 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
     rawScore.get(a.key)!.score! - rawScore.get(b.key)!.score! || rawScore.get(b.key)!.evidence - rawScore.get(a.key)!.evidence || compareCode(a.key, b.key);
   const strengths = ranked.filter((skill) => !belowGood(skill)).slice(0, HIGHLIGHT_COUNT).map((skill) => skill.key);
   const improvements = ranked.filter(belowGood).sort(weakestFirst).slice(0, HIGHLIGHT_COUNT).map((skill) => skill.key);
-  // comp-calc-v6: courses for the weak skills that no career gap covers (a career gap has its own).
-  const careerGapIds = new Set((careerResult?.requirements ?? []).filter((row) => CAREER_GAP_STATUSES.has(row.status))
-    .map((row) => row.skillId).filter((id): id is string => id !== null));
+  // Course plans (comp-calc-v6). With a career (v7) only its met skills below Thành thạo, to deepen:
+  // the other weak skills get none, and career gaps keep their own courses. Without one, every
+  // scored skill below Khá, to strengthen. Improve courses are the real drags (below Khá) either way.
+  const careerRows = careerResult?.requirements ?? [];
+  const careerIdsWith = (keep: (row: CareerRequirementResult) => boolean) =>
+    new Set(careerRows.filter(keep).map((row) => row.skillId).filter((id): id is string => id !== null));
+  const careerGapIds = careerIdsWith((row) => CAREER_GAP_STATUSES.has(row.status));
+  const metCareerIds = careerIdsWith((row) => row.status === "met" && row.skillKey !== null);
+  const purpose: SkillPlan["purpose"] = career ? "deepen" : "strengthen";
+  const planned = career
+    ? ranked.filter((skill) => metCareerIds.has(skill.skillId) && !careerGapIds.has(skill.skillId) && rawScore.get(skill.key)!.score! < LEVEL_THRESHOLDS.proficient)
+    : ranked.filter(belowGood);
   const linksByKey = new Map(work.map((skill) => [skill.key, skill.links]));
-  const skillPlans: SkillPlan[] = ranked.filter((skill) => belowGood(skill) && !careerGapIds.has(skill.skillId)).sort(weakestFirst)
-    .slice(0, MAX_SKILL_PLANS).map((skill) => {
-      const links = linksByKey.get(skill.key) ?? [];
-      const take = takeCourses(links, LEVEL_THRESHOLDS.good);
-      const improve = improveCourses(links, LEVEL_THRESHOLDS.good);
-      return {
-        skillKey: skill.key, skillId: skill.skillId, name: skill.name, groupKey: skill.groupKey, score: skill.score!,
-        level: skill.level, levelLabel: skill.levelLabel, careerSkill: skill.careerSkill, take, improve, selfStudy: !take.length && !improve.length,
-      };
-    });
+  const skillPlans: SkillPlan[] = planned.sort(weakestFirst).slice(0, MAX_SKILL_PLANS).map((skill) => {
+    const links = linksByKey.get(skill.key) ?? [];
+    const take = takeCourses(links, LEVEL_THRESHOLDS.good);
+    const improve = improveCourses(links, LEVEL_THRESHOLDS.good);
+    return {
+      skillKey: skill.key, skillId: skill.skillId, name: skill.name, groupKey: skill.groupKey, score: skill.score!,
+      level: skill.level, levelLabel: skill.levelLabel, careerSkill: skill.careerSkill, purpose, take, improve,
+      selfStudy: !take.length && !improve.length,
+    };
+  });
   const careerSkillKeys = [...new Set((careerResult?.requirements ?? []).map((row) => row.skillKey).filter((key): key is string => key !== null))];
   const rest = ranked.filter((skill) => !careerSkillKeys.includes(skill.key));
   const topSkillKeys = rest.slice(0, HIGHLIGHT_COUNT).map((skill) => skill.key);
@@ -773,6 +802,7 @@ export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult 
     courseSuggestions,
     selfStudy,
     skillPlans,
+    excludedThesisReplacements: [...excludedThesisReplacements].sort(compareCode),
     progress,
     graduation,
     warnings,

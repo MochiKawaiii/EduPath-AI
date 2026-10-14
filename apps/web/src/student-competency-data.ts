@@ -2,7 +2,7 @@
 // the polling decision. No fetch, no DOM — everything here is unit tested.
 import type {
   AiOutput, AiPriority, AiStatus, AssessmentResult, CareerRequirementResult, Confidence,
-  CourseState, Eligibility, LevelCode, SkillResult, StoredAssessment, SupportCourse,
+  CourseState, Eligibility, LevelCode, SkillPlan, SkillResult, StoredAssessment, SupportCourse,
 } from "./competency-assessment-types";
 
 export const COMPETENCY_API = "/api/student/competency-assessments";
@@ -180,6 +180,20 @@ export function courseStanding(course: Pick<SupportCourse, "state" | "score10" |
     default: return { tone: "neutral", text: "Chưa học" };
   }
 }
+
+/**
+ * The course plans that fit the result: with a target career, only its met skills below Thành thạo
+ * ("deepen", comp-calc-v7); without one, the skills below Khá ("strengthen"; v6 plans have no purpose
+ * and are of that kind). Weak skills outside the chosen career are never advised on.
+ */
+export function plansFor(result: Pick<AssessmentResult, "career" | "skillPlans">): SkillPlan[] {
+  const purpose = result.career ? "deepen" : "strengthen";
+  return (result.skillPlans ?? []).filter((plan) => (plan.purpose ?? "strengthen") === purpose);
+}
+
+/** Career requirement skills by key: the AI's improvements about them belong on the gap page too. */
+export const careerSkillKeys = (result: Pick<AssessmentResult, "career">): Set<string> =>
+  new Set((result.career?.requirements ?? []).map((req) => req.skillKey).filter((key): key is string => Boolean(key)));
 
 /* ---------------------------------------------------- proficiency summary */
 

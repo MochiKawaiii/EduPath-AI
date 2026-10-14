@@ -4,7 +4,7 @@ import {
 } from "./calculate.js";
 import { CALC_VERSION, MAX_SKILL_PLANS } from "./constants.js";
 import {
-  SKILL, syntheticCareer, syntheticInputs, syntheticStudentTerms, syntheticTranscript, type TranscriptTerm,
+  SKILL, syntheticCareer, syntheticInputs, syntheticStudentTerms, syntheticTranscript, type SyntheticOptions, type TranscriptTerm,
 } from "./fixtures/synthetic-k29.js";
 import type { AssessmentInputs, AssessmentResult, CareerInput, SpecialtyCode } from "./types.js";
 
@@ -30,6 +30,9 @@ const career = (requirements: [string, boolean][], extra: Partial<CareerInput> =
 };
 const mapTerms = (map: (row: TranscriptTerm["rows"][number]) => TranscriptTerm["rows"][number]) =>
   syntheticStudentTerms().map((term) => ({ ...term, rows: term.rows.map(map) }));
+/** The synthetic terms with rows added to one term: 5 = HK243 (graded), 6 = HK251 (registered, no grades). */
+const withRows = (termIndex: number, rows: TranscriptTerm["rows"]) =>
+  syntheticStudentTerms().map((term, index) => (index === termIndex ? { ...term, rows: [...term.rows, ...rows] } : term));
 
 describe("formula helpers (spec §7.3, §7.5, §7.6)", () => {
   it("removes float noise and stores scores rounded down, so the shown whole number never passes a level", () => {
@@ -308,7 +311,9 @@ describe("career gaps and fit (spec §7.5–§7.7)", () => {
   });
 
   it("lists support courses by credits × weight with three-state prerequisites and planned terms", () => {
-    const courses = row("Thuyết trình").supportCourses;
+    // Registered for Chuyên đề Tốt nghiệp 1: the student is on the thesis replacement path, so its courses may be suggested (comp-calc-v7).
+    const started = calculateAssessment({ ...inputs, transcript: { ...inputs.transcript, data: syntheticTranscript(withRows(6, [["71ITGR40203", 3]])) } });
+    const courses = started.career!.requirements.find((item) => item.title === "Thuyết trình")!.supportCourses;
     expect(courses.map((course) => [course.code, course.eligibility, course.termLabel])).toEqual([
       ["71ITGR40203", "not_eligible", "HK261"], ["71ITGR40206", "eligible", "HK261"], ["71ITIS30403", "review", "HK253"], ["71ITIN40304", "eligible", "HK253"],
     ]);
@@ -316,10 +321,12 @@ describe("career gaps and fit (spec §7.5–§7.7)", () => {
     expect(courses[0]!.missing).toEqual([{ code: "71ITSE41203", name: "Kiểm thử phần mềm", kind: "prerequisite" }]);
     expect(courses[2]!.reviewNotes).toEqual(["[71ENG010012]Anh văn dự bị (AV0)"]);
     expect(courses[0]!.reason).toBe("3 tín chỉ × trọng số 1 cho kỹ năng này");
+    // Off that path the replacements are left out; the thesis itself stays.
+    expect(row("Thuyết trình").supportCourses.map((course) => course.code)).toEqual(["71ITGR40206", "71ITIN40304"]);
   });
 
   it("asks for confirmation of specialty-dependent prerequisites when no specialty is set", () => {
-    const unset = calculateAssessment({ ...inputs, student: { ...inputs.student, specialty: null } });
+    const unset = calculateAssessment(syntheticInputs({ specialty: null, terms: withRows(6, [["71ITGR40203", 3]]), career: inputs.career }));
     const course = unset.career!.requirements.find((item) => item.title === "Thuyết trình")!.supportCourses.find((item) => item.code === "71ITGR40203")!;
     expect(course).toMatchObject({ eligibility: "review", missing: [] });
     expect(course.reviewNotes[0]).toContain("chưa chọn chuyên ngành");
@@ -339,7 +346,7 @@ describe("career gaps and fit (spec §7.5–§7.7)", () => {
       expect(row(name).improveCourses.length).toBeGreaterThan(0);
     }
     // Priority = Σ coefficient × credits × weight: the required skill's improvement (2 × 3 × 1) comes first.
-    expect(result.courseSuggestions.slice(0, 2).map((course) => [course.code, course.kind, course.priority])).toEqual([["71ITAI40103", "improve", 6], ["71ITGR40203", "take", 3]]);
+    expect(result.courseSuggestions.slice(0, 2).map((course) => [course.code, course.kind, course.priority])).toEqual([["71ITAI40103", "improve", 6], ["71ITGR40206", "take", 3]]);
     expect(result.courseSuggestions.find((course) => course.kind === "improve")).toMatchObject({ code: "71ITAI40103", skills: [{ key: row("Học máy nhập môn").skillKey, status: "below" }] });
   });
 
@@ -391,7 +398,7 @@ describe("career gaps and fit (spec §7.5–§7.7)", () => {
   });
 });
 
-describe("skill plans of the weak skills outside the career gaps (comp-calc-v6)", () => {
+describe("skill plans (comp-calc-v6, purpose since v7)", () => {
   const plan = (result: AssessmentResult, name: string) => {
     const found = result.skillPlans.find((item) => item.name === name);
     if (!found) throw new Error(`plan ${name} missing`);
@@ -400,12 +407,16 @@ describe("skill plans of the weak skills outside the career gaps (comp-calc-v6)"
   const allC = () => calculateAssessment(syntheticInputs({
     career: null, terms: mapTerms((row) => (row[4] === "MT" || row[2] === undefined ? row : [row[0], row[1], 5.5, 2, "C"])),
   }));
+  const plusTeamwork = () => {
+    const base = syntheticCareer();
+    base.requirements.push({ id: "00000000-0000-4000-8000-0000000000d6", skillId: SKILL.teamwork, skillName: "Làm việc nhóm", title: "Làm việc nhóm", isRequired: false });
+    return base;
+  };
 
-  it("plans the skills below Khá weakest first and suggests improving their low passed courses", () => {
-    const result = calculateAssessment(syntheticInputs());
-    // Neither skill is in the synthetic career, so neither has career course suggestions.
-    expect(result.skillPlans.map((item) => [item.name, item.score, item.level, item.levelLabel, item.careerSkill, item.selfStudy])).toEqual([
-      ["Học máy nhập môn", 47, "needs_work", "Cần củng cố", false, false], ["Lập trình di động", 56, "basic", "Cơ bản", false, false],
+  it("without a career: strengthens the skills below Khá, weakest first, with their low passed courses to improve", () => {
+    const result = calculateAssessment(syntheticInputs({ career: null }));
+    expect(result.skillPlans.map((item) => [item.name, item.score, item.level, item.levelLabel, item.purpose, item.careerSkill, item.selfStudy])).toEqual([
+      ["Học máy nhập môn", 47, "needs_work", "Cần củng cố", "strengthen", false, false], ["Lập trình di động", 56, "basic", "Cơ bản", "strengthen", false, false],
     ]);
     expect(result.skillPlans.map((item) => item.skillKey)).toEqual(result.highlights.improvements);
     const mobile = plan(result, "Lập trình di động");
@@ -421,39 +432,60 @@ describe("skill plans of the weak skills outside the career gaps (comp-calc-v6)"
   });
 
   it("lists courses still to take with prerequisites and term, and keeps a failed course as a retake", () => {
-    const inputs = syntheticInputs();
-    inputs.weights.links.push({ courseCode: "71ITGR40203", skillId: SKILL.mobile, weight: 0.5 });
+    const inputs = syntheticInputs({ career: null });
+    inputs.weights.links.push({ courseCode: "71ITIN40304", skillId: SKILL.mobile, weight: 0.5 });
+    inputs.curriculum.relations.push({ courseCode: "71ITIN40304", kind: "prerequisite", raw: "[71ITSE41203]Kiểm thử phần mềm", targetCodes: ["71ITSE41203"], unresolvedCodes: [], reviewRequired: false });
     const mobile = plan(calculateAssessment(inputs), "Lập trình di động");
-    // CNPM block of the relation: 71ITSE41203 is in progress, not passed.
+    // 71ITSE41203 is in progress, not passed.
     expect(mobile.take).toEqual([expect.objectContaining({
-      code: "71ITGR40203", kind: "take", state: "not_taken", eligibility: "not_eligible", eligibilityLabel: "Chưa đủ điều kiện",
-      missing: [{ code: "71ITSE41203", name: "Kiểm thử phần mềm", kind: "prerequisite" }], term: "HK261", termSource: "plan",
+      code: "71ITIN40304", kind: "take", state: "not_taken", eligibility: "not_eligible", eligibilityLabel: "Chưa đủ điều kiện",
+      missing: [{ code: "71ITSE41203", name: "Kiểm thử phần mềm", kind: "prerequisite" }], term: "HK253", termSource: "plan",
     })]);
     expect(mobile.improve.map((course) => course.code)).toEqual(["71ITSE30603"]);
-    const failed = calculateAssessment(syntheticInputs({ terms: mapTerms((row) => (row[0] === "71ITAI40103" ? ["71ITAI40103", 3, 3, 0, "F"] : row)) }));
+    const failed = calculateAssessment(syntheticInputs({ career: null, terms: mapTerms((row) => (row[0] === "71ITAI40103" ? ["71ITAI40103", 3, 3, 0, "F"] : row)) }));
     expect(plan(failed, "Học máy nhập môn")).toMatchObject({
       score: 30, take: [{ code: "71ITAI40103", kind: "take", state: "failed", eligibility: "eligible" }], improve: [], selfStudy: false,
     });
   });
 
-  it("leaves career gaps to the career suggestions", () => {
+  it("with a career: only deepens its met skills below Thành thạo, never the other weak skills (comp-calc-v7)", () => {
+    const result = calculateAssessment(syntheticInputs());
+    // Phát triển web 72 and Lập trình cơ bản 72,37 are met (Ưu tiên, 70) but not Thành thạo; Kiểm thử phần mềm 88 needs nothing.
+    // Học máy nhập môn 47 and Lập trình di động 56 are not in the career: no plan, although they stay improvement highlights.
+    expect(result.skillPlans.map((item) => [item.name, item.score, item.purpose, item.careerSkill, item.selfStudy])).toEqual([
+      ["Phát triển web", 72, "deepen", true, true], ["Lập trình cơ bản", 72.37, "deepen", true, false],
+    ]);
+    expect(result.highlights.improvements.map((key) => result.skillDirectory.find((item) => item.key === key)!.name)).toEqual(["Học máy nhập môn", "Lập trình di động"]);
+    // Improve courses are still only the real drags (below Khá); its other courses score 7,8 and 7,2.
+    expect(plan(result, "Lập trình cơ bản")).toMatchObject({ take: [], improve: [{ code: "71ITBS10203", score10: 6.6, reason: "Đã đạt nhưng điểm học phần 66/100 thấp hơn ngưỡng 70" }] });
+    // Its web framework course is an option of the full TC309 quota: self-study with a product.
+    expect(plan(result, "Phát triển web")).toMatchObject({ take: [], improve: [] });
+    // Courses still to take, the thesis included (it is no replacement).
+    const teamwork = plan(calculateAssessment(syntheticInputs({ career: plusTeamwork() })), "Làm việc nhóm");
+    expect(teamwork).toMatchObject({ score: 79, purpose: "deepen", improve: [], selfStudy: false });
+    expect(teamwork.take.map((course) => [course.code, course.state, course.eligibility])).toEqual([["71ITGR40206", "not_taken", "eligible"], ["71ITIN40304", "not_taken", "eligible"]]);
+  });
+
+  it("leaves career gaps to the career suggestions and plans no skill outside the career", () => {
     const both = calculateAssessment(syntheticInputs({ career: career([[SKILL.machineLearning, true], [SKILL.mobile, false]]) }));
     expect(both.career!.requirements.map((item) => item.status)).toEqual(["below", "below"]);
     expect(both.skillPlans).toEqual([]);
-    expect(both.highlights.improvements).toHaveLength(2);
-    const ml = calculateAssessment(syntheticInputs({ career: career([[SKILL.machineLearning, true]]) }));
-    expect(ml.skillPlans.map((item) => item.name)).toEqual(["Lập trình di động"]);
-    expect(ml.career!.requirements[0]).toMatchObject({ status: "below", improveCourses: [{ code: "71ITAI40103" }] });
-    // A requirement without a gap status (its skill name is gone: no data) keeps the plan, flagged as a career skill.
+    expect(both.career!.requirements[0]).toMatchObject({ status: "below", improveCourses: [{ code: "71ITAI40103" }] });
+    // Met for Ưu tiên but below Bắt buộc: a career gap, not a skill to deepen.
+    const twice = calculateAssessment(syntheticInputs({ career: career([[SKILL.programming, true], [SKILL.programming, false]]) }));
+    expect(twice.career!.requirements.map((item) => item.status)).toEqual(["below", "met"]);
+    expect(twice.skillPlans).toEqual([]);
+    expect(twice.career!.requirements[0]!.improveCourses.map((course) => course.code)).toEqual(["71ITSE30103", "71ITBS10203", "71ITSE30503"]);
+    // No requirement status to deepen (its skill name is gone: no data), and Học máy nhập môn is not met.
     const unnamed = career([[SKILL.machineLearning, true]]);
     unnamed.requirements[0] = { ...unnamed.requirements[0]!, skillName: null };
     const noData = calculateAssessment(syntheticInputs({ career: unnamed }));
     expect(noData.career!.requirements[0]!.status).toBe("no_data");
-    expect(plan(noData, "Học máy nhập môn")).toMatchObject({ careerSkill: true, improve: [{ code: "71ITAI40103" }] });
+    expect(noData.skillPlans).toEqual([]);
   });
 
   it("leaves condition-only skills out and marks self-study when no course is left", () => {
-    const inputs = syntheticInputs({ terms: mapTerms((row) => (row[0] === "71NAD110013" ? ["71NAD110013", 3, 4, 1, "D"] : row)) });
+    const inputs = syntheticInputs({ career: null, terms: mapTerms((row) => (row[0] === "71NAD110013" ? ["71NAD110013", 3, 4, 1, "D"] : row)) });
     // Synthetic skill measured mostly by GDQP (condition-only: never a course to improve) and a well-passed course.
     const discipline = "00000000-0000-4000-8000-0000000000bf";
     inputs.weights.skills.push({ skillId: discipline, name: "Kỷ luật tác phong", description: "", scope: "Tác phong và kỷ luật.", groupId: "00000000-0000-4000-8000-0000000000a1" });
@@ -463,6 +495,10 @@ describe("skill plans of the weak skills outside the career gaps (comp-calc-v6)"
     expect(result.skillPlans.map((item) => item.name)).toEqual(["Học máy nhập môn", "Kỷ luật tác phong", "Lập trình di động"]);
     // (4 × 3 + 8,6 × 3 × 0,2) / 3,6 × 10 = 47,66…
     expect(plan(result, "Kỷ luật tác phong")).toMatchObject({ score: 47.66, take: [], improve: [], selfStudy: true });
+    // A met condition-only career skill (Kiến thức quốc phòng 70, Ưu tiên) is not deepened either.
+    const defence = calculateAssessment(syntheticInputs({ career: career([[SKILL.defence, false]]) }));
+    expect(defence.career!.requirements[0]!.status).toBe("met");
+    expect(defence.skillPlans).toEqual([]);
   });
 
   it("caps the plans at MAX_SKILL_PLANS in the order of the improvement highlights", () => {
@@ -479,7 +515,55 @@ describe("skill plans of the weak skills outside the career gaps (comp-calc-v6)"
     expect(plan(result, "Lập trình cơ bản").improve.map((course) => course.code)).toEqual(["71ITSE30103", "71ITBS10203", "71ITSE30503"]);
     expect(plan(result, "Làm việc nhóm").take.map((course) => course.code)).toEqual(["71ITGR40206", "71ITIN40304"]);
     expect(plan(result, "Kiểm thử phần mềm").take).toEqual([expect.objectContaining({ code: "71ITSE41203", state: "in_progress" })]);
-    for (const item of result.skillPlans) expect(item.selfStudy).toBe(!item.take.length && !item.improve.length);
+    for (const item of result.skillPlans) expect(item).toMatchObject({ purpose: "strengthen", selfStudy: !item.take.length && !item.improve.length });
+  });
+});
+
+describe("thesis replacement courses are never suggested off that path (comp-calc-v7)", () => {
+  // TC406 ≡ standard "Nhóm tự chọn TC306" (6 TC): 71ITGR40206 Đồ án Tốt nghiệp (6 TC) completes it alone,
+  // 71ITGR40203 Chuyên đề Tốt nghiệp 1 and 71ITIS30403 Quản lý và phát triển các hệ thống thông tin replace it.
+  const gaps = career([[SKILL.presenting, false]]);
+  const presenting = (result: AssessmentResult) => result.career!.requirements[0]!.supportCourses.map((course) => course.code);
+  const run = (terms?: TranscriptTerm[], extra: SyntheticOptions = {}) => calculateAssessment(syntheticInputs({ career: gaps, terms, ...extra }));
+
+  it("leaves the replacements out of career gaps, course suggestions and plans, but keeps the thesis", () => {
+    const result = run();
+    expect(result.excludedThesisReplacements).toEqual(["71ITGR40203", "71ITIS30403"]);
+    expect(result.career!.requirements[0]).toMatchObject({ status: "upcoming", upcomingTerm: "HK253" });
+    expect(presenting(result)).toEqual(["71ITGR40206", "71ITIN40304"]);
+    expect(result.courseSuggestions.map((course) => course.code)).toEqual(["71ITGR40206", "71ITIN40304"]);
+    // A plan: 71ITIS30403 (linked to Lập trình di động here) is left out, the thesis is kept.
+    const inputs = syntheticInputs({ career: null });
+    inputs.weights.links.push({ courseCode: "71ITIS30403", skillId: SKILL.mobile, weight: 1 }, { courseCode: "71ITGR40206", skillId: SKILL.mobile, weight: 0.5 });
+    const plans = calculateAssessment(inputs);
+    expect(plans.skillPlans.find((item) => item.skillId === SKILL.mobile)!.take.map((course) => course.code)).toEqual(["71ITGR40206"]);
+  });
+
+  it("suggests them once the student is on the replacement path", () => {
+    const registered = run(withRows(6, [["71ITGR40203", 3]]));
+    expect(registered.excludedThesisReplacements).toEqual([]);
+    expect(presenting(registered)).toEqual(["71ITGR40203", "71ITGR40206", "71ITIS30403", "71ITIN40304"]);
+    // A passed replacement meets Thuyết trình (80): the plan to deepen it may name the other replacement.
+    const passed = run(withRows(5, [["71ITIS30403", 3, 8, 3.5, "B+"]]));
+    expect(passed.excludedThesisReplacements).toEqual([]);
+    expect(passed.skillPlans.map((item) => [item.name, item.purpose, item.take.map((course) => course.code)])).toEqual([
+      ["Thuyết trình", "deepen", ["71ITGR40203", "71ITGR40206", "71ITIN40304"]],
+    ]);
+  });
+
+  it("does not count a failed replacement or replacements next to a thesis in progress as that path", () => {
+    const failed = run(withRows(5, [["71ITGR40203", 3, 3, 0, "F"]]));
+    expect(failed.excludedThesisReplacements).toEqual(["71ITGR40203", "71ITIS30403"]);
+    // The failed course is no retake to suggest either.
+    expect(presenting(failed)).toEqual(["71ITGR40206", "71ITIN40304"]);
+    const thesis = run(withRows(6, [["71ITGR40206", 6], ["71ITIS30403", 3]]));
+    expect(thesis.excludedThesisReplacements).toEqual(["71ITGR40203", "71ITIS30403"]);
+    expect(presenting(thesis)).toEqual(["71ITGR40206", "71ITIN40304"]);
+  });
+
+  it("needs the group quota, like graduation/thesis.ts: no standard, no thesis group", () => {
+    // K29 has no general standard, so without a specialty the TC406 quota is unknown.
+    expect(run(undefined, { specialty: null }).excludedThesisReplacements).toEqual([]);
   });
 });
 

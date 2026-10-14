@@ -30,12 +30,13 @@ describe("buildOutputSchema", () => {
 
   it("restricts keys to this job's enums", () => {
     expect(get(schema, "properties", "groupInsights", "items", "properties", "groupKey", "enum")).toEqual(["G1", "G2"]);
-    // Strengths and improvements have their own enums (comp-v2): S03 is below its career threshold.
-    expect(get(schema, "properties", "strengths", "items", "properties", "skillKey", "enum")).toEqual(["S01", "S02"]);
-    expect(get(schema, "properties", "strengths", "maxItems")).toBe(2);
+    // Strengths and improvements have their own enums (comp-v2): S03 is below its career threshold and
+    // S02 (met, below Thành thạo) is to deepen, so neither is a strength (comp-v5).
+    expect(get(schema, "properties", "strengths", "items", "properties", "skillKey", "enum")).toEqual(["S01"]);
+    expect(get(schema, "properties", "strengths", "maxItems")).toBe(1);
     const improvements = get(schema, "properties", "improvements", "items", "anyOf") as unknown[];
-    expect(improvements.map((branch) => get(branch, "properties", "skillKey", "const"))).toEqual(["S03", "S07", "S06"]);
-    expect(get(schema, "properties", "improvements", "maxItems")).toBe(3);
+    expect(improvements.map((branch) => get(branch, "properties", "skillKey", "const"))).toEqual(["S02", "S03"]);
+    expect(get(schema, "properties", "improvements", "maxItems")).toBe(2);
     for (const branch of improvements) expect(get(branch, "properties", "priority", "enum")).toEqual(["high", "medium", "low"]);
     expect(get(schema, "properties", "nextSteps")).toMatchObject({ minItems: 3, maxItems: 5 });
     expect(get(schema, "properties", "summary")).toMatchObject({ minLength: 1, maxLength: 600 });
@@ -43,15 +44,20 @@ describe("buildOutputSchema", () => {
 
   it("builds one improvement branch per skill with its own course enum, courses before the comment (comp-v4)", () => {
     const branches = get(schema, "properties", "improvements", "items", "anyOf");
-    // Career gap S03: its career courses; S07: a plan without any course; S06: plan take + improve, at most 2 picked.
-    expect(get(branches, 0, "properties", "courses", "items", "properties", "courseCode", "enum")).toEqual(["TST201", "TST202"]);
+    // S02: its plan to deepen (take, then improve); S03: its career gap courses.
+    expect(get(branches, 0, "properties", "courses", "items", "properties", "courseCode", "enum")).toEqual(["TST240", "TST130"]);
     expect(get(branches, 0, "properties", "courses", "maxItems")).toBe(2);
-    expect(get(branches, 1, "properties", "courses", "maxItems")).toBe(0);
-    expect(get(branches, 1, "properties", "courses", "items", "properties", "courseCode", "enum")).toBeUndefined();
-    expect(get(branches, 2, "properties", "courses", "items", "properties", "courseCode", "enum")).toEqual(["TST310", "TST150", "TST120"]);
-    expect(get(branches, 2, "properties", "courses", "maxItems")).toBe(2);
-    expect(get(branches, 2, "properties", "courses", "items", "properties", "reason")).toEqual({ type: "string", minLength: 1, maxLength: 100 });
-    expect(get(branches, 2, "required")).toEqual(["skillKey", "priority", "courses", "comment"]);
+    expect(get(branches, 0, "properties", "courses", "items", "properties", "reason")).toEqual({ type: "string", minLength: 1, maxLength: 100 });
+    expect(get(branches, 0, "required")).toEqual(["skillKey", "priority", "courses", "comment"]);
+    expect(get(branches, 1, "properties", "courses", "items", "properties", "courseCode", "enum")).toEqual(["TST201", "TST202"]);
+    // Without a career: S06 picks at most 2 of its 3 plan courses; S07's plan has none.
+    const strengthen = get(buildOutputSchema(buildPromptContext(syntheticResult({ career: false }))), "properties", "improvements", "items", "anyOf");
+    expect(get(strengthen, 0, "properties", "skillKey")).toEqual({ const: "S06" });
+    expect(get(strengthen, 0, "properties", "courses", "items", "properties", "courseCode", "enum")).toEqual(["TST310", "TST150", "TST120"]);
+    expect(get(strengthen, 0, "properties", "courses", "maxItems")).toBe(2);
+    expect(get(strengthen, 1, "properties", "skillKey")).toEqual({ const: "S07" });
+    expect(get(strengthen, 1, "properties", "courses", "maxItems")).toBe(0);
+    expect(get(strengthen, 1, "properties", "courses", "items", "properties", "courseCode", "enum")).toBeUndefined();
     // An improvement key without an entry in improvementSkills gets no course.
     const missing = buildOutputSchema({ ...EMPTY, improvementKeys: ["S09"] });
     expect(get(missing, "properties", "improvements", "items", "anyOf", 0, "properties", "courses", "maxItems")).toBe(0);

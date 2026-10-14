@@ -16,8 +16,8 @@ const valid = (): AiOutput => ({
       comment: "Kiểm thử phần mềm còn thiếu 30 điểm so với ngưỡng của nghề; hãy đăng ký Kiểm thử phần mềm cơ bản."
     },
     {
-      skillKey: "S06", priority: "medium", courses: [{ courseCode: "TST120", reason: "Đã đạt 6,5 (C+), có thể học cải thiện." }],
-      comment: "Mạng máy tính mới 65 điểm; học cải thiện Mạng máy tính căn bản để nâng điểm."
+      skillKey: "S02", priority: "medium", courses: [{ courseCode: "TST130", reason: "Đã đạt 6,8 (C+), có thể học cải thiện." }],
+      comment: "Cơ sở dữ liệu đạt 72, đã qua ngưỡng của nghề; học cải thiện Nhập môn cơ sở dữ liệu để nâng lên mức Thành thạo."
     }
   ],
   careerFit: { comment: "Bạn đạt 2/4 kỹ năng của nghề, mức Khá phù hợp." },
@@ -69,27 +69,40 @@ describe("validateAiOutput", () => {
     expect(reasonOf({ ...valid(), improvements: [{ skillKey: "S01", priority: "low", comment: "Ôn lại." }] })).toBe("unknown_skill_key@improvements.0.skillKey");
     expect(reasonOf({ ...valid(), strengths: [{ skillKey: "S04", comment: "Tốt." }] })).toBe("unknown_skill_key@strengths.0.skillKey");
     // Cross-list conflict, checked even if a stored schema allowed both (e.g. a comp-v1 job).
-    const loose = { ...context, strengthKeys: ["S01", "S03"], improvementKeys: ["S01", "S03", "S06"] };
+    const loose = { ...context, strengthKeys: ["S01", "S03"], improvementKeys: ["S01", "S02", "S03"] };
     expect(validateAiOutput({ ...valid(), strengths: [{ skillKey: "S03", comment: "Tốt." }] }, loose)).toMatchObject({ ok: false, error: { reason: "conflicting_skill", path: "strengths.0.skillKey" } });
+    // A met career skill to deepen is no strength (comp-v5).
+    expect(reasonOf({ ...valid(), strengths: [{ skillKey: "S02", comment: "Tốt." }] })).toBe("unknown_skill_key@strengths.0.skillKey");
   });
 
   it("allows an improvement only the courses listed for exactly that skill (comp-v4)", () => {
-    const improvements = (courses: AiOutput["improvements"][number]["courses"], skillKey = "S06") =>
-      ({ ...valid(), improvements: [{ skillKey, priority: "high" as const, courses, comment: "Học cải thiện Mạng máy tính căn bản." }] });
-    // Take, retake and improve courses of the plan; at most 2.
-    expect(reasonOf(improvements([{ courseCode: "TST310", reason: "Cần đạt trước Hệ điều hành." }, { courseCode: "TST150", reason: "Chưa đạt, học lại." }]))).toBe("ok");
+    const improvements = (courses: AiOutput["improvements"][number]["courses"], skillKey = "S02") =>
+      ({ ...valid(), improvements: [{ skillKey, priority: "high" as const, courses, comment: "Học cải thiện Nhập môn cơ sở dữ liệu." }] });
+    // Take and improve courses of the plan; at most 2.
+    expect(reasonOf(improvements([{ courseCode: "TST240", reason: "Chưa học, đủ điều kiện đăng ký." }, { courseCode: "TST130", reason: "Đã đạt, học cải thiện." }]))).toBe("ok");
     expect(reasonOf(improvements([{ courseCode: "TST201", reason: "Học mới." }]))).toBe("foreign_course@improvements.0.courses.0.courseCode");
     expect(reasonOf(improvements([{ courseCode: "XYZ999", reason: "Học thêm." }]))).toBe("foreign_course@improvements.0.courses.0.courseCode");
-    // S07 has no course left: courses must stay empty.
-    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "Ôn lại." }], "S07"))).toBe("foreign_course@improvements.0.courses.0.courseCode");
-    expect(reasonOf(improvements([], "S07"))).toBe("ok");
-    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "A." }, { courseCode: "TST120", reason: "B." }]))).toBe("duplicate@improvements.0.courses.1.courseCode");
-    const three = ["TST310", "TST150", "TST120"].map((courseCode) => ({ courseCode, reason: "Học." }));
+    expect(reasonOf(improvements([{ courseCode: "TST130", reason: "A." }, { courseCode: "TST130", reason: "B." }]))).toBe("duplicate@improvements.0.courses.1.courseCode");
+    const three = ["TST240", "TST130", "TST201"].map((courseCode) => ({ courseCode, reason: "Học." }));
     expect(reasonOf(improvements(three))).toBe("schema@improvements.0.courses");
     // Reasons are checked like every other text.
-    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "Học cải thiện để đạt 9,5." }]))).toBe("invented_number@improvements.0.courses.0.reason");
-    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "Xem www.example.org." }]))).toBe("forbidden_content@improvements.0.courses.0.reason");
-    expect(reasonOf(improvements([{ courseCode: "TST120", reason: "" }]))).toBe("schema@improvements.0.courses.0.reason");
+    expect(reasonOf(improvements([{ courseCode: "TST130", reason: "Học cải thiện để đạt 9,5." }]))).toBe("invented_number@improvements.0.courses.0.reason");
+    expect(reasonOf(improvements([{ courseCode: "TST130", reason: "Xem www.example.org." }]))).toBe("forbidden_content@improvements.0.courses.0.reason");
+    expect(reasonOf(improvements([{ courseCode: "TST130", reason: "" }]))).toBe("schema@improvements.0.courses.0.reason");
+    // With a career, a weak skill outside it is no improvement at all (comp-v5).
+    expect(reasonOf(improvements([], "S06"))).toBe("unknown_skill_key@improvements.0.skillKey");
+    // Without one, its plan's courses (take, retake, improve) are allowed, and a plan without courses allows none.
+    const noCareer = validationContextFromAiInput(buildAiInput(syntheticResult({ career: false })))!;
+    const strengthen = (skillKey: string, courses: AiOutput["improvements"][number]["courses"]) => {
+      const result = validateAiOutput({
+        ...valid(), summary: "Bạn có nền tảng lập trình hướng đối tượng vững với điểm 88.", gaps: [],
+        improvements: [{ skillKey, priority: "high", courses, comment: "Học lại Toán rời rạc." }]
+      }, noCareer);
+      return result.ok ? "ok" : `${result.error.reason}@${result.error.path}`;
+    };
+    expect(strengthen("S06", [{ courseCode: "TST310", reason: "Cần đạt trước Hệ điều hành." }, { courseCode: "TST150", reason: "Chưa đạt, học lại." }])).toBe("ok");
+    expect(strengthen("S07", [{ courseCode: "TST120", reason: "Ôn lại." }])).toBe("foreign_course@improvements.0.courses.0.courseCode");
+    expect(strengthen("S07", [])).toBe("ok");
   });
 
   it("validates the output of a job queued before comp-v4 against its own schema", () => {

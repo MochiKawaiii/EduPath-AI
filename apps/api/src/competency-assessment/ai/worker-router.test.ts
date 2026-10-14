@@ -88,7 +88,7 @@ describe("heartbeat and claim", () => {
   it("claims the oldest job with SKIP LOCKED, a 15 minute lease and returns the stored input", async () => {
     const { app, run, sql } = setup((s) => (s.includes("FOR UPDATE SKIP LOCKED") ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput }] } : undefined));
     const res = await request(app).post("/w/claim").set("Authorization", AUTH).expect(200);
-    expect(res.body.job).toEqual({ kind: "competency_assessment", id: JOB, leaseToken: LEASE, promptVersion: "comp-v4", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
+    expect(res.body.job).toEqual({ kind: "competency_assessment", id: JOB, leaseToken: LEASE, promptVersion: "comp-v5", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
     const claim = run.mock.calls.find(([s]) => s.includes("SKIP LOCKED"))!;
     expect(claim[0]).toContain("ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1");
     expect(claim[0]).toContain("status='processing' AND lease_until<now() AND attempts<$2");
@@ -171,7 +171,7 @@ describe("complete", () => {
     await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success()).expect(200, { ok: true });
     const calls = run.mock.calls.map(([s, p]) => [s, p] as const);
     const assessment = calls.find(([s]) => s.includes("SET ai_status='completed'"))!;
-    expect(assessment[1]).toEqual([ASSESSMENT, USER, JSON.stringify(validOutput()), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "comp-v4"]);
+    expect(assessment[1]).toEqual([ASSESSMENT, USER, JSON.stringify(validOutput()), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "comp-v5"]);
     const job = calls.find(([s]) => s.startsWith("UPDATE stu_comp_ai_jobs SET status=$2"))!;
     expect(job[0]).toContain("ai_input=NULL");
     expect(job[1]).toEqual([JOB, "completed", null, JSON.stringify({ eval_count: 900, total_ms: 120000 })]);
@@ -202,16 +202,21 @@ describe("complete", () => {
   it("stores improvement courses picked from the skill's own list, with keys cleaned from their reasons (comp-v4)", async () => {
     const result = syntheticResult();
     const { app, run } = setup(withJob(jobRow(), { skills: result.skillDirectory, groups: result.groups }));
-    const improvement = { skillKey: "S06", priority: "high", courses: [{ courseCode: "TST120", reason: "Đã đạt 6,5 (C+), học cải thiện để nâng S06." }], comment: "Học cải thiện Mạng máy tính căn bản." };
+    const improvement = { skillKey: "S02", priority: "high", courses: [{ courseCode: "TST130", reason: "Đã đạt 6,8 (C+), học cải thiện để nâng S02." }], comment: "Học cải thiện Nhập môn cơ sở dữ liệu." };
     await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success({ ...validOutput(), improvements: [improvement] })).expect(200, { ok: true });
     const stored = JSON.parse((run.mock.calls.find(([s]) => s.includes("SET ai_status='completed'"))![1] as unknown[])[2] as string);
-    expect(stored.improvements).toEqual([{ ...improvement, courses: [{ courseCode: "TST120", reason: "Đã đạt 6,5 (C+), học cải thiện để nâng Mạng máy tính." }] }]);
+    expect(stored.improvements).toEqual([{ ...improvement, courses: [{ courseCode: "TST130", reason: "Đã đạt 6,8 (C+), học cải thiện để nâng Cơ sở dữ liệu." }] }]);
 
     // A course of another skill (TST201 belongs to S03) fails the job.
     const foreign = setup(withJob(jobRow()));
     const wrong = { ...improvement, courses: [{ courseCode: "TST201", reason: "Học mới." }] };
     await request(foreign.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success({ ...validOutput(), improvements: [wrong] })).expect(200, { ok: true });
     expect(foreign.run.mock.calls.find(([s]) => s.includes("SET ai_status='failed'"))![1]).toEqual([ASSESSMENT, USER, "invalid_ai_output"]);
+
+    // With a career, a weak skill outside it (Mạng máy tính) is no improvement at all (comp-v5).
+    const outside = setup(withJob(jobRow()));
+    await request(outside.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success({ ...validOutput(), improvements: [{ ...improvement, skillKey: "S06", courses: [] }] })).expect(200, { ok: true });
+    expect(outside.run.mock.calls.find(([s]) => s.includes("SET ai_status='failed'"))![1]).toEqual([ASSESSMENT, USER, "invalid_ai_output"]);
   });
 
   it("still completes a job queued before comp-v4 with its own schema and prompt version", async () => {

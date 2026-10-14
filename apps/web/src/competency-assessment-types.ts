@@ -296,8 +296,10 @@ export type SelfStudyItem = {
 };
 
 /**
- * comp-calc-v6: what to do for a skill below Khá that is not a career gap: courses to take (with
- * prerequisites checked) or to retake for a better grade, or self-study when no course is left.
+ * What to do for one skill: courses to take (with prerequisites checked) or to retake for a better
+ * grade, or self-study when no course is left. comp-calc-v6: skills below Khá that are not career
+ * gaps. comp-calc-v7: with a target career only its met skills below Thành thạo ("deepen"); without
+ * one, the skills below Khá ("strengthen").
  */
 export type SkillPlan = {
   skillKey: string;
@@ -308,6 +310,8 @@ export type SkillPlan = {
   level: LevelCode;
   levelLabel: string;
   careerSkill: boolean;
+  /** comp-calc-v7; absent in v6 results, which only had "strengthen" plans. */
+  purpose?: "deepen" | "strengthen";
   take: SupportCourse[];
   improve: SupportCourse[];
   selfStudy: boolean;

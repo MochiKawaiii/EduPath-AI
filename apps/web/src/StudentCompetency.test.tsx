@@ -241,8 +241,30 @@ describe("StudentCompetency — Khoảng trống kỹ năng", () => {
     expect(html).toContain("Không có học phần nào trong chương trình đào tạo của bạn để đăng ký cho kỹ năng này.");
     expect(html).toContain("Đóng gói ứng dụng web của bạn bằng Docker.");
   });
-  it("gives each weak skill its courses: retake, take with prerequisites checked, or self-study", () => {
-    const html = withAi("completed", "gap");
+  it("advises only on the target career's skills: raising its met skills to Thành thạo", () => {
+    const assessment = fixtureAssessment("completed");
+    const deepen = [
+      { ...fixtureResult.skillPlans![0]!, skillKey: "S01", name: "Lập trình web", level: "good" as const, levelLabel: "Khá", score: 80, careerSkill: true, purpose: "deepen" as const },
+      { ...fixtureResult.skillPlans![1]!, skillKey: "S03", name: "Git", level: "good" as const, levelLabel: "Khá", score: 78, careerSkill: true, purpose: "deepen" as const },
+    ];
+    const html = render({ assessment: { ...assessment, result: { ...fixtureResult, skillPlans: deepen } }, aiEnabled: true, workerOnline: true }, { view: "gap" });
+    const plans = html.slice(html.indexOf("Nâng kỹ năng của nghề lên mức Thành thạo"), html.indexOf("Kỹ năng cần tự học (CTĐT chưa đo)"));
+    expect(plans).toContain("Kỹ năng nghề Lập trình viên web bạn đã đạt ngưỡng nhưng chưa đạt mức Thành thạo (từ 85)");
+    expect(plans).toContain("Kỹ năng: Lập trình web");
+    expect(plans).toContain("Khá · 80");
+    expect(plans).toContain("Bạn đã học hết học phần đo kỹ năng này trong chương trình; hãy làm một dự án nhỏ gắn với nghề");
+    expect(html).not.toContain("Kỹ năng cần củng cố (dưới mức Khá)");
+    // Weak skills outside the career (plans of an older result) are never advised on once a career is chosen.
+    const older = withAi("completed", "gap");
+    expect(older).not.toContain("Kỹ năng cần củng cố (dưới mức Khá)");
+    expect(older).not.toContain("Kỹ năng: Sử dụng tiếng Anh");
+    // The AI's advice on the career's own skills shows on this page too.
+    expect(older).toContain("Nâng kỹ năng của nghề");
+    expect(older).toContain("Học phần Cấu trúc dữ liệu và giải thuật (TST102)");
+  });
+  it("without a target career, gives each weak skill its courses: retake, take with prerequisites checked, or self-study", () => {
+    const assessment = fixtureAssessment("completed");
+    const html = render({ assessment: { ...assessment, result: { ...assessment.result, career: null } }, aiEnabled: true, workerOnline: true }, { view: "gap" });
     const plans = html.slice(html.indexOf("Kỹ năng cần củng cố (dưới mức Khá)"), html.indexOf("Kỹ năng cần tự học (CTĐT chưa đo)"));
     expect(plans).toContain("Kỹ năng: Sử dụng tiếng Anh");
     expect(plans).toContain("Cơ bản · 61");
@@ -254,8 +276,7 @@ describe("StudentCompetency — Khoảng trống kỹ năng", () => {
     expect(plans).toContain("Kỹ năng: Định tuyến mạng");
     expect(plans).toContain("Không còn học phần nào trong chương trình của bạn để học thêm cho kỹ năng này");
     // Results stored before comp-calc-v6 have no plans: the part is left out, nothing breaks.
-    const assessment = fixtureAssessment("completed");
-    const old = render({ assessment: { ...assessment, result: { ...fixtureResult, skillPlans: undefined } }, aiEnabled: true, workerOnline: true }, { view: "gap" });
+    const old = render({ assessment: { ...assessment, result: { ...fixtureResult, career: null, skillPlans: undefined } }, aiEnabled: true, workerOnline: true }, { view: "gap" });
     expect(old).not.toContain("Kỹ năng cần củng cố (dưới mức Khá)");
   });
   it("does not praise a career that has no requirements yet", () => {
