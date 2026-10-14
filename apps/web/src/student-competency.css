@@ -209,6 +209,49 @@
 .scomp-page .scomp-warnings > li { padding: 12px 14px; border: 1px solid #e9d39b; border-radius: 8px; background: #fff8e8; color: #5c4210; font-size: 13px; line-height: 1.6; }
 .scomp-page .scomp-warnings ul { margin: 6px 0 0; padding-left: 18px; }
 
+/* Status colours inside the page: two classes, so they win over .scomp-page .scomp-meta and the sw-shell text colours. */
+.scomp-page .sg-status-pass { color: #16804a; }
+.scomp-page .sg-status-fail { color: #c62828; }
+.scomp-page .sg-status-unknown { color: #805900; }
+.scomp-page .scomp-count { display: inline-block; margin-left: 8px; padding: 0 8px; border-radius: 999px; background: #fdf2f2; color: #c62828; font-size: 12px; font-weight: 700; vertical-align: 2px; }
+
+/* Proficiency table: what the result means, then skills per level and group */
+.scomp-page .scomp-value { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid #cfdaeb; border-radius: 8px; background: #f7f9fd; }
+.scomp-page .scomp-value ul { display: grid; gap: 4px; margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+.scomp-page .scomp-value .sw-text-link { display: inline; min-height: 0; padding: 0; font-size: inherit; }
+.scomp-page .scomp-level-table { min-width: 860px; }
+.scomp-page .scomp-level-table td { vertical-align: middle; }
+.scomp-page .scomp-count-button { min-width: 36px; min-height: 28px; padding: 2px 10px; border: 1px solid #c9d6ea; border-radius: 999px; background: #f2f6fc; color: var(--scomp-l4); font: inherit; font-weight: 700; cursor: pointer; }
+.scomp-page .scomp-count-button:hover { background: #e4ecf8; }
+.scomp-page .scomp-count-button:focus-visible { outline: 3px solid var(--ep-control-focus, #3f6cb4); outline-offset: 2px; }
+.scomp-page .scomp-zero { color: #a3acb8; }
+
+/* Progress: red when late, green when on plan */
+.scomp-page .scomp-plan-status { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border: 1px solid; border-radius: 8px; font-size: 15px; font-weight: 650; line-height: 1.6; }
+.scomp-page .scomp-plan-late { color: #c62828; background: #fdf2f2; border-color: #f0c5c5; }
+.scomp-page .scomp-plan-ok { color: #16804a; background: #eef8f2; border-color: #b9dcc7; }
+.scomp-page .scomp-plan-list-late li { border-color: #f0c5c5; background: #fffafa; }
+
+/* Graduation check (the graduation page's evaluation) */
+.scomp-page .scomp-grad-verdict { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 14px 16px; border: 1px solid; border-radius: 8px; }
+.scomp-page .scomp-grad-verdict p { display: flex; align-items: flex-start; gap: 10px; flex: 1 1 420px; color: inherit; font-size: 15px; font-weight: 650; line-height: 1.6; }
+.scomp-page .scomp-grad-glyph { flex: none; font-size: 18px; font-weight: 800; line-height: 1.4; }
+.scomp-page .scomp-grad-pass { color: #16804a; background: #eef8f2; border-color: #b9dcc7; }
+.scomp-page .scomp-grad-fail { color: #c62828; background: #fdf2f2; border-color: #f0c5c5; }
+.scomp-page .scomp-grad-unknown { color: #805900; background: #fff8e8; border-color: #e9d39b; }
+.scomp-page .scomp-grad-detail { flex: none; background: #fff; }
+.scomp-page .scomp-grad-todo { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid #cfdaeb; border-radius: 8px; background: #f2f6fc; }
+.scomp-page .scomp-grad-todo h3 { color: #1c4182; }
+.scomp-page .scomp-grad-todo ol { display: grid; gap: 8px; margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6; }
+.scomp-page .scomp-grad-todo small { color: #3d4757; font-size: 13px; }
+.scomp-page .scomp-grad-unresolved { display: grid; gap: 8px; justify-items: start; }
+.scomp-page .scomp-doc-link { color: var(--ep-action, #a7123b); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Skill gap summary */
+.scomp-page .sgap-missing { display: grid; gap: 8px; }
+.scomp-page .sgap-missing ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.scomp-page .sgap-missing li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 10px 12px; border: 1px solid var(--sw-border); border-radius: 8px; font-size: 13px; }
+
 /* Empty and loading states */
 .scomp-page .scomp-empty { display: grid; justify-items: center; gap: 10px; padding: 32px 16px; text-align: center; }
 .scomp-page .scomp-empty p { max-width: 620px; color: var(--sw-muted); font-size: 14px; line-height: 1.7; }

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   COURSE_FILTERS, adviceAnnouncement, adviceErrorMessage, adviceFocusLabel, adviceStateCopy, adviceView, asOfLine, conditionItems,
-  courseStateText, filterCourses, formatDate, formatElapsed, formatGpa, formatGpaShortfall, formatNumber, groupFacts, groupInSentence,
-  groupShortfall, groupTitle, groupViews, joinVi, loadErrorMessage, lowerFirst, methodNotes, modelLabel, normalizeAdviceOutput,
-  normalizeAdviceResponse, normalizeAdviceStatus, normalizeAdviceWrite, normalizeStoredAdvice, profileLine, requestErrorMessage, scoreParts,
-  shouldPollAdvice, shownGpa, standardGroupLabels, standardMeta, standardThresholds, suggestionItems, termText, toneClass, unresolvedCopy,
-  verdictHeadline, warningNotes,
+  courseStateText, criteriaRows, failingGroupCredits, filterCourses, formatDate, formatElapsed, formatGpa, formatGpaShortfall, formatNumber,
+  groupFacts, groupInSentence, groupShortfall, groupTitle, groupViews, joinVi, loadErrorMessage, lowerFirst, methodNotes, modelLabel,
+  normalizeAdviceOutput, normalizeAdviceResponse, normalizeAdviceStatus, normalizeAdviceWrite, normalizeStoredAdvice, profileLine,
+  requestErrorMessage, scoreParts, shouldPollAdvice, shownGpa, standardDocumentName, standardGroupLabels, standardMeta, standardThresholds,
+  suggestionItems, termText, thesisOption, toneClass, unresolvedCopy, verdictHeadline, warningNotes,
 } from "./student-graduation-data";
 import type {
   GraduationAdviceResponse, GraduationCourseRow, GraduationEvaluation, GraduationGroupEvaluation, StoredAdvice,
@@ -199,11 +199,12 @@ describe("verdict and conditions", () => {
   it("names every failing part with its shortfall in the headline", () => {
     expect(verdictHeadline(failing())).toEqual({
       tone: "fail", glyph: "✗",
-      text: "Chưa đủ điều kiện xét tốt nghiệp vì thiếu 2 môn thuộc nhóm bắt buộc, 4 tín chỉ thuộc nhóm tự chọn TC306 (CTĐT: TC406), 12 tín chỉ tích lũy và 0,13 điểm trung bình tích lũy.",
+      // The 12 missing credits are covered by the two failing groups (13 + 4 credits), so they are said once, after them.
+      text: "Hiện tại bạn chưa đủ điều kiện xét tốt nghiệp vì còn thiếu 2 môn thuộc nhóm bắt buộc, 4 tín chỉ thuộc nhóm tự chọn TC306 (CTĐT: TC406) và 0,13 điểm trung bình tích lũy. Tổng số tín chỉ tích lũy (126/138) cũng sẽ đủ khi bạn hoàn thành các nhóm trên.",
     });
   });
   it("passes and says what is undecided", () => {
-    expect(verdictHeadline(evaluation())).toEqual({ tone: "pass", glyph: "✓", text: "Đủ các điều kiện xét tốt nghiệp theo tiêu chuẩn của khóa (tham khảo)." });
+    expect(verdictHeadline(evaluation())).toEqual({ tone: "pass", glyph: "✓", text: "Bạn đã đủ các điều kiện xét tốt nghiệp theo tiêu chuẩn của khóa (tham khảo)." });
     const unknown = evaluation({
       status: "unknown", groupStatus: "unknown",
       groups: [group({ id: "BB", kind: "mandatory", lower: 3, upper: 4, remaining: 1, status: "unknown" })],
@@ -212,23 +213,23 @@ describe("verdict and conditions", () => {
     expect(verdictHeadline(unknown).text).toBe("Chưa đủ dữ liệu để kết luận vì chưa xác định được kết quả nhóm bắt buộc và điểm trung bình tích lũy.");
     const items = conditionItems(unknown);
     expect(items[0]).toMatchObject({ status: "unknown", progress: "đã đạt 3/4 môn", note: "1 môn có điểm nhưng chưa rõ kết quả", shortfall: null });
-    expect(items[2]).toMatchObject({ title: "Điểm trung bình tích lũy (hệ 4)", progress: "chưa có điểm các môn tính điểm trung bình hệ 4.", note: null });
+    expect(items[1]).toMatchObject({ title: "Điểm trung bình tích lũy (hệ 4)", progress: "chưa có điểm các môn tính điểm trung bình hệ 4.", note: null });
     const noMinimum = conditionItems(evaluation({ gpa: { actual: 2.85, required: null, scale: 4, status: "unknown", source: "printed", reason: "Tiêu chuẩn chưa có điểm trung bình tối thiểu.", remaining: null } }));
-    expect(noMinimum[2]).toMatchObject({ progress: "hiện 2,85", note: "tiêu chuẩn chưa có điểm trung bình tối thiểu." });
-    expect(verdictHeadline(evaluation({ status: "fail", groups: [] })).text).toBe("Chưa đủ điều kiện xét tốt nghiệp theo bảng điểm hiện tại.");
+    expect(noMinimum[1]).toMatchObject({ progress: "hiện 2,85", note: "tiêu chuẩn chưa có điểm trung bình tối thiểu." });
+    expect(verdictHeadline(evaluation({ status: "fail", groups: [] })).text).toBe("Hiện tại bạn chưa đủ điều kiện xét tốt nghiệp theo bảng điểm hiện tại.");
   });
   it("describes each condition with its progress and shortfall", () => {
     const items = conditionItems(failing());
     expect(items.map((item) => [item.title, item.progress, item.shortfall])).toEqual([
       ["Nhóm bắt buộc", "đã đạt 2/4 môn", "còn thiếu 2 môn"],
       ["Nhóm tự chọn TC306 (CTĐT: TC406)", "đã đạt 2/6 TC", "còn thiếu 4 TC"],
-      ["Tín chỉ tích lũy", "đã tích lũy 126/138 TC (ước tính)", "còn thiếu 12 TC"],
       ["Điểm trung bình tích lũy (hệ 4)", "hiện 1,87, yêu cầu tối thiểu 2,00", "còn thiếu 0,13 điểm"],
+      ["Tổng số tín chỉ tích lũy", "đã tích lũy 126/138 TC (ước tính)", "còn thiếu 12 TC"],
     ]);
     const passing = conditionItems(evaluation());
-    expect(passing.map((item) => item.progress)).toEqual(["đã đạt 4/4 môn", "đã tích lũy 140/138 TC", "hiện 3,10, yêu cầu tối thiểu 2,00"]);
+    expect(passing.map((item) => item.progress)).toEqual(["đã đạt 4/4 môn", "hiện 3,10, yêu cầu tối thiểu 2,00", "đã tích lũy 140/138 TC"]);
     const edge = conditionItems(evaluation({ status: "fail", gpa: { actual: 1.996, required: 2, scale: 4, status: "fail", source: "calculated", reason: "", remaining: 0.004 } }));
-    expect(edge[2]).toMatchObject({ progress: "hiện 1,99, yêu cầu tối thiểu 2,00 (tính tham khảo)", shortfall: "còn thiếu 0,01 điểm" });
+    expect(edge[1]).toMatchObject({ progress: "hiện 1,99, yêu cầu tối thiểu 2,00 (tính tham khảo)", shortfall: "còn thiếu 0,01 điểm" });
     expect(conditionItems(evaluation({ credits: null }))).toHaveLength(2);
   });
 });
@@ -236,8 +237,8 @@ describe("verdict and conditions", () => {
 describe("suggestions", () => {
   it("lists what to do for every failing part", () => {
     const items = suggestionItems(failing());
-    expect(items.map((item) => item.key)).toEqual(["group:BB", "group:TC306", "credits", "gpa", "in-progress", "unknown-results"]);
-    const [mandatory, elective, credits, gpa, inProgress, unknown] = items;
+    expect(items.map((item) => item.key)).toEqual(["group:BB", "group:TC306", "gpa", "credits", "in-progress", "unknown-results"]);
+    const [mandatory, elective, gpa, credits, inProgress, unknown] = items;
     expect(mandatory!.text).toBe("Hoàn thành 2 môn còn thiếu trong nhóm bắt buộc:");
     expect(mandatory!.courses.map((item) => `${item.code} ${item.state}`)).toEqual(["71ITSE30103 Chưa đạt (đã học 2 lần)", "71ITSE41010 Chưa học"]);
     expect(elective!.text).toBe("Chọn học thêm ít nhất 4 tín chỉ trong nhóm tự chọn TC306 (CTĐT: TC406).");
@@ -245,7 +246,7 @@ describe("suggestions", () => {
     expect(elective!.courses.map((item) => `${item.code} ${item.glyph} ${item.state}`)).toEqual([
       "71ITSE40203 ○ Chưa học", "71ITSE40303 ◐ Đang học", "71ITSE40403 ✗ Chưa đạt",
     ]);
-    expect(credits!.text).toBe("Tích lũy thêm ít nhất 12 tín chỉ để đạt 138 tín chỉ tích lũy.");
+    expect(credits!.text).toBe("Tổng số tín chỉ tích lũy (hiện 126/138) sẽ đủ khi bạn hoàn thành các việc ở trên; không cần học thêm học phần khác.");
     expect(gpa!.text).toBe("Nâng điểm trung bình tích lũy (hệ 4) thêm ít nhất 0,13 điểm để đạt 2,00.");
     expect(gpa!.courses.map((item) => `${item.code} ${item.state} ${item.detail}`)).toEqual([
       "71ITSE40403 Học lại điểm 0/4 (F)", "71ITBS10103 Học cải thiện điểm 1,5/4 (D+)",
@@ -253,10 +254,87 @@ describe("suggestions", () => {
     expect(inProgress!.text).toBe("Hoàn thành 1 học phần đang học:");
     expect(unknown!.text).toBe("Kiểm tra kết quả 1 học phần có điểm nhưng chưa rõ Đạt/Chưa đạt:");
   });
+  it("makes the thesis the main path of a thesis group and the replacement courses a fallback with a reason", () => {
+    const courses = [
+      course("71ITGR40203", "not_taken", { groupId: "TC306", name: "Chuyên đề Tốt nghiệp 1" }),
+      course("71ITGR40206", "not_taken", { groupId: "TC306", name: "Đồ án Tốt nghiệp", credits: 6 }),
+      course("71ITGR40303", "not_taken", { groupId: "TC306", name: "Chuyên đề Tốt nghiệp 2" }),
+    ];
+    const thesisGroup = group({ id: "TC306", kind: "elective", required: 6, lower: 0, upper: 0, remaining: 6, status: "fail", passedCount: 0, courses });
+    expect(thesisOption(thesisGroup)).toMatchObject({ thesis: { code: "71ITGR40206" }, path: "not_started" });
+    expect(thesisOption(thesisGroup)!.replacements.map((item) => item.code)).toEqual(["71ITGR40203", "71ITGR40303"]);
+    const [item] = suggestionItems(evaluation({ status: "fail", groupStatus: "fail", groups: [thesisGroup] }));
+    expect(item!.text).toBe("Đăng ký Đồ án Tốt nghiệp (6 TC) để hoàn thành nhóm tự chọn TC306. Đây là phương án chính của chương trình: một học phần đủ 6 tín chỉ của nhóm.");
+    expect(item!.courses.map((entry) => `${entry.code} ${entry.state}`)).toEqual(["71ITGR40206 Chưa học"]);
+    expect(item!.note).toBe("Chỉ chọn học phần thay thế khi bạn không làm đồ án tốt nghiệp theo quy định của Khoa; hãy xác nhận điều kiện đăng ký với cố vấn học tập.");
+    expect(item!.alternative?.label).toBe("Phương án thay thế: chọn đủ 6 tín chỉ trong các học phần sau");
+    expect(item!.alternative?.courses.map((entry) => entry.code)).toEqual(["71ITGR40203", "71ITGR40303"]);
+
+    // A replacement course already taken: keep going on that path, do not push the thesis.
+    const started = { ...thesisGroup, lower: 3, upper: 3, remaining: 3, courses: [{ ...courses[0]!, state: "passed" as const }, courses[1]!, courses[2]!] };
+    expect(thesisOption(started)?.path).toBe("replacement");
+    const [next] = suggestionItems(evaluation({ status: "fail", groupStatus: "fail", groups: [started] }));
+    expect(next!.text).toBe("Học thêm ít nhất 3 tín chỉ trong nhóm tự chọn TC306 theo phương án học phần thay thế đồ án tốt nghiệp mà bạn đã bắt đầu.");
+    expect(next!.courses.map((entry) => entry.code)).toEqual(["71ITGR40303"]);
+    expect(next!.note).toBe("Bạn đã học theo phương án này: Chuyên đề Tốt nghiệp 1 (đã đạt).");
+    expect(next!.alternative).toBeUndefined();
+
+    const writing = { ...thesisGroup, courses: [courses[0]!, { ...courses[1]!, state: "in_progress" as const }, courses[2]!] };
+    expect(thesisOption(writing)?.path).toBe("thesis_in_progress");
+    expect(suggestionItems(evaluation({ status: "fail", groupStatus: "fail", groups: [writing] }))[0]!.text)
+      .toBe("Hoàn thành Đồ án Tốt nghiệp (6 TC) bạn đang học: học phần này đủ số tín chỉ của nhóm tự chọn TC306.");
+  });
+  it("finds the thesis by its name without accents and only when it completes the group", () => {
+    const named = (name: string, credits = 6) => group({ id: "X", kind: "elective", required: 6, lower: 0, upper: 0, remaining: 6, status: "fail", courses: [course("A", "not_taken", { name, credits })] });
+    expect(thesisOption(named("Khoá luận Tốt  Nghiệp"))).not.toBeNull();
+    expect(thesisOption(named("KHÓA LUẬN TỐT NGHIỆP"))).not.toBeNull();
+    expect(thesisOption(named("Đồ án tốt nghiệp", 3))).toBeNull();
+    expect(thesisOption(named("Đồ án thực tập"))).toBeNull();
+    expect(thesisOption({ ...named("Đồ án Tốt nghiệp"), status: "pass" })).toBeNull();
+    expect(thesisOption({ ...named("Đồ án Tốt nghiệp"), kind: "mandatory" })).toBeNull();
+  });
+  it("tells whether the failing groups cover the missing total credits", () => {
+    expect(failingGroupCredits(failing())).toBe(17);
+    const pe = group({ id: "PE", kind: "elective", required: 2, lower: 0, upper: 0, remaining: 2, status: "fail", courses: [course("71PE1", "not_taken", { conditionOnly: true })] });
+    expect(failingGroupCredits(evaluation({ groups: [pe] }))).toBe(0);
+    const mixed = { ...pe, courses: [course("71PE1", "not_taken", { conditionOnly: true }), course("71IT1", "not_taken")] };
+    expect(failingGroupCredits(evaluation({ groups: [mixed] }))).toBeNull();
+    const unknownCredits = group({ id: "BB", kind: "mandatory", status: "fail", courses: [course("71IT2", "not_taken", { credits: null })] });
+    expect(failingGroupCredits(evaluation({ groups: [unknownCredits] }))).toBeNull();
+    // Not covered: the rest is said as a separate credit task.
+    const short = evaluation({
+      status: "fail", groupStatus: "fail",
+      groups: [group({ id: "TC306", kind: "elective", required: 6, lower: 3, upper: 3, remaining: 3, status: "fail", courses: [course("71IT3", "not_taken")] })],
+      credits: { lower: 120, upper: 120, required: 130, status: "fail", source: "printed", remaining: 10 },
+    });
+    expect(verdictHeadline(short).text).toBe("Hiện tại bạn chưa đủ điều kiện xét tốt nghiệp vì còn thiếu 3 tín chỉ thuộc nhóm tự chọn TC306 và 10 tín chỉ tích lũy.");
+    expect(suggestionItems(short).find((item) => item.key === "credits")!.text).toBe("Ngoài các nhóm ở trên, tích lũy thêm ít nhất 7 tín chỉ để đạt 130 tín chỉ tích lũy.");
+  });
   it("only reminds of the official notice when everything passes", () => {
     expect(suggestionItems(evaluation())).toEqual([{ key: "official", text: "Theo dõi thông báo xét tốt nghiệp chính thức của nhà trường.", coursesLabel: null, courses: [], note: null }]);
     const noCandidates = suggestionItems(evaluation({ status: "fail", gpa: { actual: 1.9, required: 2, scale: 4, status: "fail", source: "printed", reason: "", remaining: 0.1 } }));
     expect(noCandidates[0]).toMatchObject({ key: "gpa", coursesLabel: null, note: "Hãy trao đổi với cố vấn học tập để chọn học phần học cải thiện." });
+  });
+});
+
+describe("competency page summary", () => {
+  it("lists the criteria in the graduation page's order with the total credits last", () => {
+    const rows = criteriaRows(failing());
+    expect(rows.map((item) => [item.title, item.actual, item.required, item.status])).toEqual([
+      ["Nhóm bắt buộc", "2 môn", "4 môn", "fail"],
+      ["Nhóm tự chọn TC306 (CTĐT: TC406)", "2 TC", "6 TC", "fail"],
+      ["Điểm trung bình tích lũy (hệ 4)", "1,87", "2,00", "fail"],
+      ["Tổng số tín chỉ tích lũy", "126 TC", "138 TC", "fail"],
+    ]);
+    expect(rows[3]!.note).toBe("ước tính, không tính môn điều kiện");
+    expect(criteriaRows(evaluation({ credits: null })).map((item) => item.key)).toEqual(["BB", "gpa"]);
+    const unclear = criteriaRows(evaluation({ groups: [group({ id: "BB", kind: "mandatory", lower: 3, upper: 4, status: "unknown" })] }));
+    expect(unclear[0]!.actual).toBe("3–4 môn");
+  });
+  it("writes the graduation standard out in full", () => {
+    // A name that already says what it is is not prefixed twice.
+    expect(standardDocumentName(standard())).toBe("Tiêu chuẩn xét tốt nghiệp K29 CNPM — khóa K29, ngành Công nghệ thông tin, chuyên ngành 7480201-03, phiên bản 3");
+    expect(standardDocumentName(standard({ name: "71K29CNTT_TN04 - K29CNTT", specialty: " ", major: "" }))).toBe("Tiêu chuẩn xét tốt nghiệp 71K29CNTT_TN04 - K29CNTT — khóa K29, phiên bản 3");
   });
 });
 

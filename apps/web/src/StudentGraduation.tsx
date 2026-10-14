@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "./student-icons";
 import { useLiveData } from "./use-live-data";
 import { INFERRED_RESULT_NOTE } from "./transcript-results";
+import { readGraduation } from "./student-graduation-api";
 import {
   ADVICE_API, ADVICE_POLL_MS, COURSE_FILTERS, COURSE_STATES, GRADUATION_API, INLINE_COURSES, STATUS_DISPLAY,
   adviceAnnouncement, adviceFocusLabel, adviceStateCopy, adviceView, asOfLine, conditionItems, courseStateText, filterCourses,
-  formatDateTime, formatElapsed, formatNumber, groupFacts, groupShortfall, groupViews, loadErrorMessage, methodNotes, modelLabel,
+  formatDateTime, formatElapsed, formatNumber, groupFacts, groupShortfall, groupViews, methodNotes, modelLabel,
   normalizeAdviceResponse, normalizeAdviceStatus, normalizeAdviceWrite, profileLine, requestErrorMessage, scoreParts,
   shouldPollAdvice, standardMeta, standardThresholds, suggestionItems, toneClass, unresolvedCopy, verdictHeadline, warningNotes,
   type AdviceKind, type AdviceView, type ConditionItem, type CourseFilter, type CourseView, type EnsureState, type GroupView,
@@ -23,12 +24,6 @@ import "./student-graduation.css";
 
 type ApiError = Error & { code?: string; status?: number };
 
-async function readGraduation(response: Response): Promise<StudentGraduationResponse> {
-  const data = await response.json().catch(() => null) as (StudentGraduationResponse & { error?: string }) | null;
-  // A body without a profile/resolution is not this API's answer (e.g. an older server): say so instead of breaking.
-  if (!response.ok || !data?.profile || !data.resolution) throw new Error(loadErrorMessage(response.status, data?.error));
-  return data;
-}
 async function readAdvice(response: Response): Promise<GraduationAdviceResponse> {
   const data = await response.json().catch(() => null) as { error?: string } | null;
   if (!response.ok) throw new Error(requestErrorMessage(data?.error));
@@ -245,6 +240,10 @@ function Suggestions({ items }: { items: SuggestionItem[] }) {
       {item.coursesLabel && <p className="sg-todo-label">{item.coursesLabel}</p>}
       {item.courses.length > 0 && <CourseBullets courses={item.courses} />}
       {item.note && <p className="sg-todo-note">{item.note}</p>}
+      {item.alternative && <>
+        <p className="sg-todo-label">{item.alternative.label}:</p>
+        <CourseBullets courses={item.alternative.courses} />
+      </>}
     </li>)}</ol>
   </div>;
 }

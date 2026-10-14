@@ -2,7 +2,7 @@
 // the polling decision. No fetch, no DOM — everything here is unit tested.
 import type {
   AiOutput, AiPriority, AiStatus, AssessmentResult, CareerRequirementResult, Confidence,
-  CourseState, Eligibility, LevelCode, SkillResult, StoredAssessment,
+  CourseState, Eligibility, LevelCode, SkillResult, StoredAssessment, SupportCourse,
 } from "./competency-assessment-types";
 
 export const COMPETENCY_API = "/api/student/competency-assessments";
@@ -164,6 +164,41 @@ export const COURSE_STATE_LABELS: Record<CourseState, string> = {
   passed: "Đạt", failed: "Không đạt", exempt: "Miễn/công nhận", graded_unknown: "Có điểm, chưa rõ kết quả",
   in_progress: "Đang học", not_taken: "Chưa học", not_in_curriculum: "Ngoài CTĐT",
 };
+
+/**
+ * Where the student stands with a suggested course, in words: whether it was taken, its score and
+ * what that means ("Đã học, đạt · điểm 6,5 (C+)", "Đã học, chưa đạt · điểm 3 (F) — cần học lại", "Chưa học").
+ */
+export function courseStanding(course: Pick<SupportCourse, "state" | "score10" | "letter">): { tone: StatusTone; text: string } {
+  const score = course.score10 !== null ? ` · điểm ${formatNumber(course.score10)}${course.letter ? ` (${course.letter})` : ""}` : course.letter ? ` · ${course.letter}` : "";
+  switch (course.state) {
+    case "passed": return { tone: "pass", text: `Đã học, đạt${score}` };
+    case "failed": return { tone: "fail", text: `Đã học, chưa đạt${score} — cần học lại` };
+    case "exempt": return { tone: "pass", text: "Miễn/công nhận" };
+    case "in_progress": return { tone: "neutral", text: "Đang học" };
+    case "graded_unknown": return { tone: "unknown", text: `Có điểm${score}, chưa rõ kết quả` };
+    default: return { tone: "neutral", text: "Chưa học" };
+  }
+}
+
+/* ---------------------------------------------------- proficiency summary */
+
+/** The level columns of the proficiency table, best first; "Chưa có minh chứng" last (not a weakness). */
+export const LEVEL_COLUMNS = ["proficient", "good", "basic", "needs_work", "no_evidence"] as const satisfies readonly LevelCode[];
+export type LevelRow = {
+  key: string; name: string; score: number | null; level: LevelCode; levelLabel: string;
+  /** Skills of the group counted like the group line: condition-only and not-applicable skills left out. */
+  total: number;
+  counts: Record<(typeof LEVEL_COLUMNS)[number], number>;
+};
+/** One row per skill group: how many of its skills sit at each proficiency level. */
+export function levelSummary(result: Pick<AssessmentResult, "groups" | "skills">): LevelRow[] {
+  return result.groups.map((group) => {
+    const skills = result.skills.filter((skill) => skill.groupKey === group.key && !skill.conditionOnly && skill.status !== "not_applicable");
+    const counts = Object.fromEntries(LEVEL_COLUMNS.map((level) => [level, skills.filter((skill) => skill.level === level).length])) as LevelRow["counts"];
+    return { key: group.key, name: group.name, score: group.score, level: group.level, levelLabel: group.levelLabel, total: skills.length, counts };
+  });
+}
 
 /** AI priority tags; worded apart from the career property "Ưu tiên" (preferred). The stored enum stays high/medium/low. */
 export const PRIORITY_LABELS: Record<AiPriority, string> = { high: "Cần làm sớm", medium: "Nên làm", low: "Có thể để sau" };

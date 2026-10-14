@@ -280,7 +280,7 @@ function creditsCondition(credits: NonNullable<GraduationEvaluation["credits"]>)
     : `đã tích lũy ${formatNumber(lower)}/${formatNumber(required)} TC${credits.source === "calculated" ? " (ước tính)" : ""}${extra}`;
   const missing = status === "fail" && remaining !== null && remaining > 0 ? remaining : null;
   return {
-    key: "credits", kind: "credits", status, title: "Tín chỉ tích lũy", progress,
+    key: "credits", kind: "credits", status, title: "Tổng số tín chỉ tích lũy", progress,
     shortfall: missing === null ? null : `còn thiếu ${formatNumber(missing)} TC`,
     note: status === "unknown" ? (extra ? "một số học phần có điểm nhưng chưa rõ kết quả" : "chưa xác định được tổng số tín chỉ tích lũy") : null,
     deficit: status === "fail" ? `${missing === null ? "" : `${formatNumber(missing)} `}tín chỉ tích lũy` : null,
@@ -304,27 +304,73 @@ function gpaCondition(gpa: GraduationEvaluation["gpa"]): ConditionItem {
   };
 }
 
-/** Every graduation condition in a fixed order: the standard's groups, total credits, then the GPA. */
+/**
+ * Every graduation condition in a fixed order, the same on the graduation page and on the
+ * competency page: the standard's groups, the GPA, then the total credits last.
+ */
 export function conditionItems(evaluation: Pick<GraduationEvaluation, "groups" | "credits" | "gpa">): ConditionItem[] {
   return [
     ...evaluation.groups.map(groupCondition),
-    ...(evaluation.credits ? [creditsCondition(evaluation.credits)] : []),
     gpaCondition(evaluation.gpa),
+    ...(evaluation.credits ? [creditsCondition(evaluation.credits)] : []),
   ];
 }
 
+/**
+ * Credits the failing groups still need, counted toward the accumulated total: an elective group its
+ * missing credits (0 for a group of condition-only (*) courses), a mandatory group the credits of its
+ * courses not passed yet. Null when a group's share cannot be told (unknown credits, mixed (*) group).
+ */
+export function failingGroupCredits(evaluation: Pick<GraduationEvaluation, "groups">): number | null {
+  let total = 0;
+  for (const group of evaluation.groups) {
+    if (group.status !== "fail") continue;
+    if (group.kind === "elective") {
+      const condition = group.courses.filter((course) => course.conditionOnly).length;
+      if (condition && condition === group.courses.length) continue;
+      if (condition || group.remaining === null) return null;
+      total += group.remaining;
+    } else {
+      for (const course of group.courses) {
+        if (isPassedState(course.state) || course.conditionOnly) continue;
+        if (course.credits === null) return null;
+        total += course.credits;
+      }
+    }
+  }
+  return total;
+}
+
+/** The total-credit shortfall is fully explained by the failing groups: finishing them also completes the total. */
+function creditsCoveredByGroups(evaluation: Pick<GraduationEvaluation, "groups" | "credits">): boolean {
+  const credits = evaluation.credits;
+  if (credits?.status !== "fail" || credits.remaining === null || credits.remaining <= 0) return false;
+  const groups = failingGroupCredits(evaluation);
+  return groups !== null && groups > 0 && groups + 1e-9 >= credits.remaining;
+}
+
 export type Verdict = { tone: Tone; glyph: string; text: string };
-/** The banner: pass, every failing part with its shortfall, or what is still undecided. */
+/**
+ * The banner, the same sentence on the graduation page and on the competency page: pass, every
+ * failing part with its shortfall (a total-credit shortfall the failing groups already explain is
+ * said once, after them), or what is still undecided.
+ */
 export function verdictHeadline(evaluation: Pick<GraduationEvaluation, "status" | "groups" | "credits" | "gpa">): Verdict {
   const items = conditionItems(evaluation);
   if (evaluation.status === "pass") {
-    return { tone: "pass", glyph: "✓", text: "Đủ các điều kiện xét tốt nghiệp theo tiêu chuẩn của khóa (tham khảo)." };
+    return { tone: "pass", glyph: "✓", text: "Bạn đã đủ các điều kiện xét tốt nghiệp theo tiêu chuẩn của khóa (tham khảo)." };
   }
   if (evaluation.status === "fail") {
-    const parts = items.filter((item) => item.status === "fail" && item.deficit).map((item) => item.deficit!);
+    const covered = creditsCoveredByGroups(evaluation);
+    const parts = items.filter((item) => item.status === "fail" && item.deficit && !(covered && item.kind === "credits")).map((item) => item.deficit!);
+    const credits = evaluation.credits;
+    const failingGroups = evaluation.groups.filter((group) => group.status === "fail");
+    const total = covered && credits
+      ? ` Tổng số tín chỉ tích lũy (${formatNumber(credits.lower)}/${formatNumber(credits.required)}) cũng sẽ đủ khi bạn hoàn thành ${failingGroups.length === 1 ? groupInSentence(groupTitle(failingGroups[0]!)) : "các nhóm trên"}.`
+      : "";
     return {
       tone: "fail", glyph: "✗",
-      text: parts.length ? `Chưa đủ điều kiện xét tốt nghiệp vì thiếu ${joinVi(parts)}.` : "Chưa đủ điều kiện xét tốt nghiệp theo bảng điểm hiện tại.",
+      text: parts.length ? `Hiện tại bạn chưa đủ điều kiện xét tốt nghiệp vì còn thiếu ${joinVi(parts)}.${total}` : "Hiện tại bạn chưa đủ điều kiện xét tốt nghiệp theo bảng điểm hiện tại.",
     };
   }
   const parts = items.filter((item) => item.status === "unknown" && item.undecided).map((item) => item.undecided!);
@@ -332,6 +378,47 @@ export function verdictHeadline(evaluation: Pick<GraduationEvaluation, "status" 
     tone: "unknown", glyph: "?",
     text: parts.length ? `Chưa đủ dữ liệu để kết luận vì chưa xác định được ${joinVi(parts)}.` : "Chưa đủ dữ liệu để kết luận điều kiện xét tốt nghiệp.",
   };
+}
+
+export type CriteriaRow = { key: string; title: string; actual: string; required: string; status: GradStatus; note: string | null };
+const range = (lower: number | null, upper: number | null) =>
+  lower === null ? "—" : upper !== null && upper > lower ? `${formatNumber(lower)}–${formatNumber(upper)}` : formatNumber(lower);
+/** The criteria table of the competency page: the same conditions, order and numbers as conditionItems. */
+export function criteriaRows(evaluation: Pick<GraduationEvaluation, "groups" | "credits" | "gpa">): CriteriaRow[] {
+  const { gpa, credits } = evaluation;
+  return [
+    ...evaluation.groups.map((group) => ({
+      key: group.id, title: groupTitle(group), status: group.status, note: null,
+      actual: group.lower === null ? "—" : `${range(group.lower, group.upper)} ${group.unit}`,
+      required: group.required === null ? "—" : `${formatNumber(group.required)} ${group.unit}`,
+    })),
+    {
+      key: "gpa", title: `Điểm trung bình tích lũy (hệ ${gpa.scale})`, status: gpa.status,
+      actual: gpa.actual === null ? "—" : formatGpa(shownGpa(gpa.actual, gpa.required, gpa.status)),
+      required: gpa.required === null ? "—" : formatGpa(gpa.required),
+      note: gpa.source === "calculated" ? "tính tham khảo từ điểm các học phần" : null,
+    },
+    ...(credits ? [{
+      key: "credits", title: "Tổng số tín chỉ tích lũy", status: credits.status,
+      actual: `${range(credits.lower, credits.upper)} TC`, required: `${formatNumber(credits.required)} TC`,
+      note: credits.source === "calculated" ? "ước tính, không tính môn điều kiện" : null,
+    }] : []),
+  ];
+}
+
+/**
+ * The graduation standard written out in full, as the document the student is checked against:
+ * "Tiêu chuẩn xét tốt nghiệp <tên> — khóa K29, ngành Công nghệ thông tin, chuyên ngành …, phiên bản 1".
+ */
+export function standardDocumentName(standard: Pick<StudentGraduationStandard, "name" | "cohortCode" | "major" | "specialty" | "version">): string {
+  const facts = [
+    `khóa ${standard.cohortCode}`,
+    standard.major.trim() ? `ngành ${standard.major.trim()}` : null,
+    standard.specialty.trim() ? `chuyên ngành ${standard.specialty.trim()}` : null,
+    `phiên bản ${standard.version}`,
+  ].filter(Boolean);
+  const name = standard.name.trim();
+  return `${/^tieu chuan xet tot nghiep\b/.test(foldName(name)) ? name : `Tiêu chuẩn xét tốt nghiệp ${name}`} — ${facts.join(", ")}`;
 }
 
 export type SuggestionCourse = { key: string; code: string; name: string; credits: number | null; glyph: string; state: string; tone: Tone; detail: string | null };
@@ -342,6 +429,8 @@ export type SuggestionItem = {
   coursesLabel: string | null;
   courses: SuggestionCourse[];
   note: string | null;
+  /** A second, fallback path with its own course list (the thesis group's replacement courses). */
+  alternative?: { label: string; courses: SuggestionCourse[] } | null;
 };
 
 const suggestionCourse = (row: GraduationCourseRow, index: number): SuggestionCourse => ({
@@ -349,10 +438,76 @@ const suggestionCourse = (row: GraduationCourseRow, index: number): SuggestionCo
   glyph: COURSE_STATES[row.state].glyph, state: courseStateText(row), tone: COURSE_STATES[row.state].tone, detail: null,
 });
 
+/* ------------------------------------------------------------ thesis group */
+
+/** Course names compared without accents, case or extra spaces ("Đồ án Tốt nghiệp" → "do an tot nghiep"). */
+const foldName = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D")
+  .toLowerCase().replace(/\s+/g, " ").trim();
+const THESIS_NAME = /\b(do an|khoa luan) tot nghiep\b/;
+
+export type ThesisOption = {
+  /** The graduation thesis (Đồ án / Khóa luận tốt nghiệp) whose credits alone complete the group. */
+  thesis: GraduationCourseRow;
+  /** The group's other courses: the replacement path ("học phần thay thế KL/ĐA TN"). */
+  replacements: GraduationCourseRow[];
+  /** not_started: nothing taken yet; replacement: a replacement course is passed, in progress or graded; thesis_in_progress. */
+  path: "not_started" | "replacement" | "thesis_in_progress";
+};
+
+/**
+ * The thesis rule, identical to the server's graduation advice prompt (apps/api/src/graduation/thesis.ts):
+ * in a failing elective group, a course named "Đồ án/Khóa luận tốt nghiệp" whose credits reach the
+ * group's requirement is the main path; the other courses are the fallback. Null for other groups.
+ */
+export function thesisOption(group: GraduationGroupEvaluation): ThesisOption | null {
+  if (group.kind !== "elective" || group.status === "pass" || group.required === null) return null;
+  const required = group.required;
+  const thesis = group.courses.find((course) => THESIS_NAME.test(foldName(course.name)) && course.credits !== null && course.credits >= required);
+  if (!thesis) return null;
+  const replacements = group.courses.filter((course) => course !== thesis);
+  const started = replacements.some((course) => isPassedState(course.state) || course.state === "in_progress" || course.state === "graded_unknown");
+  return { thesis, replacements, path: thesis.state === "in_progress" ? "thesis_in_progress" : started ? "replacement" : "not_started" };
+}
+
+/** "đồ án tốt nghiệp" or "khóa luận tốt nghiệp", as the course is named. */
+const thesisKind = (thesis: Pick<GraduationCourseRow, "name">) => /khoa luan/.test(foldName(thesis.name)) ? "khóa luận tốt nghiệp" : "đồ án tốt nghiệp";
+
+function thesisSuggestion(group: GraduationGroupEvaluation, option: ThesisOption): SuggestionItem {
+  const title = groupInSentence(groupTitle(group));
+  const { thesis, replacements, path } = option;
+  const credits = thesis.credits === null ? "" : ` (${formatNumber(thesis.credits)} TC)`;
+  const key = `group:${group.id}`;
+  if (path === "thesis_in_progress") {
+    return { key, text: `Hoàn thành ${thesis.name}${credits} bạn đang học: học phần này đủ số tín chỉ của ${title}.`, coursesLabel: null, courses: [suggestionCourse(thesis, 0)], note: null };
+  }
+  if (path === "replacement") {
+    const done = replacements.filter((course) => isPassedState(course.state) || course.state === "in_progress" || course.state === "graded_unknown");
+    return {
+      key,
+      text: group.remaining !== null && group.remaining > 0
+        ? `Học thêm ít nhất ${formatNumber(group.remaining)} tín chỉ trong ${title} theo phương án học phần thay thế ${thesisKind(thesis)} mà bạn đã bắt đầu.`
+        : `Hoàn thành ${title} theo phương án học phần thay thế ${thesisKind(thesis)} mà bạn đã bắt đầu.`,
+      coursesLabel: "Học phần thay thế còn lại:",
+      courses: replacements.filter((course) => !isPassedState(course.state)).map(suggestionCourse),
+      note: `Bạn đã học theo phương án này: ${joinVi(done.map((course) => `${course.name} (${courseStateText(course).toLowerCase()})`))}.`,
+    };
+  }
+  const open = replacements.filter((course) => !isPassedState(course.state));
+  return {
+    key,
+    text: `Đăng ký ${thesis.name}${credits} để hoàn thành ${title}. Đây là phương án chính của chương trình: một học phần đủ ${formatNumber(group.required)} tín chỉ của nhóm.`,
+    coursesLabel: null,
+    courses: [suggestionCourse(thesis, 0)],
+    note: `Chỉ chọn học phần thay thế khi bạn không làm ${thesisKind(thesis)} theo quy định của Khoa; hãy xác nhận điều kiện đăng ký với cố vấn học tập.`,
+    alternative: open.length ? { label: `Phương án thay thế: chọn đủ ${formatNumber(group.remaining ?? group.required)} tín chỉ trong các học phần sau`, courses: open.map(suggestionCourse) } : null,
+  };
+}
+
 /**
  * The deterministic "Đề xuất điều cần làm" (always shown, AI or not): per failing mandatory group
- * its missing courses, per failing elective group the credits to choose and its not-passed courses,
- * the credit and GPA shortfalls (with retake candidates), courses in progress and unread results.
+ * its missing courses, per failing elective group the credits to choose and its not-passed courses
+ * (the thesis first when the group has one), the credit and GPA shortfalls (with retake candidates),
+ * courses in progress and unread results.
  */
 export function suggestionItems(evaluation: GraduationEvaluation): SuggestionItem[] {
   const items: SuggestionItem[] = [];
@@ -360,9 +515,12 @@ export function suggestionItems(evaluation: GraduationEvaluation): SuggestionIte
     if (group.status !== "fail") continue;
     const title = groupInSentence(groupTitle(group));
     const open = group.courses.filter((course) => !isPassedState(course.state)).map(suggestionCourse);
+    const thesis = thesisOption(group);
     if (group.kind === "mandatory") {
       const count = group.remaining ?? open.length;
       items.push({ key: `group:${group.id}`, text: `Hoàn thành ${formatNumber(count)} môn còn thiếu trong ${title}:`, coursesLabel: null, courses: open, note: null });
+    } else if (thesis) {
+      items.push(thesisSuggestion(group, thesis));
     } else {
       items.push({
         key: `group:${group.id}`,
@@ -374,15 +532,6 @@ export function suggestionItems(evaluation: GraduationEvaluation): SuggestionIte
         note: open.length ? "Chỉ cần đủ số tín chỉ của nhóm, không phải học hết các học phần." : "Nhóm không còn học phần nào khác trong tiêu chuẩn; hãy trao đổi với cố vấn học tập.",
       });
     }
-  }
-  const credits = evaluation.credits;
-  if (credits?.status === "fail") {
-    items.push({
-      key: "credits", coursesLabel: null, courses: [], note: null,
-      text: credits.remaining !== null && credits.remaining > 0
-        ? `Tích lũy thêm ít nhất ${formatNumber(credits.remaining)} tín chỉ để đạt ${formatNumber(credits.required)} tín chỉ tích lũy.`
-        : `Tích lũy đủ ${formatNumber(credits.required)} tín chỉ theo tiêu chuẩn.`,
-    });
   }
   const gpa = evaluation.gpa;
   if (gpa.status === "fail") {
@@ -402,6 +551,20 @@ export function suggestionItems(evaluation: GraduationEvaluation): SuggestionIte
       note: evaluation.improvementCandidates.length
         ? "Ưu tiên học phần điểm thấp và nhiều tín chỉ; môn điều kiện (*) và MT không tính vào điểm trung bình."
         : "Hãy trao đổi với cố vấn học tập để chọn học phần học cải thiện.",
+    });
+  }
+  const credits = evaluation.credits;
+  if (credits?.status === "fail") {
+    const groupCredits = failingGroupCredits(evaluation);
+    const remaining = credits.remaining !== null && credits.remaining > 0 ? credits.remaining : null;
+    items.push({
+      key: "credits", coursesLabel: null, courses: [], note: null,
+      text: remaining === null ? `Tích lũy đủ ${formatNumber(credits.required)} tín chỉ theo tiêu chuẩn.`
+        : creditsCoveredByGroups(evaluation)
+          ? `Tổng số tín chỉ tích lũy (hiện ${formatNumber(credits.lower)}/${formatNumber(credits.required)}) sẽ đủ khi bạn hoàn thành các việc ở trên; không cần học thêm học phần khác.`
+          : groupCredits !== null && groupCredits > 0
+            ? `Ngoài các nhóm ở trên, tích lũy thêm ít nhất ${formatNumber(remaining - groupCredits)} tín chỉ để đạt ${formatNumber(credits.required)} tín chỉ tích lũy.`
+            : `Tích lũy thêm ít nhất ${formatNumber(remaining)} tín chỉ để đạt ${formatNumber(credits.required)} tín chỉ tích lũy.`,
     });
   }
   if (evaluation.inProgress.length) {

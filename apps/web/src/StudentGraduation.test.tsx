@@ -198,7 +198,8 @@ describe("StudentGraduation result", () => {
     expect(html).toContain("Kết quả xét tốt nghiệp tính đến thời điểm hiện tại");
     expect(html).toContain("Bảng điểm cập nhật ngày 01/10/2026 · học kỳ có kết quả gần nhất: học kỳ 3 năm học 2025–2026");
     expect(html).toMatch(/class="sg-banner sg-banner-fail" role="status"><span class="sg-glyph" aria-hidden="true">✗<\/span>/);
-    expect(html).toContain("Chưa đủ điều kiện xét tốt nghiệp vì thiếu 2 môn thuộc nhóm bắt buộc, 3 tín chỉ thuộc nhóm tự chọn TC306 (CTĐT: TC406), 12 tín chỉ tích lũy và 0,13 điểm trung bình tích lũy.");
+    // The same sentence as the competency page; the failing groups already cover the 12 missing credits.
+    expect(html).toContain("Hiện tại bạn chưa đủ điều kiện xét tốt nghiệp vì còn thiếu 2 môn thuộc nhóm bắt buộc, 3 tín chỉ thuộc nhóm tự chọn TC306 (CTĐT: TC406) và 0,13 điểm trung bình tích lũy. Tổng số tín chỉ tích lũy (126/138) cũng sẽ đủ khi bạn hoàn thành các nhóm trên.");
     const visible = text(html);
     expect(visible).toContain("✓ Đã đạt1Nhóm tự chọn TC102: đã đạt 6/6 TC");
     expect(visible).toContain("Nhóm bắt buộc: đã đạt 2/4 môn — còn thiếu 2 môn");
@@ -210,17 +211,32 @@ describe("StudentGraduation result", () => {
     expect(visible).toContain("71ITSE30103Kiểm thử phần mềm3 TC✗ Chưa đạt (đã học 2 lần)");
     expect(html).toContain("Chọn học thêm ít nhất 3 tín chỉ trong nhóm tự chọn TC306 (CTĐT: TC406).");
     expect(visible).toContain("Các học phần bạn chưa đạt trong nhóm:71ITSE40203Kiến trúc phần mềm3 TC○ Chưa học71ITSE40303Điện toán đám mây3 TC◐ Đang học");
-    expect(html).toContain("Tích lũy thêm ít nhất 12 tín chỉ để đạt 138 tín chỉ tích lũy.");
+    expect(html).toContain("Tổng số tín chỉ tích lũy (hiện 126/138) sẽ đủ khi bạn hoàn thành các việc ở trên; không cần học thêm học phần khác.");
     expect(html).toContain("Nâng điểm trung bình tích lũy (hệ 4) thêm ít nhất 0,13 điểm để đạt 2,00.");
     expect(visible).toContain("Kiểm thử phần mềm3 TC · điểm 0/4 (F)↻ Học lại");
     expect(visible).toContain("Lập trình3 TC · điểm 1,5/4 (D+)↑ Học cải thiện");
     expect(html).toContain("Hoàn thành 1 học phần đang học:");
     expect(html).toContain("Kết quả xét tốt nghiệp chính thức do nhà trường công bố.");
   });
+  it("recommends the graduation thesis first and lists the replacement courses as a fallback", () => {
+    const thesisCourses = [
+      row("71ITGR40203", "Chuyên đề Tốt nghiệp 1", "TC306", "not_taken"),
+      row("71ITGR40206", "Đồ án Tốt nghiệp", "TC306", "not_taken", { credits: 6 }),
+      row("71ITGR40303", "Chuyên đề Tốt nghiệp 2", "TC306", "not_taken"),
+    ];
+    const base = evaluation("pass");
+    const thesisGroup: GraduationGroupEvaluation = { ...base.groups[1]!, required: 6, lower: 0, upper: 0, remaining: 6, status: "fail", passedCount: 0, courses: thesisCourses };
+    const html = render(ready(graduation({ evaluation: { ...base, status: "fail", groupStatus: "fail", groups: [base.groups[0]!, thesisGroup, base.groups[2]!] } })));
+    const visible = text(html);
+    expect(html).toContain("Đăng ký Đồ án Tốt nghiệp (6 TC) để hoàn thành nhóm tự chọn TC306 (CTĐT: TC406). Đây là phương án chính của chương trình: một học phần đủ 6 tín chỉ của nhóm.");
+    expect(html).toContain("Chỉ chọn học phần thay thế khi bạn không làm đồ án tốt nghiệp theo quy định của Khoa");
+    expect(visible).toContain("Phương án thay thế: chọn đủ 6 tín chỉ trong các học phần sau:71ITGR40203Chuyên đề Tốt nghiệp 13 TC○ Chưa học71ITGR40303Chuyên đề Tốt nghiệp 23 TC○ Chưa học");
+    expect(html).not.toContain("Chọn học thêm ít nhất 6 tín chỉ trong nhóm tự chọn TC306");
+  });
   it("shows a green verdict when every condition passes", () => {
     const html = render(ready(graduation({ evaluation: evaluation("pass") })));
     expect(html).toContain("sg-banner sg-banner-pass");
-    expect(html).toContain("Đủ các điều kiện xét tốt nghiệp theo tiêu chuẩn của khóa (tham khảo).");
+    expect(html).toContain("Bạn đã đủ các điều kiện xét tốt nghiệp theo tiêu chuẩn của khóa (tham khảo).");
     // An empty "Chưa đạt" list stays neutral: no red box on a passing page.
     expect(html).toContain('<div class="sg-box sg-box-none"><h3><span aria-hidden="true">✗</span> Chưa đạt</h3><p class="sg-box-empty">Không có điều kiện nào chưa đạt.</p></div>');
     expect(html).not.toContain("sg-box-fail");
