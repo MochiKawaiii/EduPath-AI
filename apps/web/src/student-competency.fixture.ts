@@ -111,6 +111,21 @@ export const fixtureResult: AssessmentResult = {
     },
     { skillKey: "S11", skillId: "skill-S11", name: "Định tuyến mạng", groupKey: "G1", score: 48, level: "needs_work", levelLabel: "Cần củng cố", careerSkill: false, take: [], improve: [], selfStudy: true },
   ],
+  // The newest point equals the result above (overall 79,4, Khá; G2 has no score).
+  history: ([
+    ["HK231", "2023–2024", 1, 3, 68.5, "basic", "Cơ bản"],
+    ["HK232", "2023–2024", 2, 4, 72, "good", "Khá"],
+    ["HK241", "2024–2025", 1, 5, 75.3, "good", "Khá"],
+    ["HK242", "2024–2025", 2, 6, 81, "good", "Khá"],
+    ["HK252", "2025–2026", 2, 7, 79.4, "good", "Khá"],
+  ] as const).map(([term, schoolYear, semester, gradedCourses, score, level, levelLabel]) => ({
+    term, schoolYear, semester, gradedCourses,
+    overall: { score, level, levelLabel, skillsWithEvidence: gradedCourses - 1, applicableSkills: 6 },
+    groups: [
+      { key: "G1", name: groupNames.G1, score, level, levelLabel },
+      { key: "G2", name: groupNames.G2, score: null, level: "exempt" as const, levelLabel: "Miễn/công nhận" },
+    ],
+  })),
   progress: {
     currentTerm: "HK252", nextTerm: "HK261",
     late: [{ kind: "course", code: "TST109", name: "Công nghệ phần mềm", credits: 3, termCode: "HK252", state: "not_taken" }],

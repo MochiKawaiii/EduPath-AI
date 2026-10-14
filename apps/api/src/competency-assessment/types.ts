@@ -597,6 +597,21 @@ export type GraduationSummary = {
   needsImprovement: boolean;
 };
 
+/** STU-COMP-07: the competency computed from the transcript as it stood at the end of one graded term. */
+export type HistoryPoint = {
+  /** HKyyS of that term (termCode of the section). */
+  term: string;
+  /** School year as "2023–2024" (en dash), from the term code. */
+  schoolYear: string;
+  /** 1, 2 or 3. */
+  semester: number;
+  /** Transcript courses with a result up to this term: passed + failed + exempt + graded_unknown (the transcript summary counts). */
+  gradedCourses: number;
+  overall: { score: number | null; level: LevelCode; levelLabel: string; skillsWithEvidence: number; applicableSkills: number };
+  /** Same keys, names and order as AssessmentResult.groups. */
+  groups: { key: string; name: string; score: number | null; level: LevelCode; levelLabel: string }[];
+};
+
 export type SpecialtySuggestion = {
   code: SpecialtyCode;
   label: string;
@@ -616,6 +631,11 @@ export type AssessmentResult = {
   overall: OverallResult;
   /** Keys G1, G2 … ordered by group name. */
   groups: GroupResult[];
+  /**
+   * STU-COMP-07: overall and groups at the end of every graded term, oldest first; the last point is
+   * this result (comp-calc-v8; absent before). Empty without a graded term.
+   */
+  history: HistoryPoint[];
   /** Sorted by score desc, evidence desc, key (§7.11). */
   skills: SkillResult[];
   /** Every skill key used anywhere in this result (measured and career-only), sorted by key. */

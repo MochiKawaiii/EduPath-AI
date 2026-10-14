@@ -18,7 +18,8 @@
  */
 /** v6: skillPlans gives every scored skill below Khá outside the career gaps its courses to take, retake or improve. */
 /** v7: with a career, plans only deepen its met skills below Thành thạo; thesis replacement courses are never suggested off that path. */
-export const CALC_VERSION = "comp-calc-v7";
+/** v8: history gives the overall and group competency as the transcript stood at the end of each graded term (STU-COMP-07). */
+export const CALC_VERSION = "comp-calc-v8";
 
 /** Skill, group and overall levels (0–100 scale), classified on unrounded values. */
 export const LEVEL_THRESHOLDS = { proficient: 85, good: 70, basic: 50 } as const;

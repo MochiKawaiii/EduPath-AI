@@ -55,7 +55,7 @@ const sectionOrder = (html: string, ids: string[]) => ids.map((id) => html.index
 describe("StudentCompetency — Đánh giá năng lực", () => {
   it("renders the competency sections in order with the AI comment right after the overview", () => {
     const html = withAi("completed");
-    const order = sectionOrder(html, ["scomp-overview", "scomp-ai", "scomp-skills", "scomp-progress", "scomp-graduation", "scomp-warnings"]);
+    const order = sectionOrder(html, ["scomp-overview", "scomp-ai", "scomp-history", "scomp-skills", "scomp-progress", "scomp-graduation", "scomp-warnings"]);
     expect(order.every((index) => index > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // The gap analysis lives on its own page now.
@@ -96,6 +96,27 @@ describe("StudentCompetency — Đánh giá năng lực", () => {
     expect(html).toContain('aria-label="1 kỹ năng Cơ bản trong nhóm Kiến thức chuyên môn"');
     expect(html).toContain('aria-label="1 kỹ năng Chưa có minh chứng trong nhóm Kiến thức chuyên môn"');
     expect(html).toContain("Điểm nhóm 79 · Khá");
+  });
+  it("follows the competency term by term, grouped by school year (STU-COMP-07)", () => {
+    const html = withAi("completed");
+    const section = html.slice(html.indexOf('id="scomp-history"'), html.indexOf('id="scomp-skills"'));
+    expect(section).toContain("Theo dõi năng lực theo học kỳ");
+    expect(section).toContain("Điểm năng lực tổng tăng từ 68 (học kỳ 1 năm học 2023–2024) lên 79 (học kỳ 2 năm học 2025–2026). Cao nhất là 81 vào học kỳ 2 năm học 2024–2025.");
+    // One row group per school year, its end-of-year score in the header.
+    expect([...section.matchAll(/Năm học (\d{4}–\d{4})<span>Cuối năm: (\d+) · (\S+)<\/span>/g)].map((match) => match.slice(1).join(" "))).toEqual([
+      "2023–2024 72 Khá", "2024–2025 81 Khá", "2025–2026 79 Khá",
+    ]);
+    // Group columns follow the result's groups; a group without a score shows a dash.
+    expect(section).toContain('<th scope="col" class="scomp-num">Kiến thức chuyên môn</th><th scope="col" class="scomp-num">Kỹ năng bổ trợ</th>');
+    // Changes in whole points as shown: rises green, falls red, the first term has none.
+    const changes = [...section.matchAll(/<td class="scomp-num">(?:<span class="(sg-status-pass|sg-status-fail|scomp-zero)">([^<]+)<\/span>)<\/td><\/tr>/g)].map((match) => `${match[2]} ${match[1]}`);
+    expect(changes).toEqual(["— scomp-zero", "+4 sg-status-pass", "+3 sg-status-pass", "+6 sg-status-pass", "−2 sg-status-fail"]);
+    expect(section).toMatch(/class="scomp-history-latest"><th scope="row">Học kỳ 2<span class="scomp-career-tag">Hiện tại<\/span><small>HK252<\/small>/);
+    // A result stored before the history asks for a new run instead of an empty table.
+    const assessment = fixtureAssessment("completed");
+    const older = render({ assessment: { ...assessment, result: { ...fixtureResult, history: undefined } }, aiEnabled: true, workerOnline: true });
+    expect(older).toContain("Bấm “Đánh giá lại” để xem năng lực của bạn qua từng năm, từng học kỳ.");
+    expect(older).not.toContain("scomp-history-table");
   });
   it("shows a busy AI box with a cancel button while processing", () => {
     const html = withAi("processing");

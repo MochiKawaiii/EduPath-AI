@@ -6,8 +6,9 @@ import {
   MAX_SKILL_PLANS, MAX_SUPPORT_COURSES, MIN_WEIGHTED_COURSE_SHARE, SCOPE_MAX_LENGTH,
 } from "./constants.js";
 import {
-  conditionOnlyCodes, courseKey, creditCrossCheck, currentTermCode, curriculumTermCode, deriveElectiveGroups, electiveCodeOf,
-  isAttemptedState, isConditionOnly, isPassedState, isStudiedState, type TranscriptCourseRecord, transcriptCourses, uniqueCurriculumCourses,
+  academicSections, conditionOnlyCodes, courseKey, creditCrossCheck, currentTermCode, curriculumTermCode, deriveElectiveGroups,
+  electiveCodeOf, hasScore, isAttemptedState, isConditionOnly, isPassedState, isStudiedState, termCode, type TranscriptCourseRecord,
+  transcriptCourses, uniqueCurriculumCourses,
 } from "./course-state.js";
 import { assessGraduation, electiveQuotas, programCreditMap } from "./graduation.js";
 import { physicalEducationGroupsFor, planProgress, type PlanCourseInfo } from "./plan-progress.js";
@@ -17,8 +18,8 @@ import {
 } from "./specialty.js";
 import type {
   AssessmentInputs, AssessmentResult, AssessmentWarning, AttemptOutcome, CareerRequirementResult, CareerResult, Confidence,
-  CourseFact, CourseState, CourseSuggestion, DeficitBand, Eligibility, EvidenceRole, FitCode, GapStatus, GroupResult, LevelCode,
-  NotApplicableReason, PrerequisiteGap, SelfStudyItem, SelfStudyReason, SkillEvidenceRow, SkillPlan, SkillResult, SupportCourse,
+  CourseFact, CourseState, CourseSuggestion, DeficitBand, Eligibility, EvidenceRole, FitCode, GapStatus, GroupResult, HistoryPoint,
+  LevelCode, NotApplicableReason, PrerequisiteGap, SelfStudyItem, SelfStudyReason, SkillEvidenceRow, SkillPlan, SkillResult, SupportCourse,
 } from "./types.js";
 
 /* ----------------------------- labels ----------------------------- */
@@ -187,6 +188,60 @@ const addExposure = (into: Exposure, from: Exposure) => {
 };
 
 export function calculateAssessment(inputs: AssessmentInputs): AssessmentResult {
+  const result = assess(inputs);
+  return { ...result, history: competencyHistory(inputs, result) };
+}
+
+type Assessment = Omit<AssessmentResult, "history">;
+
+/** "HK231" → { schoolYear: "2023–2024", semester: 1 } (HKyyS: yy = start year % 100). */
+export function termParts(term: string): { schoolYear: string; semester: number } | null {
+  const match = /^HK(\d{2})([1-3])$/.exec(term);
+  if (!match) return null;
+  const start = 2000 + Number(match[1]);
+  return { schoolYear: `${start}–${start + 1}`, semester: Number(match[2]) };
+}
+
+/**
+ * STU-COMP-07 (comp-calc-v8): the calculation rerun on the transcript as it stood at the end of each
+ * graded term, oldest first. A point keeps every section without a term (transfers, "Điểm bảo lưu")
+ * and the terms up to its own, so later terms and later attempts (a retake) are not there yet. Two
+ * sections of one term make one point; a term without grades (the one in progress) makes none. The
+ * latest graded term is the main result itself: the registrations after it hold no grades.
+ */
+function competencyHistory(inputs: AssessmentInputs, latest: Assessment): HistoryPoint[] {
+  const transcript = inputs.transcript.data;
+  const sections = academicSections(transcript);
+  const terms: { term: string; through: number; graded: boolean }[] = [];
+  sections.forEach((section, index) => {
+    const term = termCode(section);
+    if (!term) return;
+    const last = terms.at(-1);
+    if (last?.term === term) {
+      last.through = index;
+      last.graded ||= hasScore(section);
+    } else terms.push({ term, through: index, graded: hasScore(section) });
+  });
+  const academic = new Set(sections);
+  return terms.filter((point) => point.graded).map((point): HistoryPoint => {
+    const kept = new Set(sections.slice(0, point.through + 1));
+    const snapshot = point.term === latest.transcript.latestTerm ? latest : assess({
+      ...inputs,
+      transcript: { ...inputs.transcript, data: { ...transcript, sections: transcript.sections.filter((section) => !academic.has(section) || kept.has(section)) } },
+    });
+    const t = snapshot.transcript;
+    const o = snapshot.overall;
+    return {
+      term: point.term, ...termParts(point.term)!,
+      gradedCourses: t.passed + t.failed + t.exempt + t.gradedUnknown,
+      overall: { score: o.score, level: o.level, levelLabel: o.levelLabel, skillsWithEvidence: o.basis.skillsWithEvidence, applicableSkills: o.basis.applicableSkills },
+      groups: snapshot.groups.map((group) => ({ key: group.key, name: group.name, score: group.score, level: group.level, levelLabel: group.levelLabel })),
+    };
+  });
+}
+
+/** The whole calculation except the history, which reruns it on shorter transcripts. */
+function assess(inputs: AssessmentInputs): Assessment {
   const warnings: AssessmentWarning[] = [];
   const warn = (code: AssessmentWarning["code"], message: string, consequence: string, details: string[] = []) =>
     warnings.push({ code, message, consequence, details });

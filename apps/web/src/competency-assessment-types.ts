@@ -317,6 +317,21 @@ export type SkillPlan = {
   selfStudy: boolean;
 };
 
+/** STU-COMP-07 (comp-calc-v8): the competency computed from the transcript as it stood at the end of one graded term. */
+export type HistoryPoint = {
+  /** HKyyS of that term. */
+  term: string;
+  /** "2023–2024". */
+  schoolYear: string;
+  /** 1, 2 or 3. */
+  semester: number;
+  /** Transcript courses with a result up to this term. */
+  gradedCourses: number;
+  overall: { score: number | null; level: LevelCode; levelLabel: string; skillsWithEvidence: number; applicableSkills: number };
+  /** Same keys, names and order as AssessmentResult.groups. */
+  groups: { key: string; name: string; score: number | null; level: LevelCode; levelLabel: string }[];
+};
+
 export type PlanCourseRef = { code: string; name: string; credits: number | null; state: CourseState };
 
 export type LateEntry =
@@ -438,6 +453,8 @@ export type AssessmentResult = {
   selfStudy: SelfStudyItem[];
   /** Weak skills outside the career gaps with their courses (comp-calc-v6; absent in older results). */
   skillPlans?: SkillPlan[];
+  /** Competency at the end of each graded term, oldest first (comp-calc-v8; absent in older results). */
+  history?: HistoryPoint[];
   progress: PlanProgressResult | null;
   graduation: GraduationSummary;
   warnings: AssessmentWarning[];

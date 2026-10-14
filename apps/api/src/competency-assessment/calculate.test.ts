@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  calculateAssessment, compareSkills, confidenceOf, deficitBand, fitCodeOf, fitCredit, floorScore, levelOf, snapScore,
+  calculateAssessment, compareSkills, confidenceOf, deficitBand, fitCodeOf, fitCredit, floorScore, levelOf, snapScore, termParts,
 } from "./calculate.js";
 import { CALC_VERSION, MAX_SKILL_PLANS } from "./constants.js";
 import {
   SKILL, syntheticCareer, syntheticInputs, syntheticStudentTerms, syntheticTranscript, type SyntheticOptions, type TranscriptTerm,
 } from "./fixtures/synthetic-k29.js";
-import type { AssessmentInputs, AssessmentResult, CareerInput, SpecialtyCode } from "./types.js";
+import type { AssessmentInputs, AssessmentResult, CareerInput, HistoryPoint, SpecialtyCode } from "./types.js";
 
 const byName = (result: AssessmentResult, name: string) => {
   const skill = result.skills.find((item) => item.name === name);
@@ -564,6 +564,72 @@ describe("thesis replacement courses are never suggested off that path (comp-cal
   it("needs the group quota, like graduation/thesis.ts: no standard, no thesis group", () => {
     // K29 has no general standard, so without a specialty the TC406 quota is unknown.
     expect(run(undefined, { specialty: null }).excludedThesisReplacements).toEqual([]);
+  });
+});
+
+describe("competency history by graded term (STU-COMP-07, comp-calc-v8)", () => {
+  /** The overall and groups of a result as a history point holds them. */
+  const asPoint = (result: AssessmentResult) => ({
+    overall: {
+      score: result.overall.score, level: result.overall.level, levelLabel: result.overall.levelLabel,
+      skillsWithEvidence: result.overall.basis.skillsWithEvidence, applicableSkills: result.overall.basis.applicableSkills,
+    },
+    groups: result.groups.map(({ key, name, score, level, levelLabel }) => ({ key, name, score, level, levelLabel })),
+  });
+  const groupScore = (point: HistoryPoint, name: string) => point.groups.find((group) => group.name === name)!.score;
+
+  it("has one point per graded term, oldest first, with the school year and semester of its term code", () => {
+    const result = calculateAssessment(syntheticInputs());
+    // No HK242 section; HK251 only holds a registration without grades: no point for either.
+    expect(result.history.map((point) => [point.term, point.schoolYear, point.semester, point.gradedCourses])).toEqual([
+      ["HK231", "2023–2024", 1, 5], ["HK232", "2023–2024", 2, 7], ["HK233", "2023–2024", 3, 9], ["HK241", "2024–2025", 1, 11], ["HK243", "2024–2025", 3, 14],
+    ]);
+    // The last count is the transcript summary's: 12 passed + 2 exempt (the in-progress course has no result).
+    expect(result.transcript).toMatchObject({ passed: 12, failed: 0, exempt: 2, gradedUnknown: 0, inProgress: 1 });
+    expect(termParts("HK231")).toEqual({ schoolYear: "2023–2024", semester: 1 });
+    expect(termParts("HK093")).toEqual({ schoolYear: "2009–2010", semester: 3 });
+    expect(termParts("HK254")).toBeNull();
+  });
+
+  it("ends with the main result and keeps the keys, names and order of result.groups at every point", () => {
+    for (const inputs of [syntheticInputs(), syntheticInputs({ career: null, specialty: null })]) {
+      const result = calculateAssessment(inputs);
+      const last = result.history.at(-1)!;
+      expect(last.term).toBe(result.transcript.latestTerm);
+      expect({ overall: last.overall, groups: last.groups }).toEqual(asPoint(result));
+      for (const point of result.history) expect(point.groups.map((group) => [group.key, group.name])).toEqual(result.groups.map((group) => [group.key, group.name]));
+    }
+  });
+
+  it("computes each point from the transcript up to its term: later terms and later attempts are not there yet", () => {
+    const terms: TranscriptTerm[] = [
+      { rows: [["71ITBS10103", 3, 9, 4, "A"]] }, // "Điểm bảo lưu": in every point
+      { year: "2023-2024", semester: "HK01", rows: [["71ITBS10203", 3, 3, 0, "F"]] },
+      { year: "2023-2024", semester: "HK02", rows: [["71ITSE30103", 3, 8, 3.5, "B+"]] },
+      { year: "2023-2024", semester: "HK03", rows: [["71ITBS10203", 3, 7, 3, "B"]] }, // the retake
+      { year: "2024-2025", semester: "HK01", rows: [["71ITSE30503", 3]] }, // registered, no grades
+    ];
+    const result = calculateAssessment(syntheticInputs({ career: null, terms }));
+    // Cơ sở lập trình counts with its F (3,0) at HK231 and HK232 and with its B (7,0) from HK233.
+    expect(result.history.map((point) => [point.term, point.gradedCourses, groupScore(point, "Chuyên môn"), groupScore(point, "Kiến thức nền tảng")])).toEqual([
+      ["HK231", 2, 30, 72.85], ["HK232", 3, 61.25, 72.85], ["HK233", 3, 76.25, 84.28],
+    ]);
+    // An earlier point is the calculation on the transcript cut after its term.
+    const upToHK232 = calculateAssessment(syntheticInputs({ career: null, terms: terms.slice(0, 3) }));
+    expect({ overall: result.history[1]!.overall, groups: result.history[1]!.groups }).toEqual(asPoint(upToHK232));
+    // Without the "Điểm bảo lưu" course, Kiến thức nền tảng starts from the F alone.
+    expect(groupScore(calculateAssessment(syntheticInputs({ career: null, terms: terms.slice(1) })).history[0]!, "Kiến thức nền tảng")).toBe(30);
+  });
+
+  it("makes one point of two sections of a term and none without a graded term", () => {
+    const split = calculateAssessment(syntheticInputs({ career: null, terms: [
+      { year: "2023-2024", semester: "HK01", rows: [["71ITBS10103", 3, 9, 4, "A"]] },
+      { year: "2023-2024", semester: "HK01", rows: [["71ITBS10203", 3, 3, 0, "F"]] },
+    ] }));
+    expect(split.history.map((point) => [point.term, point.gradedCourses])).toEqual([["HK231", 2]]);
+    // Only "Điểm bảo lưu", or terms with registrations only.
+    expect(calculateAssessment(syntheticInputs({ terms: [{ rows: [["71ENG010012", 2, null, null, "MT"]] }] })).history).toEqual([]);
+    expect(calculateAssessment(syntheticInputs({ terms: [{ year: "2025-2026", semester: "HK01", rows: [["71ITSE41203", 3]] }] })).history).toEqual([]);
   });
 });
 

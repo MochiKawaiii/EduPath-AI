@@ -123,6 +123,8 @@ export function syntheticResult(options: { career?: boolean } = {}): AssessmentR
       { key: "G1", id: "group-G1", name: "Kỹ thuật phần mềm", score: 80.5, level: "good", levelLabel: "Khá", confidence: "medium", confidenceLabel: "Trung bình", coverage: 0.5, evidence: 3, skillCount: 2, skillsWithEvidence: 2 },
       { key: "G2", id: "group-G2", name: "Kỹ năng bổ trợ", score: 55, level: "basic", levelLabel: "Cơ bản", confidence: "low", confidenceLabel: "Thấp", coverage: 0.2, evidence: 1.5, skillCount: 2, skillsWithEvidence: 1 }
     ],
+    // The prompt never sends the history (STU-COMP-07).
+    history: [],
     skills,
     skillDirectory: [
       ...skills.map((s) => ({ key: s.key, skillId: s.skillId, name: s.name, measured: true })),

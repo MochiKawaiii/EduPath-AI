@@ -297,6 +297,16 @@ describe("buildAiInput", () => {
     for (const user of [input.user, noCareer.user]) expect(user).not.toMatch(/HK\d{3}/);
   });
 
+  it("never sends the competency history (STU-COMP-07, comp-calc-v8)", () => {
+    const result = syntheticResult();
+    result.history = [{
+      term: "HK253", schoolYear: "2025–2026", semester: 3, gradedCourses: 12,
+      overall: { score: 72.25, level: "good", levelLabel: "Khá", skillsWithEvidence: 3, applicableSkills: 4 },
+      groups: result.groups.map(({ key, name, score, level, levelLabel }) => ({ key, name, score, level, levelLabel }))
+    }];
+    expect(buildAiInput(result)).toEqual(input);
+  });
+
   it("sanitizes names taken from the database", () => {
     expect(input.user).toContain("Kỹ sư phần mềm 'thử nghiệm'");
     expect(input.user).not.toContain("<|");

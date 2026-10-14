@@ -7,7 +7,7 @@ import { specialtyLabel, type AiStatus, type AssessmentResult, type AssessmentSt
 import {
   COMPETENCY_API, CONFIDENCE_LABELS, COURSE_STATE_LABELS, EMPTY_SKILL_FILTERS, LEVEL_COLUMNS, LEVEL_SCALE, PRECONDITION_COPY, PRIORITY_LABELS,
   aiErrorMessage, aiStateCopy, bucketSkills, canRegenerate, careerSkillKeys, courseStanding, dataUsedLine, eligibilityDisplay, errorMessage, filterSkills, formatDateTime,
-  formatNumber, formatPercent, formatScore, gapStatusDisplay, groupEvidenceCounts, isGap, isPreconditionError, levelSentence, levelStep, levelSummary, mapAiOutput, modelLabel,
+  formatNumber, formatPercent, formatScore, gapStatusDisplay, groupEvidenceCounts, historySentence, historyYears, isGap, isPreconditionError, levelSentence, levelStep, levelSummary, mapAiOutput, modelLabel,
   plansFor, scoreDifference, shouldPoll, skillName, sortRequirements, type MappedAiOutput, type PreconditionError, type SkillFilters, type StatusTone,
 } from "./student-competency-data";
 import { readGraduation } from "./student-graduation-api";
@@ -176,6 +176,48 @@ function Overview({ result }: { result: AssessmentResult }) {
     <details className="scomp-legend"><summary>Thang mức năng lực</summary>
       <ul>{LEVEL_SCALE.map((item) => <li key={item.code}><LevelBadge level={item.code} label={item.label} /><span className="scomp-legend-range">{item.range}</span><span>{item.text}</span></li>)}</ul>
     </details>
+  </Section>;
+}
+
+/** STU-COMP-07: the competency at the end of each graded term, grouped by school year. */
+function HistorySection({ result }: { result: AssessmentResult }) {
+  const history = result.history;
+  const years = useMemo(() => historyYears(history ?? []), [history]);
+  const sentence = history ? historySentence(history) : null;
+  const columns = 5 + result.groups.length;
+  return <Section id="scomp-history" title="Theo dõi năng lực theo học kỳ" description="Điểm năng lực tính lũy kế đến cuối mỗi học kỳ, chỉ từ các học phần đã có kết quả đến học kỳ đó, theo cùng cách tính và trọng số hiện hành. Dùng để thấy năng lực của bạn thay đổi thế nào qua từng năm học.">
+    {!history ? <p className="scomp-meta">Kết quả này được tính trước khi có phần theo dõi theo học kỳ. Bấm “Đánh giá lại” để xem năng lực của bạn qua từng năm, từng học kỳ.</p>
+      : !history.length ? <p className="scomp-meta">Bảng điểm chưa có học kỳ nào có điểm nên chưa theo dõi được.</p> : <>
+        {sentence && <p className="scomp-prose">{sentence}</p>}
+        <div className="scomp-table-scroll" tabIndex={0} role="region" aria-labelledby="scomp-history-caption">
+          <table className="scomp-table scomp-history-table">
+            <caption id="scomp-history-caption">Điểm năng lực tổng và điểm từng nhóm kỹ năng ở cuối mỗi học kỳ (thang 100)</caption>
+            <thead><tr>
+              <th scope="col">Học kỳ</th>
+              <th scope="col" className="scomp-num">Học phần có kết quả</th>
+              <th scope="col">Điểm năng lực tổng</th>
+              <th scope="col">Mức</th>
+              {result.groups.map((group) => <th key={group.key} scope="col" className="scomp-num">{group.name}</th>)}
+              <th scope="col" className="scomp-num">Thay đổi</th>
+            </tr></thead>
+            {years.map((year) => <tbody key={year.schoolYear}>
+              <tr className="scomp-year-row"><th colSpan={columns} scope="rowgroup">Năm học {year.schoolYear}<span>Cuối năm: {formatScore(year.end.overall.score)} · {year.end.overall.levelLabel}</span></th></tr>
+              {year.rows.map((row) => <tr key={row.term} className={row.latest ? "scomp-history-latest" : undefined}>
+                <th scope="row">Học kỳ {row.semester}{row.latest && <span className="scomp-career-tag">Hiện tại</span>}<small>{row.term}</small></th>
+                <td className="scomp-num">{row.gradedCourses.toLocaleString("vi-VN")}</td>
+                <td><span className="scomp-bullet"><ScoreBar score={row.overall.score} level={row.overall.level} ticks={[50, 70, 85]} /><strong>{formatScore(row.overall.score)}</strong></span></td>
+                <td><LevelBadge level={row.overall.level} label={row.overall.levelLabel} /></td>
+                {result.groups.map((group) => { const value = row.groups.find((item) => item.key === group.key); return <td key={group.key} className="scomp-num">
+                  {value && value.score !== null ? <><strong>{formatScore(value.score)}</strong><small>{value.levelLabel}</small></> : <span className="scomp-zero">—</span>}
+                </td>; })}
+                <td className="scomp-num">{row.change === null ? <span className="scomp-zero">—</span>
+                  : <span className={row.change > 0 ? "sg-status-pass" : row.change < 0 ? "sg-status-fail" : "scomp-zero"}>{row.change > 0 ? `+${row.change}` : row.change < 0 ? `−${Math.abs(row.change)}` : "0"}</span>}</td>
+              </tr>)}
+            </tbody>)}
+          </table>
+        </div>
+        <p className="scomp-meta">Điểm của học kỳ trước không thay đổi khi bạn học lại sau đó: mỗi dòng chỉ dùng kết quả có đến học kỳ đó. Học kỳ chưa có điểm (đang học) chưa có dòng.</p>
+      </>}
   </Section>;
 }
 
@@ -796,6 +838,7 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
     </> : <>
       <Overview result={result} />
       {aiPanel}
+      <HistorySection result={result} />
       <SkillsSection key={assessment.id} result={result} />
       <ProgressSection result={result} />
       <GraduationSection />

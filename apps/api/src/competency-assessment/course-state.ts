@@ -51,7 +51,8 @@ export function academicSections(data: TranscriptData): TranscriptSection[] {
       Number(a.semester!.replace(/\D/g, "")) - Number(b.semester!.replace(/\D/g, "")));
 }
 
-const hasScore = (section: TranscriptSection) => section.courses.some((course) => course.score10 !== null || course.score4 !== null);
+/** The term has grades: a course with a 10- or 4-point score. */
+export const hasScore = (section: TranscriptSection) => section.courses.some((course) => course.score10 !== null || course.score4 !== null);
 
 /** Latest term that has grades, or undefined. */
 export function latestGradedSection(data: TranscriptData): TranscriptSection | undefined {

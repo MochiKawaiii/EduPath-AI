@@ -2,7 +2,7 @@
 // the polling decision. No fetch, no DOM — everything here is unit tested.
 import type {
   AiOutput, AiPriority, AiStatus, AssessmentResult, CareerRequirementResult, Confidence,
-  CourseState, Eligibility, LevelCode, SkillPlan, SkillResult, StoredAssessment, SupportCourse,
+  CourseState, Eligibility, HistoryPoint, LevelCode, SkillPlan, SkillResult, StoredAssessment, SupportCourse,
 } from "./competency-assessment-types";
 
 export const COMPETENCY_API = "/api/student/competency-assessments";
@@ -194,6 +194,50 @@ export function plansFor(result: Pick<AssessmentResult, "career" | "skillPlans">
 /** Career requirement skills by key: the AI's improvements about them belong on the gap page too. */
 export const careerSkillKeys = (result: Pick<AssessmentResult, "career">): Set<string> =>
   new Set((result.career?.requirements ?? []).map((req) => req.skillKey).filter((key): key is string => Boolean(key)));
+
+/* ------------------------------------------------- history (STU-COMP-07) */
+
+export type HistoryRow = HistoryPoint & {
+  /** Whole-point change of the overall score from the previous term with a score, as the page shows the scores (rounded down). */
+  change: number | null;
+  /** The newest term: the result shown everywhere else on the page. */
+  latest: boolean;
+};
+export type HistoryYear = { schoolYear: string; rows: HistoryRow[]; end: HistoryRow };
+
+const shown = (score: number | null) => score === null ? null : Math.floor(score + 1e-9);
+
+/** The history grouped by school year, oldest first, each term with its change from the term before. */
+export function historyYears(history: readonly HistoryPoint[]): HistoryYear[] {
+  const years: HistoryYear[] = [];
+  let previous: number | null = null;
+  history.forEach((point, index) => {
+    const score = shown(point.overall.score);
+    const row: HistoryRow = { ...point, change: score !== null && previous !== null ? score - previous : null, latest: index === history.length - 1 };
+    if (score !== null) previous = score;
+    const year = years.at(-1);
+    if (year && year.schoolYear === point.schoolYear) { year.rows.push(row); year.end = row; }
+    else years.push({ schoolYear: point.schoolYear, rows: [row], end: row });
+  });
+  return years;
+}
+
+/** "học kỳ 1 năm học 2023–2024". */
+export const termInWords = (point: Pick<HistoryPoint, "semester" | "schoolYear">) => `học kỳ ${point.semester} năm học ${point.schoolYear}`;
+
+/** One sentence on the overall trend from the first term with a score to the newest one; null with fewer than two. */
+export function historySentence(history: readonly HistoryPoint[]): string | null {
+  const scored = history.filter((point) => point.overall.score !== null);
+  if (scored.length < 2) return null;
+  const first = scored[0]!, last = scored.at(-1)!;
+  const from = shown(first.overall.score)!, to = shown(last.overall.score)!;
+  const best = scored.reduce((top, point) => shown(point.overall.score)! > shown(top.overall.score)! ? point : top, first);
+  const trend = to > from ? `tăng từ ${from} (${termInWords(first)}) lên ${to} (${termInWords(last)})`
+    : to < from ? `giảm từ ${from} (${termInWords(first)}) xuống ${to} (${termInWords(last)})`
+      : `giữ ở mức ${to} từ ${termInWords(first)} đến ${termInWords(last)}`;
+  const peak = best !== first && best !== last && shown(best.overall.score)! > Math.max(from, to) ? ` Cao nhất là ${shown(best.overall.score)} vào ${termInWords(best)}.` : "";
+  return `Điểm năng lực tổng ${trend}.${peak}`;
+}
 
 /* ---------------------------------------------------- proficiency summary */
 

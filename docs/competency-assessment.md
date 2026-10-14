@@ -4,7 +4,7 @@ Cổng sinh viên tính năng lực từ bảng điểm, so với nghề mục t
 
 | Trang | Nhóm chức năng | Nội dung |
 |---|---|---|
-| `#competency` "Đánh giá năng lực" | STU-COMP | Điểm tổng, điểm và mức theo nhóm kỹ năng; "Bảng phân tích mức độ thành thạo theo nhóm kỹ năng" (ý nghĩa kết quả, số kỹ năng ở từng mức của mỗi nhóm, bấm số để lọc danh sách, học phần minh chứng của từng kỹ năng); phần nhận xét AI về năng lực; tiến độ so với KHĐT (chậm: đỏ, đúng kế hoạch: xanh); xét tốt nghiệp tham khảo; cảnh báo dữ liệu và cách tính điểm. Nút "Xóa kết quả đánh giá" chỉ có ở trang này. |
+| `#competency` "Đánh giá năng lực" | STU-COMP | Điểm tổng, điểm và mức theo nhóm kỹ năng; "Theo dõi năng lực theo học kỳ" (STU-COMP-07: điểm tổng, mức và điểm từng nhóm ở cuối mỗi học kỳ, nhóm theo năm học, kèm thay đổi so với học kỳ trước); "Bảng phân tích mức độ thành thạo theo nhóm kỹ năng" (ý nghĩa kết quả, số kỹ năng ở từng mức của mỗi nhóm, bấm số để lọc danh sách, học phần minh chứng của từng kỹ năng); phần nhận xét AI về năng lực; tiến độ so với KHĐT (chậm: đỏ, đúng kế hoạch: xanh); xét tốt nghiệp tham khảo; cảnh báo dữ liệu và cách tính điểm. Nút "Xóa kết quả đánh giá" chỉ có ở trang này. |
 | `#skill-gap` "Khoảng trống kỹ năng" | STU-GAP | Mức phù hợp với nghề mục tiêu và kỹ năng còn thiếu cùng mức thiếu hụt; phần nhận xét AI về khoảng trống (`careerFit`, `gaps`); báo cáo chi tiết khoảng trống (bảng điểm hiện tại so với ngưỡng); học phần nên ưu tiên (mỗi học phần ghi tình trạng của sinh viên: chưa học, đã học và điểm, cần học lại, và điều kiện đăng ký), học cải thiện, kỹ năng cần tự học; cách tính mức phù hợp. |
 
 Cả hai trang dùng cùng component `StudentCompetency` (thuộc tính `view`), cùng nút "Đánh giá lại" và cùng hộp thoại đồng ý.
@@ -34,7 +34,7 @@ Phần "Xét tốt nghiệp (tham khảo)" của trang `#competency` **không** 
 | Nhận xét AI | `ai/*`, `apps/api/src/ai-worker/*`, `services/ai/` |
 | Lời khuyên xét tốt nghiệp (AI, trang `#graduation`) | `apps/api/src/graduation/advice/*`, cùng worker; xem `docs/graduation-advice.md` |
 
-## Công thức và ngưỡng (`CALC_VERSION = "comp-calc-v7"`)
+## Công thức và ngưỡng (`CALC_VERSION = "comp-calc-v8"`)
 
 > comp-calc-v2: kỹ năng dưới ngưỡng còn học phần **Học cải thiện** không bị liệt kê là "Không còn học phần nào trong CTĐT để học thêm" (chỉ khi không còn học phần học mới lẫn học cải thiện).
 >
@@ -47,6 +47,8 @@ Phần "Xét tốt nghiệp (tham khảo)" của trang `#competency` **không** 
 > comp-calc-v6: thêm `skillPlans` — với mỗi kỹ năng có điểm dưới mức Khá (70), không phải môn điều kiện và không phải khoảng trống của nghề mục tiêu (khoảng trống nghề đã có gợi ý riêng), hệ thống liệt kê học phần cụ thể: `take` (học phần áp dụng cho sinh viên, chưa đạt, không thuộc nhóm tự chọn đã chọn đủ; kèm kiểm tra tiên quyết/học trước, học kỳ dự kiến; học phần F là học lại) và `improve` (học phần đã đạt với điểm × 10 dưới 70, để học cải thiện); không còn học phần nào → `selfStudy`. Tối đa 8 kỹ năng (`MAX_SKILL_PLANS`), yếu nhất trước, mỗi danh sách tối đa 5 học phần. Điểm kỹ năng, nhóm, tổng, mức phù hợp và xét tốt nghiệp không đổi.
 >
 > comp-calc-v7 (góp ý "đã chọn nghề thì phải đề xuất theo nghề"): mỗi kế hoạch có `purpose`. **Đã chọn nghề**: chỉ lập kế hoạch cho kỹ năng **của nghề mục tiêu** đã đạt ngưỡng nhưng chưa tới mức Thành thạo (dưới 85) — `purpose: "deepen"`, nâng kỹ năng nghề lên Thành thạo; kỹ năng yếu ngoài nghề (ví dụ kỹ năng mạng khi nghề là kỹ sư phần mềm) không có kế hoạch, chỉ hiện điểm trong bảng thành thạo; khoảng trống nghề vẫn có gợi ý riêng như trước. **Chưa chọn nghề**: kế hoạch cho kỹ năng dưới Khá như v6 (`purpose: "strengthen"`). **Học phần thay thế đồ án/khóa luận tốt nghiệp** (nhóm tự chọn có học phần tên "Đồ án/Khóa luận tốt nghiệp" đủ hạn mức tín chỉ của nhóm, cùng quy tắc `apps/api/src/graduation/thesis.ts`) không bao giờ được gợi ý ở danh sách học mới — của khoảng trống nghề lẫn kế hoạch — trừ khi sinh viên đã bắt đầu học phần thay thế; mã bị loại ghi ở `excludedThesisReplacements`. Đồ án/khóa luận vẫn được gợi ý nếu có trọng số kỹ năng. Nhóm không xác định được hạn mức (ví dụ chưa chọn chuyên ngành nên chưa có tiêu chuẩn) thì chưa nhận diện được nhóm đồ án.
+>
+> comp-calc-v8 (STU-COMP-07): thêm `history` — với mỗi học kỳ có điểm trong bảng điểm (cũ nhất trước), hệ thống chạy lại đúng cách tính trên bảng điểm **cắt đến cuối học kỳ đó** (giữ các mục không có năm học/học kỳ như điểm bảo lưu; lần học sau học kỳ đó bị bỏ, nên học phần học lại về sau vẫn tính theo điểm lúc ấy), cùng CTĐT, trọng số và nghề hiện hành, rồi lưu điểm tổng, mức, số kỹ năng có minh chứng và điểm từng nhóm. Điểm cuối cùng trùng với kết quả hiện tại. Không gửi cho mô hình AI (prompt vẫn comp-v5). Trang `#competency` hiển thị thành bảng "Theo dõi năng lực theo học kỳ": câu tóm tắt xu hướng, nhóm theo năm học (điểm cuối năm), mỗi học kỳ có thanh điểm, mức, điểm từng nhóm và thay đổi (số nguyên như trang hiển thị; tăng xanh, giảm đỏ). Kết quả lưu trước v8 không có `history`; trang nhắc bấm "Đánh giá lại".
 
 - `cr` = tín chỉ theo CTĐT, `w` = trọng số kỹ năng trong học phần.
 - **Điểm kỹ năng (0–100)** = `10 × Σ(score10 × cr × w) / Σ(cr × w)` trên các học phần có điểm; mỗi học phần lấy lần học được chọn (lần đạt có điểm cao nhất, nên lần F trước đó bị bỏ qua sau khi học lại đạt; lần F chỉ được tính khi học phần chưa từng đạt); MT tính là đã học nhưng không vào trung bình.
@@ -146,5 +148,5 @@ Kiểm thử đầu-cuối (`node scripts/verify-competency-assessment.mjs --wit
 - Chỉ K29 có trọng số kỹ năng.
 - Khoảng 30 kỹ năng nghề chưa có học phần đo (hiện là "Chưa đủ dữ liệu").
 - Chưa có yêu cầu nghề nào được đánh dấu "Bắt buộc".
-- Lịch sử theo thời gian (STU-COMP-07/STU-GAP-07) chưa làm; kết quả đã lưu nhãn phiên bản để làm sau.
+- STU-COMP-07 tính lại theo bảng điểm nên phản ánh năng lực tại từng học kỳ theo **trọng số và CTĐT hiện hành**, không phải điểm đã từng hiển thị lúc đó. STU-GAP-07 (theo dõi mức cải thiện từng kỹ năng) chưa làm.
 - Kết quả và nhận xét lưu trước comp-calc-v7/comp-v5 giữ nguyên cho đến khi sinh viên bấm "Đánh giá lại".

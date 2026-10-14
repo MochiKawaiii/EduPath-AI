@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   aiStateCopy, bucketSkills, canRegenerate, cleanKeyText, dataUsedLine, deficitText, eligibilityDisplay, errorMessage, filterSkills, formatScore,
-  gapStatusDisplay, groupEvidenceCounts, isPreconditionError, PRIORITY_LABELS, levelStep, mapAiOutput, modelLabel, scoreDifference, shouldPoll, sortRequirements, termLabel, EMPTY_SKILL_FILTERS,
+  gapStatusDisplay, groupEvidenceCounts, historySentence, historyYears, isPreconditionError, PRIORITY_LABELS, levelStep, mapAiOutput, modelLabel, plansFor,
+  scoreDifference, shouldPoll, sortRequirements, termLabel, EMPTY_SKILL_FILTERS,
 } from "./student-competency-data";
 import { fixtureAiOutput, fixtureAssessment, fixtureResult } from "./student-competency.fixture";
 import type { CareerRequirementResult } from "./competency-assessment-types";
@@ -117,6 +118,42 @@ describe("skills", () => {
     expect(sum).toEqual({ withEvidence: counted.filter((skill) => skill.status === "scored" || skill.status === "exempt_only").length, total: counted.length });
     // The group rows add up to the overall "Dựa trên x/y kỹ năng" line.
     expect(sum).toEqual({ withEvidence: fixtureResult.overall.basis.skillsWithEvidence, total: fixtureResult.overall.basis.applicableSkills });
+  });
+});
+
+describe("history (STU-COMP-07)", () => {
+  const point = (term: string, schoolYear: string, semester: number, score: number | null) => ({
+    term, schoolYear, semester, gradedCourses: semester * 3,
+    overall: { score, level: "good" as const, levelLabel: "Khá", skillsWithEvidence: 1, applicableSkills: 2 }, groups: [],
+  });
+  it("groups the terms by school year with whole-point changes and the newest term marked", () => {
+    const years = historyYears([point("HK231", "2023–2024", 1, 70.9), point("HK232", "2023–2024", 2, null), point("HK233", "2023–2024", 3, 72.2), point("HK241", "2024–2025", 1, 71.99)]);
+    expect(years.map((year) => [year.schoolYear, year.rows.map((row) => row.change), year.end.term])).toEqual([
+      // 70,9 → shown 70; a term without a score breaks nothing; 72,2 → 72: +2; 71,99 → 71: −1.
+      ["2023–2024", [null, null, 2], "HK233"], ["2024–2025", [-1], "HK241"],
+    ]);
+    expect(years.flatMap((year) => year.rows).filter((row) => row.latest).map((row) => row.term)).toEqual(["HK241"]);
+    expect(historyYears([])).toEqual([]);
+  });
+  it("says the trend in one sentence, with the peak only when it stands out", () => {
+    expect(historySentence([point("HK231", "2023–2024", 1, 68.5), point("HK242", "2024–2025", 2, 81), point("HK252", "2025–2026", 2, 79.4)]))
+      .toBe("Điểm năng lực tổng tăng từ 68 (học kỳ 1 năm học 2023–2024) lên 79 (học kỳ 2 năm học 2025–2026). Cao nhất là 81 vào học kỳ 2 năm học 2024–2025.");
+    expect(historySentence([point("HK231", "2023–2024", 1, 80), point("HK232", "2023–2024", 2, 76.5)]))
+      .toBe("Điểm năng lực tổng giảm từ 80 (học kỳ 1 năm học 2023–2024) xuống 76 (học kỳ 2 năm học 2023–2024).");
+    expect(historySentence([point("HK231", "2023–2024", 1, 75.2), point("HK232", "2023–2024", 2, 75.9)]))
+      .toBe("Điểm năng lực tổng giữ ở mức 75 từ học kỳ 1 năm học 2023–2024 đến học kỳ 2 năm học 2023–2024.");
+    expect(historySentence([point("HK231", "2023–2024", 1, 75)])).toBeNull();
+  });
+});
+
+describe("course plans", () => {
+  it("keeps only the target career's plans once a career is chosen", () => {
+    const plans = fixtureResult.skillPlans!;
+    expect(plansFor(fixtureResult)).toEqual([]);
+    expect(plansFor({ ...fixtureResult, career: null }).map((plan) => plan.skillKey)).toEqual(plans.map((plan) => plan.skillKey));
+    const deepen = { ...plans[0]!, purpose: "deepen" as const };
+    expect(plansFor({ ...fixtureResult, skillPlans: [deepen, plans[1]!] })).toEqual([deepen]);
+    expect(plansFor({ ...fixtureResult, skillPlans: undefined })).toEqual([]);
   });
 });
 
