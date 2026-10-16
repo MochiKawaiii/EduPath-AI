@@ -3,8 +3,9 @@
 // before any body is read, then this router parses JSON itself (512 kB).
 // The same endpoints also serve career skill suggestions (careers/ai-suggestions/jobs.ts) to
 // workers that advertise the "career_skill_suggestion" kind and graduation advice
-// (graduation/advice/jobs.ts) to workers that advertise "graduation_advice"; extend/complete
-// find the id in any of the job tables.
+// (graduation/advice/jobs.ts) to workers that advertise "graduation_advice", and AI proposals for
+// the courses of a CTĐT (competencies/ai/jobs.ts) to workers that advertise
+// "competency_course_suggestion"; extend/complete find the id in any of the job tables.
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import express, { Router, type ErrorRequestHandler, type RequestHandler } from "express";
 import { z } from "zod";
@@ -21,6 +22,12 @@ import {
   createGraduationAdviceExpiry,
   extendGraduationAdvice
 } from "../../graduation/advice/jobs.js";
+import {
+  claimCourseSuggestion,
+  completeCourseSuggestion,
+  createCourseSuggestionExpiry,
+  extendCourseSuggestion
+} from "../../competencies/ai/jobs.js";
 import { cleanAiOutputKeys, keyNamesFrom } from "./key-cleanup.js";
 import { validateAiOutput, validationContextFromAiInput } from "./validate.js";
 import {
@@ -30,6 +37,7 @@ import {
   AI_WORKER_ERROR_CODES,
   CAREER_SKILL_SUGGESTION_KIND,
   COMPETENCY_ASSESSMENT_KIND,
+  COMPETENCY_COURSE_SUGGESTION_KIND,
   GRADUATION_ADVICE_KIND,
   normalizeJobKinds,
   type AiJobKind
@@ -107,6 +115,7 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
   const housekeeping = createCompetencyAiExpiry();
   const careerHousekeeping = createCareerSuggestionExpiry();
   const graduationHousekeeping = createGraduationAdviceExpiry();
+  const courseHousekeeping = createCourseSuggestionExpiry();
 
   const authenticate: RequestHandler = (req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -155,6 +164,7 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
     await housekeeping(db);
     await careerHousekeeping(db);
     await graduationHousekeeping(db);
+    await courseHousekeeping(db);
     // Career suggestions first: an admin is waiting on the page and these jobs are rare.
     if (kinds.includes(CAREER_SKILL_SUGGESTION_KIND)) {
       const career = await claimCareerSuggestion(db, randomUUID());
@@ -166,31 +176,41 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
       const advice = await claimGraduationAdvice(db, randomUUID());
       if (advice) { res.json({ job: workerJob(GRADUATION_ADVICE_KIND, advice) }); return; }
     }
-    if (!kinds.includes(COMPETENCY_ASSESSMENT_KIND)) { res.json({ job: null }); return; }
-    const result = await db.query<{ id: string; leaseToken: string; aiInput: Record<string, unknown> }>(`WITH candidate AS (
-        SELECT id FROM stu_comp_ai_jobs
-        WHERE ai_input IS NOT NULL AND (status='queued' OR (status='processing' AND lease_until<now() AND attempts<$2))
-        ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1),
-      claimed AS (
-        UPDATE stu_comp_ai_jobs j SET status='processing',lease_token=$1,lease_until=now()+make_interval(mins => $3),attempts=j.attempts+1,updated_at=now()
-        FROM candidate c WHERE j.id=c.id RETURNING j.id,j.assessment_id,j.lease_token,j.ai_input),
-      marked AS (
-        UPDATE stu_comp_assessments a SET ai_status='processing' FROM claimed c WHERE a.id=c.assessment_id AND a.ai_status='queued')
-      SELECT id,lease_token AS "leaseToken",ai_input AS "aiInput" FROM claimed`,
-      [randomUUID(), AI_JOB_MAX_ATTEMPTS, AI_JOB_LEASE_MINUTES]);
-    const row = result.rows[0];
-    if (!row) { res.json({ job: null }); return; }
-    const input = row.aiInput;
-    res.json({ job: {
-      kind: COMPETENCY_ASSESSMENT_KIND,
-      id: row.id,
-      leaseToken: row.leaseToken,
-      promptVersion: input.promptVersion,
-      system: input.system,
-      user: input.user,
-      schema: input.schema,
-      options: input.options
-    } });
+    if (kinds.includes(COMPETENCY_ASSESSMENT_KIND)) {
+      const result = await db.query<{ id: string; leaseToken: string; aiInput: Record<string, unknown> }>(`WITH candidate AS (
+          SELECT id FROM stu_comp_ai_jobs
+          WHERE ai_input IS NOT NULL AND (status='queued' OR (status='processing' AND lease_until<now() AND attempts<$2))
+          ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1),
+        claimed AS (
+          UPDATE stu_comp_ai_jobs j SET status='processing',lease_token=$1,lease_until=now()+make_interval(mins => $3),attempts=j.attempts+1,updated_at=now()
+          FROM candidate c WHERE j.id=c.id RETURNING j.id,j.assessment_id,j.lease_token,j.ai_input),
+        marked AS (
+          UPDATE stu_comp_assessments a SET ai_status='processing' FROM claimed c WHERE a.id=c.assessment_id AND a.ai_status='queued')
+        SELECT id,lease_token AS "leaseToken",ai_input AS "aiInput" FROM claimed`,
+        [randomUUID(), AI_JOB_MAX_ATTEMPTS, AI_JOB_LEASE_MINUTES]);
+      const row = result.rows[0];
+      if (row) {
+        const input = row.aiInput;
+        res.json({ job: {
+          kind: COMPETENCY_ASSESSMENT_KIND,
+          id: row.id,
+          leaseToken: row.leaseToken,
+          promptVersion: input.promptVersion,
+          system: input.system,
+          user: input.user,
+          schema: input.schema,
+          options: input.options
+        } });
+        return;
+      }
+    }
+    // Course proposals last: a whole-program run queues one job per course, and no student should
+    // wait behind it.
+    if (kinds.includes(COMPETENCY_COURSE_SUGGESTION_KIND)) {
+      const course = await claimCourseSuggestion(db, randomUUID());
+      if (course) { res.json({ job: workerJob(COMPETENCY_COURSE_SUGGESTION_KIND, course) }); return; }
+    }
+    res.json({ job: null });
   });
 
   router.post("/:id/extend", async (req, res) => {
@@ -202,7 +222,7 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
         WHERE id=$1 AND status='processing' AND lease_token=$2 AND lease_until>now() RETURNING lease_until AS "leaseUntil"`,
       [id, body.data.leaseToken, AI_JOB_LEASE_MINUTES]);
     const leaseUntil = result.rows[0]?.leaseUntil ?? await extendCareerSuggestion(db, id, body.data.leaseToken)
-      ?? await extendGraduationAdvice(db, id, body.data.leaseToken);
+      ?? await extendGraduationAdvice(db, id, body.data.leaseToken) ?? await extendCourseSuggestion(db, id, body.data.leaseToken);
     if (!leaseUntil) throw new WorkerError("job_expired", 409);
     res.json({ leaseUntil: new Date(leaseUntil).toISOString() });
   });
@@ -224,9 +244,10 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
         return;
       }
       if (!job) {
-        // Not a competency job: the id may be a career skill suggestion, else a graduation advice.
+        // Not a competency job: the id may be a career skill suggestion, a graduation advice or a course proposal.
         const career = await completeCareerSuggestion(client, id, input);
-        const outcome = career === "missing" ? await completeGraduationAdvice(client, id, input) : career;
+        const graduation = career === "missing" ? await completeGraduationAdvice(client, id, input) : career;
+        const outcome = graduation === "missing" ? await completeCourseSuggestion(client, id, input) : graduation;
         if (outcome !== "ok") throw new WorkerError("job_expired", 409);
         await client.query("COMMIT");
         res.json({ ok: true });

@@ -6,6 +6,8 @@ import { buildCareerSuggestionInput, CAREER_SUGGESTION_PROMPT_VERSION } from "..
 import { careerSource, fixtureId } from "../../careers/ai-suggestions/test-fixture.js";
 import { buildGraduationAdviceInput, GRADUATION_ADVICE_PROMPT_VERSION } from "../../graduation/advice/prompt.js";
 import { syntheticGraduation } from "../../graduation/advice/test-fixture.js";
+import { buildCourseAiInput, COURSE_AI_PROMPT_VERSIONS } from "../../competencies/ai/prompt.js";
+import { courseSource } from "../../competencies/ai/test-fixture.js";
 import { buildAiInput } from "./prompt.js";
 import { syntheticResult, withCompV3Improvements } from "./test-fixture.js";
 import { createCompetencyAiExpiry, createCompetencyWorkerRouter, expireCompetencyAiJobs } from "./worker-router.js";
@@ -508,5 +510,77 @@ describe("graduation advice jobs", () => {
     const done = setup(withAdvice(adviceRow({ status: "completed", valid: null, ai_input: null })));
     await request(done.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(adviceOutput)).expect(200, { ok: true });
     expect(adviceUpdate(done.run)).toBeUndefined();
+  });
+});
+
+describe("competency course suggestion jobs", () => {
+  const ALL = ["competency_assessment", "career_skill_suggestion", "graduation_advice", "competency_course_suggestion"];
+  const courseInput = buildCourseAiInput(courseSource(), "links");
+  const courseClaim = (s: string) => s.includes("UPDATE ad_comp_ai_suggestions j SET status='processing'");
+  const competencyClaim = (s: string) => s.includes("UPDATE stu_comp_ai_jobs j SET status='processing'");
+  const queued = (which: { course?: boolean; competency?: boolean }): Handler => (s) =>
+    courseClaim(s) && which.course ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput: courseInput }] }
+      : competencyClaim(s) && which.competency ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput }] } : undefined;
+  const claim = (app: express.Express, body?: object) => {
+    const req = request(app).post("/w/claim").set("Authorization", AUTH);
+    return (body === undefined ? req : req.send(body)).expect(200);
+  };
+  const courseRow = (extra: Row = {}): Row => ({ status: "processing", lease_token: LEASE, valid: true, ai_input: courseInput, ...extra });
+  /** The id is in none of the competency, career and graduation tables. */
+  const withCourse = (row: Row | null): Handler => (s) => (s.includes("FROM ad_comp_ai_suggestions WHERE id=$1 FOR UPDATE") ? { rows: row ? [row] : [] } : undefined);
+  const courseUpdate = (run: ReturnType<typeof setup>["run"]) => run.mock.calls.find(([s]) => s.startsWith("UPDATE ad_comp_ai_suggestions SET status=$2"));
+
+  it("never gives a course job to a worker that does not advertise the kind", async () => {
+    for (const body of [undefined, {}, { kinds: ALL.slice(0, 3) }]) {
+      const { app, sql } = setup(queued({ course: true }));
+      expect((await claim(app, body)).body).toEqual({ job: null });
+      expect(sql().some(courseClaim)).toBe(false);
+    }
+  });
+
+  it("gives course jobs after competency jobs, without the key maps", async () => {
+    const both = setup(queued({ course: true, competency: true }));
+    expect((await claim(both.app, { kinds: ALL })).body.job.kind).toBe("competency_assessment");
+    expect(both.sql().some(courseClaim)).toBe(false);
+
+    const course = setup(queued({ course: true }));
+    const res = await claim(course.app, { kinds: ALL });
+    expect(res.body.job).toEqual({ kind: "competency_course_suggestion", id: JOB, leaseToken: LEASE, promptVersion: COURSE_AI_PROMPT_VERSIONS.links,
+      system: courseInput.system, user: courseInput.user, schema: courseInput.schema, options: courseInput.options });
+    expect(JSON.stringify(res.body)).not.toMatch(/"skills"|"groups"|"linked"/);
+    const claimCall = course.run.mock.calls.find(([s]) => courseClaim(s))!;
+    expect(claimCall[0]).toContain("FOR UPDATE SKIP LOCKED LIMIT 1");
+    expect((claimCall[1] as unknown[]).slice(1)).toEqual([2, 15]);
+    // A worker that only runs course proposals never touches the student queue.
+    const courseOnly = setup(queued({ course: true, competency: true }));
+    expect((await claim(courseOnly.app, { kinds: ["competency_course_suggestion"] })).body.job.kind).toBe("competency_course_suggestion");
+    expect(courseOnly.sql().some(competencyClaim)).toBe(false);
+  });
+
+  it("extends a course job after the other tables miss it", async () => {
+    const until = new Date("2026-10-16T10:00:00Z");
+    const { app, run } = setup((s) => (s.startsWith("UPDATE ad_comp_ai_suggestions SET lease_until") ? { rows: [{ leaseUntil: until }] } : undefined));
+    await request(app).post(`/w/${JOB}/extend`).set("Authorization", AUTH).send({ leaseToken: LEASE }).expect(200, { leaseUntil: until.toISOString() });
+    const order = run.mock.calls.map(([s]) => s.split(" ").slice(0, 2).join(" "));
+    expect(order).toEqual(["UPDATE stu_comp_ai_jobs", "UPDATE career_ai_suggestions", "UPDATE stu_grad_advice", "UPDATE ad_comp_ai_suggestions"]);
+  });
+
+  it("completes a course job after the other tables miss it and fails an invalid output", async () => {
+    const { app, run, sql } = setup(withCourse(courseRow()));
+    const output = { links: [{ skillKey: "S001", groupKey: "G1", reason: "Học phần xây dựng ứng dụng web." }], newSkills: [] };
+    await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(output)).expect(200, { ok: true });
+    const update = courseUpdate(run)!;
+    expect(update[0]).toContain("ai_input=NULL");
+    expect((update[1] as unknown[]).slice(0, 3)).toEqual([JOB, "completed", null]);
+    expect(JSON.parse((update[1] as unknown[])[3] as string)).toMatchObject({ mode: "links", items: [{ skillName: "Lập trình web", hasProfile: true }] });
+    expect(sql().at(-1)).toBe("COMMIT");
+
+    const invalid = setup(withCourse(courseRow()));
+    await request(invalid.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success({ links: "nope" })).expect(200);
+    expect((courseUpdate(invalid.run)![1] as unknown[]).slice(0, 3)).toEqual([JOB, "failed", "invalid_ai_output"]);
+
+    const cancelled = setup(withCourse(courseRow({ status: "cancelled", lease_token: null })));
+    await request(cancelled.app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success(output)).expect(409, { error: "job_expired" });
+    expect(courseUpdate(cancelled.run)).toBeUndefined();
   });
 });

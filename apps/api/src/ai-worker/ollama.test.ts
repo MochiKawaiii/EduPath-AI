@@ -8,6 +8,7 @@ import {
   ollamaChat,
   parseAiOutput,
   parseCareerSuggestionOutput,
+  parseCourseSuggestionOutput,
   parseGraduationAdviceOutput,
   parseJobOutput,
   type FetchLike,
@@ -305,5 +306,24 @@ describe("getOllamaModelInfo", () => {
     await expect(getOllamaModelInfo(runtime, { fetch: tagsFetch([{ name: "gemma4:e4b", digest: "x", remote_host: "https://ollama.com" }]) })).rejects.toMatchObject({
       detail: "model_is_remote"
     });
+  });
+});
+
+describe("parseCourseSuggestionOutput", () => {
+  it("accepts links (with or without newSkills) or weights arrays of objects", () => {
+    const links = { links: [{ skillKey: "S001", groupKey: "G1", reason: "x" }], newSkills: [] };
+    const full = { links: [{ skillKey: "S001", groupKey: "G1", percent: 100, reason: "x" }] };
+    const weights = { weights: [{ skillKey: "S001", percent: 100, reason: "x" }] };
+    for (const output of [links, full, weights]) {
+      expect(parseCourseSuggestionOutput(JSON.stringify(output))).toEqual(output);
+      expect(parseJobOutput("competency_course_suggestion", JSON.stringify(output))).toEqual(output);
+    }
+  });
+
+  it("rejects anything else with invalid_ai_output", () => {
+    for (const content of ["[]", "{}", JSON.stringify({ links: "x" }), JSON.stringify({ links: [1] }), JSON.stringify({ weights: [null] }),
+      JSON.stringify({ links: [], newSkills: {} }), "not json"]) {
+      expect(() => parseCourseSuggestionOutput(content)).toThrowError(expect.objectContaining({ code: "invalid_ai_output" }));
+    }
   });
 });

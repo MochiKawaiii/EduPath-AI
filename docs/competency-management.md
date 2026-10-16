@@ -1,160 +1,84 @@
 # AD-COMP — quản lý cấu hình năng lực từ học phần
 
-Phân hệ này là màn hình quản trị trong EduPath AI, dùng PostgreSQL, session và quyền của ứng dụng hiện tại. Không có danh mục học phần riêng, CRUD tiêu chí đánh giá, giao diện đánh giá sinh viên hoặc thuật toán AI mới.
+Màn hình quản trị **Năng lực** (`/quantri/danh-gia-nang-luc`) quản lý nhóm kỹ năng, danh mục kỹ năng đánh giá và liên kết, trọng số của từng học phần theo phiên bản CTĐT. Dùng PostgreSQL, session và quyền quản trị hiện có. Từ bản chức năng `Nhom1_DanhSachChucNang_ver0.2 (7)` (16/10/2026), liên kết và trọng số có thể do AI đề xuất (Gemma chạy cục bộ trên máy AI) và phần **Nhập từ Excel đã bị xóa**: dữ liệu không còn được nhập bằng tệp trọng số thủ công.
 
-## Khảo sát và dữ liệu tham khảo
+## Chức năng theo danh sách chức năng bản 7
 
-Đã đọc mọi sheet, cột và ô có dữ liệu của hai workbook được cung cấp trước khi thiết kế. Dữ liệu tham khảo không thay thế chương trình đào tạo hoặc danh mục nghề nghiệp hiện có.
-
-| Workbook / sheet | Nội dung thực tế |
+| Chức năng | Cách đáp ứng |
 | --- | --- |
-| Function List / `Function List` | Vùng A1:N170, 164 dòng có mã chức năng. AD-COMP có 19 dòng, mã được giữ nguyên. Hai dòng chức năng khác không có mã. |
-| Function List / `Quy trình` | Vùng A1:W60; chỉ A1 chứa lỗi Excel `#VALUE!`, các ô còn lại trống. Không có luồng nghiệp vụ có thể sử dụng từ sheet này. |
-| K29 / `skills` | 81 kỹ năng (workbook hiện hành, 10/2026; bản đầu có 67); cột `Tên kỹ năng chuẩn`, `Loại kỹ năng`, `Phạm vi năng lực`, `Số học phần sử dụng`. |
-| K29 / `course_skills` | 289 liên kết trên 88 mã học phần, tức 88 cấu hình học phần (bản đầu: 258 liên kết / 85 mã); cột `Mã học phần`, `Tên học phần`, `Tên kỹ năng`, `Trọng số (0–1)`, `Loại kỹ năng`. |
+| AD-COMP-01 Xem danh mục nhóm kỹ năng đánh giá | Tab **Nhóm kỹ năng**: bảng, tìm, lọc trạng thái, chi tiết và lịch sử. |
+| AD-COMP-03 Thêm nhóm kỹ năng đánh giá, cập nhật nhóm | Nút **Thêm nhóm kỹ năng**; **Chỉnh sửa** trong menu Thao tác. |
+| Xóa nhóm kỹ năng đánh giá | **Xóa** trong menu Thao tác: chỉ nhóm không còn kỹ năng; xóa mềm (`deleted_at`, `is_active=false`), tên được dùng lại. |
+| AD-COMP-02 Xem danh sách kỹ năng đánh giá, AD-COMP-12 Tìm kiếm, AD-COMP-15 Lọc | Tab **Danh mục kỹ năng**: tìm có/không dấu, lọc nhóm và trạng thái. |
+| AD-COMP-04 Thêm, AD-COMP-05 Cập nhật, Xóa kỹ năng đánh giá | Thêm (tạo kỹ năng chung mới hoặc dùng lại kỹ năng chung đã có), Chỉnh sửa, Xóa (xóa mềm, chặn khi cấu hình đang áp dụng còn dùng). |
+| AD-COMP-06 Xem trọng số năng lực | Tab **Trọng số học phần**: tổng %, trạng thái, chi tiết và lịch sử từng học phần. |
+| AD-COMP-09 Tạo liên kết kỹ năng với học phần (Thủ công) | **Tạo liên kết kỹ năng (Thủ công)**: chọn kỹ năng; kỹ năng mới vào học phần với trọng số 0%. |
+| Tạo liên kết kỹ năng với học phần (AI) | **Tạo liên kết kỹ năng (AI)**: AI đề xuất kỹ năng, quản trị viên duyệt rồi lưu (xem mục AI). |
+| AD-COMP-07 Thêm trọng số năng lực (Thủ công) | **Thêm trọng số (Thủ công)**: nhập % cho các kỹ năng đã liên kết; áp dụng cần tổng 100%. |
+| Thêm trọng số năng lực (AI) | **Thêm trọng số (AI)**: AI chia 100%, quản trị viên sửa rồi lưu bản nháp hoặc áp dụng. |
+| AD-COMP-08 Cập nhật trọng số, AD-COMP-10 Cập nhật liên kết | **Chỉnh sửa liên kết và trọng số**: trình chỉnh sửa đầy đủ (thêm, đổi, gỡ dòng và %). |
+| AD-COMP-14 Xóa liên kết kỹ năng với học phần | **Xóa liên kết**: chọn kỹ năng cần gỡ. Học phần đang áp dụng mà tổng không còn 100% chuyển về bản nháp. |
+| Xóa trọng số năng lực | **Xóa trọng số**: mọi trọng số về 0%, học phần về bản nháp, liên kết giữ nguyên. |
+| (mở rộng) Chạy AI cho cả chương trình | Khung **Chạy AI cho cả chương trình** trên tab Trọng số học phần (xem mục AI). |
 
-Số liệu theo nhóm dưới đây là của bản đầu (67 kỹ năng). K29 có ba nhóm: **Kiến thức nền tảng** (10 kỹ năng / 44 liên kết), **Kỹ năng mềm** (6 / 88), **Chuyên môn** (51 / 126). Không ép thành hai nhóm như mô tả ban đầu của Function List. Trọng số trong file là số từ 0,05 đến 1; tổng mỗi học phần bằng 1, sai số lớn nhất khoảng 2,22e-16. Không phát hiện thiếu trường bắt buộc, sai kiểu, liên kết trùng, kỹ năng không xác định, nhóm không nhất quán, kỹ năng không có học phần hoặc sai số học phần sử dụng. Workbook không cung cấp công thức tính điểm năng lực.
+Tên tab và nút giữ như hiện tại ("Nhóm kỹ năng", "Danh mục kỹ năng"); ghi chú GVHD về "Nhóm năng lực" / "Cấu hình năng lực" chưa áp dụng.
 
-Đối chiếu PostgreSQL **cục bộ** trước khi nhập:
+## Dữ liệu
 
-- K29 hiện hành v1 có 88 mã học phần; tất cả 85 mã Excel tồn tại trong đúng phiên bản.
-- `71ITDS40203`: Excel ghi “Xác suất thống kê ứng dụng”, CTĐT ghi “Xác xuất thống kê ứng dụng”. Liên kết theo mã chính xác, chỉ cảnh báo; không sửa tên học thuật.
-- Ba học phần CTĐT chưa được file phân bổ: `71ITDS40503` (Mã hóa dữ liệu và chuỗi khối), `71ITGR40203` (Chuyên đề Tốt nghiệp 1), `71ITGR40303` (Chuyên đề Tốt nghiệp 2). Không tạo trọng số suy đoán.
-- Danh mục nghề nghiệp có một tên trùng chính xác: **Trực quan hóa dữ liệu**. Dùng lại UUID, giữ mô tả nghề nghiệp và lưu phạm vi đánh giá riêng. Không gộp các tên gần giống hoặc tự ánh xạ nghĩa học thuật.
-
-## Thiết kế dữ liệu và nghiệp vụ
-
-Khảo sát thêm database cục bộ phát hiện schema đánh giá cũ: các migration `022_competency_configuration.sql`, `023_student_assessments.sql`, `024_competency_course_scopes.sql` đã được ghi nhận nhưng không có file trong checkout này. Có 3 nhóm, 67 kỹ năng và 1.329 liên kết theo `curriculum_id`/`specialty`, cùng các bảng cấu hình/kết quả cũ. Chúng chưa xác định phân bổ theo revision giống thiết kế yêu cầu mới. Giữ nguyên tên bảng, bản ghi, UUID, hàm, migration history và kết quả cũ; không sao chép các trọng số này sang K30/K31 hoặc phiên bản mới. Các bảng tiêu chí/trọng số tiêu chí cũ được giữ để bảo toàn schema, **không được sử dụng hoặc mở CRUD trong AD-COMP mới**.
-
-DB cục bộ cũng đã ghi nhận `025_competency_management.sql` với bảy bảng `ad_comp_*` còn trống (ngoài ba nhóm). File đang làm việc không khớp checksum đã ghi nhận, vì vậy không sửa checksum hoặc chạy lại lịch sử này. Bản đang sửa được lưu ngoài thư mục migrations, không được coi là nguồn 025 đã triển khai. Migration 026 tạo mới trên DB chưa có AD-COMP hoặc bổ sung schema 025 đã tồn tại; không thay migration đã áp dụng. Migration kiểm tra kiểu cột, khóa, unique theo phiên bản/mã học phần, CHECK trọng số/trạng thái và FK không cascade trước khi nhận schema có sẵn. Các helper cũ được giữ nguyên; chỉ thay trigger AD-COMP đã xác minh bằng helper riêng có prefix `ad_comp_`.
-
-Migration tăng dần **`026_competency_management.sql`** quản lý:
+Migration **026** tạo các bảng; **034** thêm xóa mềm nhóm và bảng đề xuất AI.
 
 | Bảng | Vai trò |
 | --- | --- |
-| `ad_comp_groups` | Nhóm, mô tả, trạng thái, token phiên bản; `source_key` giữ định danh nhóm nguồn khi đổi tên. Seed chỉ ba nhóm thực tế trong Excel. |
-| `ad_comp_skills` | Hồ sơ đánh giá theo **`career_skills.id`**, nhóm, phạm vi, trạng thái, soft delete, token. `legacy_skill_id` nối UUID kỹ năng cũ khi khớp chính xác; không tạo danh mục định danh kỹ năng độc lập. |
-| `ad_comp_course_configs` | Cấu hình theo `(curriculum_revisions.id, curriculum_courses.code)`, trạng thái, token, ghi chú. |
-| `ad_comp_course_links` | UUID kỹ năng và trọng số `[0,1]`; khóa chính `(config_id,skill_id)` ngăn liên kết trùng. |
-| `ad_comp_events` | Snapshot theo lần lưu, tên/UUID/nhóm/trọng số tại thời điểm thay đổi, người thực hiện và thời gian. |
-| `ad_comp_import_aliases` | Tên nguồn theo khóa → UUID dùng chung; nhập lại vẫn giữ ID sau khi quản trị đổi tên. |
-| `ad_comp_imports` | Nguồn file, SHA-256, phiên bản CTĐT, người nhập, thống kê thực tế. |
+| `ad_comp_groups` | Nhóm, mô tả, trạng thái, token phiên bản, `deleted_at` (034). Tên duy nhất trong các nhóm chưa xóa. |
+| `ad_comp_skills` | Hồ sơ đánh giá theo **`career_skills.id`** (khóa chính cũng là khóa ngoại): nhóm, phạm vi, trạng thái, xóa mềm. Mọi kỹ năng năng lực vì vậy luôn là kỹ năng chung của mục Nghề nghiệp. |
+| `ad_comp_course_configs` | Cấu hình theo `(phiên bản CTĐT, mã học phần)`: trạng thái `draft`/`active`/`archived`, token, ghi chú. |
+| `ad_comp_course_links` | Liên kết kỹ năng–học phần **kèm trọng số** `[0,1]`: liên kết và trọng số là cùng một dòng. Trọng số là phần của kỹ năng trong 100% của học phần. |
+| `ad_comp_events` | Snapshot mỗi lần lưu, người thực hiện, thời gian. |
+| `ad_comp_ai_suggestions` (034) | Vừa là việc của máy AI vừa là bản ghi kiểm toán: chế độ `links`/`weights`/`full`, `batch_id` của lần chạy cho cả chương trình, trạng thái, kết quả đã kiểm tra, model, thời điểm và người lưu. `ai_input` bị xóa khi việc kết thúc. |
+| `ad_comp_import_aliases`, `ad_comp_imports` | Còn lại từ phần nhập Excel đã xóa; không còn được đọc hay ghi. |
 
-Khóa ngoại không cascade làm mất cấu hình hoặc lịch sử. Các bảng được bật RLS và không cấp CRUD trực tiếp cho vai trò Supabase client. Backend dùng pool PostgreSQL hiện tại. Không thay migration cũ, không seed kỹ năng hoặc trọng số khi server khởi động. Khi nhập file, kỹ năng cũ khớp tên chính xác được nối qua UUID; với kỹ năng canonical mới có thể giữ UUID cũ nếu không trùng ID khác, còn tên đã có trong nghề nghiệp dùng ID nghề nghiệp và lưu bridge. Không sửa danh mục hoặc dữ liệu đánh giá cũ. Trường hợp nhiều ID khớp hoặc bridge mâu thuẫn được báo lỗi trước nhập.
-
-**Bản nháp** có thể chưa đủ 100%; **đang áp dụng** phải có ít nhất một kỹ năng khả dụng và tổng trọng số bằng 1 với dung sai `1e-6`; **lưu trữ** giữ liên kết nhưng không đóng góp. Trọng số 0 được giữ rõ ràng, cảnh báo không đóng góp. Thêm/sửa/gỡ các phân bổ được lưu bằng một giao dịch thay toàn bộ danh sách; không có bản ghi trọng số mồ côi. Gỡ một liên kết đang áp dụng phải phân bổ lại đủ 100% hoặc lưu nháp. Dừng toàn bộ cấu hình bằng lưu trữ.
-
-Database kiểm tra giới hạn trọng số, khóa ngoại, uniqueness, phạm vi phiên bản bất biến và tổng/trạng thái cuối giao dịch qua constraint trigger deferred. Trước các câu lệnh ghi lấy khóa catalog chung với nghề nghiệp; khóa hàng cấu hình và skill/group bảo vệ ghi đồng thời ở mức READ COMMITTED mà API sử dụng. Các write API kiểm tra lại tài khoản/quyền trong giao dịch, dùng `x-version` để chặn ghi đè. Import token bao gồm file và trạng thái liên quan; thay đổi từ lúc xem trước làm token hết hiệu lực.
-
-Đổi tên kỹ năng giữ UUID, cập nhật cache nghề nghiệp và chỉ thay tiêu đề yêu cầu vốn lấy đúng tên cũ. Đổi kỹ năng từ màn hình Nghề nghiệp làm token đánh giá cũ hết hiệu lực và ghi sự kiện dùng chung. Xóa khỏi danh mục đánh giá là soft delete; chặn khi đang dùng trong cấu hình active. Canonical skill nghề nghiệp không được xóa nếu hồ sơ đánh giá còn sử dụng. Vô hiệu hóa nhóm/kỹ năng cũng bị chặn nếu làm cấu hình active không hợp lệ. Nháp/lịch sử vẫn giữ ID.
-
-K29/K30/K31 và mọi phiên bản CTĐT độc lập. CTĐT có phiên bản mới không được tự chuyển phân bổ từ bản cũ. Mã học phần có nhiều dòng trong cùng phiên bản bị cảnh báo và chặn cấu hình đến khi xác minh; không tự coi các dòng cùng mã hoặc môn khác mã cùng tên là tương đương.
+Quy tắc giữ nguyên: bản nháp có thể chưa đủ 100%; **đang áp dụng** cần ít nhất một kỹ năng khả dụng và tổng bằng 1 (dung sai `1e-6`, kiểm tra cả ở trigger deferred); trọng số 0% được giữ nhưng không đóng góp. Mọi lần lưu thay toàn bộ danh sách liên kết trong một giao dịch, giữ khóa catalog chung với Nghề nghiệp và token `x-version`. Mỗi phiên bản CTĐT độc lập; không tự chép trọng số giữa các phiên bản. Điểm năng lực sinh viên chỉ đọc cấu hình **đang áp dụng** có trọng số > 0 (`competency-assessment/inputs.ts`). Áp dụng cấu hình ở một phiên bản CTĐT mới hơn chuyển cả khóa sang dùng phiên bản đó.
 
 ## API
 
-Prefix: **`/api/admin/competencies`**. Mọi endpoint yêu cầu đăng nhập và quyền quản trị hiện có (`admin`, `faculty_board`, `department_head`, `lecturer`). Write yêu cầu Origin đúng cấu hình và kiểm tra quyền lại trong transaction. Không cho sinh viên CRUD. Response theo mẫu hiện tại: danh sách `{items}`, chi tiết object, lỗi `{error,details?}`, `Cache-Control: no-store`.
+Prefix **`/api/admin/competencies`**; mọi endpoint cần quyền quản trị (`admin`, `faculty_board`, `department_head`, `lecturer`), write cần Origin đúng và kiểm tra quyền lại trong giao dịch.
 
-| Method / suffix | Chức năng |
+| Method / đường dẫn | Chức năng |
 | --- | --- |
-| GET `/groups`, GET `/groups/:id` | Nhóm, số kỹ năng, chi tiết/lịch sử. |
-| POST `/groups`, PATCH `/groups/:id` | Tạo nhóm cần thiết, cập nhật tên/mô tả/trạng thái; PATCH có `x-version`. |
-| GET `/catalog` | Canonical skills khả dụng để chọn UUID dùng chung. |
-| GET `/skills?q=&groupId=&active=` | Tìm tên/phạm vi tiếng Việt có hoặc không dấu, lọc nhóm/trạng thái. |
-| POST `/skills` | Tạo kỹ năng hoặc dùng UUID đã có qua `existingSkillId`; không âm thầm sửa kỹ năng cũ. |
-| GET `/skills/:id` | Hồ sơ, học phần đóng góp theo phiên bản và lịch sử. |
-| PATCH `/skills/:id`, DELETE `/skills/:id` | Token `x-version`; DELETE cần `{confirmed:true}`, soft delete có kiểm tra tham chiếu. |
-| GET `/curricula` | Khóa, mọi phiên bản và số cấu hình. |
-| GET `/courses?revisionId=&q=&status=` | Học phần thực tế của phiên bản, tổng %, trạng thái và mã trùng. |
-| GET `/courses/:revisionId/:code` | Phân bổ và lịch sử. |
-| PUT `/courses/:revisionId/:code` | Atomic thêm/sửa/gỡ liên kết và trọng số. Header `x-version:new` khi tạo hoặc UUID khi sửa; body `{status:"draft"|"active",links:[{skillId,weight}],note}`. |
-| DELETE `/courses/:revisionId/:code` | Lưu trữ cấu hình; token UUID, `{confirmed:true}`. |
-| GET `/summary?revisionId=` | Thống kê tính từ DB, kỹ năng/học phần chưa liên kết và cảnh báo nháp/0%/mã trùng/chưa cấu hình. |
-| POST `/import/preview` | Xem trước, lỗi, cảnh báo, diff và token xác nhận. |
-| POST `/import` | Nhập có token, xác nhận cảnh báo/ghi đè; transaction toàn bộ, không nhập một phần khi có lỗi. |
+| GET `/groups`, GET `/groups/:id` | Nhóm chưa xóa, số kỹ năng, chi tiết và lịch sử. |
+| POST `/groups`, PATCH `/groups/:id` | Thêm, cập nhật (`x-version`). |
+| DELETE `/groups/:id` | Xóa mềm; `x-version` + `{confirmed:true}`; 409 `group_not_empty` khi còn kỹ năng. |
+| GET `/catalog` | Kỹ năng chung dùng lại được. |
+| GET/POST `/skills`, GET/PATCH/DELETE `/skills/:id` | Danh mục kỹ năng đánh giá. |
+| GET `/curricula`, GET `/courses?revisionId=`, GET `/courses/:revisionId/:code`, GET `/summary?revisionId=` | Phiên bản CTĐT, học phần, chi tiết, thống kê và cảnh báo. |
+| PUT `/courses/:revisionId/:code` | Lưu toàn bộ liên kết và trọng số `{status,links:[{skillId,weight}],note}`; mọi thao tác thủ công trên giao diện (tạo liên kết, thêm/xóa trọng số, xóa liên kết) dùng endpoint này. |
+| DELETE `/courses/:revisionId/:code` | Lưu trữ cấu hình (giữ cho tương thích, giao diện không còn dùng). |
+| `/ai/*` | Đề xuất AI, mục dưới. |
 
-Upload dùng MIME `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `x-revision-id`, `x-source-cohort`, `x-filename` URL-encoded. Xác nhận thêm `x-preview-token`, `x-confirm-warnings:true`, `x-confirm-overwrite:true` khi cần. Giới hạn 5 MiB, ZIP 3.000 entries / 30 MiB giải nén, workbook 10 sheets / 2.000 rows / 20 columns mỗi sheet, 200 kỹ năng một học phần; worker 192 MiB / 25 giây. Kiểm tra toàn bộ ô; không nhận công thức, hyperlink, lỗi Excel, ngày hoặc embedded objects. Chỉ số thực được chấp nhận làm trọng số.
+Đường `/import/preview`, `/import`, lệnh `db:import-competencies` và `workers/competency.mjs` đã bị xóa.
 
-Tên file nếu có khóa phải trùng khai báo nguồn và CTĐT đã chọn. File không có cột khóa nên cần khai báo khóa nguồn rõ ràng; không đoán từ tên môn. Không tìm thấy mã thì báo lỗi và không tạo học phần. Nhập lại file giống nhau không tạo trùng, không xoay token/sự kiện vô ích. File thay đổi dữ liệu quản trị cần diff + checkbox xác nhận; các mã không có trong file giữ nguyên. Đổi tên canonical đã ánh xạ được giữ nguyên.
+## AI đề xuất liên kết và trọng số
 
-## Màn hình và vận hành
+Bật khi server có `AI_WORKER_KEY` (như các tính năng AI khác). Việc chạy trên máy AI cục bộ (Ollama `gemma4:e4b`), loại việc `competency_course_suggestion`; máy AI lấy loại này **sau cùng** (sau nghề nghiệp, lời khuyên tốt nghiệp và nhận xét năng lực của sinh viên) nên một lần chạy cho cả chương trình không làm sinh viên phải chờ. Worker cũ phải được **khởi động lại** để nhận loại việc mới. AI chỉ nhận dữ liệu CTĐT (tên, mô tả, khối kiến thức, tín chỉ, số giờ học phần) và danh mục kỹ năng; không nhận dữ liệu sinh viên.
 
-Menu trái **Năng lực**, đường dẫn **`/quantri/danh-gia-nang-luc`**, nằm trong `AdminWorkspace`. Bốn tab: **Nhóm kỹ năng**, **Danh mục kỹ năng**, **Trọng số học phần**, **Nhập từ Excel**. Không có dashboard mới. Dùng component Modal/ActionMenu/Pagination/Status/icon, CSS và màu của quản trị hiện tại; trọng số hiển thị %, cập nhật tổng trực tiếp. Mỗi thay đổi gọi API và lưu DB; có trạng thái tải/lỗi/rỗng/thành công, xác nhận xóa/gỡ/lưu trữ và lịch sử. Danh sách phân trang 10 dòng; bảng cuộn và form responsive.
+| Chế độ | Prompt | AI trả về | Lưu |
+| --- | --- | --- | --- |
+| `links` — Tạo liên kết kỹ năng (AI) | `comp-link-v1` | Tối đa 8 kỹ năng theo khóa `S001…` + nhóm `G1…`, tối đa 2 kỹ năng mới theo tên, lý do ngắn | Kỹ năng được chọn vào học phần với 0%; học phần đang áp dụng vẫn áp dụng (tổng không đổi), học phần mới thành bản nháp. |
+| `weights` — Thêm trọng số (AI) | `comp-weight-v1` | % nguyên cho từng kỹ năng đã liên kết | Trọng số đã duyệt thay trọng số cũ; lưu bản nháp hoặc áp dụng. 409 `links_changed` nếu liên kết đã đổi. |
+| `full` — cả chương trình | `comp-course-v1` | Tối đa 8 kỹ năng kèm %, không kỹ năng mới | "Lưu tất cả thành bản nháp" hoặc "Lưu và áp dụng" (cần tick xác nhận); mỗi học phần một savepoint, học phần có liên kết từ trước bị bỏ qua. |
 
-Ngoài giao diện, CLI không tự áp dụng dữ liệu:
+- **Ứng viên**: hồ sơ đang dùng (theo nhóm rồi tên) và **kỹ năng nghề nghiệp chưa đo** — kỹ năng chung mà nghề còn yêu cầu nhưng chưa có hồ sơ năng lực (Docker, Linux…). Khi lưu, kỹ năng nghề chưa đo được tạo hồ sơ trong nhóm AI chọn (quản trị viên đổi được); kỹ năng mới được thêm vào danh mục chung của Nghề nghiệp rồi tạo hồ sơ. Nhờ vậy kỹ năng do AI tạo luôn dùng được cho nghề nghiệp, và kỹ năng nghề chưa đo trở nên đo được.
+- **Kiểm tra phía server** (`competencies/ai/validate.ts`): khóa lạ, lặp hoặc đã liên kết bị bỏ; khóa viết trong câu được thay bằng tên; lý do có link/HTML bị xóa trắng. Phần trăm được kẹp 0–100, làm tròn và chia lại để **tổng đúng 100** (phương pháp phần dư lớn nhất) vì ngữ pháp JSON không ép được tổng; chế độ weights luôn đủ mọi kỹ năng đã liên kết (thiếu thì 0). Không còn mục hợp lệ → `invalid_ai_output`; câu trả lời rỗng là đề xuất rỗng hợp lệ.
+- **Hàng đợi**: một đề xuất chờ cho mỗi (phiên bản, học phần, chế độ); tối đa 300 việc chờ; lease 15 phút, 2 lần thử; việc chờ quá 24 giờ thành `worker_timeout`. Ollama `num_ctx` 16384, `num_predict` 1536, nhiệt độ 0,2. Phần danh mục đứng trước học phần trong prompt để các việc liên tiếp dùng chung tiền tố.
+- **API** `/api/admin/competencies/ai`: GET `/status`; GET `/latest?revisionId&code&mode`; POST `/` `{revisionId,code,mode}`; GET `/:id`; POST `/:id/cancel`; POST `/:id/apply` (links `{items:[{skillId|null,skillName,groupId|null}]}`, weights `{weights:[{skillId,percent}],status}`); GET `/batches/latest?revisionId`; POST `/batches` `{revisionId}`; POST `/batches/:id/cancel`; POST `/batches/:id/apply` `{status}`.
+- **Giới hạn**: chất lượng phụ thuộc Gemma E4B; đề xuất luôn cần quản trị viên xem lại. Phần trăm là ước lượng của AI, không phải tri thức chuyên gia. Lưu và áp dụng cả chương trình làm điểm năng lực của sinh viên khóa đó tính theo trọng số AI ngay.
 
-```powershell
-npm run db:migrate --workspace @edupath/api
-npm run db:import-competencies --workspace @edupath/api -- --file "C:/path/EduPath_course_K29.xlsx" --cohort K29 --revision "<revision-uuid>"
-# Đọc lỗi, cảnh báo và diff trước; dùng token trả về để áp dụng:
-npm run db:import-competencies --workspace @edupath/api -- --file "C:/path/EduPath_course_K29.xlsx" --cohort K29 --revision "<revision-uuid>" --apply --actor "<existing-admin-uuid>" --token "<preview-token>" --confirm-warnings
-# Chỉ thêm --confirm-overwrite nếu đã xem và chấp nhận diff dữ liệu thay đổi.
-```
+## Kiểm thử
 
-CLI dùng cấu hình PostgreSQL hiện tại và tài khoản quản trị có thật, không tạo tài khoản hoặc vượt quyền. File tham khảo không được commit vào migration. Áp dụng migration và dữ liệu trên môi trường khác là thao tác riêng; kết quả DB cục bộ không đồng nghĩa đã cập nhật Supabase production.
+- Đơn vị: `competencies/model.test.ts`, `competencies/router.test.ts`, `competencies/ai/{prompt,validate}.test.ts`, các test loại việc mới trong `competency-assessment/ai/worker-router.test.ts`, `ai-worker/{client,ollama}.test.ts`; web `competency-ai.test.ts`, `CompetencyCourseAi.test.tsx`, `competency-weights.test.ts`.
+- Tích hợp PostgreSQL: `node scripts/verify-competency-ai.mjs` (sau `npm run build -w @edupath/api`) chạy migration 007–034 trong schema tạm, chép dữ liệu quản trị cục bộ ở chế độ chỉ đọc, giả lập câu trả lời của AI qua router thật: xóa nhóm, AI tạo liên kết (kỹ năng nghề chưa đo, kỹ năng mới), AI chia trọng số rồi áp dụng, chạy cho cả chương trình (16/10/2026: K31, 88 học phần, 71 bản nháp đủ 100%, 17 câu trả lời rỗng), hủy lần chạy, hết hạn; schema public không đổi. Script cũ `verify-competencies.mjs` (dựa trên nhập Excel) đã bị xóa.
 
-## Phạm vi chức năng
+## Lịch sử
 
-| ID giữ nguyên | Cách đáp ứng |
-| --- | --- |
-| AD-COMP-01 / 02 | Danh sách/chi tiết/cấu hình nhóm. |
-| AD-COMP-03 / 04 / 05 | Danh mục kỹ năng, thêm, sửa theo UUID ổn định. |
-| AD-COMP-14 / 15 / 19 | Soft delete có kiểm tra, tìm kiếm, lọc. |
-| AD-COMP-09 / 10 / 11 / 17 | Xem/thêm/sửa/gỡ phân bổ trọng số trong cấu hình học phần, hoặc lưu trữ toàn bộ. |
-| AD-COMP-12 / 13 / 18 | Tạo/cập nhật/gỡ liên kết học phần–kỹ năng bằng giao dịch bulk, xem học phần đóng góp. |
-
-**Không triển khai AD-COMP-06, 07, 08, 16**; không tạo bảng/API/menu tiêu chí đánh giá mới và không sử dụng các bảng tiêu chí của prototype cũ.
-
-## Source thay đổi
-
-- API: `src/competencies/{model,workbook,import,repository,router,import-cli}.ts`, `workers/competency.mjs`, migration 026, đăng ký trong `src/app.ts`, script import trong `package.json`.
-- Dùng chung: `src/careers/skills.ts` bảo vệ xóa và audit rename, cùng kiểm thử cũ; Web `CareerSkillsManagement.tsx` và `career-types.ts` hiển thị đúng tham chiếu đánh giá, chặn xóa canonical skill và giải thích tên dùng chung.
-- Web: `CompetencyManagement.tsx`, `CompetencyProfiles.tsx`, `CompetencyCourses.tsx`, `CompetencyImport.tsx`, `competency-types.ts`, `competency-weights.ts`, `competencies.css`; navigation và `AdminWorkspace.tsx`.
-- Kiểm thử: `competencies/router.test.ts`, `competencies/workbook.test.ts`, `competency-weights.test.ts`, navigation test, career skill tests; `scripts/verify-competencies.mjs`, fixture migration trong `verify-careers.mjs`.
-
-## Kết quả thực thi
-
-Các lệnh đã chạy trên source cuối:
-
-| Kiểm tra | Kết quả thực tế |
-| --- | --- |
-| `npm run typecheck` | Qua backend và frontend. |
-| `npm run build` và build Web sau chỉnh sửa cuối | Qua backend và frontend; Vite cảnh báo chunk JS 591,38 kB (gzip 150,59 kB) vượt mức khuyến nghị 500 kB. |
-| `npm test` | API: 30 file, 372 test qua, 5 bỏ qua; Web: 12 file, 116 test qua. |
-| `node scripts/verify-competencies.mjs` | 15 nhóm kiểm tra qua với PostgreSQL trong schema dùng riêng; đọc file K29 thật. |
-| `node scripts/verify-careers.mjs` | 27 kiểm tra qua. |
-| `node scripts/verify-curricula.mjs` | 10 kiểm tra qua. |
-| `npm run db:import-competencies --workspace @edupath/api -- ...` (xem trước sau nhập) | Entry point CLI thật chạy qua, 67 kỹ năng / 85 cấu hình không thay đổi, 0 lỗi và không yêu cầu ghi đè. |
-| `node scripts/verify-graduation.mjs` | Chưa chạy được đầy đủ: thiếu workbook kiểm toán tốt nghiệp tại `output/graduation-audit/files`. Không tính là qua. |
-
-Năm unit test bỏ qua thuộc kiểm toán workbook nguồn của phần tốt nghiệp, thiếu fixture; không phải test AD-COMP. Các kiểm thử AD-COMP đã kiểm tra thêm/trùng/sửa/xóa kỹ năng, UUID và cache nghề nghiệp khi đổi tên, bulk liên kết, tổng 100%/thiếu/vượt, 0%, bản nháp, archive, sai phiên bản/khóa, quyền/Origin, token ghi đồng thời, lỗi import rollback, nhập lại không thay đổi, xác nhận ghi đè, mã học phần không tồn tại và nội dung Excel không an toàn. Migration được chạy trên schema mới, prototype cũ và schema 025 có dữ liệu; kiểm tra guard và so sánh đầy đủ bản ghi/helper cũ. Schema kiểm thử được dọn sau chạy; fingerprint dữ liệu public không đổi.
-
-**Dữ liệu đã được nhập thành công vào PostgreSQL cục bộ**, K29 hiện hành v1, revision `0ce561e3-0f0b-4ade-86cf-b50d166a4315`:
-
-- Migration 026 được áp dụng qua migration runner; lịch sử 022–025 giữ nguyên.
-- Bản xem trước có 325 dòng hợp lệ (67 kỹ năng + 258 liên kết), 0 dòng lỗi, 6 cảnh báo và không yêu cầu ghi đè. Đã đọc cảnh báo trước khi áp dụng giao dịch.
-- Có 3 nhóm, 67 hồ sơ kỹ năng dùng chung, 85 cấu hình đang áp dụng và 258 liên kết. Tổng nhỏ nhất/lớn nhất đều là 1 (100%).
-- Tạo thêm 66 canonical skills, dùng lại một UUID nghề nghiệp hiện có; nối đủ 67 ID kỹ năng cũ. 66 ID giữ UUID cũ, một ID dùng bridge tới UUID canonical đã tồn tại. Không có bridge mồ côi hoặc trùng.
-- K30 và K31 có **0** cấu hình AD-COMP mới; không nhận trọng số K29.
-- So sánh count và hash toàn bộ hàng của các bảng đánh giá cũ trước/sau: không đổi. So sánh mọi hàng `career_skills` có trước import: không đổi.
-- Xem trước lại sau nhập: 0 lỗi, 85 cấu hình không thay đổi, không có kỹ năng/liên kết cần tạo, cập nhật hoặc xóa; không yêu cầu ghi đè. Còn 5 cảnh báo thông tin về dữ liệu cũ, chính tả tên môn và 3 môn chưa được file phân bổ.
-
-Các artifact đối chiếu đầy đủ được giữ trong `output/` đã git-ignore: `ad-comp-preimport-preview.json`, `ad-comp-first-import-result.json`, `ad-comp-postimport-mapping.json`, `ad-comp-legacy-audit.json`. Không commit dữ liệu riêng, credentials, file Excel nguồn hoặc schema dump. Kết quả kiểm thử trên thuộc PostgreSQL cục bộ; việc phát hành mã nguồn không xác nhận dữ liệu K29 đã được nhập vào Supabase production.
-
-Đã kiểm tra giao diện thật bằng Playwright CLI ở desktop **1440 × 1000** và mobile **390 × 844**, dùng API thật và PostgreSQL cục bộ trong phiên kiểm tra chỉ đọc:
-
-- Cả bốn tab, phân trang, chi tiết kỹ năng, UUID dùng chung, học phần đóng góp và lịch sử hiển thị đúng.
-- K29 hiển thị 85/88 cấu hình đang áp dụng; sửa tổng xuống 80% khóa “Lưu và áp dụng”, vẫn cho lưu nháp. Gỡ liên kết chờ xác nhận khóa lưu; lưu trữ cần checkbox xác nhận. Đã hủy các thao tác này, không ghi thay đổi qua trình duyệt.
-- K30 hiện hành v2 và lịch sử v1 hiển thị độc lập, không có cấu hình; K31 cũng hiển thị rõ chưa cấu hình.
-- Xem trước workbook K29 thật có 0 lỗi, 5 cảnh báo, 85 cấu hình không thay đổi. Workbook thử sai có 4 lỗi được hiển thị và khóa xác nhận nhập. Đổi khóa nguồn xóa preview/token cũ và báo không khớp.
-- Đã sửa độ rộng tối thiểu riêng cho bảng nhóm/kỹ năng để tránh mô tả xuống một ký tự mỗi dòng trên mobile. Bảng cuộn ngang trong vùng có thể thao tác bàn phím; trang vẫn rộng 390 px. Modal học phần cuộn dọc, nút đóng/lưu truy cập được và không tràn ngang.
-- Console có 0 lỗi, 0 cảnh báo. Có 133 request hoàn tất HTTP 200 và 40 GET bị hủy bởi StrictMode/chuyển tab; không có request hoàn tất lỗi bất thường. Hai POST xem trước trả HTTP 200. Không gửi save/delete/archive/import commit.
-
-Ảnh và báo cáo chi tiết ở `output/playwright/browser-qa.md`; ảnh tiêu biểu: `ad-comp-courses-K29-desktop-viewport.png`, `ad-comp-groups-mobile-viewport.png`, `ad-comp-course-weight-80-mobile.png`, `ad-comp-import-errors-mobile.png`. Phiên Chrome và hai server preview riêng đã dừng; không tác động trình duyệt/dịch vụ đang mở của người dùng.
-
-Giới hạn của kiểm tra trình duyệt: chưa đi qua đăng nhập Entra công khai, chưa gửi các thao tác ghi và chưa xác nhận ghi đè bằng workbook đã thay đổi trên UI. Các đường ghi, rollback, xác nhận ghi đè và phân quyền đã được kiểm tra riêng ở backend/integration. Bảng mobile sử dụng cuộn ngang nội bộ.
-
-## Giai đoạn sau
-
-Chưa tính điểm năng lực sinh viên. Đầu vào hiện đã tra cứu bằng UUID kỹ năng và phiên bản/mã học phần; bảng điểm có điểm hệ 4/10 và các lần học, hồ sơ có khóa. Giai đoạn tiếp cần xác nhận chương trình/phiên bản áp dụng cho từng sinh viên, quy tắc học cải thiện/miễn học/tự chọn và công thức năng lực có kiểm thử. Không mặc định sinh viên phải học mọi môn.
-
-Danh mục nghề nghiệp dùng cùng UUID nên có thể đối chiếu trực tiếp; các kỹ năng tên gần giống chưa được tự gộp. Quan hệ tương đương cần quản trị/học thuật xác minh và cấu hình bằng ID. Snapshot hiện cho phép truy vết trọng số; nếu cần tái lập kết quả đánh giá theo thời điểm, kết quả phải lưu ID/version/snapshot cấu hình đã dùng thay vì lấy cấu hình mới nhất.
+- 10/2026: AD-COMP ban đầu (migration 026) nhập 81 kỹ năng, 88 cấu hình và 289 liên kết K29 từ workbook `EduPath_course_K29.xlsx` vào PostgreSQL cục bộ qua phần nhập Excel. Dữ liệu đó vẫn giữ nguyên sau khi phần nhập bị xóa.
+- 16/10/2026: theo danh sách chức năng bản 7, thêm xóa nhóm, các nút Thủ công/AI cho liên kết và trọng số, chạy AI cho cả chương trình; xóa phần nhập Excel.

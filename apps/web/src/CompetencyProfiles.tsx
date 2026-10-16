@@ -20,7 +20,7 @@ export function CompetencyGroupsTab({ canManage, revision, onSaved }: TabProps) 
   const remote = useCompetencyData<{ items: Group[] }>(`${COMPETENCY_API}/groups`, revision);
   const { draft, setDraft, filters, page, setPage, reset } = useLiveFilters({ q: "", active: "" });
   const [selected, setSelected] = useState<Group | null>(null);
-  const [mode, setMode] = useState<"detail" | "edit" | null>(null);
+  const [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
   const close = () => { setSelected(null); setMode(null); };
   const saved = () => { close(); onSaved(); };
   const items = remote.data?.items.filter(group =>
@@ -49,7 +49,10 @@ export function CompetencyGroupsTab({ canManage, revision, onSaved }: TabProps) 
             <td>{group.skillCount}</td><td><ProfileState active={group.isActive} /></td>
             <td><ActionMenu label={`Thao tác với nhóm ${group.name}`} items={[
               { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(group); setMode("detail"); } },
-              ...(canManage ? [{ key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(group); setMode("edit"); } }] : []),
+              ...(canManage ? [
+                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(group); setMode("edit"); } },
+                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(group); setMode("delete"); } },
+              ] : []),
             ]} /></td>
           </tr>)}</tbody>
         </table></div>
@@ -59,7 +62,34 @@ export function CompetencyGroupsTab({ canManage, revision, onSaved }: TabProps) 
     </section>
     {mode === "detail" && selected && <GroupDetails current={selected} revision={revision} canManage={canManage} close={close} edit={group => { setSelected(group); setMode("edit"); }} />}
     {canManage && mode === "edit" && <GroupEditor current={selected} close={close} saved={saved} />}
+    {canManage && mode === "delete" && selected && <GroupDelete current={selected} close={close} saved={saved} />}
   </section>;
+}
+
+/** "Xóa nhóm kỹ năng": only an empty group can go; its history is kept. */
+function GroupDelete({ current, close, saved }: { current: Group; close: () => void; saved: () => void }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const empty = current.skillCount === 0;
+  return <Modal title="Xóa nhóm kỹ năng" onClose={close} busy={busy} size="sm">
+    <div className="cm-dialog-body cm-form">
+      {empty ? <p>Xóa nhóm <strong>{current.name}</strong> khỏi danh mục? Nhóm không còn kỹ năng nào. Lịch sử thay đổi của nhóm vẫn được giữ.</p>
+        : <p className="cm-warning" role="alert">Nhóm <strong>{current.name}</strong> còn {current.skillCount} kỹ năng. Hãy chuyển các kỹ năng sang nhóm khác hoặc xóa chúng ở tab Danh mục kỹ năng trước khi xóa nhóm.</p>}
+      {empty && <label className="cm-check"><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} /><span>Tôi xác nhận xóa nhóm kỹ năng này.</span></label>}
+      {error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}
+      <div className="cm-actions cm-dialog-actions">
+        <button type="button" className="am-outline" disabled={busy} onClick={close}><Icon name="close" /> {empty ? "Hủy" : "Đóng"}</button>
+        {empty && <button type="button" className="am-primary am-delete" disabled={busy || !confirmed} onClick={async () => {
+          setBusy(true); setError("");
+          try {
+            await competencyRequest(`${COMPETENCY_API}/groups/${current.id}`, { method: "DELETE", headers: { "Content-Type": "application/json", "x-version": current.version }, body: JSON.stringify({ confirmed: true }) });
+            saved();
+          } catch (failure) { setError((failure as Error).message); }
+          finally { setBusy(false); }
+        }}><Icon name="trash" /> {busy ? "Đang xóa…" : "Xác nhận xóa"}</button>}
+      </div>
+    </div>
+  </Modal>;
 }
 
 function GroupDetails({ current, revision, canManage, close, edit }: { current: Group; revision: number; canManage: boolean; close: () => void; edit: (group: Group) => void }) {

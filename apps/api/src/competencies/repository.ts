@@ -37,6 +37,11 @@ export class CompetencyRepository {
     await access(this.pool, actor, false);
   }
 
+  /** A write transaction with the role re-checked and the skill catalog lock held (used by the AI apply too). */
+  transaction<T>(actor: AuthenticatedUser, action: (client: PoolClient) => Promise<T>): Promise<T> {
+    return this.write(actor, action);
+  }
+
   private async write<T>(actor: AuthenticatedUser, action: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
@@ -68,11 +73,11 @@ export class CompetencyRepository {
   }
 
   async groups() {
-    return (await this.pool.query<Group>(`SELECT ${groupColumns} FROM ad_comp_groups g ORDER BY g.name,g.id`)).rows;
+    return (await this.pool.query<Group>(`SELECT ${groupColumns} FROM ad_comp_groups g WHERE g.deleted_at IS NULL ORDER BY g.name,g.id`)).rows;
   }
 
   private async groupRecord(db: Database, id: string) {
-    const result = await db.query<Group>(`SELECT ${groupColumns} FROM ad_comp_groups g WHERE g.id=$1`, [id]);
+    const result = await db.query<Group>(`SELECT ${groupColumns} FROM ad_comp_groups g WHERE g.id=$1 AND g.deleted_at IS NULL`, [id]);
     if (!result.rowCount) throw new CompetencyError("group_not_found", 404);
     return result.rows[0]!;
   }
@@ -100,7 +105,7 @@ export class CompetencyRepository {
 
   async updateGroup(id: string, version: string, data: GroupChange, actor: AuthenticatedUser) {
     return this.write(actor, async client => {
-      const current = await client.query<{ version: string }>("SELECT version FROM ad_comp_groups WHERE id=$1 FOR UPDATE", [id]);
+      const current = await client.query<{ version: string }>("SELECT version FROM ad_comp_groups WHERE id=$1 AND deleted_at IS NULL FOR UPDATE", [id]);
       if (!current.rowCount) throw new CompetencyError("group_not_found", 404);
       if (current.rows[0]!.version !== version) throw new CompetencyError("group_changed", 409);
       if (!data.isActive) {
@@ -114,6 +119,28 @@ export class CompetencyRepository {
       const snapshot = await this.groupSnapshot(client, id);
       await this.event(client, "group", id, actor, snapshot, "Cập nhật nhóm năng lực");
       return snapshot;
+    });
+  }
+
+  /**
+   * "Xóa nhóm kỹ năng": soft delete once no live skill profile uses the group (soft-deleted profiles
+   * keep pointing to it). The group also becomes inactive, so scoring and the career pages, which
+   * read is_active, never see it again.
+   */
+  async deleteGroup(id: string, version: string, actor: AuthenticatedUser) {
+    return this.write(actor, async client => {
+      const current = await client.query<{ version: string }>("SELECT version FROM ad_comp_groups WHERE id=$1 AND deleted_at IS NULL FOR UPDATE", [id]);
+      if (!current.rowCount) throw new CompetencyError("group_not_found", 404);
+      if (current.rows[0]!.version !== version) throw new CompetencyError("group_changed", 409);
+      const skills = await client.query<{ count: number }>("SELECT count(*)::int AS count FROM ad_comp_skills WHERE group_id=$1 AND deleted_at IS NULL", [id]);
+      const count = skills.rows[0]?.count ?? 0;
+      if (count) throw new CompetencyError("group_not_empty", 409, [`Nhóm còn ${count} kỹ năng.`]);
+      const previous = await this.groupSnapshot(client, id);
+      const nextVersion = randomUUID();
+      const removed = await client.query<{ deletedAt: string }>(`UPDATE ad_comp_groups SET deleted_at=now(),is_active=false,version=$2,updated_at=now()
+ WHERE id=$1 RETURNING deleted_at AS "deletedAt"`, [id, nextVersion]);
+      await this.event(client, "group", id, actor, { ...previous, isActive: false, version: nextVersion, deletedAt: removed.rows[0]!.deletedAt }, "Xóa nhóm kỹ năng");
+      return { deleted: true };
     });
   }
 
@@ -157,7 +184,7 @@ export class CompetencyRepository {
   }
 
   private async groupFor(db: Database, id: string) {
-    const result = await db.query<{ is_active: boolean }>("SELECT is_active FROM ad_comp_groups WHERE id=$1 FOR SHARE", [id]);
+    const result = await db.query<{ is_active: boolean }>("SELECT is_active FROM ad_comp_groups WHERE id=$1 AND deleted_at IS NULL FOR SHARE", [id]);
     if (!result.rowCount) throw new CompetencyError("group_not_found", 404);
     return result.rows[0]!;
   }
@@ -338,38 +365,96 @@ export class CompetencyRepository {
     }
   }
 
+  /**
+   * Locks the course's configuration for a write and reads its links (by skill id). Throws
+   * course_not_found (404) and duplicate_curriculum_course (409) like a manual save.
+   */
+  async lockCourse(client: PoolClient, revisionId: string, code: string) {
+    const revision = await this.revision(client, revisionId);
+    const occurrence = this.courseOccurrences(revision).get(code);
+    if (!occurrence) throw new CompetencyError("course_not_found", 404);
+    if (occurrence.occurrenceCount !== 1) throw new CompetencyError("duplicate_curriculum_course", 409, [code]);
+    const existing = await client.query<{ id: string; version: string; status: "draft" | "active" | "archived"; note: string }>(`SELECT id,version,status,note
+ FROM ad_comp_course_configs WHERE revision_id=$1 AND course_code=$2 FOR UPDATE`, [revisionId, code]);
+    const config = existing.rows[0] ?? null;
+    const links = config ? (await client.query<{ skillId: string; weight: number }>(`SELECT skill_id AS "skillId",weight::float8 AS weight
+ FROM ad_comp_course_links WHERE config_id=$1 ORDER BY skill_id`, [config.id])).rows : [];
+    return { config, links };
+  }
+
+  /**
+   * Writes a whole configuration (its links are replaced) and the history event. The caller holds
+   * the row lock from lockCourse inside this repository's write transaction.
+   */
+  async writeCourse(client: PoolClient, revisionId: string, code: string, config: { id: string } | null, data: ConfigurationChange,
+    actor: AuthenticatedUser, note: string) {
+    validateWeights(data.links, data.status);
+    await this.validateCourseLinks(client, data.links, data.status);
+    const id = config?.id ?? randomUUID();
+    if (config) {
+      await client.query(`UPDATE ad_comp_course_configs SET status=$2,note=$3,version=$4,updated_at=now() WHERE id=$1`,
+        [id, data.status, data.note ?? "", randomUUID()]);
+      await client.query("DELETE FROM ad_comp_course_links WHERE config_id=$1", [id]);
+    } else {
+      await client.query(`INSERT INTO ad_comp_course_configs(id,revision_id,course_code,status,note)
+ VALUES($1,$2,$3,$4,$5)`, [id, revisionId, code, data.status, data.note ?? ""]);
+    }
+    for (const link of [...data.links].sort((a, b) => a.skillId.localeCompare(b.skillId))) {
+      await client.query("INSERT INTO ad_comp_course_links(config_id,skill_id,weight) VALUES($1,$2,$3)",
+        [id, link.skillId, link.weight]);
+    }
+    const snapshot = await this.courseSnapshot(client, revisionId, code);
+    await this.event(client, "course", `${revisionId}:${code}`, actor, snapshot, note);
+    return snapshot;
+  }
+
   async saveCourse(revisionId: string, code: string, version: string, data: ConfigurationChange, actor: AuthenticatedUser) {
     // Reject malformed weights before connecting, including duplicate skill IDs.
     validateWeights(data.links, data.status);
     return this.write(actor, async client => {
-      const revision = await this.revision(client, revisionId);
-      const occurrence = this.courseOccurrences(revision).get(code);
-      if (!occurrence) throw new CompetencyError("course_not_found", 404);
-      if (occurrence.occurrenceCount !== 1) throw new CompetencyError("duplicate_curriculum_course", 409, [code]);
-      const existing = await client.query<{ id: string; version: string }>(`SELECT id,version FROM ad_comp_course_configs
- WHERE revision_id=$1 AND course_code=$2 FOR UPDATE`, [revisionId, code]);
-      const config = existing.rows[0];
+      const { config } = await this.lockCourse(client, revisionId, code);
       if ((config && config.version !== version) || (!config && version !== "new"))
         throw new CompetencyError("configuration_changed", 409);
-      await this.validateCourseLinks(client, data.links, data.status);
-      const id = config?.id ?? randomUUID();
-      if (config) {
-        await client.query(`UPDATE ad_comp_course_configs SET status=$2,note=$3,version=$4,updated_at=now() WHERE id=$1`,
-          [id, data.status, data.note ?? "", randomUUID()]);
-        await client.query("DELETE FROM ad_comp_course_links WHERE config_id=$1", [id]);
-      } else {
-        await client.query(`INSERT INTO ad_comp_course_configs(id,revision_id,course_code,status,note)
- VALUES($1,$2,$3,$4,$5)`, [id, revisionId, code, data.status, data.note ?? ""]);
-      }
-      for (const link of [...data.links].sort((a, b) => a.skillId.localeCompare(b.skillId))) {
-        await client.query("INSERT INTO ad_comp_course_links(config_id,skill_id,weight) VALUES($1,$2,$3)",
-          [id, link.skillId, link.weight]);
-      }
-      const snapshot = await this.courseSnapshot(client, revisionId, code);
-      await this.event(client, "course", `${revisionId}:${code}`, actor, snapshot,
+      return this.writeCourse(client, revisionId, code, config, data, actor,
         data.note?.trim() || (config ? "Cập nhật phân bổ năng lực học phần" : "Thêm phân bổ năng lực học phần"));
-      return snapshot;
     });
+  }
+
+  /**
+   * Makes sure a live catalog skill has a live profile, for an AI proposal: an existing live profile
+   * is kept as it is, a soft-deleted one is restored into the group, otherwise one is created there
+   * (empty scope, active). The group must be live and active. True when a profile was added.
+   */
+  async ensureProfile(client: PoolClient, skillId: string, groupId: string, actor: AuthenticatedUser, note: string): Promise<boolean> {
+    const skill = await client.query("SELECT 1 FROM career_skills WHERE id=$1 AND deleted_at IS NULL FOR SHARE", [skillId]);
+    if (!skill.rowCount) throw new CompetencyError("skill_not_found", 404);
+    const profile = await client.query<{ deleted_at: string | null }>("SELECT deleted_at FROM ad_comp_skills WHERE skill_id=$1 FOR UPDATE", [skillId]);
+    const row = profile.rows[0];
+    if (row && !row.deleted_at) return false;
+    const group = await this.groupFor(client, groupId);
+    if (!group.is_active) throw new CompetencyError("group_unavailable", 409);
+    if (row) {
+      await client.query(`UPDATE ad_comp_skills SET group_id=$2,is_active=true,deleted_at=NULL,version=$3,updated_at=now()
+ WHERE skill_id=$1`, [skillId, groupId, randomUUID()]);
+    } else {
+      await client.query("INSERT INTO ad_comp_skills(skill_id,group_id,scope,is_active) VALUES($1,$2,'',true)", [skillId, groupId]);
+    }
+    await this.event(client, "skill", skillId, actor, await this.skillSnapshot(client, skillId), note);
+    return true;
+  }
+
+  /**
+   * The live catalog skill whose name matches (whitespace, case and accents ignored), or a new one.
+   * New skills land in the shared catalog, so the Nghề nghiệp pages can use them at once.
+   */
+  async catalogSkillByName(client: PoolClient, name: string): Promise<{ id: string; name: string; created: boolean }> {
+    const clean = name.replace(/\s+/g, " ").trim();
+    const catalog = await client.query<{ id: string; name: string }>("SELECT id,name FROM career_skills WHERE deleted_at IS NULL ORDER BY id");
+    const match = catalog.rows.find(row => fold(row.name.replace(/\s+/g, " ").trim()) === fold(clean));
+    if (match) return { ...match, created: false };
+    const id = randomUUID();
+    await client.query("INSERT INTO career_skills(id,name,description) VALUES($1,$2,'')", [id, clean]);
+    return { id, name: clean, created: true };
   }
 
   async archiveCourse(revisionId: string, code: string, version: string, actor: AuthenticatedUser) {

@@ -1,6 +1,6 @@
 # Worker AI (Ollama + Gemma 4 E4B)
 
-Worker này chạy trên máy cá nhân có GPU. Nó lấy job AI từ API EduPath, gọi Ollama ở chính máy này, rồi gửi kết quả về API. Có ba loại job: nhận xét năng lực cho sinh viên (`competency_assessment`, xem `docs/competency-assessment.md`), đề xuất kỹ năng cho vị trí nghề nghiệp ở trang quản trị (`career_skill_suggestion`, xem `docs/career-ai-suggestions.md`) và lời khuyên điều kiện xét tốt nghiệp cho sinh viên, tạo tự động khi sinh viên import bảng điểm hoặc mở trang Điều kiện xét tốt nghiệp (`graduation_advice`, xem `docs/graduation-advice.md`). Dữ liệu chỉ đi giữa API và máy chạy worker; Ollama chỉ nghe trên `127.0.0.1`.
+Worker này chạy trên máy cá nhân có GPU. Nó lấy job AI từ API EduPath, gọi Ollama ở chính máy này, rồi gửi kết quả về API. Có bốn loại job: nhận xét năng lực cho sinh viên (`competency_assessment`, xem `docs/competency-assessment.md`), đề xuất kỹ năng cho vị trí nghề nghiệp ở trang quản trị (`career_skill_suggestion`, xem `docs/career-ai-suggestions.md`), lời khuyên điều kiện xét tốt nghiệp cho sinh viên, tạo tự động khi sinh viên import bảng điểm hoặc mở trang Điều kiện xét tốt nghiệp (`graduation_advice`, xem `docs/graduation-advice.md`), và đề xuất liên kết kỹ năng, trọng số cho học phần ở mục Năng lực của trang quản trị (`competency_course_suggestion`, xem `docs/competency-management.md`; worker lấy loại này sau cùng nên một lần chạy cho cả chương trình không làm sinh viên phải chờ). Dữ liệu chỉ đi giữa API và máy chạy worker; Ollama chỉ nghe trên `127.0.0.1`.
 
 Mã nguồn nằm ở `apps/api/src/ai-worker/`. Cấu hình nằm ở `services/ai/.env` (không commit).
 
@@ -69,6 +69,7 @@ Worker ghi log dạng JSON, mỗi dòng một sự kiện (`job_claimed`, `gener
 **Sau mỗi lần cập nhật mã nguồn, khởi động lại worker** (`Ctrl+C` rồi chạy lại). Worker chỉ báo cho API những loại job có trong mã nguồn lúc nó khởi động. Worker chạy từ bản cũ vẫn làm nhận xét năng lực bình thường, nhưng:
 - bản trước lời khuyên tốt nghiệp không báo `graduation_advice`: lời khuyên nằm chờ trong hàng đợi và trang Điều kiện xét tốt nghiệp của sinh viên hiện trạng thái "Máy AI đang chạy phiên bản cũ…" (API trả `worker.supportsAdvice: false`) cho tới khi worker được khởi động lại;
 - bản trước đề xuất kỹ năng không báo `career_skill_suggestion`: trang Nghề nghiệp báo worker chưa hỗ trợ và job đề xuất nằm chờ.
+- bản trước 16/10/2026 không báo `competency_course_suggestion`: mục Năng lực báo "Máy AI đang chạy phiên bản cũ…" và đề xuất liên kết, trọng số nằm chờ cho tới khi worker được khởi động lại.
 
 Khởi động lại là đủ, không cần đổi `services/ai/.env`.
 
@@ -111,7 +112,7 @@ Khuyến nghị: `OLLAMA_NUM_GPU=38`. Mức 40 nhanh hơn khoảng 5% nhưng ch�
 
 **Chậm bất thường.** Xem `%LOCALAPPDATA%\Ollama\server.log`: kiểm tra Ollama dùng GPU NVIDIA (không phải iGPU Intel) và số lớp được offload. Chạy `ollama ps` để xem tỉ lệ CPU/GPU. Đóng bớt ứng dụng dùng GPU.
 
-**`ai_output_truncated`.** Model viết quá `num_predict` của job (nhận xét năng lực 4096, đề xuất kỹ năng 3072, lời khuyên tốt nghiệp 2048 token). Bấm "Tạo lại nhận xét" trên trang Đánh giá năng lực hoặc "Thử lại" trên trang Điều kiện xét tốt nghiệp; nếu lặp lại thường xuyên, báo lại để rút gọn prompt.
+**`ai_output_truncated`.** Model viết quá `num_predict` của job (nhận xét năng lực 4096, đề xuất kỹ năng 3072, lời khuyên tốt nghiệp 2048, đề xuất học phần 1536 token). Bấm "Tạo lại nhận xét" trên trang Đánh giá năng lực hoặc "Thử lại" trên trang Điều kiện xét tốt nghiệp; nếu lặp lại thường xuyên, báo lại để rút gọn prompt.
 
 **`ai_timeout`.** Một lần sinh vượt `AI_TIMEOUT_MS` hoặc 120 giây không có dữ liệu mới. Thường do model chạy hoàn toàn trên CPU; kiểm tra `OLLAMA_NUM_GPU` và VRAM còn trống.
 

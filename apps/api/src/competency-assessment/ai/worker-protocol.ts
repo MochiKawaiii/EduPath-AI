@@ -1,7 +1,7 @@
 // Constants of the AI worker protocol (/api/worker/competency-assessments), shared by the
 // competency job handlers in worker-router.ts, the career suggestion jobs in
-// careers/ai-suggestions/jobs.ts and the graduation advice jobs in graduation/advice/jobs.ts.
-// Kept apart so none of these modules imports another.
+// careers/ai-suggestions/jobs.ts, the graduation advice jobs in graduation/advice/jobs.ts and the
+// course proposal jobs in competencies/ai/jobs.ts. Kept apart so none of these modules imports another.
 
 export const AI_JOB_LEASE_MINUTES = 15;
 export const AI_JOB_MAX_ATTEMPTS = 2;
@@ -17,7 +17,9 @@ export type AiWorkerErrorCode = (typeof AI_WORKER_ERROR_CODES)[number];
 export const COMPETENCY_ASSESSMENT_KIND = "competency_assessment";
 export const CAREER_SKILL_SUGGESTION_KIND = "career_skill_suggestion";
 export const GRADUATION_ADVICE_KIND = "graduation_advice";
-export const AI_JOB_KINDS = [COMPETENCY_ASSESSMENT_KIND, CAREER_SKILL_SUGGESTION_KIND, GRADUATION_ADVICE_KIND] as const;
+/** AI proposals of skill links and weights for the courses of a CTĐT (admin "Năng lực"). */
+export const COMPETENCY_COURSE_SUGGESTION_KIND = "competency_course_suggestion";
+export const AI_JOB_KINDS = [COMPETENCY_ASSESSMENT_KIND, CAREER_SKILL_SUGGESTION_KIND, GRADUATION_ADVICE_KIND, COMPETENCY_COURSE_SUGGESTION_KIND] as const;
 export type AiJobKind = (typeof AI_JOB_KINDS)[number];
 
 /** Known kinds only, without repeats; missing or empty means competency assessments only. */

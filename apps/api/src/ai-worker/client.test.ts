@@ -67,7 +67,7 @@ describe("job kinds", () => {
     const client = createWorkerClient({ apiUrl: "http://localhost:4000", workerKey: key, fetch });
     await client.heartbeat();
     expect((await client.claim())?.kind).toBe("career_skill_suggestion");
-    for (const call of calls) expect(JSON.parse(String(call.init?.body))).toEqual({ kinds: ["competency_assessment", "career_skill_suggestion", "graduation_advice"] });
+    for (const call of calls) expect(JSON.parse(String(call.init?.body))).toEqual({ kinds: ["competency_assessment", "career_skill_suggestion", "graduation_advice", "competency_course_suggestion"] });
   });
 
   it("reads a graduation advice job", async () => {

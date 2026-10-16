@@ -1,4 +1,4 @@
-import { Router, raw, type ErrorRequestHandler, type Request } from "express";
+import { Router, type ErrorRequestHandler } from "express";
 import { z } from "zod";
 import type { DatabasePool } from "../db/pool.js";
 import { requireAdminAccess } from "../middleware/authorization.js";
@@ -6,16 +6,18 @@ import { CareerError } from "../careers/shared.js";
 import { courseCode } from "../curricula/course-codes.js";
 import { CompetencyError, configurationInput, groupInput, skillInput } from "./model.js";
 import { CompetencyRepository } from "./repository.js";
-import { parseCompetencyWorkbook } from "./workbook.js";
-import { applyCompetencyImport, previewCompetencyImport } from "./import.js";
+import { createCompetencyAiRouter } from "./ai/router.js";
 
 const uuid = z.uuid();
 const emptyQuery = z.object({}).strict();
 const confirmed = z.object({ confirmed: z.literal(true) }).strict();
 const skillChange = skillInput.omit({ existingSkillId: true });
-const upload = raw({ type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", limit: "5mb" });
 
-export function createCompetenciesRouter(pool: DatabasePool | undefined, webOrigin: string) {
+/**
+ * Admin API of "Năng lực" (AD-COMP). `aiSuggestions` turns on the AI proposals of course links and
+ * weights (/ai); like the other AI features it follows whether the server has an AI worker key.
+ */
+export function createCompetenciesRouter(pool: DatabasePool | undefined, webOrigin: string, options: { aiSuggestions?: boolean } = {}) {
   const router = Router();
   const repository = pool ? new CompetencyRepository(pool) : null;
   router.use((_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
@@ -28,6 +30,7 @@ export function createCompetenciesRouter(pool: DatabasePool | undefined, webOrig
     await repository.access(req.session.user!);
     next();
   });
+  if (pool && repository) router.use("/ai", createCompetencyAiRouter(pool, repository, { enabled: Boolean(options.aiSuggestions) }));
 
   router.get("/groups", async (req, res) => {
     emptyQuery.parse(req.query);
@@ -43,6 +46,11 @@ export function createCompetenciesRouter(pool: DatabasePool | undefined, webOrig
   router.patch("/groups/:id", async (req, res) => {
     res.json(await repository!.updateGroup(uuid.parse(req.params.id), uuid.parse(req.get("x-version")),
       groupInput.parse(req.body), req.session.user!));
+  });
+  router.delete("/groups/:id", async (req, res) => {
+    const id = uuid.parse(req.params.id), version = uuid.parse(req.get("x-version"));
+    confirmed.parse(req.body);
+    res.json(await repository!.deleteGroup(id, version, req.session.user!));
   });
 
   router.get("/catalog", async (req, res) => {
@@ -99,30 +107,6 @@ export function createCompetenciesRouter(pool: DatabasePool | undefined, webOrig
     res.json(await repository!.summary(query.revisionId));
   });
 
-  const importSource = (req: Request) => {
-    const revisionId = uuid.parse(req.get("x-revision-id"));
-    const cohortCode = z.string().regex(/^K\d+$/).parse(req.get("x-source-cohort"));
-    if (!Buffer.isBuffer(req.body)) throw new CompetencyError("invalid_workbook", 400);
-    let filename: string;
-    try { filename = decodeURIComponent(req.get("x-filename") ?? "competencies.xlsx"); }
-    catch { throw new CompetencyError("invalid_filename", 400); }
-    if (!/\.xlsx$/i.test(filename) || filename.length > 240 || /[\x00-\x1f\x7f/\\]/.test(filename))
-      throw new CompetencyError("invalid_filename", 400);
-    return { revisionId, cohortCode, filename, buffer: req.body };
-  };
-  router.post("/import/preview", upload, async (req, res) => {
-    const source = importSource(req);
-    const data = await parseCompetencyWorkbook(source.buffer);
-    res.json(await previewCompetencyImport(pool!, data, source));
-  });
-  router.post("/import", upload, async (req, res) => {
-    const source = importSource(req);
-    const token = z.string().min(1).max(200).parse(req.get("x-preview-token"));
-    const data = await parseCompetencyWorkbook(source.buffer);
-    res.json(await applyCompetencyImport(pool!, data, { ...source, token,
-      confirmWarnings: req.get("x-confirm-warnings") === "true", confirmOverwrite: req.get("x-confirm-overwrite") === "true" }, req.session.user!));
-  });
-
   const errors: ErrorRequestHandler = (error, req, res, next) => {
     if (error instanceof CompetencyError) { res.status(error.status).json({ error: error.code, details: error.details }); return; }
     if (error instanceof CareerError) { res.status(error.status).json({ error: error.code }); return; }
@@ -132,12 +116,11 @@ export function createCompetenciesRouter(pool: DatabasePool | undefined, webOrig
       return;
     }
     const databaseError = error as { type?: string; code?: string; constraint?: string; message?: string };
-    if (databaseError.type === "entity.too.large") {
-      res.status(413).json({ error: req.path.startsWith("/import") ? "workbook_too_large" : "competency_input_too_large" }); return;
-    }
+    if (databaseError.type === "entity.too.large") { res.status(413).json({ error: "competency_input_too_large" }); return; }
     if (databaseError.code === "23505") {
       res.status(409).json({ error: req.path.startsWith("/groups") ? "group_exists" :
-        req.path.startsWith("/skills") ? (["competency_skills_pkey", "ad_comp_skills_pkey"].includes(databaseError.constraint ?? "") ? "skill_profile_exists" : "skill_exists") : "configuration_exists" });
+        req.path.startsWith("/skills") ? (["competency_skills_pkey", "ad_comp_skills_pkey"].includes(databaseError.constraint ?? "") ? "skill_profile_exists" : "skill_exists")
+          : req.path.startsWith("/ai") ? "suggestion_pending" : "configuration_exists" });
       return;
     }
     if (databaseError.code === "23514") {

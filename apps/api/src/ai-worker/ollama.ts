@@ -1,4 +1,4 @@
-import { CAREER_SKILL_SUGGESTION_KIND, GRADUATION_ADVICE_KIND, type AiJobKind } from "../competency-assessment/ai/worker-protocol.js";
+import { CAREER_SKILL_SUGGESTION_KIND, COMPETENCY_COURSE_SUGGESTION_KIND, GRADUATION_ADVICE_KIND, type AiJobKind } from "../competency-assessment/ai/worker-protocol.js";
 
 /** Error codes the worker may report to the API (contract C3). */
 export const AI_ERROR_CODES = ["ai_timeout", "ai_output_truncated", "invalid_ai_output", "ollama_unavailable", "ai_failed"] as const;
@@ -319,10 +319,28 @@ export function parseGraduationAdviceOutput(content: string): Record<string, unk
   return output;
 }
 
+/**
+ * Quick local check of a course proposal: a JSON object with a "weights" array (weights mode) or a
+ * "links" array (links and full modes, plus an optional "newSkills" array), all of objects. The API
+ * drops bad items, scales the percentages and validates the rest.
+ */
+export function parseCourseSuggestionOutput(content: string): Record<string, unknown> {
+  const output = parseJsonObject(content);
+  const objects = (value: unknown) => Array.isArray(value) && value.every(isPlainObject);
+  if ("weights" in output) {
+    if (!objects(output.weights)) throw new AiWorkerError("invalid_ai_output", "weights");
+    return output;
+  }
+  if (!objects(output.links)) throw new AiWorkerError("invalid_ai_output", "links");
+  if ("newSkills" in output && !objects(output.newSkills)) throw new AiWorkerError("invalid_ai_output", "newSkills");
+  return output;
+}
+
 /** The local output check for a job kind. */
 export function parseJobOutput(kind: AiJobKind, content: string): Record<string, unknown> {
   if (kind === CAREER_SKILL_SUGGESTION_KIND) return parseCareerSuggestionOutput(content);
   if (kind === GRADUATION_ADVICE_KIND) return parseGraduationAdviceOutput(content);
+  if (kind === COMPETENCY_COURSE_SUGGESTION_KIND) return parseCourseSuggestionOutput(content);
   return parseAiOutput(content);
 }
 

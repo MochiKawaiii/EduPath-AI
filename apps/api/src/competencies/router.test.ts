@@ -5,8 +5,6 @@ import type { AuthenticatedUser } from "../auth/types.js";
 import type { DatabasePool } from "../db/pool.js";
 import { createCompetenciesRouter } from "./router.js";
 
-vi.mock("./workbook.js", () => ({ parseCompetencyWorkbook: vi.fn() }));
-vi.mock("./import.js", () => ({ previewCompetencyImport: vi.fn(), applyCompetencyImport: vi.fn() }));
 
 const actorId = "11111111-1111-4111-8111-111111111111";
 const version = "22222222-2222-4222-8222-222222222222";
@@ -45,6 +43,7 @@ function setup(options: { role?: AuthenticatedUser["role"] | null; revokedAtWrit
       throw Object.assign(new Error("competency_weight_total"), { code: "23514", constraint: "competency_active_total" });
     if (sql.includes("FROM curriculum_revisions r JOIN curricula c")) return rows([revision]);
     if (sql.startsWith("SELECT id,version FROM ad_comp_course_configs")) return rows(configExists ? [{ id: configId, version: configVersion }] : []);
+    if (sql.startsWith("SELECT id,version,status,note")) return rows(configExists ? [{ id: configId, version: configVersion, status: configStatus, note: "" }] : []);
     if (sql.startsWith("SELECT id,course_code")) return rows(configExists ? [{ id: configId, courseCode: "A101", status: configStatus, version: configVersion, note: activeData.note }] : []);
     if (sql.includes("s.id=ANY")) return rows((values?.[0] as string[]).map(id => ({ id, name: "Lập trình", isActive: true, groupActive: !options.inactiveGroup })));
     if (sql.startsWith("INSERT INTO ad_comp_course_configs")) { configExists = true; configVersion = skillId; configStatus = String(values?.[3]); return rows(); }

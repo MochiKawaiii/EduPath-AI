@@ -16,13 +16,8 @@ export type CompetencyCourse = { code: string; name: string; credits: number; ty
 export type CourseLink = { skillId: string; skillName: string; groupId: string; groupName: string; isActive: boolean; weight: number };
 export type CourseDetail = { revisionId: string; courseCode: string; courseName: string; occurrenceCount: number; configId: string | null; status: CourseStatus; version: string | null; note: string; links: CourseLink[]; history: EventEntry[] };
 export type CompetencySummary = { revisionId: string; cohortCode: string; curriculumName: string; curriculumVersion: number; isCurrent: boolean; courseCount: number; activeCount: number; draftCount: number; archivedCount: number; missingCount: number; skillCount: number; unlinkedSkillCount: number; warnings: { code: string; message: string; courseCode?: string }[] };
-export type ImportIssue = { sheet: string; row: number | null; code: string; message: string };
-export type ImportCounts = { skillRows: number; linkRows: number; courses: number; validRows: number; errorRows: number; groupsToCreate: number; skillsToCreate: number; skillsToReuse: number; legacySkillsMapped: number; skillsToUpdate: number; coursesToCreate: number; coursesToUpdate: number; coursesUnchanged: number; linksToCreate: number; linksToUpdate: number; linksToRemove: number };
-export type ImportPreview = { token: string; revisionId: string; cohortCode: string; filename: string; counts: ImportCounts; skills: { name: string; group: string; scope: string; skillId: string | null; legacySkillId: string | null; action: "create" | "reuse" | "unchanged" | "update"; previousScope?: string; previousGroup?: string }[]; courses: { courseCode: string; courseName: string; rowCount: number; totalWeight: number; action: "create" | "update" | "unchanged" | "error"; changes?: { skillName: string; beforeWeight: number | null; afterWeight: number | null }[] }[]; errors: ImportIssue[]; warnings: ImportIssue[]; canImport: boolean; requiresOverwrite: boolean };
-export type ImportResult = { imported: true; summary: ImportCounts; importId: string | null; unchanged: boolean; warnings: ImportIssue[] };
 
 export const statusLabels: Record<CourseStatus, string> = { missing: "Chưa cấu hình", draft: "Bản nháp", active: "Đang áp dụng", archived: "Đã lưu trữ" };
-export const importActionLabels = { create: "Tạo mới", reuse: "Dùng kỹ năng chung", update: "Cập nhật", unchanged: "Không thay đổi", error: "Có lỗi" };
 export const percentage = (weight: number) => `${Number((weight * 100).toFixed(6)).toLocaleString("vi-VN", { maximumFractionDigits: 6 })}%`;
 export const competencyDate = (date: string) => new Date(date).toLocaleString("vi-VN");
 
@@ -73,30 +68,25 @@ const failures: Record<string, string> = {
   invalid_revision: "Hãy chọn đúng phiên bản chương trình đào tạo.",
   revision_not_found: "Phiên bản chương trình đào tạo không còn tồn tại.",
   curriculum_revision_not_found: "Phiên bản chương trình đào tạo không còn tồn tại.",
-  curriculum_not_found: "Phiên bản chương trình đào tạo không còn tồn tại.",
   course_not_found: "Mã học phần không thuộc phiên bản chương trình đã chọn.",
   confirmation_required: "Cần xác nhận thao tác trước khi tiếp tục.",
-  invalid_workbook: "Không đọc được tệp Excel. Hãy chọn tệp .xlsx có trang skills và course_skills.",
-  unsafe_workbook_cell: "Tệp có ô công thức hoặc kiểu dữ liệu không được hỗ trợ. Hãy sửa ô được chỉ ra và chọn lại tệp.",
-  unsupported_workbook: "Tệp Excel chưa đúng mẫu skills và course_skills.",
-  invalid_filename: "Tên tệp chưa hợp lệ. Hãy chọn tệp .xlsx.",
-  workbook_too_large: "Tệp Excel vượt giới hạn 5 MB hoặc giới hạn số dòng.",
-  import_busy: "Hệ thống đang đọc một tệp Excel khác. Vui lòng thử lại sau.",
-  import_timeout: "Đọc tệp Excel quá lâu. Hãy kiểm tra tệp và thử lại.",
-  import_errors: "Tệp còn lỗi. Hãy sửa đầy đủ các lỗi trong bản xem trước rồi chọn lại tệp.",
-  import_has_errors: "Tệp còn lỗi. Hãy sửa đầy đủ các lỗi trong bản xem trước rồi chọn lại tệp.",
-  import_preview_changed: "Tệp hoặc dữ liệu đã thay đổi. Hãy xem trước lại trước khi nhập.",
-  confirm_overwrite: "Cần xác nhận ghi đè những cấu hình đã được chỉnh sửa trước khi nhập.",
-  invalid_source_cohort: "Khóa nguồn chưa hợp lệ. Nhập mã khóa theo dạng K29.",
-  cohort_mismatch: "Khóa nguồn, tên tệp và phiên bản chương trình đã chọn không khớp.",
-  import_cohort_mismatch: "Khóa nguồn, tên tệp và phiên bản chương trình đã chọn không khớp.",
-  stale_preview: "Dữ liệu đã thay đổi hoặc bản xem trước hết hạn. Hãy xem trước lại trước khi nhập.",
-  preview_changed: "Dữ liệu đã thay đổi. Hãy xem trước lại trước khi nhập.",
-  preview_token_invalid: "Bản xem trước không còn hợp lệ. Hãy xem trước lại.",
-  review_warnings: "Cần rà soát và xác nhận tất cả cảnh báo trước khi nhập.",
-  confirm_warnings_required: "Cần xác nhận đã rà soát các cảnh báo trước khi nhập.",
-  overwrite_confirmation_required: "Cần xác nhận ghi đè những cấu hình đã được chỉnh sửa trước khi nhập.",
-  confirm_overwrite_required: "Cần xác nhận ghi đè những cấu hình đã được chỉnh sửa trước khi nhập.",
+  group_not_empty: "Nhóm vẫn còn kỹ năng. Hãy chuyển các kỹ năng sang nhóm khác hoặc xóa chúng trước khi xóa nhóm.",
+  ai_disabled: "Máy chủ chưa bật tính năng AI.",
+  ai_queue_full: "Hàng đợi AI đang đầy. Vui lòng thử lại sau ít phút.",
+  suggestion_not_found: "Không tìm thấy đề xuất này. Hãy tạo đề xuất mới.",
+  suggestion_not_active: "Đề xuất đã xử lý xong hoặc đã được hủy.",
+  suggestion_not_completed: "Đề xuất chưa hoàn tất nên chưa lưu được.",
+  suggestion_already_applied: "Đề xuất này đã được lưu trước đó. Đóng hộp thoại để xem cấu hình học phần.",
+  suggestion_pending: "Học phần đang có một đề xuất AI chờ xử lý.",
+  suggestion_mode_mismatch: "Đề xuất này thuộc lần chạy cho cả chương trình. Hãy lưu từ khung chạy AI cho cả chương trình.",
+  batch_not_found: "Không tìm thấy lần chạy AI này. Hãy tải lại trang.",
+  course_has_no_links: "Học phần chưa liên kết kỹ năng nào. Hãy tạo liên kết kỹ năng trước khi thêm trọng số.",
+  course_already_linked: "Học phần đã có liên kết kỹ năng nên không chạy lại cho cả chương trình.",
+  no_candidate_skills: "Không còn kỹ năng nào để AI chọn cho học phần này.",
+  no_active_groups: "Chưa có nhóm kỹ năng đang sử dụng. Hãy thêm nhóm kỹ năng trước.",
+  links_changed: "Liên kết kỹ năng của học phần vừa thay đổi. Hãy tạo lại đề xuất trọng số.",
+  skill_already_linked: "Có kỹ năng đã được liên kết với học phần. Hãy kiểm tra lại danh sách.",
+  group_required: "Hãy chọn nhóm cho kỹ năng chưa có trong danh mục đánh giá năng lực.",
 };
 
 export async function readCompetencyResponse<T>(response: Response): Promise<T> {

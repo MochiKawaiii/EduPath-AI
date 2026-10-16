@@ -21,10 +21,3 @@ export function validateWeights(links: {skillId: string; weight: number}[], stat
   if (status === "active" && (!links.length || Math.abs(total - 1) > WEIGHT_TOLERANCE)) throw new CompetencyError("weight_total_invalid", 422, [`Tổng trọng số hiện tại ${(total * 100).toFixed(4)}%; cần 100%.`]);
   return total;
 }
-export type Issue = { sheet: string; row: number | null; code: string; message: string };
-export type WorkbookData = {
-  skills: { row: number; name: string; group: string; scope: string; declaredCourseCount: number }[];
-  links: { row: number; courseCode: string; courseName: string; skillName: string; group: string; weight: number }[];
-  groups: string[]; errors: Issue[]; warnings: Issue[];
-  counts: { skillRows: number; linkRows: number; courses: number };
-};
