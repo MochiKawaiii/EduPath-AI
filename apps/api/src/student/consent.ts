@@ -5,7 +5,7 @@ import type { DatabasePool } from "../db/pool.js";
 // Date of the privacy policy a student agrees to before importing a transcript or running a
 // competency assessment.
 // Must equal `policyVersion` in apps/web/src/public-information.ts (checked by consent.test.ts).
-export const TRANSCRIPT_POLICY_VERSION = "2026-10-16";
+export const TRANSCRIPT_POLICY_VERSION = "2026-10-11";
 
 /** data_consents.purpose values allowed by migrations 018 and 030. */
 export type ConsentPurpose = "transcript_processing" | "competency_assessment";

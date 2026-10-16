@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  aiAnnouncement, aiErrorMessage, aiRetryErrorMessage, aiScoringFailure, aiStateCopy, bucketSkills, canRegenerate, cleanKeyText, cloudModelName, dataUsedLine,
-  deficitText, eligibilityDisplay, errorMessage, filterSkills, formatElapsed, formatScore, gapStatusDisplay, groupEvidenceCounts, historySentence, historyYears,
-  isAiScored, isCloudModel, isPreconditionError, PRIORITY_LABELS, levelStep, mapAiOutput, modelLabel, needsNewAssessment, plansFor, scoreDifference, shouldPoll,
-  shownResult, showsConfidence, sortRequirements, termLabel, EMPTY_SKILL_FILTERS, TRANSCRIPT_CHANGED_RETRY,
+  aiStateCopy, bucketSkills, canRegenerate, cleanKeyText, dataUsedLine, deficitText, eligibilityDisplay, errorMessage, filterSkills, formatScore,
+  gapStatusDisplay, groupEvidenceCounts, historySentence, historyYears, isPreconditionError, PRIORITY_LABELS, levelStep, mapAiOutput, modelLabel, plansFor,
+  scoreDifference, shouldPoll, sortRequirements, termLabel, EMPTY_SKILL_FILTERS,
 } from "./student-competency-data";
-import { fixtureAiAssessment, fixtureAiOutput, fixtureAiResult, fixtureAssessment, fixtureResult } from "./student-competency.fixture";
+import { fixtureAiOutput, fixtureAssessment, fixtureResult } from "./student-competency.fixture";
 import type { CareerRequirementResult } from "./competency-assessment-types";
 
 describe("polling and AI actions", () => {
@@ -229,66 +228,5 @@ describe("mapAiOutput", () => {
     expect(mapped.strengths).toEqual([]);
     expect(mapped.improvements).toEqual([]);
     expect(mapped.careerFit).toBe("");
-  });
-});
-
-describe("AI 100%", () => {
-  it("shows the engine's result for a system assessment, the AI's as it is for an AI-100% one, none while the AI works", () => {
-    expect(shownResult(fixtureAssessment())).toBe(fixtureResult);
-    expect(shownResult({ ...fixtureAssessment(), scoring: "system" })).toBe(fixtureResult);
-    // A row stored before AI 100% has no scoring: the engine's.
-    expect(shownResult({ ...fixtureAssessment(), scoring: undefined, aiResult: undefined })).toBe(fixtureResult);
-    expect(shownResult(fixtureAiAssessment())).toBe(fixtureAiResult);
-    for (const status of ["queued", "processing", "failed", "cancelled", "deferred"] as const) expect(shownResult(fixtureAiAssessment(status))).toBeNull();
-    // An AI-100% assessment never falls back to the engine's numbers.
-    expect(shownResult({ ...fixtureAiAssessment(), aiResult: undefined })).toBeNull();
-    expect([isAiScored(fixtureAiAssessment()), isAiScored(fixtureAssessment()), isAiScored(null)]).toEqual([true, false, false]);
-  });
-  it("leaves out confidence and coverage only when the result has none", () => {
-    expect(showsConfidence(fixtureResult)).toBe(true);
-    expect(showsConfidence(fixtureAiResult)).toBe(false);
-  });
-  it("counts the wait in mm:ss", () => {
-    expect(formatElapsed(0)).toBe("00:00");
-    expect(formatElapsed(83_400)).toBe("01:23");
-    expect(formatElapsed(59 * 60_000 + 59_999)).toBe("59:59");
-    expect(formatElapsed(3_723_000)).toBe("1:02:03");
-    // Clock skew or a bad date never shows a negative or broken time.
-    expect(formatElapsed(-5_000)).toBe("00:00");
-    expect(formatElapsed(Number.NaN)).toBe("00:00");
-  });
-  it("names Claude and never the team's machine in cloud mode", () => {
-    expect(modelLabel("claude-haiku-5-5")).toBe("Claude Haiku 5.5");
-    expect(modelLabel("claude-haiku-5-5-20261001")).toBe("Claude Haiku 5.5");
-    expect(modelLabel("claude-opus-5")).toBe("Claude Opus 5");
-    expect([isCloudModel("claude-haiku-5-5"), isCloudModel("gemma4:e4b"), isCloudModel(null)]).toEqual([true, false, false]);
-    expect([cloudModelName(null), cloudModelName("gemma4:e4b"), cloudModelName("claude-haiku-5-5")]).toEqual(["Claude Haiku 5.5", "Claude Haiku 5.5", "Claude Haiku 5.5"]);
-    for (const code of ["ai_timeout", "worker_timeout", "ai_output_truncated", "invalid_ai_output", "ai_failed", "ollama_unavailable", null]) {
-      expect(aiErrorMessage(code, true)).not.toMatch(/máy/i);
-    }
-    expect(aiErrorMessage("ai_timeout")).toBe("Máy AI xử lý quá thời gian cho phép.");
-    expect(aiStateCopy("queued", false, true, true).title).toBe("Đang xếp hàng tạo nhận xét");
-    expect(aiStateCopy("disabled", false, false, true).text).not.toMatch(/máy/i);
-  });
-  it("explains a failed AI run and the errors of a retry in the student's words", () => {
-    expect(aiScoringFailure("failed", "ai_timeout")).toBe("AI xử lý quá thời gian cho phép.");
-    expect(aiScoringFailure("deferred", null)).toBe("Hàng đợi AI đang đầy nên yêu cầu chưa được xử lý.");
-    expect(aiScoringFailure("cancelled", null)).toBe("Yêu cầu tính kết quả đã bị hủy.");
-    expect(aiRetryErrorMessage("transcript_changed")).toBe(TRANSCRIPT_CHANGED_RETRY);
-    // Both 409s that need a new assessment say which data changed and point to "Đánh giá lại".
-    expect([needsNewAssessment("transcript_changed"), needsNewAssessment("assessment_outdated"), needsNewAssessment("queue_full"), needsNewAssessment(null)]).toEqual([true, true, false, false]);
-    expect(aiRetryErrorMessage("assessment_outdated")).toBe("Chương trình đào tạo hoặc trọng số kỹ năng đã thay đổi sau lần đánh giá này nên không tính lại được. Hãy bấm “Đánh giá lại” để tạo lần đánh giá mới.");
-    expect(TRANSCRIPT_CHANGED_RETRY).toContain("“Đánh giá lại”");
-    expect(aiRetryErrorMessage("queue_full")).not.toContain("nhận xét");
-    expect(aiRetryErrorMessage("assessment_not_found")).toBe(errorMessage("assessment_not_found"));
-  });
-  it("announces the AI's progress", () => {
-    const scoring = { aiScored: true, hasResult: false, cloud: true, workerOnline: false, aiEnabled: true };
-    expect(aiAnnouncement("processing", scoring)).toBe("AI đang tính kết quả của bạn.");
-    expect(aiAnnouncement("failed", scoring)).toBe("AI chưa tính được kết quả.");
-    expect(aiAnnouncement("completed", { ...scoring, hasResult: true })).toBe("AI đã tính xong kết quả của bạn.");
-    expect(aiAnnouncement("queued", { ...scoring, aiScored: false })).toBe("Đang xếp hàng tạo nhận xét");
-    expect(aiAnnouncement("queued", { ...scoring, aiScored: false, cloud: false })).toBe("Đang chờ máy AI kết nối");
-    expect(aiAnnouncement("completed", { ...scoring, aiScored: false })).toBe("Đã có nhận xét từ EduPath AI.");
   });
 });

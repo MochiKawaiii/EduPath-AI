@@ -467,10 +467,6 @@ export type AssessmentResult = {
 
 export type AiStatus = "disabled" | "deferred" | "queued" | "processing" | "completed" | "failed" | "cancelled";
 export type AiPriority = "high" | "medium" | "low";
-/** Who computed the numbers: "system" = the engine (the AI only comments), "ai" = AI 100% (the AI computes them, see aiResult). */
-export type AssessmentScoring = "system" | "ai";
-/** Where the AI runs: "cloud" = Claude API, which computes the whole result (AI 100%); "worker" = the team's local model, which only comments. */
-export type AiMode = "cloud" | "worker" | "disabled";
 
 export type AiOutput = {
   summary: string;
@@ -488,16 +484,7 @@ export type StoredAssessment = {
   id: string;
   createdAt: string;
   meta: AssessmentMeta;
-  /** The engine's result. With scoring "ai" only its term-by-term history, plans, progress and warnings are shown. */
   result: AssessmentResult;
-  /** Missing on rows stored before AI 100% → "system". */
-  scoring?: AssessmentScoring;
-  /**
-   * AI 100% only: the engine result with the AI's numbers merged in (skills, groups and overall score/level,
-   * career requirement status/score/level/deficit, fit code and label; confidence, coverage and fit null).
-   * Null until the AI scoring has finished, and after it failed.
-   */
-  aiResult?: AssessmentResult | null;
   ai: { status: AiStatus; errorCode: string | null; model: string | null; completedAt: string | null; output: AiOutput | null };
 };
 
@@ -508,8 +495,6 @@ export type LatestAssessmentResponse = {
   workerOnline: boolean;
   /** Policy version of this student's active competency consent (null = none; missing on an older API). */
   consentVersion?: string | null;
-  /** Missing on an older API → "worker". */
-  aiMode?: AiMode;
 };
 /** GET /api/student/competency-assessments/latest/status */
 export type AssessmentStatusResponse = { id: string | null; aiStatus: AiStatus | null; aiErrorCode: string | null; workerOnline: boolean };

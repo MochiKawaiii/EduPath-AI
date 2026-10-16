@@ -22,15 +22,11 @@ const student = {
 } satisfies AuthenticatedUser;
 
 // Synthetic, minimal: the router only stores and returns what the engine produced.
-const result = { meta: { calcVersion: "comp-calc-v1", transcriptVersion }, overall: { score: 72 }, skills: [{ key: "S01", skillId: "skill-1" }] } as unknown as AssessmentResult;
+const result = { meta: { calcVersion: "comp-calc-v1", transcriptVersion }, overall: { score: 72 } } as unknown as AssessmentResult;
 const inputs = { transcript: { version: transcriptVersion } } as unknown as AssessmentInputs;
 
 type Row = { id: string; user_id: string; ai_status: string; created_at: string };
-type State = {
-  active: boolean; transcript: string | null; recentPrecheck: boolean; recentInTx: boolean; rows: Row[]; consent: string | null;
-  /** A completed row whose comments failed (ai_output null). */
-  noOutputId?: string;
-};
+type State = { active: boolean; transcript: string | null; recentPrecheck: boolean; recentInTx: boolean; rows: Row[]; consent: string | null };
 
 function setup(options: { state?: Partial<State>; aiQueue?: CompetencyAiQueueHook; session?: boolean; noPool?: boolean; loadError?: Error } = {}) {
   const state: State = {
@@ -64,10 +60,7 @@ function setup(options: { state?: Partial<State>; aiQueue?: CompetencyAiQueueHoo
     }
     if (sql.startsWith("SELECT a.id,a.ai_status")) {
       const mine = state.rows.filter((row) => row.user_id === params[1]);
-      const rows = own(params).map((row) => ({
-        id: row.id, ai_status: row.ai_status, computed: result, transcript_version: transcriptVersion,
-        no_output: row.ai_status !== "completed" || row.id === state.noOutputId, latest: mine[0]?.id === row.id,
-      }));
+      const rows = own(params).map((row) => ({ id: row.id, ai_status: row.ai_status, computed: result, latest: mine[0]?.id === row.id }));
       return { rowCount: rows.length, rows };
     }
     if (sql.startsWith("SELECT id FROM stu_comp_assessments WHERE id=$1 AND user_id=$2")) { const rows = own(params); return { rowCount: rows.length, rows }; }
@@ -174,7 +167,7 @@ describe("POST /", () => {
     const aiQueue = queue();
     const t = setup({ aiQueue });
     await create(t.app).expect(201);
-    expect(aiQueue.enqueue).toHaveBeenCalledWith(expect.anything(), { assessmentId: t.inserted(), userId: studentId, result, inputs });
+    expect(aiQueue.enqueue).toHaveBeenCalledWith(expect.anything(), { assessmentId: t.inserted(), userId: studentId, result });
     const calls = t.sql();
     expect(calls.findIndex((sql) => sql.includes("SET ai_status='queued'"))).toBeLessThan(calls.indexOf("COMMIT"));
   });
@@ -232,14 +225,8 @@ describe("GET /latest and /latest/status", () => {
 
   it("reports the worker heartbeat when AI is enabled and null when nothing exists", async () => {
     const t = setup({ aiQueue: queue(), state: { rows: [] } });
-    await request(t.app).get("/assessments/latest").expect(200, { assessment: null, aiEnabled: true, workerOnline: true, consentVersion: null, aiMode: "worker" });
+    await request(t.app).get("/assessments/latest").expect(200, { assessment: null, aiEnabled: true, workerOnline: true, consentVersion: null });
     await request(t.app).get("/assessments/latest/status").expect(200, { id: null, aiStatus: null, aiErrorCode: null, workerOnline: true });
-  });
-
-  it("names the AI mode: disabled, laptop worker or cloud (AI 100%)", async () => {
-    expect((await request(setup().app).get("/assessments/latest").expect(200)).body.aiMode).toBe("disabled");
-    const cloud = setup({ aiQueue: queue({ mode: "cloud" }) });
-    expect((await request(cloud.app).get("/assessments/latest").expect(200)).body).toMatchObject({ aiMode: "cloud", aiEnabled: true, workerOnline: true });
   });
 
   it("returns this student's active competency consent version", async () => {
@@ -289,34 +276,6 @@ describe("POST /:id/ai", () => {
     expect(aiQueue.regenerate).not.toHaveBeenCalled();
     const lookup = foreign.clientQuery.mock.calls.find(([sql]) => String(sql).startsWith("SELECT a.id,a.ai_status"));
     expect(lookup?.[1]).toEqual([foreignId, studentId]);
-  });
-
-  it("AI 100%: reads the raw data again and queues it with the stored result", async () => {
-    const aiQueue = queue({ mode: "cloud" });
-    const t = setup({ aiQueue });
-    await request(t.app).post(`/assessments/${latestId}/ai`).set("Origin", origin).expect(202, { aiStatus: "queued" });
-    expect(t.loadInputs).toHaveBeenCalledTimes(1);
-    expect(aiQueue.regenerate).toHaveBeenCalledWith(expect.anything(), { assessmentId: latestId, userId: studentId, result, inputs });
-  });
-
-  it("AI 100%: refuses when the transcript or the skills changed since the assessment", async () => {
-    const changed = setup({ aiQueue: queue({ mode: "cloud" }) });
-    changed.loadInputs.mockResolvedValueOnce({ transcript: { version: "88888888-8888-4888-8888-888888888888" } } as unknown as AssessmentInputs);
-    await request(changed.app).post(`/assessments/${latestId}/ai`).set("Origin", origin).expect(409, { error: "transcript_changed" });
-    const outdated = setup({ aiQueue: queue({ mode: "cloud" }) });
-    outdated.calculate.mockReturnValueOnce({ ...result, skills: [{ key: "S01", skillId: "skill-2" }] } as unknown as AssessmentResult);
-    await request(outdated.app).post(`/assessments/${latestId}/ai`).set("Origin", origin).expect(409, { error: "assessment_outdated" });
-    expect(changed.sql()).toContain("ROLLBACK");
-  });
-
-  it("AI 100%: may redo a completed assessment whose comments failed, not one with comments", async () => {
-    const rows = [{ id: latestId, user_id: studentId, ai_status: "completed", created_at: "2026-10-11T02:00:00.000Z" }];
-    const failedComments = setup({ aiQueue: queue({ mode: "cloud" }), state: { rows: structuredClone(rows), noOutputId: latestId } });
-    await request(failedComments.app).post(`/assessments/${latestId}/ai`).set("Origin", origin).expect(202, { aiStatus: "queued" });
-    const withComments = setup({ aiQueue: queue({ mode: "cloud" }), state: { rows: structuredClone(rows) } });
-    await request(withComments.app).post(`/assessments/${latestId}/ai`).set("Origin", origin).expect(409, { error: "ai_not_regenerable" });
-    const laptop = setup({ aiQueue: queue(), state: { rows: structuredClone(rows), noOutputId: latestId } });
-    await request(laptop.app).post(`/assessments/${latestId}/ai`).set("Origin", origin).expect(409, { error: "ai_not_regenerable" });
   });
 });
 

@@ -27,42 +27,32 @@ export type AiValidationContext = OutputSchemaContext & {
   courseCodes: ReadonlySet<string>;
 };
 
+const text = (max: number) => z.string().max(max).refine((value) => value.trim().length > 0, "empty");
 const priority = z.enum(AI_PRIORITIES);
+const courseChoice = z.object({ courseCode: z.string().max(32), reason: text(L.courseReason) }).strict();
 
-/**
- * The commentary schema with every text limit multiplied by `lengthFactor`. The laptop worker's grammar
- * enforces the limits exactly (factor 1); Claude's structured outputs cannot carry maxLength, so the cloud
- * runner (AI 100%) validates with some slack.
- */
-function outputSchema(lengthFactor: number) {
-  const text = (max: number) => z.string().max(Math.round(max * lengthFactor)).refine((value) => value.trim().length > 0, "empty");
-  const courseChoice = z.object({ courseCode: z.string().max(32), reason: text(L.courseReason) }).strict();
-  return z.object({
-    summary: text(L.summary),
-    groupInsights: z.array(z.object({ groupKey: z.string().max(16), comment: text(L.groupComment) }).strict()).max(L.groupInsights),
-    strengths: z.array(z.object({ skillKey: z.string().max(16), comment: text(L.skillComment) }).strict()).max(L.strengths),
-    improvements: z.array(z.object({
-      skillKey: z.string().max(16),
-      priority,
-      // comp-v4. Missing only from the output of a job queued before it (its schema has no courses): read as [].
-      courses: z.array(courseChoice).max(L.improvementCourses).optional(),
-      comment: text(L.skillComment)
-    }).strict()).max(L.improvements),
-    careerFit: z.object({ comment: text(L.careerFit) }).strict(),
-    gaps: z.array(z.object({
-      skillKey: z.string().max(16),
-      priority,
-      explanation: text(L.gapExplanation),
-      courses: z.array(courseChoice).max(L.gapCourses),
-      selfStudy: z.array(text(L.selfStudyItem)).max(L.selfStudy)
-    }).strict()).max(L.gaps),
-    progress: text(L.progress),
-    nextSteps: z.array(text(L.nextStep)).min(L.nextStepsMin).max(L.nextStepsMax)
-  }).strict();
-}
-
-export const aiOutputSchema = outputSchema(1);
-const schemasByFactor = new Map<number, ReturnType<typeof outputSchema>>([[1, aiOutputSchema]]);
+export const aiOutputSchema = z.object({
+  summary: text(L.summary),
+  groupInsights: z.array(z.object({ groupKey: z.string().max(16), comment: text(L.groupComment) }).strict()).max(L.groupInsights),
+  strengths: z.array(z.object({ skillKey: z.string().max(16), comment: text(L.skillComment) }).strict()).max(L.strengths),
+  improvements: z.array(z.object({
+    skillKey: z.string().max(16),
+    priority,
+    // comp-v4. Missing only from the output of a job queued before it (its schema has no courses): read as [].
+    courses: z.array(courseChoice).max(L.improvementCourses).optional(),
+    comment: text(L.skillComment)
+  }).strict()).max(L.improvements),
+  careerFit: z.object({ comment: text(L.careerFit) }).strict(),
+  gaps: z.array(z.object({
+    skillKey: z.string().max(16),
+    priority,
+    explanation: text(L.gapExplanation),
+    courses: z.array(courseChoice).max(L.gapCourses),
+    selfStudy: z.array(text(L.selfStudyItem)).max(L.selfStudy)
+  }).strict()).max(L.gaps),
+  progress: text(L.progress),
+  nextSteps: z.array(text(L.nextStep)).min(L.nextStepsMin).max(L.nextStepsMax)
+}).strict();
 
 /* ------------------------------------------------------------------------ */
 
@@ -116,11 +106,8 @@ export function validationContextFromAiInput(input: { schema: unknown; user: unk
 
 const fail = (reason: AiValidationReason, path: string): AiValidationResult => ({ ok: false, error: { code: "invalid_ai_output", reason, path } });
 
-export function validateAiOutput(raw: unknown, context: AiValidationContext, options: { lengthFactor?: number } = {}): AiValidationResult {
-  const factor = options.lengthFactor ?? 1;
-  let schema = schemasByFactor.get(factor);
-  if (!schema) { schema = outputSchema(factor); schemasByFactor.set(factor, schema); }
-  const parsed = schema.safeParse(raw);
+export function validateAiOutput(raw: unknown, context: AiValidationContext): AiValidationResult {
+  const parsed = aiOutputSchema.safeParse(raw);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     return fail("schema", issue ? issue.path.join(".") : "");

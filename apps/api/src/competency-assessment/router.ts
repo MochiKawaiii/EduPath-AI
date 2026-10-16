@@ -19,10 +19,8 @@ import type { AssessmentInputs, AssessmentResult } from "./types.js";
  */
 export interface CompetencyAiQueueHook {
   enabled: boolean;
-  /** "cloud" = AI 100% (ai-cloud/, needs `inputs`); missing or "worker" = laptop comments (ai/queue.ts). */
-  mode?: "worker" | "cloud";
-  enqueue(client: PoolClient, input: { assessmentId: string; userId: string; result: AssessmentResult; inputs?: AssessmentInputs }): Promise<"queued" | "deferred">;
-  regenerate(client: PoolClient, input: { assessmentId: string; userId: string; result: AssessmentResult; inputs?: AssessmentInputs }): Promise<"queued" | "deferred">;
+  enqueue(client: PoolClient, input: { assessmentId: string; userId: string; result: AssessmentResult }): Promise<"queued" | "deferred">;
+  regenerate(client: PoolClient, input: { assessmentId: string; userId: string; result: AssessmentResult }): Promise<"queued" | "deferred">;
   cancel(client: PoolClient, input: { assessmentId: string; userId: string }): Promise<boolean>;
   workerOnline(db: Pick<DatabasePool, "query">): Promise<boolean>;
 }
@@ -69,8 +67,6 @@ export function createCompetencyAssessmentRouter(
   const loadInputs = options.loadInputs ?? loadAssessmentInputs;
   const calculate = options.calculate ?? calculateAssessment;
   const aiEnabled = Boolean(aiQueue?.enabled);
-  const cloud = aiEnabled && aiQueue!.mode === "cloud";
-  const aiMode = !aiEnabled ? "disabled" : cloud ? "cloud" : "worker";
   const workerOnline = async () => aiEnabled ? aiQueue!.workerOnline(pool!) : false;
 
   router.use(requireAuthentication);
@@ -101,7 +97,7 @@ export function createCompetencyAssessmentRouter(
       if (await withinCooldown(client, user.userId)) throw new AssessmentError("assessment_too_frequent", 429);
       await recordConsent(client, user.userId, "competency_assessment");
       const id = await insertAssessment(client, { userId: user.userId, transcriptVersion: inputs.transcript.version, result });
-      if (aiEnabled) await aiQueue!.enqueue(client, { assessmentId: id, userId: user.userId, result, inputs });
+      if (aiEnabled) await aiQueue!.enqueue(client, { assessmentId: id, userId: user.userId, result });
       await pruneAssessments(client, user.userId);
       return findAssessment(client, user.userId, id);
     });
@@ -114,7 +110,7 @@ export function createCompetencyAssessmentRouter(
     const userId = req.session.user!.userId;
     const consentVersion = await activeConsentVersion(pool!, userId, "competency_assessment");
     const assessment = await latestAssessment(pool!, userId);
-    res.json({ assessment, aiEnabled, workerOnline: await workerOnline(), consentVersion, aiMode });
+    res.json({ assessment, aiEnabled, workerOnline: await workerOnline(), consentVersion });
   });
 
   router.get("/latest/status", async (req, res) => {
@@ -127,26 +123,17 @@ export function createCompetencyAssessmentRouter(
     const id = assessmentId.safeParse(req.params.id);
     if (!id.success) { res.status(404).json({ error: "assessment_not_found" }); return; }
     const user = req.session.user!;
-    // AI 100% builds its prompt from the raw data, which is not stored: read it again, and recompute to
-    // make sure the CTĐT and weights still give the same skills as the stored result.
-    const fresh = cloud ? await loadInputs(pool!, user.userId, options.promptVersion ? { promptVersion: options.promptVersion } : {}) : null;
     const outcome = await inTransaction(pool!, async (client) => {
       await lockStudent(client, user);
-      const found = await client.query<{ id: string; ai_status: AiStatus; computed: AssessmentResult; transcript_version: string; latest: boolean; no_output: boolean }>(
-        `SELECT a.id,a.ai_status,a.computed,a.transcript_version,a.ai_output IS NULL AS no_output,a.id=(SELECT l.id FROM stu_comp_assessments l WHERE l.user_id=$2
+      const found = await client.query<{ id: string; ai_status: AiStatus; computed: AssessmentResult; latest: boolean }>(
+        `SELECT a.id,a.ai_status,a.computed,a.id=(SELECT l.id FROM stu_comp_assessments l WHERE l.user_id=$2
            ORDER BY l.created_at DESC,l.id DESC LIMIT 1) AS latest
          FROM stu_comp_assessments a WHERE a.id=$1 AND a.user_id=$2 FOR UPDATE OF a`, [id.data, user.userId]);
       const row = found.rows[0];
       if (!row) throw new AssessmentError("assessment_not_found", 404);
-      // Only the newest result shows comments; regenerating an older one would cancel its job. AI 100% may also
-      // redo a completed job whose comments failed (both steps run again).
-      const regenerable = REGENERABLE_AI_STATUSES.includes(row.ai_status) || (cloud && row.ai_status === "completed" && row.no_output);
-      if (!row.latest || !regenerable) throw new AssessmentError("ai_not_regenerable", 409);
-      if (!fresh) return aiQueue!.regenerate(client, { assessmentId: row.id, userId: user.userId, result: row.computed });
-      if (fresh.transcript.version !== row.transcript_version) throw new AssessmentError("transcript_changed", 409);
-      const sameSkills = (result: AssessmentResult) => JSON.stringify(result.skills.map((skill) => [skill.key, skill.skillId]).sort());
-      if (sameSkills(calculate(fresh)) !== sameSkills(row.computed)) throw new AssessmentError("assessment_outdated", 409);
-      return aiQueue!.regenerate(client, { assessmentId: row.id, userId: user.userId, result: row.computed, inputs: fresh });
+      // Only the newest result shows comments; regenerating an older one would cancel its job.
+      if (!row.latest || !REGENERABLE_AI_STATUSES.includes(row.ai_status)) throw new AssessmentError("ai_not_regenerable", 409);
+      return aiQueue!.regenerate(client, { assessmentId: row.id, userId: user.userId, result: row.computed });
     });
     if (outcome === "deferred") { res.status(429).json({ error: "queue_full" }); return; }
     res.status(202).json({ aiStatus: outcome });

@@ -58,16 +58,7 @@ const AI_ERROR_MESSAGES: Record<string, string> = {
   worker_timeout: "Máy AI chưa xử lý xong trong thời gian cho phép.",
   ai_failed: "Máy AI gặp lỗi khi tạo nhận xét.",
 };
-/** The same for the cloud AI (Claude), which is no machine of the team: never "máy AI". */
-const CLOUD_AI_ERROR_MESSAGES: Record<string, string> = {
-  ai_timeout: "AI xử lý quá thời gian cho phép.",
-  worker_timeout: "AI chưa xử lý xong trong thời gian cho phép.",
-  ai_output_truncated: "Kết quả AI trả về bị cắt giữa chừng nên chưa dùng được.",
-  invalid_ai_output: "Kết quả AI trả về chưa đúng yêu cầu nên hệ thống không dùng.",
-  ai_failed: "AI gặp lỗi khi xử lý.",
-};
-export function aiErrorMessage(code: string | null | undefined, cloud = false): string {
-  if (cloud) return CLOUD_AI_ERROR_MESSAGES[code ?? ""] ?? "AI chưa xử lý được yêu cầu.";
+export function aiErrorMessage(code: string | null | undefined): string {
   return AI_ERROR_MESSAGES[code ?? ""] ?? "Chưa tạo được nhận xét.";
 }
 
@@ -330,14 +321,13 @@ export function canRegenerate(status: AiStatus, aiEnabled: boolean): boolean {
   return status === "failed" || status === "cancelled" || status === "deferred" || (status === "disabled" && aiEnabled);
 }
 
-/** `cloud`: the AI is Claude (aiMode "cloud"), so the local machine and its connection are never mentioned. */
-export function aiStateCopy(status: AiStatus, workerOnline: boolean, aiEnabled: boolean, cloud = false): { title: string; text: string } {
+export function aiStateCopy(status: AiStatus, workerOnline: boolean, aiEnabled: boolean): { title: string; text: string } {
   switch (status) {
     case "disabled": return aiEnabled
       ? { title: "Chưa có nhận xét cho lần đánh giá này", text: "Nhận xét AI vừa được bật. Bạn có thể tạo nhận xét cho kết quả hiện tại." }
-      : { title: "Nhận xét AI chưa được bật", text: cloud ? "Kết quả bên dưới do hệ thống tính và đã đầy đủ." : "Kết quả bên dưới do hệ thống tính và đã đầy đủ. Khi máy AI của nhóm phát triển hoạt động, bạn có thể nhận thêm lời nhận xét." };
+      : { title: "Nhận xét AI chưa được bật", text: "Kết quả bên dưới do hệ thống tính và đã đầy đủ. Khi máy AI của nhóm phát triển hoạt động, bạn có thể nhận thêm lời nhận xét." };
     case "deferred": return { title: "Hàng đợi AI đang đầy", text: "Kết quả tính toán đã sẵn sàng. Bấm tạo nhận xét sau ít phút để xếp hàng lại." };
-    case "queued": return workerOnline || cloud
+    case "queued": return workerOnline
       ? { title: "Đang xếp hàng tạo nhận xét", text: "Nhận xét thường mất vài phút. Bạn có thể xem kết quả bên dưới trong lúc chờ." }
       : { title: "Đang chờ máy AI kết nối", text: "Yêu cầu đã được giữ trong hàng đợi và sẽ được xử lý khi máy AI kết nối lại." };
     case "processing": return { title: "EduPath AI đang phân tích kết quả", text: "Mô hình đang đọc kết quả đã tính và viết nhận xét cho bạn. Bạn có thể rời trang và quay lại sau." };
@@ -347,18 +337,12 @@ export function aiStateCopy(status: AiStatus, workerOnline: boolean, aiEnabled: 
   }
 }
 
-/** "gemma4:e4b" → "Gemma 4 E4B", "claude-haiku-5-5" → "Claude Haiku 5.5". */
+/** "gemma4:e4b" → "Gemma 4 E4B". */
 export function modelLabel(model: string | null | undefined): string {
   if (!model) return "Gemma 4 E4B";
-  const gemma = /^gemma(\d+):e(\d+)b/i.exec(model);
-  if (gemma) return `Gemma ${gemma[1]} E${gemma[2]}B`;
-  const claude = /^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?![\d.])/i.exec(model);
-  if (!claude) return model;
-  const family = claude[1] ?? "";
-  return `Claude ${family.charAt(0).toUpperCase()}${family.slice(1).toLowerCase()} ${claude[2]}${claude[3] ? `.${claude[3]}` : ""}`;
+  const match = /^gemma(\d+):e(\d+)b/i.exec(model);
+  return match ? `Gemma ${match[1]} E${match[2]}B` : model;
 }
-/** A Claude model: it runs at Anthropic, not on the team's machine. */
-export const isCloudModel = (model: string | null | undefined) => /^claude-/i.test(model ?? "");
 
 export type MappedAiOutput = {
   summary: string;
@@ -454,80 +438,6 @@ export function mapAiOutput(output: AiOutput | null | undefined, result: Assessm
     nextSteps: list<unknown>(output.nextSteps).map(text).filter(Boolean),
   };
   return mapped;
-}
-
-/* ---------------------------------------------------------------- AI 100% */
-
-/** The cloud model when the assessment does not name one (consent text, notice). */
-export const CLOUD_MODEL_LABEL = "Claude Haiku 5.5";
-/** "Claude Haiku 5.5" for the notice of an AI-100% result. */
-export const cloudModelName = (model: string | null | undefined) => isCloudModel(model) ? modelLabel(model) : CLOUD_MODEL_LABEL;
-
-/** AI 100%: every score of the assessment comes from the AI (aiResult), none from the engine. */
-export const isAiScored = (assessment: Pick<StoredAssessment, "scoring"> | null | undefined): boolean => assessment?.scoring === "ai";
-
-/**
- * The result every number on both pages comes from: an AI-100% assessment shows the AI's result (null while
- * the AI works and after it failed), any other assessment the engine's. The API merges the AI's numbers into
- * the engine result and derives labels, order, counts, summaries and highlights from them (ai-cloud/merge.ts),
- * so aiResult is shown as it is. The term-by-term history, plan progress and warnings always come from the
- * engine (assessment.result).
- */
-export function shownResult(assessment: Pick<StoredAssessment, "scoring" | "aiResult" | "result">): AssessmentResult | null {
-  return isAiScored(assessment) ? assessment.aiResult ?? null : assessment.result;
-}
-
-/** The engine measures confidence and coverage; the AI does not (null), so the page leaves them out. */
-export function showsConfidence(result: Pick<AssessmentResult, "overall" | "skills">): boolean {
-  return result.overall.confidence !== null || result.overall.coverage !== null
-    || result.skills.some((skill) => skill.confidence !== null || skill.coverage !== null);
-}
-
-/** Waiting time as "mm:ss" ("h:mm:ss" from one hour); a negative or unknown time (clock skew) counts as zero. */
-export function formatElapsed(ms: number): string {
-  const total = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : 0;
-  const pad = (value: number) => String(value).padStart(2, "0");
-  const hours = Math.floor(total / 3600), minutes = Math.floor(total / 60) % 60, seconds = total % 60;
-  return hours ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
-}
-
-/** Why an AI-100% assessment has no numbers, in the student's words. */
-export function aiScoringFailure(status: AiStatus, errorCode: string | null): string {
-  switch (status) {
-    case "deferred": return "Hàng đợi AI đang đầy nên yêu cầu chưa được xử lý.";
-    case "cancelled": return "Yêu cầu tính kết quả đã bị hủy.";
-    case "disabled": return "AI chưa được bật khi bạn đánh giá.";
-    case "completed": return "Kết quả AI trả về chưa đọc được.";
-    default: return aiErrorMessage(errorCode, true);
-  }
-}
-
-/**
- * POST /:id/ai of an AI-100% assessment answers 409 with these once the data behind the result changed
- * (a newer transcript; a curriculum or skill weights that give other skills): only a new assessment helps.
- */
-const NEW_ASSESSMENT_ERRORS: readonly string[] = ["transcript_changed", "assessment_outdated"];
-export const needsNewAssessment = (code: string | null | undefined) => NEW_ASSESSMENT_ERRORS.includes(code ?? "");
-export const TRANSCRIPT_CHANGED_RETRY = "Bảng điểm của bạn đã thay đổi sau lần đánh giá này nên không tính lại được. Hãy bấm “Đánh giá lại” để tạo lần đánh giá mới.";
-const AI_RETRY_ERRORS: Record<string, string> = {
-  transcript_changed: TRANSCRIPT_CHANGED_RETRY,
-  assessment_outdated: "Chương trình đào tạo hoặc trọng số kỹ năng đã thay đổi sau lần đánh giá này nên không tính lại được. Hãy bấm “Đánh giá lại” để tạo lần đánh giá mới.",
-  queue_full: "Hàng đợi AI đang đầy. Vui lòng thử lại sau ít phút.",
-  ai_not_regenerable: "AI đang tính hoặc đã có kết quả cho lần đánh giá này. Hãy tải lại trang.",
-  ai_disabled: "AI hiện chưa được bật nên chưa tính lại được.",
-};
-/** Errors of POST /:id/ai for an AI-100% assessment, which are about results rather than comments. */
-export function aiRetryErrorMessage(code: string | null | undefined): string {
-  return AI_RETRY_ERRORS[code ?? ""] ?? errorMessage(code);
-}
-
-/** What the status line reads out when the AI status of the shown assessment changes. */
-export function aiAnnouncement(status: AiStatus, context: { aiScored: boolean; hasResult: boolean; cloud: boolean; workerOnline: boolean; aiEnabled: boolean }): string {
-  if (context.aiScored && status === "completed") return "AI đã tính xong kết quả của bạn.";
-  if (context.aiScored && !context.hasResult) return shouldPoll(status) ? "AI đang tính kết quả của bạn." : "AI chưa tính được kết quả.";
-  if (status === "completed") return "Đã có nhận xét từ EduPath AI.";
-  if (status === "failed") return "Chưa tạo được nhận xét AI.";
-  return aiStateCopy(status, context.workerOnline, context.aiEnabled, context.cloud || context.aiScored).title;
 }
 
 /* ---------------------------------------------------------------- helpers */

@@ -169,7 +169,7 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
     if (!kinds.includes(COMPETENCY_ASSESSMENT_KIND)) { res.json({ job: null }); return; }
     const result = await db.query<{ id: string; leaseToken: string; aiInput: Record<string, unknown> }>(`WITH candidate AS (
         SELECT id FROM stu_comp_ai_jobs
-        WHERE runner='worker' AND ai_input IS NOT NULL AND (status='queued' OR (status='processing' AND lease_until<now() AND attempts<$2))
+        WHERE ai_input IS NOT NULL AND (status='queued' OR (status='processing' AND lease_until<now() AND attempts<$2))
         ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1),
       claimed AS (
         UPDATE stu_comp_ai_jobs j SET status='processing',lease_token=$1,lease_until=now()+make_interval(mins => $3),attempts=j.attempts+1,updated_at=now()

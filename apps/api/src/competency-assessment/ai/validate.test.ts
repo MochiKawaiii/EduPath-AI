@@ -49,13 +49,6 @@ describe("validateAiOutput", () => {
     expect(reasonOf("not json")).toBe("schema@");
   });
 
-  it("lets the cloud runner validate text lengths with slack (Claude cannot enforce maxLength)", () => {
-    const longer = { ...valid(), summary: "a".repeat(800) };
-    expect(validateAiOutput(longer, context).ok).toBe(false);
-    expect(validateAiOutput(longer, context, { lengthFactor: 1.5 })).toMatchObject({ ok: true });
-    expect(validateAiOutput({ ...valid(), summary: "a".repeat(901) }, context, { lengthFactor: 1.5 })).toMatchObject({ ok: false, error: { path: "summary" } });
-  });
-
   it("rejects unknown skill and group keys", () => {
     expect(reasonOf({ ...valid(), strengths: [{ skillKey: "S99", comment: "Tốt." }] })).toBe("unknown_skill_key@strengths.0.skillKey");
     expect(reasonOf({ ...valid(), groupInsights: [{ groupKey: "G7", comment: "Tốt." }] })).toBe("unknown_group_key@groupInsights.0.groupKey");

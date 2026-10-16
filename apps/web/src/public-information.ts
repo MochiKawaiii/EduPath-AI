@@ -35,17 +35,17 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
     answer: [
       "Bạn có thể xem và cập nhật hồ sơ, tải bảng điểm PDF, tra cứu chương trình đào tạo, xem kế hoạch đào tạo theo năm học và học kỳ, đối chiếu những nhóm môn cần hoàn thành để xét tốt nghiệp, đồng thời đánh giá năng lực của mình so với nghề mục tiêu.",
       "Sau khi có bảng điểm, cột Kết quả trong chương trình và kế hoạch đào tạo giúp bạn nhận ra môn đã đạt hoặc chưa đạt. Trong phần điều kiện xét tốt nghiệp, bạn có thể xem tiến độ của từng nhóm và số tín chỉ đã đạt. Với nghề nghiệp, bạn có thể xem lĩnh vực, vị trí, yêu cầu kỹ năng và chọn mục tiêu trong Thông tin cá nhân.",
-      "Trong Đánh giá năng lực và Khoảng trống kỹ năng, AI Claude Haiku 5.5 của Anthropic tính điểm từng kỹ năng và nhóm kỹ năng, mức phù hợp với nghề mục tiêu và những kỹ năng còn thiếu, rồi chọn học phần nên ưu tiên và viết nhận xét. Kết quả chỉ để tham khảo."
+      "Trong Đánh giá năng lực, bạn xem được điểm từng kỹ năng và nhóm kỹ năng, mức phù hợp với nghề mục tiêu, những kỹ năng còn thiếu và học phần nên ưu tiên, kèm nhận xét do AI viết để tham khảo."
     ],
     note: "Bạn nên bắt đầu ở Hồ sơ và bảng điểm, sau đó lần lượt xem Chương trình đào tạo, Kế hoạch đào tạo và Điều kiện xét tốt nghiệp. Những mục đang được phát triển sẽ có thông báo ngay trên màn hình."
   },
   {
     question: "EduPath AI dùng AI vào việc gì?",
     answer: [
-      "Trên trang Đánh giá năng lực và Khoảng trống kỹ năng, EduPath AI dùng mô hình Claude Haiku 5.5 của Anthropic để tính điểm kỹ năng, điểm nhóm, điểm tổng, mức năng lực, khoảng trống so với nghề mục tiêu và mức phù hợp nghề theo công thức và trọng số học phần do Khoa cấu hình, rồi chọn học phần nên ưu tiên và viết nhận xét. Để làm việc này, máy chủ EduPath AI gửi cho Anthropic (Hoa Kỳ) phần dữ liệu học tập cần thiết khi bạn đã đồng ý.",
-      "Lời khuyên trên trang Điều kiện xét tốt nghiệp dùng mô hình Gemma 4 E4B chạy cục bộ trên một máy tính do nhóm phát triển EduPath AI quản lý; dữ liệu cho lời khuyên này không được gửi tới dịch vụ AI đám mây nào. Bảng Theo dõi năng lực theo học kỳ, tiến độ so với kế hoạch đào tạo và Điều kiện xét tốt nghiệp vẫn do hệ thống tự tính, không dùng AI."
+      "EduPath AI dùng mô hình ngôn ngữ Gemma 4 E4B để viết nhận xét học tập trong trang Đánh giá năng lực. Nhận xét giúp bạn hiểu kết quả của mình: điểm mạnh nằm ở đâu, kỹ năng nào còn thiếu so với nghề mục tiêu, nên ưu tiên học phần nào trong danh sách hệ thống gợi ý và nên tự học thêm những gì.",
+      "Mọi con số như điểm kỹ năng, mức năng lực, khoảng trống kỹ năng và mức phù hợp nghề đều do hệ thống tính theo trọng số học phần mà Khoa cấu hình, không do AI đưa ra. Mô hình chạy cục bộ trên một máy tính do nhóm phát triển EduPath AI quản lý, nên dữ liệu của bạn không được gửi tới dịch vụ AI đám mây nào."
     ],
-    note: "Kết quả do AI tính và nhận xét do AI viết chỉ để tham khảo và có thể sai lệch. Hãy trao đổi với giảng viên hoặc cố vấn học tập trước khi quyết định."
+    note: "Nhận xét do AI viết chỉ để tham khảo và có thể chưa chính xác. Hãy đối chiếu với số liệu trên trang và trao đổi với giảng viên hoặc cố vấn học tập trước khi quyết định."
   },
   {
     question: "Làm thế nào để import bảng điểm của tôi?",
@@ -109,25 +109,25 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
       "Tải bảng điểm PDF lên ở Hồ sơ và bảng điểm, nếu bạn chưa có bảng điểm trên EduPath AI.",
       "Trong Thông tin cá nhân, chọn chuyên ngành và vị trí nghề nghiệp mong muốn.",
       "Mở trang Đánh giá năng lực và bấm nút Đánh giá năng lực.",
-      "Ở lần đầu và mỗi khi chính sách được cập nhật, đọc phần giải thích về việc gửi dữ liệu cho Anthropic, tích ô đồng ý rồi xác nhận. AI cần vài phút để tính kết quả và viết nhận xét; bạn có thể rời trang và quay lại sau."
+      "Ở lần đầu, đọc phần giải thích về cách xử lý dữ liệu, tích ô đồng ý rồi xác nhận. Kết quả tính toán hiện ngay, còn nhận xét AI được tạo sau và có thể mất vài phút."
     ],
     note: "Khi đổi chuyên ngành hoặc nghề mục tiêu, hãy bấm Đánh giá lại để cập nhật kết quả. Khi bạn thay bảng điểm mới, kết quả cũ bị xóa và bạn cần đánh giá lại."
   },
   {
     question: "Điểm năng lực được tính như thế nào?",
     answer: [
-      "Mỗi học phần rèn luyện một số kỹ năng ở những mức độ khác nhau, và Khoa cấu hình mức độ đó thành trọng số cho từng cặp học phần và kỹ năng. AI Claude Haiku 5.5 tính điểm theo đúng công thức của Khoa: điểm một kỹ năng là trung bình có trọng số của điểm các học phần liên quan mà bạn đã học, quy về thang 100: học phần càng nhiều tín chỉ và càng rèn luyện kỹ năng đó nhiều thì càng ảnh hưởng lớn đến điểm. Nếu một môn học nhiều lần, hệ thống dùng lần đạt có điểm cao nhất; môn có điểm MT được tính là đã học nhưng không đưa vào điểm trung bình.",
-      "Từ điểm kỹ năng, mức được xếp như sau: từ 85 trở lên là Thành thạo, từ 70 đến dưới 85 là Khá, từ 50 đến dưới 70 là Cơ bản và dưới 50 là Cần củng cố. Điểm nhóm kỹ năng được tính theo cùng cách, còn điểm tổng là trung bình của các nhóm có dữ liệu; Giáo dục thể chất và Giáo dục quốc phòng không tính vào hai điểm này. Với nghề mục tiêu, mỗi kỹ năng yêu cầu được so với ngưỡng 70 nếu là kỹ năng Ưu tiên và 85 nếu là kỹ năng Bắt buộc."
+      "Mỗi học phần rèn luyện một số kỹ năng ở những mức độ khác nhau, và Khoa cấu hình mức độ đó thành trọng số cho từng cặp học phần và kỹ năng. Điểm một kỹ năng là trung bình có trọng số của điểm các học phần liên quan mà bạn đã học, quy về thang 100: học phần càng nhiều tín chỉ và càng rèn luyện kỹ năng đó nhiều thì càng ảnh hưởng lớn đến điểm. Nếu một môn học nhiều lần, hệ thống dùng lần đạt có điểm cao nhất; môn có điểm MT được tính là đã học nhưng không đưa vào điểm trung bình.",
+      "Từ điểm kỹ năng, hệ thống xếp mức: từ 85 trở lên là Thành thạo, từ 70 đến dưới 85 là Khá, từ 50 đến dưới 70 là Cơ bản và dưới 50 là Cần củng cố. Điểm nhóm kỹ năng được tính theo cùng cách, còn điểm tổng là trung bình của các nhóm có dữ liệu; Giáo dục thể chất và Giáo dục quốc phòng không tính vào hai điểm này. Với nghề mục tiêu, mỗi kỹ năng yêu cầu được so với ngưỡng 70 nếu là kỹ năng Ưu tiên và 85 nếu là kỹ năng Bắt buộc."
     ],
-    note: "Kỹ năng mà bạn chưa học học phần liên quan nào được ghi là Chưa có minh chứng, còn kỹ năng nghề mà chương trình đào tạo chưa có học phần đo được ghi là Chưa đủ dữ liệu. Cả hai trường hợp đều không có nghĩa là bạn yếu kỹ năng đó. Vì do AI tính, một số con số có thể lệch so với công thức; bảng Theo dõi năng lực theo học kỳ do hệ thống tự tính."
+    note: "Kỹ năng mà bạn chưa học học phần liên quan nào được ghi là Chưa có minh chứng, còn kỹ năng nghề mà chương trình đào tạo chưa có học phần đo được ghi là Chưa đủ dữ liệu. Cả hai trường hợp đều không có nghĩa là bạn yếu kỹ năng đó."
   },
   {
     question: "Mô hình AI nhận những dữ liệu nào của tôi?",
     answer: [
-      "Để tính kết quả Đánh giá năng lực, Claude Haiku 5.5 của Anthropic nhận: mã, tên, tín chỉ, học kỳ và điểm các học phần trong bảng điểm của bạn (mọi lần học); chương trình đào tạo, trọng số kỹ năng do Khoa cấu hình và yêu cầu của nghề mục tiêu. Để chọn học phần và viết nhận xét, mô hình nhận thêm khóa, chuyên ngành, nghề mục tiêu, tình trạng các học phần liên quan và các kết quả AI vừa tính.",
-      "Mô hình không nhận họ tên, mã số sinh viên, email, lớp, sở thích hay tệp PDF bảng điểm của bạn. Anthropic là công ty tại Hoa Kỳ; theo điều khoản thương mại của Anthropic, dữ liệu gửi qua API không được dùng để huấn luyện mô hình và được tự động xóa trong vòng 30 ngày."
+      "Để viết nhận xét, mô hình chỉ nhận mã và tên học phần theo chương trình đào tạo, điểm của bạn ở các học phần đó, khóa, chuyên ngành, nghề mục tiêu và các kết quả hệ thống đã tính như điểm kỹ năng, khoảng trống và học phần gợi ý.",
+      "Mô hình không nhận họ tên, mã số sinh viên, email, lớp, sở thích hay tệp PDF bảng điểm của bạn. Mô hình chạy cục bộ trên máy tính do nhóm phát triển EduPath AI quản lý, nhận yêu cầu qua một kênh có xác thực, và dữ liệu không được gửi tới dịch vụ AI đám mây nào."
     ],
-    note: "Bản dữ liệu tạm EduPath AI chuẩn bị cho mô hình được xóa ngay sau khi xử lý xong; chỉ kết quả và nhận xét được lưu lại. Chi tiết xem mục Đánh giá năng lực và AI trong Chính sách bảo mật."
+    note: "Dữ liệu gửi cho mô hình được xóa sau khi xử lý xong; chỉ nhận xét được lưu lại cùng kết quả đánh giá. Chi tiết xem mục Đánh giá năng lực và AI trong Chính sách bảo mật."
   },
   {
     question: "Nhận xét từ AI có thay thế tư vấn của giảng viên không?",
@@ -166,14 +166,14 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
       "Chỉ bạn xem được tệp bảng điểm, điểm, kết quả từng môn và kết quả đánh giá năng lực khi đăng nhập bằng tài khoản của mình. Sinh viên khác không xem được hồ sơ hay bảng điểm của bạn.",
       "Trong nhà trường, chỉ cán bộ, giảng viên có nhiệm vụ liên quan mới được xem những thông tin hồ sơ cần thiết để hỗ trợ học tập và quản lý đào tạo. Những thông tin này không bao gồm điểm số hay kết quả đánh giá năng lực của bạn."
     ],
-    note: "EduPath AI không bán dữ liệu, không dùng thông tin của bạn để quảng cáo và không cung cấp cho bên ngoài nhà trường vì mục đích thương mại. Ngoài nhà trường, chỉ Anthropic nhận phần dữ liệu học tập cần để tính kết quả Đánh giá năng lực khi bạn đồng ý. Chi tiết xem mục Chia sẻ thông tin trong Chính sách bảo mật."
+    note: "EduPath AI không bán dữ liệu, không dùng thông tin của bạn để quảng cáo và không cung cấp cho bên ngoài nhà trường vì mục đích thương mại. Chi tiết xem mục Chia sẻ thông tin trong Chính sách bảo mật."
   },
   {
     question: "Bảng điểm PDF của tôi được lưu và xử lý như thế nào?",
     answer: [
       "Sau khi bạn tải lên, EduPath AI tự động đọc tệp PDF để lấy danh sách môn học, tín chỉ, điểm và kết quả theo từng học kỳ. Tệp chỉ dùng để tạo bảng điểm trong tài khoản của bạn và không được gửi cho dịch vụ AI hay đơn vị nào bên ngoài.",
       "Mỗi tài khoản lưu một bảng điểm. Bảng điểm được giữ đến khi bạn thay bằng bản mới, bấm Xóa bảng điểm hoặc khi tài khoản được xóa.",
-      "Nếu bạn dùng Đánh giá năng lực, phần dữ liệu từ bảng điểm gửi cho Claude Haiku 5.5 của Anthropic gồm mã, tên, tín chỉ, học kỳ và điểm các học phần, không gồm tệp PDF, họ tên hay mã số sinh viên."
+      "Nếu bạn dùng Đánh giá năng lực, phần dữ liệu từ bảng điểm gửi cho mô hình AI viết nhận xét chỉ gồm mã học phần, tên học phần theo chương trình đào tạo và điểm, không gồm tệp PDF."
     ],
     note: "Việc đọc tự động có thể nhầm, nhất là với ảnh chụp hoặc bản scan. Hãy đối chiếu kết quả với bảng điểm gốc và luôn tự giữ bản PDF của mình."
   },
@@ -205,7 +205,7 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
 // Students consent to this policy version when importing a transcript or requesting a competency
 // assessment; the API rejects any other version. Must equal TRANSCRIPT_POLICY_VERSION in
 // apps/api/src/student/consent.ts.
-export const policyVersion = "2026-10-16";
+export const policyVersion = "2026-10-11";
 export const policyUpdatedAt = policyVersion.split("-").reverse().join("/");
 
 // Privacy category that explains competency assessment and the AI commentary. The consent dialog on
@@ -239,9 +239,8 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
               "Bạn đăng nhập bằng tài khoản Microsoft của trường. EduPath AI không biết và không lưu mật khẩu của bạn.",
               "Chỉ bạn xem được bảng điểm, điểm từng môn và kết quả đánh giá năng lực của mình.",
               "Sở thích, chuyên ngành, mục tiêu nghề nghiệp và bảng điểm do bạn tự nguyện cung cấp, và bạn có thể sửa hoặc xóa bất cứ lúc nào.",
-              "Đánh giá năng lực chỉ chạy khi bạn yêu cầu và đồng ý. Điểm, mức năng lực và khoảng trống kỹ năng do AI Claude Haiku 5.5 của Anthropic tính, có thể sai lệch và chỉ để tham khảo.",
-              "Để tính, EduPath AI gửi cho Anthropic (Hoa Kỳ) điểm các học phần, chương trình đào tạo, trọng số kỹ năng và yêu cầu nghề; không gửi họ tên, mã số sinh viên, email, lớp hay tệp PDF. Anthropic không được dùng dữ liệu này để huấn luyện mô hình và xóa nó trong vòng 30 ngày.",
-              "Lời khuyên xét tốt nghiệp do mô hình AI chạy cục bộ viết; dữ liệu cho tính năng đó không được gửi tới dịch vụ AI đám mây.",
+              "Đánh giá năng lực chỉ chạy khi bạn yêu cầu và đồng ý. Điểm và mức năng lực do hệ thống tính; AI chỉ viết nhận xét để bạn tham khảo.",
+              "Mô hình AI viết nhận xét chạy cục bộ, không nhận họ tên, mã số sinh viên, email, lớp hay tệp PDF bảng điểm của bạn, và dữ liệu không được gửi tới dịch vụ AI đám mây.",
               "EduPath AI không bán dữ liệu, không hiển thị quảng cáo và không theo dõi bạn trên các trang web khác.",
               "Dữ liệu được lưu trên dịch vụ lưu trữ đám mây, máy chủ có thể đặt ngoài Việt Nam."
             ]]
@@ -275,7 +274,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
           },
           {
             title: "Thông tin được tạo khi bạn đánh giá năng lực",
-            paragraphs: ["Mỗi lần bạn đánh giá năng lực, EduPath AI tạo và lưu một kết quả đánh giá từ bảng điểm và hồ sơ của bạn, gồm điểm và mức của từng kỹ năng, nhóm kỹ năng, mức phù hợp với nghề mục tiêu, các khoảng trống kỹ năng, học phần nên ưu tiên và nhận xét, do AI tính và viết; cùng bảng theo dõi năng lực theo học kỳ, tiến độ so với kế hoạch đào tạo và điều kiện xét tốt nghiệp, do hệ thống tự tính."]
+            paragraphs: ["Mỗi lần bạn đánh giá năng lực, EduPath AI tạo và lưu một kết quả đánh giá từ bảng điểm và hồ sơ của bạn, gồm điểm và mức của từng kỹ năng, nhóm kỹ năng, mức phù hợp với nghề mục tiêu, các khoảng trống kỹ năng, học phần nên ưu tiên, tiến độ so với kế hoạch đào tạo và điều kiện xét tốt nghiệp, cùng nhận xét do AI viết nếu có."]
           },
           {
             title: "Thông tin ghi nhận khi bạn sử dụng",
@@ -310,7 +309,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
               "Giúp bạn tự kiểm tra tiến độ so với điều kiện xét tốt nghiệp.",
               "Giúp bạn tìm hiểu các vị trí nghề nghiệp và lưu mục tiêu của mình.",
               "Đánh giá năng lực và phân tích khoảng trống kỹ năng so với nghề mục tiêu, khi bạn yêu cầu.",
-              "Dùng AI Claude Haiku 5.5 của Anthropic để tính kết quả đánh giá năng lực, chọn học phần nên ưu tiên và viết nhận xét, khi bạn yêu cầu và đồng ý.",
+              "Tạo nhận xét học tập bằng AI cho kết quả đánh giá năng lực của bạn.",
               "Giúp Khoa hỗ trợ, tư vấn học tập và quản lý đào tạo.",
               "Bảo vệ tài khoản và xử lý khi có sự cố."
             ]]
@@ -320,9 +319,9 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             paragraphs: [
               "Thông tin từ tài khoản trường là cần thiết để bạn đăng nhập và sử dụng EduPath AI. Sở thích, chuyên ngành, mục tiêu nghề nghiệp và bảng điểm chỉ được xử lý khi chính bạn nhập hoặc tải lên.",
               "Trước khi tải bảng điểm lên, bạn cần tích ô xác nhận đây là bảng điểm của mình và đồng ý để EduPath AI xử lý bảng điểm theo chính sách này. Ô này không được chọn sẵn; nếu bạn không tích, bảng điểm sẽ không được tải lên.",
-              "Đánh giá năng lực cần một sự đồng ý riêng. Lần đầu bạn bấm Đánh giá năng lực, EduPath AI sẽ hỏi bạn có đồng ý gửi phần dữ liệu nêu ở mục Đánh giá năng lực và AI cho Anthropic để AI tính kết quả và viết nhận xét hay không. Sự đồng ý này là bắt buộc để dùng Đánh giá năng lực và Khoảng trống kỹ năng; nếu bạn không đồng ý, hai trang này không được sử dụng, còn các trang khác vẫn dùng bình thường.",
+              "Đánh giá năng lực cần một sự đồng ý riêng. Lần đầu bạn bấm Đánh giá năng lực, EduPath AI sẽ hỏi bạn có đồng ý cho việc đánh giá năng lực và tạo nhận xét bằng AI theo chính sách này hay không; nếu bạn không đồng ý, việc đánh giá sẽ không được thực hiện. Chi tiết xem mục Đánh giá năng lực và AI.",
               "EduPath AI lưu lại thời điểm bạn đồng ý và phiên bản chính sách bạn đã đồng ý, để làm bằng chứng theo quy định của pháp luật. Khi chính sách được cập nhật, bạn sẽ được đề nghị đồng ý lại ở lần tải bảng điểm hoặc lần đánh giá năng lực tiếp theo.",
-              "Bạn có thể rút lại sự đồng ý bất cứ lúc nào bằng cách xóa bảng điểm hoặc xóa thông tin đã nhập. Với đánh giá năng lực, bạn rút lại sự đồng ý ngay trên trang Đánh giá năng lực, và toàn bộ kết quả đánh giá sẽ bị xóa. Thời điểm rút lại cũng được ghi nhận. Dữ liệu đã gửi cho Anthropic được Anthropic tự xóa trong vòng 30 ngày; EduPath AI không thu hồi sớm hơn được. Việc rút lại không ảnh hưởng đến tính hợp pháp của việc xử lý đã diễn ra trước đó."
+              "Bạn có thể rút lại sự đồng ý bất cứ lúc nào bằng cách xóa bảng điểm hoặc xóa thông tin đã nhập. Với đánh giá năng lực, bạn rút lại sự đồng ý ngay trên trang Đánh giá năng lực, và toàn bộ kết quả đánh giá sẽ bị xóa. Thời điểm rút lại cũng được ghi nhận. Việc rút lại không ảnh hưởng đến tính hợp pháp của việc xử lý đã diễn ra trước đó."
             ]
           },
           {
@@ -330,8 +329,8 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             paragraphs: [[
               "Không bán, cho thuê hay trao đổi dữ liệu cá nhân của bạn.",
               "Không dùng dữ liệu của bạn để quảng cáo.",
-              "Không gửi tệp PDF bảng điểm cho đơn vị nào bên ngoài; chỉ gửi cho Anthropic phần dữ liệu học tập cần để tính kết quả Đánh giá năng lực, khi bạn đã đồng ý.",
-              "Không đưa họ tên, mã số sinh viên, email, lớp hay tệp PDF bảng điểm của bạn vào dữ liệu gửi cho mô hình AI.",
+              "Không gửi bảng điểm hay dữ liệu học tập của bạn tới dịch vụ AI đám mây hay đơn vị nào bên ngoài để đọc hoặc phân tích.",
+              "Không đưa họ tên, mã số sinh viên, email, lớp hay tệp PDF bảng điểm của bạn vào dữ liệu gửi cho mô hình AI viết nhận xét.",
               "Không dùng dữ liệu của bạn cho mục đích khác khi chưa thông báo cho bạn."
             ]]
           }
@@ -386,48 +385,35 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
           {
             title: "Kết quả được tính như thế nào?",
             paragraphs: [
-              "Điểm kỹ năng, điểm và mức theo nhóm kỹ năng, điểm tổng, mức năng lực, khoảng trống kỹ năng và mức phù hợp với nghề mục tiêu do AI Claude Haiku 5.5 của Anthropic tính theo công thức và trọng số học phần do Khoa cấu hình. EduPath AI kiểm tra định dạng và tính nhất quán của kết quả AI trả về nhưng không tính lại từng con số, nên kết quả có thể sai lệch. Cách tính và các ngưỡng được giải thích ngay trên trang Đánh giá năng lực.",
-              "Bảng Theo dõi năng lực theo học kỳ, tiến độ so với kế hoạch đào tạo và Điều kiện xét tốt nghiệp do hệ thống tự tính, không dùng AI.",
+              "Điểm kỹ năng, mức năng lực, khoảng trống kỹ năng và mức phù hợp với nghề mục tiêu đều do hệ thống tính theo trọng số học phần do Khoa cấu hình. AI không tính và không thay đổi các con số này. Cách tính và các ngưỡng được giải thích ngay trên trang Đánh giá năng lực.",
               "Nếu chương trình đào tạo chưa có học phần nào đo một kỹ năng mà nghề mục tiêu yêu cầu, kỹ năng đó được ghi là Chưa đủ dữ liệu. Điều này không có nghĩa là bạn yếu kỹ năng đó."
             ]
           },
           {
             title: "Về các tính năng AI",
             paragraphs: [
-              "Sau khi tính kết quả, cũng mô hình Claude Haiku 5.5 chọn học phần nên ưu tiên và viết nhận xét: điểm mạnh nằm ở đâu, khoảng trống nào cần ưu tiên so với nghề mục tiêu, nên học phần nào và nên tự học thêm những gì.",
-              "Mô hình được máy chủ EduPath AI gọi qua dịch vụ API của Anthropic, qua kết nối mã hóa và có xác thực. Lời khuyên trên trang Điều kiện xét tốt nghiệp thì dùng mô hình Gemma 4 E4B chạy cục bộ trên một máy tính do nhóm phát triển EduPath AI quản lý; dữ liệu cho lời khuyên đó không được gửi tới dịch vụ AI đám mây.",
+              "Sau khi hệ thống tính xong, EduPath AI tạo thêm một nhận xét học tập bằng mô hình ngôn ngữ Gemma 4 E4B. Nhận xét giúp bạn hiểu kết quả của mình: điểm mạnh nằm ở đâu, khoảng trống nào cần ưu tiên so với nghề mục tiêu, nên chọn học phần nào trong danh sách do hệ thống đưa ra và nên tự học thêm những gì.",
+              "Mô hình chạy cục bộ trên một máy tính do nhóm phát triển EduPath AI quản lý. Máy này nhận yêu cầu từ EduPath AI qua một kênh có xác thực; dữ liệu của bạn không được gửi tới bất kỳ dịch vụ AI đám mây nào.",
               "Nhận xét chỉ mang tính tham khảo và có thể chưa chính xác. Quyết định học tập vẫn thuộc về bạn, cùng với giảng viên và cố vấn học tập; hãy đối chiếu với số liệu trên trang trước khi quyết định.",
-              "AI cần vài phút để tính. Khi dịch vụ của Anthropic gặp sự cố, kết quả đánh giá chưa hiển thị được và bạn có thể thử lại sau."
+              "Khi máy chạy mô hình chưa sẵn sàng, bạn vẫn xem được đầy đủ kết quả do hệ thống tính, chỉ chưa có phần nhận xét."
             ]
           },
           {
             title: "Mô hình AI nhận những dữ liệu nào?",
             paragraphs: [
-              "Để tính kết quả và viết nhận xét, Claude Haiku 5.5 của Anthropic chỉ nhận:",
+              "Để viết nhận xét, mô hình chỉ nhận:",
               [
-                "Mã, tên, tín chỉ, học kỳ và điểm các học phần trong bảng điểm của bạn, gồm mọi lần học.",
-                "Chương trình đào tạo, trọng số kỹ năng do Khoa cấu hình và yêu cầu kỹ năng của nghề mục tiêu.",
-                "Khóa, chuyên ngành và nghề mục tiêu của bạn; tình trạng các học phần liên quan (đã đạt, chưa đạt, đủ điều kiện đăng ký, học kỳ dự kiến), tiến độ học tập và cảnh báo dữ liệu.",
-                "Các kết quả AI đã tính ở bước trước, khi viết nhận xét."
+                "Mã và tên học phần theo chương trình đào tạo, cùng điểm của bạn ở các học phần đó.",
+                "Khóa, chuyên ngành và nghề mục tiêu của bạn.",
+                "Các kết quả hệ thống đã tính, như điểm và mức kỹ năng, khoảng trống, học phần gợi ý, tiến độ học tập và cảnh báo dữ liệu."
               ],
               "Mô hình không nhận họ tên, mã số sinh viên, email, lớp, sở thích hay tệp PDF bảng điểm của bạn."
             ]
           },
           {
-            title: "Chia sẻ dữ liệu với Anthropic",
-            paragraphs: [
-              "Anthropic, PBC là công ty tại Hoa Kỳ cung cấp mô hình Claude. Khi bạn đồng ý, máy chủ EduPath AI gửi cho Anthropic phần dữ liệu nêu ở mục trên, chỉ để tính kết quả Đánh giá năng lực và Khoảng trống kỹ năng của bạn. Dữ liệu được xử lý ngoài lãnh thổ Việt Nam.",
-              [
-                "Theo điều khoản thương mại của Anthropic (https://www.anthropic.com/legal/commercial-terms), Anthropic không được dùng dữ liệu gửi qua API để huấn luyện mô hình.",
-                "Theo trang quyền riêng tư của Anthropic (https://privacy.claude.com/en/articles/7996866), dữ liệu gửi vào và kết quả trả về qua API được tự động xóa trong vòng 30 ngày, trừ khi cần giữ lâu hơn để xử lý vi phạm chính sách sử dụng hoặc theo yêu cầu của pháp luật.",
-                "Dữ liệu đã gửi cho Anthropic thì EduPath AI không thu hồi hay xóa sớm hơn được; khi bạn rút lại sự đồng ý, EduPath AI ngừng gửi và xóa kết quả đang lưu."
-              ]
-            ]
-          },
-          {
             title: "Khi nào bạn được hỏi ý kiến?",
             paragraphs: [
-              "Đánh giá năng lực cần sự đồng ý riêng, tách biệt với sự đồng ý khi tải bảng điểm. Lần đầu bạn bấm Đánh giá năng lực, EduPath AI sẽ hỏi ý kiến của bạn; bạn cần tích ô đồng ý cho việc gửi dữ liệu cho Anthropic để AI tính kết quả và viết nhận xét theo chính sách này. Sự đồng ý này là bắt buộc để dùng Đánh giá năng lực và Khoảng trống kỹ năng; nếu bạn không đồng ý, việc đánh giá sẽ không được thực hiện.",
+              "Đánh giá năng lực cần sự đồng ý riêng, tách biệt với sự đồng ý khi tải bảng điểm. Lần đầu bạn bấm Đánh giá năng lực, EduPath AI sẽ hỏi ý kiến của bạn; bạn cần tích ô đồng ý cho việc đánh giá năng lực và tạo nhận xét bằng AI theo chính sách này. Nếu bạn không đồng ý, việc đánh giá sẽ không được thực hiện.",
               "Khi chính sách được cập nhật, bạn sẽ được hỏi lại ở lần đánh giá tiếp theo. Thời điểm bạn đồng ý hoặc rút lại sự đồng ý, cùng phiên bản chính sách bạn đã đồng ý, đều được ghi nhận."
             ]
           },
@@ -438,7 +424,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
                 "Chỉ bạn xem được kết quả đánh giá và nhận xét AI của mình.",
                 "Kết quả được lưu đến khi bạn xóa bảng điểm, thay bằng bảng điểm mới, rút lại sự đồng ý cho đánh giá năng lực hoặc khi tài khoản được xóa.",
                 "Mỗi tài khoản giữ tối đa 20 lần đánh giá gần nhất; khi có lần đánh giá mới, lần cũ nhất vượt quá giới hạn này bị xóa.",
-                "Bản dữ liệu tạm EduPath AI chuẩn bị cho mô hình AI được xóa ngay sau khi xử lý xong, kể cả khi bị lỗi hoặc bị hủy; phía Anthropic tự xóa trong vòng 30 ngày. Kết quả và nhận xét được lưu cùng lần đánh giá."
+                "Dữ liệu gửi cho mô hình AI được xóa sau khi xử lý xong, kể cả khi việc tạo nhận xét bị lỗi hoặc bị hủy; nhận xét được lưu cùng kết quả đánh giá."
               ],
               "Bạn có thể rút lại sự đồng ý bất cứ lúc nào trên trang Đánh giá năng lực. Khi đó, toàn bộ kết quả đánh giá và nhận xét AI của bạn bị xóa và không khôi phục được; hồ sơ và bảng điểm vẫn được giữ."
             ]
@@ -462,15 +448,14 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
               "Để EduPath AI hoạt động, nhà trường sử dụng dịch vụ của:",
               [
                 "Microsoft: dịch vụ đăng nhập bằng tài khoản trường.",
-                "Nhà cung cấp dịch vụ lưu trữ đám mây: nơi vận hành EduPath AI và lưu trữ dữ liệu.",
-                "Anthropic: mô hình AI Claude tính kết quả Đánh giá năng lực và Khoảng trống kỹ năng, chỉ khi bạn đồng ý (xem mục Đánh giá năng lực và AI)."
+                "Nhà cung cấp dịch vụ lưu trữ đám mây: nơi vận hành EduPath AI và lưu trữ dữ liệu."
               ],
               "Các đối tác này chỉ được xử lý dữ liệu trong phạm vi cần thiết để cung cấp dịch vụ cho nhà trường."
             ]
           },
           {
-            title: "Máy AI cục bộ",
-            paragraphs: ["Lời khuyên trên trang Điều kiện xét tốt nghiệp được tạo trên một máy tính do nhóm phát triển EduPath AI quản lý, bằng mô hình Gemma 4 E4B chạy ngay trên máy đó. Máy này không nhận họ tên, mã số sinh viên, email hay lớp của bạn, và không gửi dữ liệu tới dịch vụ AI đám mây."]
+            title: "Máy tạo nhận xét AI",
+            paragraphs: ["Nhận xét AI được tạo trên một máy tính do nhóm phát triển EduPath AI quản lý, bằng mô hình chạy ngay trên máy đó. Máy này chỉ nhận phần dữ liệu nêu ở mục Đánh giá năng lực và AI, không nhận họ tên, mã số sinh viên, email hay lớp của bạn, và không gửi dữ liệu tới dịch vụ AI đám mây."]
           },
           {
             title: "Khi pháp luật yêu cầu",
@@ -486,7 +471,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             title: "Dữ liệu được lưu ở đâu?",
             paragraphs: [
               "Dữ liệu của bạn được lưu trên dịch vụ lưu trữ đám mây, và máy chủ có thể đặt ngoài lãnh thổ Việt Nam. Dù dữ liệu được lưu ở đâu, các cam kết và quyền của bạn trong chính sách này vẫn được giữ nguyên.",
-              "Phần dữ liệu dùng để tính kết quả Đánh giá năng lực được Anthropic xử lý tại Hoa Kỳ và tự xóa trong vòng 30 ngày. Phần dữ liệu cho lời khuyên xét tốt nghiệp được xử lý trên máy tính do nhóm phát triển EduPath AI quản lý và được xóa sau khi xử lý xong."
+              "Riêng phần dữ liệu dùng để tạo nhận xét AI được xử lý trên máy tính do nhóm phát triển EduPath AI quản lý và được xóa sau khi xử lý xong."
             ]
           },
           {
@@ -496,7 +481,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
                 "Thông tin hồ sơ: trong thời gian tài khoản EduPath AI của bạn còn tồn tại.",
                 "Bảng điểm: đến khi bạn xóa, thay bằng bản mới hoặc khi tài khoản được xóa.",
                 "Kết quả đánh giá năng lực và nhận xét AI: đến khi bạn xóa hoặc thay bảng điểm, rút lại sự đồng ý cho đánh giá năng lực hoặc khi tài khoản được xóa; mỗi tài khoản giữ tối đa 20 lần đánh giá gần nhất.",
-                "Dữ liệu gửi cho mô hình AI: bản tạm trên EduPath AI được xóa sau khi xử lý xong; Anthropic tự xóa phần nhận được trong vòng 30 ngày.",
+                "Dữ liệu gửi cho mô hình AI: được xóa sau khi xử lý xong.",
                 "Lịch sử đăng nhập và lịch sử đồng ý: trong thời gian tài khoản còn tồn tại."
               ],
               `Khi không còn sử dụng EduPath AI, chẳng hạn sau khi tốt nghiệp, bạn có thể tự xóa bảng điểm và gửi email đến ${supportEmail} để đề nghị xóa tài khoản.`
@@ -509,7 +494,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
                 "Chỉ tài khoản Microsoft của Trường Đại học Văn Lang mới đăng nhập được.",
                 "Kết nối giữa trình duyệt và EduPath AI được mã hóa.",
                 "Mỗi người chỉ được xem những thông tin phù hợp với nhiệm vụ của mình.",
-                "Máy AI cục bộ phải xác thực mới nhận được yêu cầu từ EduPath AI; dữ liệu gửi cho Anthropic đi qua kết nối mã hóa, có xác thực bằng khóa API.",
+                "Máy tạo nhận xét AI phải xác thực mới nhận được yêu cầu từ EduPath AI.",
                 "Phiên đăng nhập tự kết thúc sau một thời gian không sử dụng.",
                 "EduPath AI chỉ dùng cookie cần thiết để giữ đăng nhập, không dùng cookie quảng cáo hay công cụ theo dõi."
               ],
@@ -585,8 +570,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             paragraphs: [
               "Chính sách có thể được cập nhật khi EduPath AI thay đổi chức năng hoặc khi quy định pháp luật thay đổi. Nội dung mới được đăng tại trang này cùng ngày cập nhật.",
               "Nếu thay đổi ảnh hưởng đến cách dữ liệu của bạn được sử dụng, chẳng hạn khi có tính năng AI mới, bạn sẽ được hỏi ý kiến trước khi dữ liệu của mình được xử lý theo cách mới.",
-              "Bản cập nhật ngày 11/10/2026 bổ sung tính năng Đánh giá năng lực, nhận xét học tập bằng AI và thông tin chuyên ngành trong hồ sơ.",
-              "Bản cập nhật ngày 16/10/2026: kết quả Đánh giá năng lực và Khoảng trống kỹ năng do AI Claude Haiku 5.5 của Anthropic tính; phần dữ liệu cần thiết được gửi cho Anthropic (Hoa Kỳ) khi bạn đồng ý, và sự đồng ý này là bắt buộc để dùng hai trang đó."
+              "Bản cập nhật ngày 11/10/2026 bổ sung tính năng Đánh giá năng lực, nhận xét học tập bằng AI và thông tin chuyên ngành trong hồ sơ."
             ]
           }
         ]
@@ -702,7 +686,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             paragraphs: [
               "Dấu đạt, chưa đạt trong chương trình và kế hoạch đào tạo, kết quả tự kiểm tra điều kiện xét tốt nghiệp, kết quả đánh giá năng lực và thông tin nghề nghiệp giúp bạn tự theo dõi và định hướng. Đây không phải kết quả chính thức của nhà trường.",
               "Kết quả có thể chưa chính xác nếu bảng điểm thiếu học kỳ, bị đọc sai, hoặc bạn chọn chưa đúng chương trình của khóa và ngành hay chuyên ngành của mình. Kết quả xét tốt nghiệp chính thức do nhà trường công bố.",
-              "Kết quả đánh giá năng lực do AI tính nên có thể sai lệch, và còn phụ thuộc vào trọng số học phần do Khoa cấu hình. Kỹ năng mà chương trình đào tạo chưa có học phần đo được ghi là Chưa đủ dữ liệu, không có nghĩa là bạn yếu kỹ năng đó."
+              "Kết quả đánh giá năng lực còn phụ thuộc vào trọng số học phần do Khoa cấu hình. Kỹ năng mà chương trình đào tạo chưa có học phần đo được ghi là Chưa đủ dữ liệu, không có nghĩa là bạn yếu kỹ năng đó."
             ]
           },
           {
@@ -710,8 +694,8 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             paragraphs: ["Trước khi đăng ký học phần, thay đổi kế hoạch học tập hay nộp hồ sơ xét tốt nghiệp, hãy đối chiếu với thông báo chính thức của trường và trao đổi với giảng viên hoặc cố vấn học tập. Khi thông tin trên EduPath AI khác với văn bản chính thức, văn bản chính thức được áp dụng."]
           },
           {
-            title: "Kết quả và nhận xét từ AI",
-            paragraphs: ["Điểm, mức và khoảng trống kỹ năng do AI tính cùng nhận xét do AI viết trong Đánh giá năng lực chỉ mang tính tham khảo và có thể chưa chính xác. Nhận xét không thay thế quyết định của bạn, của giảng viên hay của nhà trường; hãy đối chiếu với số liệu trên trang trước khi làm theo."]
+            title: "Nhận xét từ AI",
+            paragraphs: ["Nhận xét do AI viết trong Đánh giá năng lực chỉ mang tính tham khảo và có thể chưa chính xác. Nhận xét không thay thế quyết định của bạn, của giảng viên hay của nhà trường; hãy đối chiếu với số liệu trên trang trước khi làm theo."]
           }
         ]
       },
@@ -723,7 +707,7 @@ export const informationPolicies: Record<PolicyKind, { title: string; categories
             title: "Cung cấp dịch vụ",
             paragraphs: [
               "Khoa cố gắng duy trì EduPath AI ổn định, nhưng dịch vụ có thể tạm gián đoạn để bảo trì, nâng cấp hoặc khắc phục sự cố. Một số chức năng có thể được bổ sung, thay đổi hoặc ngừng cung cấp.",
-              "Kết quả Đánh giá năng lực cần vài phút để AI tính; khi dịch vụ AI gặp sự cố, bạn có thể phải chờ hoặc thử lại sau. Lời khuyên xét tốt nghiệp được tạo trên một máy tính riêng, nên có lúc chưa có.",
+              "Nhận xét AI được tạo trên một máy tính riêng, nên có lúc bạn phải chờ hoặc tạm thời chưa có nhận xét; khi đó các kết quả do hệ thống tính vẫn hiển thị đầy đủ.",
               "EduPath AI không phải nơi lưu trữ tài liệu lâu dài, vì vậy hãy tự giữ bản PDF bảng điểm gốc của bạn."
             ]
           },

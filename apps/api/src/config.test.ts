@@ -95,16 +95,4 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...baseEnvironment, AI_WORKER_KEY: "short" })).toThrow();
     expect(() => loadConfig({ ...baseEnvironment, OCR_WORKER_KEY: ai, AI_WORKER_KEY: ai })).toThrow(/differ/);
   });
-
-  it("turns on competency AI 100% only with an Anthropic key, defaulting to Claude Haiku 5.5 at high effort", () => {
-    const key = "sk-ant-test-" + "k".repeat(30);
-    expect(loadConfig(baseEnvironment).anthropic).toBeUndefined();
-    expect(loadConfig({ ...baseEnvironment, ANTHROPIC_API_KEY: " ", ANTHROPIC_WORKSPACE_ID: "" }).anthropic).toBeUndefined();
-    expect(loadConfig({ ...baseEnvironment, ANTHROPIC_API_KEY: ` ${key} ` }).anthropic).toEqual({ apiKey: key, model: "claude-haiku-5-5", effort: "high" });
-    expect(loadConfig({
-      ...baseEnvironment, ANTHROPIC_API_KEY: key, ANTHROPIC_WORKSPACE_ID: "wrkspc_01Test", ANTHROPIC_MODEL: "claude-sonnet-5-5", ANTHROPIC_EFFORT: "medium",
-    }).anthropic).toEqual({ apiKey: key, workspaceId: "wrkspc_01Test", model: "claude-sonnet-5-5", effort: "medium" });
-    expect(() => loadConfig({ ...baseEnvironment, ANTHROPIC_API_KEY: key, ANTHROPIC_EFFORT: "extreme" })).toThrow();
-    expect(() => loadConfig({ ...baseEnvironment, ANTHROPIC_API_KEY: key, ANTHROPIC_WORKSPACE_ID: "workspace 1" })).toThrow();
-  });
 });

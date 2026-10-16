@@ -31,17 +31,6 @@ services:
       # Without it the competency assessment works and AI comments stay disabled.
       - key: AI_WORKER_KEY
         sync: false
-      # Optional: competency "AI 100%" (comp-ai-v1). With a Claude API key this server computes the competency
-      # numbers and comments with Claude itself (no laptop worker); without it nothing changes.
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      # Only for a key that is not scoped to a workspace ("sk-ant-usr-…"): the workspace id, wrkspc_…
-      - key: ANTHROPIC_WORKSPACE_ID
-        sync: false
-      - key: ANTHROPIC_MODEL
-        value: claude-haiku-5-5
-      - key: ANTHROPIC_EFFORT
-        value: high
       - key: ENTRA_CLIENT_ID
         sync: false
       - key: ENTRA_CLIENT_SECRET
