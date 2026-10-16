@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "../../db/pool.js";
-import type { AssessmentResult } from "../types.js";
+import type { AssessmentInputs, AssessmentResult } from "../types.js";
 import { COMPETENCY_AI_QUEUE_LOCK } from "../repository.js";
 import { buildAiInput } from "./prompt.js";
 import { createCompetencyAiExpiry } from "./worker-router.js";
@@ -18,10 +18,13 @@ export const MAX_PENDING_AI_JOBS = 25;
 /** The worker counts as online when its heartbeat is newer than this. */
 export const WORKER_ONLINE_SECONDS = 60;
 
-export type QueueInput = { assessmentId: string; userId: string; result: AssessmentResult };
+/** `inputs` is needed only by the cloud ("AI 100%") queue, which builds its prompt from the raw data. */
+export type QueueInput = { assessmentId: string; userId: string; result: AssessmentResult; inputs?: AssessmentInputs };
 
 export interface CompetencyAiQueue {
   enabled: boolean;
+  /** "worker": the laptop worker writes comments (this file); "cloud": the API server runs AI 100% (ai-cloud/). */
+  mode: "worker" | "cloud";
   /** POST /: cancels the user's pending job, then queues (or defers when the queue is full). */
   enqueue(client: PoolClient, input: QueueInput): Promise<"queued" | "deferred">;
   /** POST /:id/ai: queues again; when the queue is full nothing changes and 'deferred' is returned. */
@@ -33,7 +36,8 @@ export interface CompetencyAiQueue {
 
 const PENDING = "('queued','processing')";
 
-async function cancelPending(client: PoolClient, userId: string, assessmentId?: string): Promise<number> {
+/** Cancels the user's pending jobs of either runner (or one assessment's) and marks their assessments cancelled. */
+export async function cancelPending(client: PoolClient, userId: string, assessmentId?: string): Promise<number> {
   const params: unknown[] = [userId];
   let filter = "";
   if (assessmentId) { params.push(assessmentId); filter = " AND assessment_id=$2"; }
@@ -49,7 +53,8 @@ async function cancelPending(client: PoolClient, userId: string, assessmentId?: 
   return ids.length;
 }
 
-async function othersPending(client: PoolClient, userId: string): Promise<number> {
+/** Pending jobs of other students, both runners (the shared queue cap). */
+export async function othersPending(client: PoolClient, userId: string): Promise<number> {
   const result = await client.query<{ count: number }>(
     `SELECT count(*)::int AS count FROM stu_comp_ai_jobs WHERE status IN ${PENDING} AND user_id<>$1`, [userId]);
   return result.rows[0]?.count ?? 0;
@@ -75,6 +80,7 @@ export function createCompetencyAiQueue(options: { enabled: boolean }): Competen
   const requireEnabled = () => { if (!enabled) throw new Error("competency_ai_disabled"); };
   return {
     enabled,
+    mode: "worker",
     async enqueue(client, input) {
       requireEnabled();
       await client.query("SELECT pg_advisory_xact_lock($1)", [COMPETENCY_AI_QUEUE_LOCK_KEY]);

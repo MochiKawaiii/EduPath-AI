@@ -130,6 +130,18 @@
 .scomp-page .scomp-ai-tip { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; padding: 8px 10px; border-radius: 6px; background: #f2f6fc; font-size: 13px; line-height: 1.6; }
 .scomp-page .scomp-ai-tip ul { margin: 0; padding-left: 16px; }
 
+/* AI 100% (Claude): the notice over the AI's numbers, the wait before them, the system-computed history */
+.scomp-page .scomp-ai-notice { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border: 1px solid #cfdaeb; border-radius: 8px; background: #f2f6fc; color: #1c2b45; font-size: 14px; font-weight: 600; line-height: 1.6; }
+.scomp-page .scomp-ai-notice .scomp-ai-tag { margin-top: 2px; background: #fff; }
+/* One sentence and no spinner: no room kept for either. */
+.scomp-page .scomp-ai-compact { min-height: 0; padding-right: 20px; }
+.scomp-page .scomp-wait-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--sw-muted); }
+.scomp-page .scomp-wait-line svg { width: 18px; height: 18px; color: var(--scomp-l4); }
+.scomp-page .scomp-wait-time { color: var(--sw-ink); font-family: "Manrope", "Segoe UI", sans-serif; font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: .02em; }
+.scomp-page .scomp-note { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-left: 3px solid var(--scomp-l3); border-radius: 4px; background: #f7f9fd; font-size: 13px; line-height: 1.6; }
+.scomp-page .scomp-note svg { flex: none; width: 16px; height: 16px; margin-top: 3px; color: var(--scomp-l4); }
+.scomp-page .scomp-consent-list { display: grid; gap: 6px; margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6; }
+
 /* Career fit and gap table */
 .scomp-page .scomp-fit-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 32px; padding: 14px 16px; border: 1px solid var(--sw-border); border-radius: 8px; background: #fbfcfd; }
 .scomp-page .scomp-fit-facts { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
@@ -283,6 +295,10 @@
 .scomp-page .scomp-dialog > div { display: grid; gap: 10px; margin-bottom: 16px; }
 .scomp-page .scomp-consent-check { margin-bottom: 16px; }
 
+/* No confidence column (the AI's result): the skill line drops its last column on wide pages. */
+@container scomp (min-width: 1081px) {
+  .scomp-page .scomp-no-confidence .scomp-skill > summary { grid-template-columns: 12px minmax(0, 1fr) 150px 44px; }
+}
 @container scomp (max-width: 1080px) {
   .scomp-page .scomp-overview-grid { grid-template-columns: minmax(220px, 1fr) minmax(0, 1.6fr); }
   .scomp-page .scomp-fit-tile { grid-column: 1 / -1; }

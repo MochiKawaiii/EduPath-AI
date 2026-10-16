@@ -3,12 +3,13 @@ import { Icon } from "./student-icons";
 import { useLiveData } from "./use-live-data";
 import { competencyPolicyHref, policyVersion } from "./public-information";
 import type { StudentProfile } from "./StudentOverview";
-import { specialtyLabel, type AiStatus, type AssessmentResult, type AssessmentStatusResponse, type CareerRequirementResult, type CourseSuggestion, type LatestAssessmentResponse, type LevelCode, type SkillPlan, type SkillResult, type StoredAssessment, type SupportCourse } from "./competency-assessment-types";
+import { specialtyLabel, type AiMode, type AiStatus, type AssessmentResult, type AssessmentStatusResponse, type CareerRequirementResult, type CourseSuggestion, type LatestAssessmentResponse, type LevelCode, type SkillPlan, type SkillResult, type StoredAssessment, type SupportCourse } from "./competency-assessment-types";
 import {
-  COMPETENCY_API, CONFIDENCE_LABELS, COURSE_STATE_LABELS, EMPTY_SKILL_FILTERS, LEVEL_COLUMNS, LEVEL_SCALE, PRECONDITION_COPY, PRIORITY_LABELS,
-  aiErrorMessage, aiStateCopy, bucketSkills, canRegenerate, careerSkillKeys, courseStanding, dataUsedLine, eligibilityDisplay, errorMessage, filterSkills, formatDateTime,
-  formatNumber, formatPercent, formatScore, gapStatusDisplay, groupEvidenceCounts, historySentence, historyYears, isGap, isPreconditionError, levelSentence, levelStep, levelSummary, mapAiOutput, modelLabel,
-  plansFor, scoreDifference, shouldPoll, skillName, sortRequirements, type MappedAiOutput, type PreconditionError, type SkillFilters, type StatusTone,
+  CLOUD_MODEL_LABEL, COMPETENCY_API, CONFIDENCE_LABELS, COURSE_STATE_LABELS, EMPTY_SKILL_FILTERS, LEVEL_COLUMNS, LEVEL_SCALE, PRECONDITION_COPY, PRIORITY_LABELS,
+  aiAnnouncement, aiErrorMessage, aiRetryErrorMessage, aiScoringFailure, aiStateCopy, bucketSkills, canRegenerate, careerSkillKeys, cloudModelName, courseStanding, dataUsedLine, eligibilityDisplay,
+  errorMessage, filterSkills, formatDateTime, formatElapsed, formatNumber, formatPercent, formatScore, gapStatusDisplay, groupEvidenceCounts, historySentence, historyYears, isAiScored, isCloudModel,
+  isGap, isPreconditionError, levelSentence, levelStep, levelSummary, mapAiOutput, modelLabel, needsNewAssessment, plansFor, scoreDifference, shouldPoll, shownResult, showsConfidence, skillName,
+  sortRequirements, type MappedAiOutput, type PreconditionError, type SkillFilters, type StatusTone,
 } from "./student-competency-data";
 import { readGraduation } from "./student-graduation-api";
 import {
@@ -42,11 +43,19 @@ async function send<T>(url: string, init?: RequestInit): Promise<T> {
   }
   return data;
 }
+const AI_MODES: readonly AiMode[] = ["cloud", "worker", "disabled"];
 async function readLatest(response: Response): Promise<LatestAssessmentResponse> {
   const data = await response.json().catch(() => ({})) as LatestAssessmentResponse & { error?: string };
   if (!response.ok) throw new Error(errorMessage(data.error, "Chưa tải được kết quả đánh giá năng lực."));
-  return { assessment: data.assessment ?? null, aiEnabled: Boolean(data.aiEnabled), workerOnline: Boolean(data.workerOnline), consentVersion: typeof data.consentVersion === "string" ? data.consentVersion : null };
+  return {
+    assessment: data.assessment ?? null, aiEnabled: Boolean(data.aiEnabled), workerOnline: Boolean(data.workerOnline),
+    consentVersion: typeof data.consentVersion === "string" ? data.consentVersion : null,
+    // An API from before AI 100% sends no aiMode: its AI is the local worker.
+    aiMode: data.aiMode && AI_MODES.includes(data.aiMode) ? data.aiMode : "worker",
+  };
 }
+/** When this browser started the AI on an assessment (POST / or "Thử lại"), so the wait counts from the click, not from createdAt. */
+const aiStartedAt = new Map<string, number>();
 async function readTranscriptPresence(response: Response): Promise<boolean> {
   if (!response.ok) throw new Error("Chưa kiểm tra được bảng điểm.");
   const data = await response.json().catch(() => ({})) as { transcript?: unknown };
@@ -101,16 +110,31 @@ function useModal(onCancel: () => void, busy: boolean) {
   return { ref: dialog, onCancel: (event: SyntheticEvent) => { event.preventDefault(); if (!busy) onCancel(); } };
 }
 
-function ConsentDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void; onConfirm: () => void }) {
+/**
+ * Consent before the first assessment and after a policy change. `cloud` (aiMode "cloud", AI 100%): Claude computes
+ * the result at Anthropic, so the student is told plainly what is sent abroad and what is not before agreeing.
+ */
+export function ConsentDialog({ busy, cloud = false, onClose, onConfirm }: { busy: boolean; cloud?: boolean; onClose: () => void; onConfirm: () => void }) {
   const modal = useModal(onClose, busy);
   const [checked, setChecked] = useState(false);
   return <dialog ref={modal.ref} className="sr-confirm-dialog scomp-dialog" aria-labelledby="scomp-consent-title" aria-describedby="scomp-consent-text" onCancel={modal.onCancel}>
     <h2 id="scomp-consent-title">Đồng ý đánh giá năng lực</h2>
-    <div id="scomp-consent-text">
+    {cloud ? <div id="scomp-consent-text">
+      <p>EduPath dùng bảng điểm, khóa, chuyên ngành và nghề mục tiêu của bạn để đánh giá năng lực. Kết quả được lưu trong tài khoản của bạn (tối đa 20 lần gần nhất) đến khi bạn xóa. Trước khi đồng ý, bạn cần biết:</p>
+      <ul className="scomp-consent-list">
+        <li>{`Kết quả (điểm kỹ năng, điểm nhóm, điểm tổng, mức và khoảng trống so với nghề) do AI ${CLOUD_MODEL_LABEL} của Anthropic tính.`}</li>
+        <li>EduPath gửi cho Anthropic mã, tên, tín chỉ và điểm các học phần trong bảng điểm (mọi lần học), chương trình đào tạo, trọng số kỹ năng và yêu cầu của nghề mục tiêu.</li>
+        <li>EduPath không gửi họ tên, mã số sinh viên, email, lớp hay tệp PDF.</li>
+        <li>Anthropic là công ty tại Hoa Kỳ và xử lý dữ liệu ngoài Việt Nam.</li>
+        <li>Theo điều khoản của Anthropic, dữ liệu không được dùng để huấn luyện mô hình và được xóa trong vòng 30 ngày.</li>
+        <li>Kết quả AI có thể sai lệch, chỉ để tham khảo.</li>
+        <li>Bạn phải đồng ý thì mới dùng được tính năng này.</li>
+      </ul>
+    </div> : <div id="scomp-consent-text">
       <p>EduPath sẽ dùng bảng điểm, khóa, chuyên ngành và nghề mục tiêu của bạn để tính điểm năng lực, khoảng trống kỹ năng và gợi ý học phần. Kết quả được lưu trong tài khoản của bạn (tối đa 20 lần gần nhất) đến khi bạn xóa.</p>
       <p>Nếu nhận xét AI được bật, mô hình chạy cục bộ trên máy của nhóm phát triển chỉ nhận mã, tên học phần, điểm và kết quả đã tính — không nhận họ tên, MSSV, email hay tệp PDF.</p>
-    </div>
-    <label className="sr-confirm scomp-consent-check"><input type="checkbox" checked={checked} disabled={busy} onChange={(event) => setChecked(event.target.checked)} /><span>Tôi đồng ý để EduPath AI xử lý dữ liệu học tập của tôi cho việc đánh giá năng lực theo <a href={competencyPolicyHref} target="_blank" rel="noreferrer">Chính sách bảo mật</a>.</span></label>
+    </div>}
+    <label className="sr-confirm scomp-consent-check"><input type="checkbox" checked={checked} disabled={busy} onChange={(event) => setChecked(event.target.checked)} /><span>{cloud ? "Tôi đồng ý để EduPath gửi các dữ liệu trên cho Anthropic và để AI đánh giá năng lực của tôi theo " : "Tôi đồng ý để EduPath AI xử lý dữ liệu học tập của tôi cho việc đánh giá năng lực theo "}<a href={competencyPolicyHref} target="_blank" rel="noreferrer">Chính sách bảo mật</a>.</span></label>
     <div className="sr-actions sr-form-actions">
       <button type="button" className="sr-secondary" disabled={busy} onClick={onClose} autoFocus>Để sau</button>
       <button type="button" className="sw-primary" disabled={busy || !checked} onClick={onConfirm}>{busy ? "Đang đánh giá…" : "Đồng ý và đánh giá"}</button>
@@ -179,13 +203,17 @@ function Overview({ result }: { result: AssessmentResult }) {
   </Section>;
 }
 
-/** STU-COMP-07: the competency at the end of each graded term, grouped by school year. */
-function HistorySection({ result }: { result: AssessmentResult }) {
+/**
+ * STU-COMP-07: the competency at the end of each graded term, grouped by school year. Always the engine's
+ * (assessment.result), also for an AI-100% assessment, which says so.
+ */
+function HistorySection({ result, aiScored }: { result: AssessmentResult; aiScored: boolean }) {
   const history = result.history;
   const years = useMemo(() => historyYears(history ?? []), [history]);
   const sentence = history ? historySentence(history) : null;
   const columns = 5 + result.groups.length;
   return <Section id="scomp-history" title="Theo dõi năng lực theo học kỳ" description="Điểm năng lực tính lũy kế đến cuối mỗi học kỳ, chỉ từ các học phần đã có kết quả đến học kỳ đó, theo cùng cách tính và trọng số hiện hành. Dùng để thấy năng lực của bạn thay đổi thế nào qua từng năm học.">
+    {aiScored && <p className="scomp-note"><Icon name="info" /><span>Bảng này do hệ thống tính theo công thức của Khoa (không phải AI), nên điểm có thể khác kết quả do AI tính.</span></p>}
     {!history ? <p className="scomp-meta">Kết quả này được tính trước khi có phần theo dõi theo học kỳ. Bấm “Đánh giá lại” để xem năng lực của bạn qua từng năm, từng học kỳ.</p>
       : !history.length ? <p className="scomp-meta">Bảng điểm chưa có học kỳ nào có điểm nên chưa theo dõi được.</p> : <>
         {sentence && <p className="scomp-prose">{sentence}</p>}
@@ -225,7 +253,9 @@ const LEVEL_COLUMN_LABELS: Record<(typeof LEVEL_COLUMNS)[number], string> = {
   proficient: "Thành thạo", good: "Khá", basic: "Cơ bản", needs_work: "Cần củng cố", no_evidence: "Chưa có minh chứng",
 };
 
-function SkillsSection({ result }: { result: AssessmentResult }) {
+function SkillsSection({ result, aiScored }: { result: AssessmentResult; aiScored: boolean }) {
+  // The AI gives no confidence or coverage: every place that prints them is left out.
+  const confidence = showsConfidence(result);
   const [filters, setFilters] = useState<SkillFilters>(EMPTY_SKILL_FILTERS);
   const filtered = useMemo(() => filterSkills(result.skills, filters), [result.skills, filters]);
   const buckets = useMemo(() => bucketSkills(result, filtered), [result, filtered]);
@@ -244,14 +274,14 @@ function SkillsSection({ result }: { result: AssessmentResult }) {
     setExpanded((current) => ({ ...current, [level === "no_evidence" ? "no-evidence" : group]: true }));
     scrollToSection("scomp-skill-list");
   };
-  return <Section id="scomp-skills" title="Bảng phân tích mức độ thành thạo theo nhóm kỹ năng" description={`${result.skills.length.toLocaleString("vi-VN")} kỹ năng, chia theo nhóm. Mỗi kỹ năng được chấm theo thang 0–100 từ điểm các học phần minh chứng, theo trọng số học phần do Khoa cấu hình, rồi xếp vào một mức thành thạo.`}>
+  return <Section id="scomp-skills" className={confidence ? "" : "scomp-no-confidence"} title="Bảng phân tích mức độ thành thạo theo nhóm kỹ năng" description={`${result.skills.length.toLocaleString("vi-VN")} kỹ năng, chia theo nhóm. ${aiScored ? "AI chấm mỗi kỹ năng" : "Mỗi kỹ năng được chấm"} theo thang 0–100 từ điểm các học phần minh chứng, theo trọng số học phần do Khoa cấu hình, rồi xếp vào một mức thành thạo.`}>
     <div className="scomp-value">
       <h3>Kết quả này cho biết gì?</h3>
       <ul>
         <li><strong>Thành thạo, Khá:</strong> kỹ năng bạn đã nắm chắc qua các học phần đã học; có thể ghi vào hồ sơ xin việc và dùng ngay trong dự án.</li>
         <li><strong>Cơ bản, Cần củng cố:</strong> kỹ năng nên ôn lại hoặc học cải thiện; học phần cụ thể cho từng kỹ năng có ở trang <a className="sw-text-link" href="#skill-gap">Khoảng trống kỹ năng</a>.</li>
         <li><strong>Chưa có minh chứng:</strong> bạn chưa học học phần nào đo kỹ năng đó — không phải điểm yếu.</li>
-        <li><strong>Độ tin cậy:</strong> cho biết kết quả dựa trên bao nhiêu minh chứng; tin cậy thấp nghĩa là mới có ít học phần đo kỹ năng này.</li>
+        {confidence && <li><strong>Độ tin cậy:</strong> cho biết kết quả dựa trên bao nhiêu minh chứng; tin cậy thấp nghĩa là mới có ít học phần đo kỹ năng này.</li>}
       </ul>
     </div>
     <div className="scomp-table-scroll" tabIndex={0} role="region" aria-labelledby="scomp-level-caption">
@@ -271,7 +301,7 @@ function SkillsSection({ result }: { result: AssessmentResult }) {
     <div className="scomp-filters" id="scomp-skill-list" tabIndex={-1}>
       <label>Nhóm<select value={filters.group} onChange={(event) => set({ group: event.target.value })}><option value="">Tất cả nhóm</option>{result.groups.map((group) => <option key={group.key} value={group.key}>{group.name}</option>)}</select></label>
       <label>Mức<select value={filters.level} onChange={(event) => set({ level: event.target.value })}><option value="">Tất cả mức</option>{LEVEL_SCALE.map((level) => <option key={level.code} value={level.code}>{level.label}</option>)}</select></label>
-      <label>Độ tin cậy<select value={filters.confidence} onChange={(event) => set({ confidence: event.target.value })}><option value="">Tất cả</option><option value="high">Cao</option><option value="medium">Trung bình</option><option value="low">Thấp</option></select></label>
+      {confidence && <label>Độ tin cậy<select value={filters.confidence} onChange={(event) => set({ confidence: event.target.value })}><option value="">Tất cả</option><option value="high">Cao</option><option value="medium">Trung bình</option><option value="low">Thấp</option></select></label>}
       <label className="scomp-search">Tìm kỹ năng<input type="search" value={filters.search} onChange={(event) => set({ search: event.target.value })} placeholder="Tên kỹ năng hoặc mã học phần…" /></label>
       <label className="scomp-toggle"><input type="checkbox" checked={filters.careerOnly} onChange={(event) => set({ careerOnly: event.target.checked })} />Chỉ kỹ năng của nghề</label>
       <label className="scomp-toggle"><input type="checkbox" checked={filters.needsWork} onChange={(event) => set({ needsWork: event.target.checked })} />Chỉ cần cải thiện</label>
@@ -280,20 +310,21 @@ function SkillsSection({ result }: { result: AssessmentResult }) {
     <p className="scomp-meta" aria-live="polite">{filtered.length.toLocaleString("vi-VN")} kỹ năng phù hợp bộ lọc{filtering && <> · <button type="button" className="scomp-link-button" onClick={() => setFilters(EMPTY_SKILL_FILTERS)}>Xem tất cả kỹ năng</button></>}</p>
     {buckets.map((bucket) => { const group = groups.get(bucket.id); return <details key={bucket.id} className="scomp-bucket" open={isOpen(bucket.id)} onToggle={(event) => { const open = event.currentTarget.open; if (open !== isOpen(bucket.id)) setExpanded((current) => ({ ...current, [bucket.id]: open })); }}>
       <summary><strong>{bucket.title} ({bucket.skills.length.toLocaleString("vi-VN")})</strong>{group && group.score !== null && <span>Điểm nhóm {formatScore(group.score)} · {group.levelLabel}</span>}{bucket.note && <span>{bucket.note}</span>}</summary>
-      <ul className="scomp-skill-list">{bucket.skills.map((skill) => <SkillRow key={skill.key} skill={skill} courses={courses} />)}</ul>
+      <ul className="scomp-skill-list">{bucket.skills.map((skill) => <SkillRow key={skill.key} skill={skill} courses={courses} confidence={confidence} />)}</ul>
     </details>; })}
     {!buckets.length && <p className="sw-empty">Không có kỹ năng nào phù hợp bộ lọc.</p>}
   </Section>;
 }
 
 const ROLE_NOTES: Partial<Record<SkillResult["evidenceCourses"][number]["role"], string>> = { planned: "Chưa học", not_chosen: "Không thuộc lựa chọn tự chọn của bạn", in_progress: "Đang học", exempt: "Miễn/công nhận", studied: "Đã học" };
-function SkillRow({ skill, courses }: { skill: SkillResult; courses: Map<string, AssessmentResult["courses"][number]> }) {
+/** `confidence`: the result measures confidence and coverage (false for the AI's result). */
+function SkillRow({ skill, courses, confidence }: { skill: SkillResult; courses: Map<string, AssessmentResult["courses"][number]>; confidence: boolean }) {
   return <li><details className="scomp-skill">
     <summary>
       <span className="scomp-skill-name">{skill.name}{skill.careerSkill && <span className="scomp-career-tag">Nghề mục tiêu</span>}</span>
       <LevelBadge level={skill.level} label={skill.levelLabel} />
       <span className="scomp-skill-score">{formatScore(skill.score)}</span>
-      <span className="scomp-skill-meta">{skill.confidence ? CONFIDENCE_LABELS[skill.confidence] : "—"} · độ phủ {formatPercent(skill.coverage)}</span>
+      {confidence && <span className="scomp-skill-meta">{skill.confidence ? CONFIDENCE_LABELS[skill.confidence] : "—"} · độ phủ {formatPercent(skill.coverage)}</span>}
     </summary>
     <div className="scomp-skill-body">
       {skill.scope && <p className="scomp-prose"><strong>Phạm vi: </strong>{skill.scope}</p>}
@@ -301,7 +332,7 @@ function SkillRow({ skill, courses }: { skill: SkillResult; courses: Map<string,
       <div className="scomp-table-scroll" tabIndex={0} role="region" aria-label={`Học phần minh chứng của ${skill.name}`}>
         <table className="scomp-table scomp-evidence">
           <caption>Học phần minh chứng của {skill.name}</caption>
-          <thead><tr><th scope="col">Mã</th><th scope="col">Tên học phần</th><th scope="col">TC</th><th scope="col">Điểm</th><th scope="col">Kết quả</th><th scope="col">Số lần học</th><th scope="col">Trọng số</th><th scope="col">Học kỳ</th><th scope="col">Độ phủ</th></tr></thead>
+          <thead><tr><th scope="col">Mã</th><th scope="col">Tên học phần</th><th scope="col">TC</th><th scope="col">Điểm</th><th scope="col">Kết quả</th><th scope="col">Số lần học</th><th scope="col">Trọng số</th><th scope="col">Học kỳ</th>{confidence && <th scope="col">Độ phủ</th>}</tr></thead>
           <tbody>{skill.evidenceCourses.map((row) => {
             const course = courses.get(row.code);
             return <tr key={row.code}>
@@ -313,7 +344,7 @@ function SkillRow({ skill, courses }: { skill: SkillResult; courses: Map<string,
               <td className="scomp-num">{course ? course.attempts.toLocaleString("vi-VN") : "—"}</td>
               <td className="scomp-num">{formatNumber(row.weight)}</td>
               <td>{course?.term ?? (course?.plannedTerm ? `Dự kiến ${course.plannedTerm}` : "—")}</td>
-              <td className="scomp-num">{formatPercent(row.share)}</td>
+              {confidence && <td className="scomp-num">{formatPercent(row.share)}</td>}
             </tr>;
           })}</tbody>
         </table>
@@ -425,7 +456,8 @@ function GraduationSection() {
   </Section>;
 }
 
-function WarningsSection({ result, view }: { result: AssessmentResult; view: CompetencyView }) {
+/** The engine's data warnings (the same for an AI-100% assessment) and how the numbers are computed. */
+function WarningsSection({ result, view, aiScored }: { result: AssessmentResult; view: CompetencyView; aiScored: boolean }) {
   const outside = result.transcript.notInCurriculum;
   return <Section id="scomp-warnings" title={view === "gap" ? "Cảnh báo dữ liệu và cách tính mức phù hợp" : "Cảnh báo dữ liệu và cách tính"}>
     {result.warnings.length ? <ul className="scomp-warnings">{result.warnings.map((warning, index) => <li key={`${warning.code}-${index}`}>
@@ -434,16 +466,19 @@ function WarningsSection({ result, view }: { result: AssessmentResult; view: Com
     {view === "competency" && outside.length > 0 && <details className="scomp-legend"><summary>Học phần ngoài chương trình đào tạo ({outside.length.toLocaleString("vi-VN")})</summary><p className="scomp-meta">Chỉ để thông tin; các học phần này không ảnh hưởng tới điểm năng lực.</p><ul>{outside.map((course) => <li key={course.code}><strong>{course.code}</strong>{course.name && ` · ${course.name}`} · {formatNumber(course.credits)} TC{course.letter && ` · ${course.letter}`}</li>)}</ul></details>}
     {view === "competency" ? <details className="scomp-legend scomp-method"><summary>Cách tính điểm năng lực</summary>
       <div className="scomp-prose">
+        {aiScored && <p>Với lần đánh giá này, AI tính điểm theo đúng cách dưới đây; bảng theo dõi theo học kỳ do hệ thống tính.</p>}
         <p>Mỗi học phần được Khoa gắn với các kỹ năng kèm trọng số. Điểm một kỹ năng (thang 0–100) là trung bình điểm hệ 10 của các học phần liên quan, nhân 10, có trọng số theo tín chỉ × trọng số kỹ năng. Lần học có điểm F vẫn được tính; học phần miễn/công nhận (MT) được tính là đã học nhưng không có điểm để lấy trung bình.</p>
         <p>Mức: từ 85 là Thành thạo, 70 đến dưới 85 là Khá, 50 đến dưới 70 là Cơ bản, dưới 50 là Cần củng cố. Điểm nhóm tính cùng cách; điểm tổng là trung bình các nhóm có dữ liệu. Môn điều kiện (Giáo dục thể chất, Giáo dục quốc phòng) không tính vào điểm nhóm và điểm tổng.</p>
-        <p>Độ phủ là phần học phần liên quan bạn đã học so với các học phần áp dụng cho bạn (học phần chung, học phần chuyên ngành của bạn và học phần bạn đã học; nhóm tự chọn tính theo số tín chỉ cần chọn). Độ tin cậy lấy mức thấp hơn giữa độ phủ (dưới 30% thấp, từ 70% cao) và lượng minh chứng (tổng tín chỉ × trọng số dưới 1,0 thấp, từ 2,5 cao).</p>
+        {!aiScored && <p>Độ phủ là phần học phần liên quan bạn đã học so với các học phần áp dụng cho bạn (học phần chung, học phần chuyên ngành của bạn và học phần bạn đã học; nhóm tự chọn tính theo số tín chỉ cần chọn). Độ tin cậy lấy mức thấp hơn giữa độ phủ (dưới 30% thấp, từ 70% cao) và lượng minh chứng (tổng tín chỉ × trọng số dưới 1,0 thấp, từ 2,5 cao).</p>}
         <p>Phiên bản cách tính: {result.meta.calcVersion}.</p>
       </div>
     </details> : <details className="scomp-legend scomp-method"><summary>Cách tính mức phù hợp và khoảng trống</summary>
       <div className="scomp-prose">
         <p>Điểm từng kỹ năng lấy từ trang Đánh giá năng lực. Với nghề mục tiêu, kỹ năng Ưu tiên cần từ 70 (mức Khá) và kỹ năng Bắt buộc cần từ 85 (mức Thành thạo). Mức thiếu hụt là số điểm còn thiếu so với ngưỡng: đến 5 điểm là Gần ngưỡng, đến 15 điểm là Thiếu vừa, nhiều hơn là Thiếu nhiều.</p>
         <p>Mức phù hợp tính theo hệ số 2 cho Bắt buộc và 1 cho Ưu tiên: đạt ngưỡng được trọn điểm, dưới ngưỡng được tối đa một nửa, chưa học được 0; kỹ năng sắp học hoặc chưa đủ dữ liệu không tính. Từ 0,80 là Phù hợp, 0,50 đến dưới 0,80 là Khá phù hợp; nếu dưới một nửa hệ số có dữ liệu thì ghi Chưa đủ dữ liệu.</p>
-        <p>Học phần gợi ý là học phần trong chương trình của bạn có đo kỹ năng còn thiếu, xếp theo mức đóng góp (tín chỉ × trọng số). Điều kiện đăng ký được kiểm tra theo học phần tiên quyết và học trước trong chương trình đào tạo.</p>
+        {aiScored
+          ? <p>Học phần gợi ý do AI chọn trong chương trình đào tạo của bạn và nằm trong phần nhận xét AI. AI không kiểm tra học phần tiên quyết, nên hãy xem lại điều kiện đăng ký trong chương trình đào tạo.</p>
+          : <p>Học phần gợi ý là học phần trong chương trình của bạn có đo kỹ năng còn thiếu, xếp theo mức đóng góp (tín chỉ × trọng số). Điều kiện đăng ký được kiểm tra theo học phần tiên quyết và học trước trong chương trình đào tạo.</p>}
         <p>Phiên bản cách tính: {result.meta.calcVersion}.</p>
       </div>
     </details>}
@@ -598,24 +633,94 @@ function CoursesSection({ result, ai }: { result: AssessmentResult; ai: MappedAi
 
 /* --------------------------------------------------------------------- AI */
 
-function AiPanel({ assessment, aiEnabled, workerOnline, busy, onRegenerate, onCancel, view }: { assessment: StoredAssessment; aiEnabled: boolean; workerOnline: boolean; busy: boolean; onRegenerate: () => void; onCancel: () => void; view: CompetencyView }) {
-  const { ai, result } = assessment;
+/**
+ * The AI comment on the result shown (`result`: the engine's, or the AI's for an AI-100% assessment).
+ * `cloud`: the AI is Claude at Anthropic, so the team's machine and its connection are never mentioned.
+ */
+function AiPanel({ assessment, result, aiEnabled, workerOnline, cloud, busy, error, onRegenerate, onCancel, view }: {
+  assessment: StoredAssessment; result: AssessmentResult; aiEnabled: boolean; workerOnline: boolean; cloud: boolean; busy: boolean; error: string;
+  onRegenerate: () => void; onCancel: () => void; view: CompetencyView;
+}) {
+  const { ai } = assessment;
+  const aiScored = isAiScored(assessment);
   const mapped = ai.status === "completed" ? mapAiOutput(ai.output, result) : null;
   const pending = shouldPoll(ai.status);
-  const copy = aiStateCopy(ai.status, workerOnline, aiEnabled);
+  const copy = aiStateCopy(ai.status, workerOnline, aiEnabled, cloud);
+  // AI 100%: the numbers are in and only the comment is missing (invalid_ai_output, ai_timeout …); the API
+  // runs the job again (numbers and comment), so "Tạo lại" leads back to the wait.
+  const commentFailed = aiScored && ai.status === "completed" && !mapped;
+  const redo = commentFailed || canRegenerate(ai.status, aiEnabled);
+  // Cancelling an AI-100% job would leave the assessment without numbers, so it is not offered.
+  const cancel = pending && !aiScored;
+  const claude = aiScored || isCloudModel(ai.model) || (ai.status !== "completed" && cloud);
+  const model = claude ? cloudModelName(ai.model) : modelLabel(ai.model);
+  const source = ai.status === "completed"
+    ? `${model}${claude ? " (Anthropic)" : ", chạy cục bộ"} · tạo lúc ${formatDateTime(ai.completedAt)}. `
+    : claude ? `AI ${model} (Anthropic). ` : "Mô hình Gemma 4 E4B chạy cục bộ trên máy của nhóm phát triển. ";
   return <section id="scomp-ai" tabIndex={-1} className="sw-panel scomp-section scomp-ai" aria-labelledby="scomp-ai-title">
     <div className="scomp-section-heading"><div className="scomp-ai-heading"><span className="scomp-ai-icon"><Icon name="spark" /></span><h2 id="scomp-ai-title">{view === "gap" ? "Nhận xét từ EduPath AI về khoảng trống kỹ năng" : "Nhận xét từ EduPath AI"}</h2><span className="scomp-ai-tag">AI</span></div></div>
-    {mapped ? view === "gap" ? <AiGapContent output={mapped} hasCareer={Boolean(result.career)} careerKeys={careerSkillKeys(result)} /> : <AiContent output={mapped} /> : <div className={`scomp-ai-state${pending ? " scomp-ai-pending" : ""}${ai.status === "failed" ? " scomp-ai-failed" : ""}`}>
+    {mapped ? view === "gap" ? <AiGapContent output={mapped} hasCareer={Boolean(result.career)} careerKeys={careerSkillKeys(result)} /> : <AiContent output={mapped} /> : <div className={`scomp-ai-state${pending ? " scomp-ai-pending" : ""}${ai.status === "failed" || commentFailed ? " scomp-ai-failed" : ""}`}>
       {pending && <span className="sr-job-spinner" aria-hidden="true" />}
-      <strong>{ai.status === "completed" ? "Chưa hiển thị được nhận xét" : copy.title}</strong>
-      <p>{ai.status === "failed" ? `${aiErrorMessage(ai.errorCode)} ${copy.text}` : ai.status === "completed" ? "Nhận xét đã lưu không đọc được. Kết quả tính toán bên dưới vẫn đầy đủ." : copy.text}</p>
-      {pending && <ol className="sr-job-steps" aria-label="Tiến trình tạo nhận xét"><li>1. Đã tính kết quả</li><li aria-current={ai.status === "queued" ? "step" : undefined}>2. {workerOnline ? "Xếp hàng" : "Chờ máy AI"}</li><li aria-current={ai.status === "processing" ? "step" : undefined}>3. Viết nhận xét</li></ol>}
+      <strong>{commentFailed ? "Chưa tạo được nhận xét" : ai.status === "completed" ? "Chưa hiển thị được nhận xét" : copy.title}</strong>
+      <p>{commentFailed ? "AI đã tính xong kết quả nhưng chưa viết được nhận xét. Kết quả trên trang vẫn dùng được."
+        : ai.status === "failed" ? `${aiErrorMessage(ai.errorCode, cloud)} ${copy.text}`
+          : ai.status === "completed" ? "Nhận xét đã lưu không đọc được. Kết quả tính toán bên dưới vẫn đầy đủ." : copy.text}</p>
+      {pending && <ol className="sr-job-steps" aria-label="Tiến trình tạo nhận xét"><li>1. Đã tính kết quả</li><li aria-current={ai.status === "queued" ? "step" : undefined}>2. {workerOnline || cloud ? "Xếp hàng" : "Chờ máy AI"}</li><li aria-current={ai.status === "processing" ? "step" : undefined}>3. Viết nhận xét</li></ol>}
     </div>}
-    {(canRegenerate(ai.status, aiEnabled) || pending) && <div className="scomp-actions">
-      {canRegenerate(ai.status, aiEnabled) && <button type="button" className="sw-outline" disabled={busy} onClick={onRegenerate}><Icon name="refresh" />{ai.status === "disabled" ? "Tạo nhận xét" : "Tạo lại nhận xét"}</button>}
-      {pending && <button type="button" className="sr-secondary" disabled={busy} onClick={onCancel}>Hủy tạo nhận xét</button>}
+    {(redo || cancel) && <div className="scomp-actions">
+      {redo && <button type="button" className="sw-outline" disabled={busy} onClick={onRegenerate}><Icon name="refresh" />{commentFailed ? "Tạo lại" : ai.status === "disabled" ? "Tạo nhận xét" : "Tạo lại nhận xét"}</button>}
+      {cancel && <button type="button" className="sr-secondary" disabled={busy} onClick={onCancel}>Hủy tạo nhận xét</button>}
     </div>}
-    <p className="scomp-ai-footer">{ai.status === "completed" ? `${modelLabel(ai.model)}, chạy cục bộ · tạo lúc ${formatDateTime(ai.completedAt)}. ` : "Mô hình Gemma 4 E4B chạy cục bộ trên máy của nhóm phát triển. "}Nhận xét do AI viết dựa trên kết quả đã tính, có thể chưa chính xác — hãy đối chiếu số liệu và trao đổi với cố vấn học tập.</p>
+    {error && <p className="sr-error" role="alert">{error}</p>}
+    <p className="scomp-ai-footer">{`${source}${aiScored
+      ? "Kết quả và nhận xét do AI tạo, có thể sai lệch — hãy đối chiếu bảng điểm và trao đổi với cố vấn học tập."
+      : "Nhận xét do AI viết dựa trên kết quả đã tính, có thể chưa chính xác — hãy đối chiếu số liệu và trao đổi với cố vấn học tập."}`}</p>
+  </section>;
+}
+
+/** AI 100%, completed: one line over the AI's numbers on both pages. */
+function AiNotice({ model }: { model: string | null }) {
+  return <p className="scomp-ai-notice" role="note"><span className="scomp-ai-tag">AI</span><span>{`Kết quả do AI ${cloudModelName(model)} (Anthropic) tính theo công thức của Khoa, có thể sai lệch. Chỉ để tham khảo.`}</span></p>;
+}
+
+/** Waiting time since `since` (ms), counted on screen every second. */
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <strong className="scomp-wait-time" role="timer">{formatElapsed(now - since)}</strong>;
+}
+
+/**
+ * AI 100% without numbers yet: the wait while the AI computes them (the page keeps polling), or why it could
+ * not and a retry. `stale`: the retry answered transcript_changed or assessment_outdated (`error` says which),
+ * so only a new assessment helps.
+ */
+function AiScoringCard({ assessment, aiEnabled, busy, error, stale, onRetry, onRerun }: {
+  assessment: StoredAssessment; aiEnabled: boolean; busy: boolean; error: string; stale: boolean; onRetry: () => void; onRerun: () => void;
+}) {
+  const { ai } = assessment;
+  const pending = shouldPoll(ai.status);
+  const retry = !stale && canRegenerate(ai.status, aiEnabled);
+  const since = aiStartedAt.get(assessment.id) ?? Date.parse(assessment.createdAt);
+  return <section id="scomp-ai-scoring" tabIndex={-1} className="sw-panel scomp-section scomp-ai" aria-labelledby="scomp-ai-scoring-title">
+    <div className="scomp-section-heading"><div className="scomp-ai-heading"><span className="scomp-ai-icon"><Icon name="spark" /></span><h2 id="scomp-ai-scoring-title">{pending ? "AI đang tính kết quả của bạn" : "AI chưa tính được kết quả"}</h2><span className="scomp-ai-tag">AI</span></div></div>
+    {pending ? <div className="scomp-ai-state scomp-ai-pending">
+      <span className="sr-job-spinner" aria-hidden="true" />
+      <p className="scomp-wait-line"><Icon name="clock" /><span>Đã chờ</span><Elapsed since={since} /></p>
+      <p>Thường mất vài phút. Bạn có thể rời trang và quay lại sau.</p>
+      <ol className="sr-job-steps" aria-label="Tiến trình tính kết quả"><li>1. Đã gửi yêu cầu</li><li aria-current={ai.status === "queued" ? "step" : undefined}>2. Xếp hàng</li><li aria-current={ai.status === "processing" ? "step" : undefined}>3. AI tính kết quả</li></ol>
+    </div> : <div className="scomp-ai-state scomp-ai-failed scomp-ai-compact">
+      {stale ? <p role="alert">{error}</p>
+        : <p>{`${aiScoringFailure(ai.status, ai.errorCode)} ${retry ? "Bấm “Thử lại” để AI tính lại; bảng điểm và hồ sơ của bạn không bị ảnh hưởng." : "Hãy bấm “Đánh giá lại” để tạo lần đánh giá mới."}`}</p>}
+    </div>}
+    {error && !stale && <p className="sr-error" role="alert">{error}</p>}
+    {!pending && <div className="scomp-actions">
+      <button type="button" className="sw-outline" disabled={busy} onClick={retry ? onRetry : onRerun}><Icon name="refresh" />{retry ? "Thử lại" : "Đánh giá lại"}</button>
+    </div>}
+    {pending && <p className="scomp-ai-footer">{`AI ${CLOUD_MODEL_LABEL} (Anthropic) tính điểm kỹ năng, điểm nhóm, điểm tổng và khoảng trống so với nghề theo công thức của Khoa.`}</p>}
   </section>;
 }
 
@@ -675,20 +780,23 @@ function Checklist({ hasTranscript, transcriptFailed, profile, suggestion }: { h
   </li>)}</ul>;
 }
 
-const HEADER_COPY: Record<CompetencyView, { title: string; resultTitle: string; lead: string; introTitle: string; intro: string }> = {
+/** `aiLead`: the lead when the AI computes the result (AI 100%), if it differs. The intro ends with REFERENCE_ONLY. */
+const HEADER_COPY: Record<CompetencyView, { title: string; resultTitle: string; lead: string; aiLead?: string; introTitle: string; intro: string }> = {
   competency: {
     title: "Đánh giá năng lực của bạn", resultTitle: "Kết quả đánh giá năng lực",
     lead: "Hệ thống tính điểm từng kỹ năng từ bảng điểm và trọng số học phần do Khoa cấu hình, xếp mức thành thạo theo nhóm kỹ năng và đối chiếu tiến độ học tập.",
+    aiLead: `AI ${CLOUD_MODEL_LABEL} (Anthropic) tính điểm từng kỹ năng từ bảng điểm theo công thức và trọng số học phần do Khoa cấu hình, xếp mức thành thạo theo nhóm kỹ năng; hệ thống đối chiếu tiến độ học tập.`,
     introTitle: "Chưa có kết quả đánh giá",
-    intro: "Bấm “Đánh giá năng lực” để xem điểm theo từng nhóm kỹ năng, mức thành thạo của từng kỹ năng, tiến độ so với kế hoạch đào tạo và điều kiện xét tốt nghiệp. Kết quả chỉ mang tính tham khảo.",
+    intro: "Bấm “Đánh giá năng lực” để xem điểm theo từng nhóm kỹ năng, mức thành thạo của từng kỹ năng, tiến độ so với kế hoạch đào tạo và điều kiện xét tốt nghiệp.",
   },
   gap: {
     title: "Phân tích khoảng trống kỹ năng", resultTitle: "Kết quả phân tích khoảng trống kỹ năng",
     lead: "Khoảng trống được tính từ điểm từng kỹ năng ở trang Đánh giá năng lực, so với ngưỡng mà nghề mục tiêu của bạn yêu cầu.",
     introTitle: "Chưa có kết quả phân tích",
-    intro: "Khoảng trống kỹ năng được tính cùng lúc với đánh giá năng lực, từ bảng điểm và nghề mục tiêu của bạn. Bấm “Đánh giá năng lực” để bắt đầu. Kết quả chỉ mang tính tham khảo.",
+    intro: "Khoảng trống kỹ năng được tính cùng lúc với đánh giá năng lực, từ bảng điểm và nghề mục tiêu của bạn. Bấm “Đánh giá năng lực” để bắt đầu.",
   },
 };
+const REFERENCE_ONLY = "Kết quả chỉ mang tính tham khảo.";
 
 export default function StudentCompetency({ profile, view = "competency" }: { profile: Profile | null; view?: CompetencyView }) {
   const [revision, setRevision] = useState(0);
@@ -698,8 +806,15 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
   useEffect(() => { if (live.data) setCurrent(live.data); }, [live.data]);
   const data = current ?? live.data;
   const assessment = data?.assessment ?? null;
+  const aiMode: AiMode = data?.aiMode ?? "worker";
+  // AI 100%: the AI computes every number (aiResult); the engine's result still gives history, progress and warnings.
+  const aiScored = isAiScored(assessment);
+  // Claude at Anthropic: never a word about the team's AI machine or its connection.
+  const cloud = aiMode === "cloud" || aiScored;
   const [busy, setBusy] = useState<"run" | "ai" | "delete" | null>(null);
   const [error, setError] = useState("");
+  // A failed retry of an AI-100% assessment, shown next to its button.
+  const [aiError, setAiError] = useState<{ id: string; code: string | null; message: string } | null>(null);
   const [blocked, setBlocked] = useState<PreconditionError | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [consentOpen, setConsentOpen] = useState(false);
@@ -708,15 +823,16 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
 
   const aiStatus: AiStatus | null = assessment?.ai.status ?? null;
   const assessmentId = assessment?.id ?? null;
+  const hasAiResult = Boolean(assessment?.aiResult);
   const previous = useRef<{ id: string | null; status: AiStatus | null }>({ id: null, status: null });
   useEffect(() => {
     const before = previous.current;
     previous.current = { id: assessmentId, status: aiStatus };
     if (!assessmentId || before.id !== assessmentId || before.status === aiStatus || !aiStatus) return;
-    setAnnouncement(aiStatus === "completed" ? "Đã có nhận xét từ EduPath AI." : aiStatus === "failed" ? "Chưa tạo được nhận xét AI." : aiStateCopy(aiStatus, data?.workerOnline ?? false, data?.aiEnabled ?? false).title);
-  }, [assessmentId, aiStatus, data?.workerOnline, data?.aiEnabled]);
+    setAnnouncement(aiAnnouncement(aiStatus, { aiScored, hasResult: hasAiResult, cloud, workerOnline: data?.workerOnline ?? false, aiEnabled: data?.aiEnabled ?? false }));
+  }, [assessmentId, aiStatus, aiScored, hasAiResult, cloud, data?.workerOnline, data?.aiEnabled]);
 
-  // Poll the small status payload only while the AI comment can still change.
+  // Poll the small status payload only while the AI (its comment, or with AI 100% the whole result) can still change.
   useEffect(() => {
     if (!assessmentId || !shouldPoll(aiStatus)) return;
     const pending = new AbortController();
@@ -742,10 +858,14 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
     setConsentOpen(false); setBusy("run"); setError(""); setAnnouncement("Đang tính kết quả đánh giá năng lực…");
     try {
       const response = await send<{ assessment: StoredAssessment }>(`${COMPETENCY_API}`, { method: "POST", headers: { "Content-Type": "application/json", "X-Consent-Policy-Version": policyVersion }, body: "{}" });
-      setBlocked(null);
+      setBlocked(null); setAiError(null);
+      aiStartedAt.set(response.assessment.id, Date.now());
       previous.current = { id: response.assessment.id, status: response.assessment.ai.status };
-      setCurrent((value) => ({ assessment: response.assessment, aiEnabled: value?.aiEnabled ?? data?.aiEnabled ?? false, workerOnline: value?.workerOnline ?? data?.workerOnline ?? false, consentVersion: policyVersion }));
-      setAnnouncement("Đã cập nhật kết quả đánh giá năng lực.");
+      setCurrent((value) => ({
+        assessment: response.assessment, aiEnabled: value?.aiEnabled ?? data?.aiEnabled ?? false, workerOnline: value?.workerOnline ?? data?.workerOnline ?? false,
+        consentVersion: policyVersion, aiMode: value?.aiMode ?? data?.aiMode ?? "worker",
+      }));
+      setAnnouncement(isAiScored(response.assessment) && !response.assessment.aiResult ? "AI đang tính kết quả của bạn. Thường mất vài phút." : "Đã cập nhật kết quả đánh giá năng lực.");
     } catch (e) {
       const failure = e as ApiError;
       if (isPreconditionError(failure.code)) { setBlocked(failure.code); setAnnouncement(PRECONDITION_COPY[failure.code].title); }
@@ -763,14 +883,24 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
   // Consent is per student and kept by the server (GET /latest consentVersion), never per browser.
   const start = () => { if (data?.consentVersion === policyVersion) void run(); else setConsentOpen(true); };
   const confirmConsent = () => { void run(); };
+  // POST /:id/ai: a new comment, or with AI 100% a new AI scoring ("Thử lại") or comment ("Tạo lại").
   const regenerate = async () => {
     if (!assessment) return;
-    setBusy("ai"); setError("");
+    const scored = isAiScored(assessment);
+    setBusy("ai"); setError(""); setAiError(null);
     try {
       const response = await send<{ aiStatus: AiStatus }>(`${COMPETENCY_API}/${encodeURIComponent(assessment.id)}/ai`, jsonWrite("POST"));
-      setCurrent((value) => value?.assessment?.id === assessment.id ? { ...value, assessment: { ...value.assessment, ai: { ...value.assessment.ai, status: response.aiStatus, errorCode: null } } } : value);
-    } catch (e) { setError((e as Error).message); }
-    finally { setBusy(null); }
+      aiStartedAt.set(assessment.id, Date.now());
+      // AI 100%: the server cleared the AI's numbers for the new run (aiResult comes back only once it completes).
+      setCurrent((value) => value?.assessment?.id === assessment.id ? {
+        ...value, assessment: { ...value.assessment, ...(scored ? { aiResult: null } : {}), ai: { ...value.assessment.ai, status: response.aiStatus, errorCode: null, ...(scored ? { output: null } : {}) } },
+      } : value);
+    } catch (e) {
+      const failure = e as ApiError;
+      // AI 100%: the error belongs next to the button; 409 transcript_changed / assessment_outdated ask for a new assessment.
+      if (scored) setAiError({ id: assessment.id, code: failure.code ?? null, message: failure.code ? aiRetryErrorMessage(failure.code) : failure.status ? failure.message : errorMessage(null) });
+      else setError(failure.message);
+    } finally { setBusy(null); }
   };
   const cancelAi = async () => {
     if (!assessment) return;
@@ -786,14 +916,18 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
     try {
       await send<{ deleted: boolean }>(`${COMPETENCY_API}`, jsonWrite("DELETE", { confirmed: true }));
       setDeleteOpen(false);
-      setCurrent((value) => ({ assessment: null, aiEnabled: value?.aiEnabled ?? false, workerOnline: value?.workerOnline ?? false, consentVersion: null }));
+      setCurrent((value) => ({ assessment: null, aiEnabled: value?.aiEnabled ?? false, workerOnline: value?.workerOnline ?? false, consentVersion: null, aiMode: value?.aiMode ?? "worker" }));
       setAnnouncement("Đã xóa kết quả đánh giá năng lực và rút lại đồng ý.");
     } catch (e) { setDeleteError((e as Error).message); }
     finally { setBusy(null); }
   };
 
+  // The engine's result: meta, warnings, the term-by-term history and plan progress, whoever computed the numbers.
   const result = assessment?.result ?? null;
+  // The numbers of both pages: the engine's, or with AI 100% the AI's (null until the AI has computed them).
+  const shown = useMemo(() => assessment ? shownResult(assessment) : null, [assessment]);
   const mapped = useMemo(() => assessment && assessment.ai.status === "completed" ? mapAiOutput(assessment.ai.output, assessment.result) : null, [assessment]);
+  const actionError = assessment && aiError?.id === assessment.id ? aiError : null;
   const warningCount = result?.warnings.length ?? 0;
   const hasTranscript = transcript.loading ? null : transcript.error ? null : transcript.data;
   // The result was computed for meta.specialty / meta.career; say so when the profile changed since.
@@ -802,13 +936,20 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
     (profile.specialty !== undefined && (profile.specialty ?? null) !== result.meta.specialty)
     || (profile.careerPositionId ?? null) !== (result.meta.career?.id ?? null)));
   const copy = HEADER_COPY[view];
-  const aiPanel = assessment && <AiPanel assessment={assessment} aiEnabled={data?.aiEnabled ?? false} workerOnline={data?.workerOnline ?? false} busy={busy !== null} onRegenerate={() => void regenerate()} onCancel={() => void cancelAi()} view={view} />;
+  // Who computes the numbers: the shown assessment, or before the first one what a run would do now.
+  const aiScoring = assessment ? aiScored : aiMode === "cloud";
+  const aiPanel = assessment && shown && <AiPanel assessment={assessment} result={shown} aiEnabled={data?.aiEnabled ?? false} workerOnline={data?.workerOnline ?? false} cloud={cloud}
+    busy={busy !== null} error={actionError?.message ?? ""} onRegenerate={() => void regenerate()} onCancel={() => void cancelAi()} view={view} />;
+  // AI 100% before the numbers exist: the wait, or the failure with "Thử lại".
+  const scoringCard = assessment && !shown && <AiScoringCard assessment={assessment} aiEnabled={data?.aiEnabled ?? false} busy={busy !== null}
+    error={actionError?.message ?? ""} stale={needsNewAssessment(actionError?.code)} onRetry={() => void regenerate()} onRerun={start} />;
+  const notice = assessment && shown && aiScored && <AiNotice model={assessment.ai.model} />;
   return <div className="scomp-page">
     <section className="sw-panel scomp-header" aria-labelledby="scomp-title">
       <div className="scomp-header-main">
         <div>
           <h2 id="scomp-title">{assessment ? copy.resultTitle : copy.title}</h2>
-          <p className="scomp-lead">{copy.lead}</p>
+          <p className="scomp-lead">{aiScoring && copy.aiLead ? copy.aiLead : copy.lead}</p>
         </div>
         <div className="scomp-header-actions">
           <button type="button" className="sw-primary" disabled={busy !== null || live.loading} onClick={start}><Icon name={assessment ? "refresh" : "chart"} />{busy === "run" ? "Đang đánh giá…" : assessment ? "Đánh giá lại" : "Đánh giá năng lực"}</button>
@@ -827,24 +968,27 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
     {data && !assessment && !blocked && <section className="sw-panel scomp-section" aria-labelledby="scomp-intro-title"><div className="sw-empty scomp-empty">
       <span className="scomp-empty-icon" aria-hidden="true"><Icon name={view === "gap" ? "target" : "chart"} /></span>
       <h3 id="scomp-intro-title">{copy.introTitle}</h3>
-      <p>{copy.intro}</p>
+      <p>{`${copy.intro} ${aiScoring ? `AI ${CLOUD_MODEL_LABEL} (Anthropic) sẽ tính kết quả trong vài phút. ` : ""}${REFERENCE_ONLY}`}</p>
     </div></section>}
     {assessment && result && (view === "gap" ? <>
-      <GapSummary result={result} />
-      {aiPanel}
-      <GapTable result={result} />
-      <CoursesSection result={result} ai={mapped} />
-      <WarningsSection result={result} view={view} />
+      {shown ? <>
+        {notice}
+        <GapSummary result={shown} />
+        {aiPanel}
+        <GapTable result={shown} />
+        {/* The engine's course cards rest on its own numbers; with AI 100% the AI comment names the courses. */}
+        {!aiScored && <CoursesSection result={shown} ai={mapped} />}
+      </> : scoringCard}
+      <WarningsSection result={result} view={view} aiScored={aiScored} />
     </> : <>
-      <Overview result={result} />
-      {aiPanel}
-      <HistorySection result={result} />
-      <SkillsSection key={assessment.id} result={result} />
+      {shown ? <>{notice}<Overview result={shown} />{aiPanel}</> : scoringCard}
+      <HistorySection result={result} aiScored={aiScored} />
+      {shown && <SkillsSection key={assessment.id} result={shown} aiScored={aiScored} />}
       <ProgressSection result={result} />
       <GraduationSection />
-      <WarningsSection result={result} view={view} />
+      <WarningsSection result={result} view={view} aiScored={aiScored} />
     </>)}
-    {consentOpen && <ConsentDialog busy={busy === "run"} onClose={() => setConsentOpen(false)} onConfirm={confirmConsent} />}
+    {consentOpen && <ConsentDialog busy={busy === "run"} cloud={aiMode === "cloud"} onClose={() => setConsentOpen(false)} onConfirm={confirmConsent} />}
     {deleteOpen && <DeleteDialog busy={busy === "delete"} error={deleteError} onClose={() => setDeleteOpen(false)} onConfirm={() => void remove()} />}
   </div>;
 }

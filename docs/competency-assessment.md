@@ -1,6 +1,6 @@
 # Đánh giá năng lực sinh viên và nhận xét AI
 
-Cổng sinh viên tính năng lực từ bảng điểm, so với nghề mục tiêu, gợi ý học phần và (nếu bật) kèm nhận xét tiếng Việt do một LLM chạy cục bộ viết. Một lần đánh giá được lưu và hiển thị trên hai trang riêng, theo hai nhóm chức năng:
+Cổng sinh viên tính năng lực từ bảng điểm, so với nghề mục tiêu, gợi ý học phần và (nếu bật) kèm nhận xét tiếng Việt do một LLM chạy cục bộ viết. Khi server có `ANTHROPIC_API_KEY`, đánh giá chạy ở chế độ **AI 100%** (mục "AI 100%" bên dưới): Claude Haiku 5.5 tự tính các con số hiển thị, rồi chọn học phần và viết nhận xét. Một lần đánh giá được lưu và hiển thị trên hai trang riêng, theo hai nhóm chức năng:
 
 | Trang | Nhóm chức năng | Nội dung |
 |---|---|---|
@@ -96,6 +96,17 @@ API sinh viên `/api/student/competency-assessments` (cần đăng nhập, `Cach
 
 Xóa hoặc thay bảng điểm (kể cả qua OCR) xóa toàn bộ kết quả đánh giá của sinh viên trong cùng giao dịch, cùng với lời khuyên xét tốt nghiệp (`stu_grad_advice`, xem `docs/graduation-advice.md`).
 
+## AI 100% (`comp-ai-v1`, Claude Haiku 5.5)
+
+Bật khi server có `ANTHROPIC_API_KEY` (tùy chọn thêm `ANTHROPIC_WORKSPACE_ID` cho key không gắn workspace `sk-ant-usr-…`, `ANTHROPIC_MODEL` mặc định `claude-haiku-5-5`, `ANTHROPIC_EFFORT` mặc định `high`). Không có key thì mọi thứ như trước (máy AI trên laptop viết nhận xét, hoặc tắt AI). Chính sách 2026-10-16 công bố việc gửi dữ liệu cho Anthropic; đồng ý là bắt buộc để dùng hai trang. Lời khuyên xét tốt nghiệp và đề xuất kỹ năng cho nghề vẫn chạy trên laptop.
+
+- **Hàng đợi** (`ai-cloud/queue.ts`): cùng hook và luật của `ai/queue.ts` (khóa advisory, một job chờ mỗi sinh viên, trần 25 job), nhưng job mang `runner='cloud'` (migration 033) và `ai_input` là prompt tính điểm; kết quả đánh dấu `scoring_mode='ai'`. Worker trên laptop chỉ nhận `runner='worker'`.
+- **Bộ chạy** (`ai-cloud/runner.ts`): chạy ngay trong API server, mỗi lần một job, lease 30 phút, tối đa 2 lần nhận như worker. Bước 1 gọi Claude tính điểm (`ai-cloud/scoring-prompt.ts`: khối dữ liệu gồm học phần CTĐT, mọi lần học trong bảng điểm, nhóm, kỹ năng với học phần và trọng số liên kết, yêu cầu nghề khóa Y1, Y2…; prompt ghi đủ công thức 7 bước). Bước 2 ghép số của AI vào kết quả (`ai-cloud/merge.ts`) rồi gọi Claude viết nhận xét bằng prompt `comp-v5` trên kết quả đã ghép, kèm một dòng nhắc độ dài. Cả hai bước dùng structured outputs (`output_config.format` = JSON schema đã làm sạch: bỏ `maxLength`/`maxItems`/…, đóng mọi object), stream, không gửi `thinking` hay `temperature`; câu trả lời không hợp lệ được hỏi lại một lần. `prompt_version` = `comp-ai-v1+comp-v5`.
+- **Kiểm tra** (`ai-cloud/scoring-validate.ts`): mỗi khóa đúng một lần, điểm 0–100, và câu trả lời tự nhất quán (trạng thái và mức thiếu của từng yêu cầu nghề khớp điểm kỹ năng AI tự cho, điểm tổng bằng trung bình các nhóm, sai số 0,05). Không tính lại điểm từ dữ liệu. Nhận xét qua `validateAiOutput` với giới hạn độ dài ×1,5 (Claude không nhận `maxLength`).
+- **Ghép** (`mergeAiScoring`): điểm kỹ năng, nhóm, tổng và trạng thái, mức thiếu, mức phù hợp nghề lấy của AI; mức và nhãn suy từ điểm AI theo ngưỡng của hệ thống; xếp hạng, đếm, điểm mạnh và lựa chọn cho prompt tính lại trên điểm AI; độ tin cậy, độ phủ, chỉ số phù hợp bị xóa (AI không tính). Kế hoạch học phần giữ danh sách của hệ thống nhưng chỉ còn khi điểm AI vẫn cần. Lịch sử theo học kỳ, tiến độ KHĐT, xét tốt nghiệp, dữ kiện học phần và cảnh báo vẫn của hệ thống.
+- **API**: `StoredAssessment` thêm `scoring` (`system`/`ai`) và `aiResult` (kết quả đã ghép, `null` tới khi chấm xong); `GET /latest` thêm `aiMode` (`cloud`/`worker`/`disabled`). Ở chế độ cloud, `POST /:id/ai` đọc lại dữ liệu (409 `transcript_changed` nếu bảng điểm đổi, 409 `assessment_outdated` nếu CTĐT/trọng số cho ra bộ kỹ năng khác) và còn cho tạo lại một kết quả `completed` mà nhận xét lỗi.
+- **Đo** (16/10/2026, dữ liệu chương trình K29 thật – 88 học phần, 81 kỹ năng – với bảng điểm giả lập): effort `high` → hồ sơ 1 sai 1/81 kỹ năng (lệch 2,8, cùng mức), 3/3 nhóm và điểm tổng đúng; hồ sơ 2 đúng hết; 116–130 giây, khoảng 13 nghìn token vào và 37–42 nghìn token ra (khoảng 0,02 USD). Effort `medium`: 81/81 kỹ năng nhưng lệch nhẹ 1 nhóm mỗi hồ sơ. Cùng bài thử: gemma4:e4b đúng 3/162 điểm kỹ năng, gemma-4-31b-it đúng 153/162 nhưng sai điểm nhóm và điểm tổng. Một job đầy đủ trên hồ sơ tổng hợp (`fixtures/synthetic-k29`): 62 giây, điểm khớp hoàn toàn, nhận xét qua kiểm tra ngay lần đầu.
+
 ## Nhận xét AI
 
 - Server bật hàng đợi khi có `AI_WORKER_KEY` (≥ 32 ký tự, khác `OCR_WORKER_KEY`) trong `apps/api/.env` hoặc trên Render.
@@ -150,3 +161,4 @@ Kiểm thử đầu-cuối (`node scripts/verify-competency-assessment.mjs --wit
 - Chưa có yêu cầu nghề nào được đánh dấu "Bắt buộc".
 - STU-COMP-07 tính lại theo bảng điểm nên phản ánh năng lực tại từng học kỳ theo **trọng số và CTĐT hiện hành**, không phải điểm đã từng hiển thị lúc đó. STU-GAP-07 (theo dõi mức cải thiện từng kỹ năng) chưa làm.
 - Kết quả và nhận xét lưu trước comp-calc-v7/comp-v5 giữ nguyên cho đến khi sinh viên bấm "Đánh giá lại".
+- AI 100%: các con số do Claude tính nên có thể lệch so với công thức; server chỉ kiểm tra định dạng và tính tự nhất quán. Mỗi lần đánh giá mất khoảng 1–3 phút và phụ thuộc dịch vụ của Anthropic; khi API lỗi, trang báo lỗi và sinh viên thử lại.

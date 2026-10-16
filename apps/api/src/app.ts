@@ -20,6 +20,9 @@ import { createCompetencyAssessmentRouter } from "./competency-assessment/router
 import { createCompetencyAiQueue } from "./competency-assessment/ai/queue.js";
 import { PROMPT_VERSION } from "./competency-assessment/ai/prompt.js";
 import { createCompetencyWorkerRouter } from "./competency-assessment/ai/worker-router.js";
+import { createClaudeJsonCaller } from "./competency-assessment/ai-cloud/claude.js";
+import { createCloudCompetencyAiQueue } from "./competency-assessment/ai-cloud/queue.js";
+import { startCloudCompetencyRunner, type CloudRunner } from "./competency-assessment/ai-cloud/runner.js";
 import { createCurriculaRouter } from "./curricula/router.js";
 import { createPlansRouter } from "./plans/router.js";
 import { createStudentCurriculaRouter } from "./curricula/student-router.js";
@@ -191,9 +194,27 @@ export function createApp({
   app.use("/api/student/graduation/advice", createGraduationAdviceRouter(databasePool, config.webOrigin, { enabled: graduationAdviceEnabled }));
   app.use("/api/student/graduation", createStudentGraduationRouter(databasePool));
   app.use("/api/student/curricula", createStudentCurriculaRouter(databasePool));
-  // AI comments are queued only when AI_WORKER_KEY is configured; otherwise ai_status is 'disabled'.
+  // With ANTHROPIC_API_KEY the assessment is "AI 100%" (Claude computes the numbers and the comments inside this
+  // server, comp-ai-v1); otherwise the laptop worker writes comments when AI_WORKER_KEY is set, else ai_status
+  // is 'disabled'.
+  let cloudRunner: CloudRunner | null = null;
+  const competencyQueue = config.anthropic
+    ? createCloudCompetencyAiQueue({ onQueued: () => cloudRunner?.kick() })
+    : createCompetencyAiQueue({ enabled: Boolean(config.aiWorkerKey) });
+  if (config.anthropic && databasePool) {
+    cloudRunner = startCloudCompetencyRunner({
+      pool: databasePool,
+      model: config.anthropic.model,
+      caller: createClaudeJsonCaller({
+        apiKey: config.anthropic.apiKey,
+        workspaceId: config.anthropic.workspaceId,
+        model: config.anthropic.model,
+        effort: config.anthropic.effort,
+      }),
+    });
+  }
   app.use("/api/student/competency-assessments", createCompetencyAssessmentRouter(databasePool, config.webOrigin,
-    createCompetencyAiQueue({ enabled: Boolean(config.aiWorkerKey) }), { promptVersion: PROMPT_VERSION }));
+    competencyQueue, { promptVersion: PROMPT_VERSION }));
   app.use("/api/student", createStudentDataRouter(databasePool, config.webOrigin,Boolean(config.ocrWorkerKey), { afterTranscriptImport }));
   app.use("/api/admin/students", createStudentProfilesRouter(studentProfileRepository, adminAccountRepository));
 

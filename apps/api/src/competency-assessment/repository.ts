@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "../db/pool.js";
+import { mergeAiScoring } from "./ai-cloud/merge.js";
+import { readStoredScoring } from "./ai-cloud/scoring-validate.js";
 import type { AssessmentMeta, AssessmentResult } from "./types.js";
 
 /** Most recent assessments kept per student (spec §8); older ones are removed on insert. */
@@ -22,7 +24,12 @@ export type StoredAssessment = {
   id: string;
   createdAt: string;
   meta: AssessmentMeta;
+  /** The engine result (term history, plan progress, course facts; the numbers of a "system" assessment). */
   result: AssessmentResult;
+  /** "ai" = AI 100% (comp-ai-v1): the numbers shown are the model's, in aiResult. */
+  scoring: "system" | "ai";
+  /** The engine result with the model's validated numbers merged in; null until the AI scoring has finished. */
+  aiResult: AssessmentResult | null;
   ai: { status: AiStatus; errorCode: string | null; model: string | null; completedAt: string | null; output: unknown | null };
 };
 
@@ -32,16 +39,21 @@ type AssessmentRow = {
   id: string; created_at: Date | string; meta: AssessmentMeta; computed: AssessmentResult;
   ai_status: AiStatus; ai_error_code: string | null; ai_model: string | null;
   ai_completed_at: Date | string | null; ai_output: unknown | null;
+  scoring_mode?: "system" | "ai" | null; ai_scoring?: unknown | null;
 };
-const assessmentColumns = "id,created_at,meta,computed,ai_status,ai_error_code,ai_model,ai_completed_at,ai_output";
+const assessmentColumns = "id,created_at,meta,computed,ai_status,ai_error_code,ai_model,ai_completed_at,ai_output,scoring_mode,ai_scoring";
 const iso = (value: Date | string | null) => value === null ? null : new Date(value).toISOString();
 
 export function toStoredAssessment(row: AssessmentRow): StoredAssessment {
+  const scoring = row.scoring_mode === "ai" ? "ai" : "system";
+  const aiScoring = scoring === "ai" && row.ai_status === "completed" ? readStoredScoring(row.ai_scoring) : null;
   return {
     id: row.id,
     createdAt: iso(row.created_at)!,
     meta: row.meta,
     result: row.computed,
+    scoring,
+    aiResult: aiScoring ? mergeAiScoring(row.computed, aiScoring) : null,
     ai: {
       status: row.ai_status,
       errorCode: row.ai_error_code,

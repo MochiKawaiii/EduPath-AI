@@ -15,11 +15,19 @@ const postgresUrl = z.string().trim().min(1).refine((value) => {
 }, "DATABASE_URL must be a valid PostgreSQL connection URL");
 
 const optionalWorkerKey = z.preprocess(v => typeof v === "string" && !v.trim() ? undefined : v, z.string().min(32).optional());
+const blankToUndefined = (value: unknown) => typeof value === "string" && !value.trim() ? undefined : typeof value === "string" ? value.trim() : value;
 
 const environmentSchema = z.object({
   OCR_WORKER_KEY: optionalWorkerKey,
   // Bearer key of the local AI worker (competency comments). Optional: without it AI is disabled.
   AI_WORKER_KEY: optionalWorkerKey,
+  // Claude API key of the competency "AI 100%" mode (comp-ai-v1). Optional: when set, the API server itself
+  // computes the competency numbers and comments with Claude instead of queuing laptop comments.
+  ANTHROPIC_API_KEY: z.preprocess(blankToUndefined, z.string().min(20).regex(/^\S+$/).optional()),
+  // Workspace of a key that is not scoped to one ("sk-ant-usr-…"); sent as the anthropic-workspace-id header.
+  ANTHROPIC_WORKSPACE_ID: z.preprocess(blankToUndefined, z.string().regex(/^wrkspc_[A-Za-z0-9]+$/).optional()),
+  ANTHROPIC_MODEL: z.preprocess(blankToUndefined, z.string().min(1).default("claude-haiku-5-5")),
+  ANTHROPIC_EFFORT: z.preprocess(blankToUndefined, z.enum(["low", "medium", "high", "xhigh", "max"]).default("high")),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   WEB_ORIGIN: z.url().optional(),
@@ -64,6 +72,13 @@ const environmentSchema = z.object({
 export interface AppConfig {
   ocrWorkerKey?: string;
   aiWorkerKey?: string;
+  /** Present when ANTHROPIC_API_KEY is set: competency assessments run in "AI 100%" mode. */
+  anthropic?: {
+    apiKey: string;
+    workspaceId?: string;
+    model: string;
+    effort: "low" | "medium" | "high" | "xhigh" | "max";
+  };
   nodeEnv: "development" | "test" | "production";
   port: number;
   webOrigin: string;
@@ -129,6 +144,14 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   return {
     ...(parsed.OCR_WORKER_KEY ? {ocrWorkerKey:parsed.OCR_WORKER_KEY} : {}),
     ...(parsed.AI_WORKER_KEY ? { aiWorkerKey: parsed.AI_WORKER_KEY } : {}),
+    ...(parsed.ANTHROPIC_API_KEY ? {
+      anthropic: {
+        apiKey: parsed.ANTHROPIC_API_KEY,
+        ...(parsed.ANTHROPIC_WORKSPACE_ID ? { workspaceId: parsed.ANTHROPIC_WORKSPACE_ID } : {}),
+        model: parsed.ANTHROPIC_MODEL,
+        effort: parsed.ANTHROPIC_EFFORT,
+      },
+    } : {}),
     nodeEnv: parsed.NODE_ENV,
     port: parsed.PORT,
     webOrigin,

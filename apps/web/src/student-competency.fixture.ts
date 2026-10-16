@@ -1,6 +1,6 @@
 // Synthetic assessment used by the #competency tests and the visual harness.
 // Every value is invented; it describes no real student.
-import type { AiOutput, AiStatus, AssessmentResult, CourseFact, SkillResult, StoredAssessment } from "./competency-assessment-types";
+import type { AiOutput, AiStatus, AssessmentResult, CareerRequirementResult, CourseFact, SkillResult, StoredAssessment } from "./competency-assessment-types";
 
 const course = (code: string, name: string, credits: number, state: CourseFact["state"], score10: number | null, letter: string | null, term: string | null, extra: Partial<CourseFact> = {}): CourseFact => ({
   code, name, credits, type: "BB", specialty: null, electiveGroup: null, conditionOnly: false, applicable: true, state,
@@ -163,5 +163,82 @@ export function fixtureAssessment(status: AiStatus = "completed", errorCode: str
   return {
     id: "11111111-1111-4111-8111-111111111111", createdAt: "2026-10-11T02:30:00.000Z", meta: fixtureResult.meta, result: fixtureResult,
     ai: { status, errorCode, model: status === "completed" ? "gemma4:e4b" : null, completedAt: status === "completed" ? "2026-10-11T02:34:00.000Z" : null, output: status === "completed" ? fixtureAiOutput : null },
+  };
+}
+
+/* ----------------------------------------------------------------- AI 100% */
+
+const noConfidence = { confidence: null, confidenceLabel: null, coverage: null } as const;
+/** The AI's skill scores: S02 now beats S01 and S03 reaches the career threshold of 85 (the engine has it below). */
+const aiSkillScores: Partial<Record<string, Pick<SkillResult, "score" | "level" | "levelLabel">>> = {
+  S01: { score: 93, level: "proficient", levelLabel: "Thành thạo" },
+  S02: { score: 95, level: "proficient", levelLabel: "Thành thạo" },
+  S03: { score: 86.5, level: "proficient", levelLabel: "Thành thạo" },
+  S04: { score: 66, level: "basic", levelLabel: "Cơ bản" },
+};
+/** Skill order by the AI's scores (no score last, by evidence), as the API's merge sorts them. */
+const aiSkillOrder = ["S02", "S01", "S03", "S06", "S04", "S08", "S07", "S05"];
+const aiRequirements: Partial<Record<string, Partial<CareerRequirementResult>>> = {
+  q1: { score: 93, level: "proficient", levelLabel: "Thành thạo", status: "met", statusLabel: "Đạt ngưỡng", deficit: null, deficitBand: null, deficitBandLabel: null },
+  q2: { score: 86.5, level: "proficient", levelLabel: "Thành thạo", status: "met", statusLabel: "Đạt ngưỡng", deficit: null, deficitBand: null, deficitBandLabel: null },
+  q3: { score: 66, level: "basic", levelLabel: "Cơ bản", status: "below", statusLabel: "Dưới ngưỡng", deficit: 4, deficitBand: "near", deficitBandLabel: "Gần ngưỡng" },
+};
+
+/**
+ * AI 100%: aiResult as the API returns it (ai-cloud/merge.ts): the engine result with the AI's numbers merged
+ * in, labels, order, counts, summaries and highlights derived from them, confidence, coverage and fit null.
+ * History, progress, course facts and warnings stay the engine's (overall 79, Khá phù hợp there).
+ */
+export const fixtureAiResult: AssessmentResult = {
+  ...fixtureResult,
+  skills: fixtureResult.skills.map((skill) => ({ ...skill, ...aiSkillScores[skill.key], ...noConfidence }))
+    .sort((a, b) => aiSkillOrder.indexOf(a.key) - aiSkillOrder.indexOf(b.key)),
+  groups: fixtureResult.groups.map((group) => group.key === "G1"
+    ? { ...group, score: 84.6, level: "good" as const, levelLabel: "Khá", ...noConfidence, skillCount: 5, skillsWithEvidence: 4 }
+    : { ...group, ...noConfidence }),
+  overall: { ...fixtureResult.overall, score: 84.6, level: "good", levelLabel: "Khá", ...noConfidence },
+  highlights: { strengths: ["S02", "S01", "S03"], improvements: ["S04"] },
+  career: {
+    ...fixtureResult.career!,
+    requirements: fixtureResult.career!.requirements.map((req) => ({ ...req, ...aiRequirements[req.requirementId], confidence: null, fitCredit: null })),
+    counts: { total: 5, met: 2, below: 1, upcoming: 1, notStudied: 0, noData: 1, withData: 4 },
+    summaryText: "Đạt 2/5 kỹ năng · 1 sắp học · 1 chưa đủ dữ liệu", dataText: "4/5 kỹ năng có dữ liệu",
+    // (93·2 + 86,5·2 + 66·1) / 5 over the three scored requirements.
+    weightedMeanScore: 85, weightedMeanCount: 3,
+    fit: null, fitCode: "fit", fitLabel: "Phù hợp",
+  },
+  // The merge keeps a plan only for a skill the AI still scores below the bar; S10 and S11 are not in this result.
+  skillPlans: [],
+};
+
+/** The AI comment of an AI-100% assessment (it agrees with fixtureAiResult). */
+export const fixtureAiScoredOutput: AiOutput = {
+  summary: "Bạn mạnh về lập trình hướng đối tượng, lập trình web và thiết kế cơ sở dữ liệu. Giải thuật là kỹ năng duy nhất của nghề còn dưới ngưỡng.",
+  groupInsights: [{ groupKey: "G1", comment: "Nhóm kiến thức chuyên môn ở mức Khá, sát mức Thành thạo." }],
+  strengths: [{ skillKey: "S02", comment: "Điểm các học phần lập trình cao và ổn định." }, { skillKey: "S03", comment: "Đã đạt ngưỡng Bắt buộc của nghề." }],
+  improvements: [{ skillKey: "S04", priority: "high", comment: "Luyện thêm bài tập cấu trúc dữ liệu có giới hạn thời gian.", courses: [{ courseCode: "TST102", reason: "Học cải thiện để nâng Giải thuật lên từ 70." }] }],
+  careerFit: { comment: "Bạn phù hợp với nghề Lập trình viên web; chỉ còn Giải thuật thiếu 4 điểm so với ngưỡng." },
+  gaps: [
+    { skillKey: "S04", priority: "high", explanation: "Thiếu 4 điểm so với ngưỡng 70 của kỹ năng Ưu tiên.", courses: [{ courseCode: "TST102", reason: "Học cải thiện Cấu trúc dữ liệu và giải thuật." }], selfStudy: [] },
+    { skillKey: "S07", priority: "medium", explanation: "Học phần Kiểm thử phần mềm ở học kỳ tới.", courses: [{ courseCode: "TST105", reason: "Đo trực tiếp kỹ năng kiểm thử." }], selfStudy: ["Viết kiểm thử đơn vị cho một dự án cá nhân."] },
+    { skillKey: "S09", priority: "low", explanation: "Chương trình chưa có học phần đo Docker.", courses: [], selfStudy: ["Đóng gói ứng dụng web của bạn bằng Docker."] },
+  ],
+  progress: "Bạn chậm 1 học phần so với kế hoạch; nên đăng ký Công nghệ phần mềm sớm.",
+  nextSteps: ["Học cải thiện Cấu trúc dữ liệu và giải thuật.", "Đăng ký Công nghệ phần mềm.", "Tự học Docker qua dự án cá nhân."],
+};
+
+/**
+ * An AI-100% assessment (scoring "ai"): queued/processing while the AI computes it, completed with aiResult and
+ * the comment ("invalid_ai_output": the numbers without a comment), failed without aiResult.
+ */
+export function fixtureAiAssessment(status: AiStatus = "completed", errorCode: string | null = null): StoredAssessment {
+  const done = status === "completed";
+  return {
+    id: "22222222-2222-4222-8222-222222222222", createdAt: "2026-10-16T02:30:00.000Z", meta: fixtureResult.meta, result: fixtureResult,
+    scoring: "ai", aiResult: done ? fixtureAiResult : null,
+    ai: {
+      status, errorCode, model: done ? "claude-haiku-5-5" : null, completedAt: done ? "2026-10-16T02:33:10.000Z" : null,
+      output: done && errorCode === null ? fixtureAiScoredOutput : null,
+    },
   };
 }
