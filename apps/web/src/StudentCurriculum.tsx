@@ -192,7 +192,6 @@ function CurriculumContent({
             </p>
             <h2>{data.name}</h2>
           </div>
-          <span className="sc-badge">Phiên bản {data.version}</span>
         </div>
         <dl className="sc-stats">
           <div>
