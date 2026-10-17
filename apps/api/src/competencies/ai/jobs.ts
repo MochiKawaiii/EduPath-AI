@@ -1,4 +1,5 @@
-// AI proposal jobs for the courses of a CTĐT revision. A row of ad_comp_ai_suggestions is queued
+// AI proposal jobs for the courses of a CTĐT revision, and the "Thêm kỹ năng (AI)" job that reads a
+// whole revision to propose catalog skills (mode 'skills', no course). A row of ad_comp_ai_suggestions is queued
 // inside the admin transaction and handed to the same AI worker as the other kinds
 // (/api/worker/competency-assessments, kind "competency_course_suggestion"); the worker router
 // calls the claim/extend/complete functions below. Rows are never deleted: they are the audit
@@ -14,7 +15,7 @@ import {
   type WorkerCompletion
 } from "../../competency-assessment/ai/worker-protocol.js";
 import { CompetencyError } from "../model.js";
-import { buildCourseAiInput, type CourseAiInput, type CourseAiMode, type CourseAiSource } from "./prompt.js";
+import { buildCourseAiInput, buildSkillAiInput, type CourseAiInput, type CourseAiMode, type CourseAiSource, type SkillAiSource } from "./prompt.js";
 import { courseAiContextFromInput, validateCourseAiOutput, type StoredCourseAiResult } from "./validate.js";
 
 /** At most this many queued/processing course proposals system-wide (a whole program fits). */
@@ -147,7 +148,7 @@ async function pendingCount(client: PoolClient) {
   return count.rows[0]?.count ?? 0;
 }
 
-async function insertJob(client: PoolClient, data: { revisionId: string; code: string; mode: CourseAiMode; requestedBy: string; batchId: string | null; input: CourseAiInput }) {
+async function insertJob(client: PoolClient, data: { revisionId: string; code: string | null; mode: CourseAiMode; requestedBy: string; batchId: string | null; input: CourseAiInput }) {
   const id = randomUUID();
   await client.query(
     `INSERT INTO ad_comp_ai_suggestions(id,revision_id,course_code,mode,batch_id,requested_by,status,ai_input,prompt_version)
@@ -213,6 +214,44 @@ export async function enqueueCourseBatch(client: PoolClient, input: { revisionId
     await insertJob(client, { revisionId: input.revisionId, code: item.code, mode: "full", requestedBy: input.requestedBy, batchId, input: item.input });
   }
   return { batchId, queued: inputs.length, skipped };
+}
+
+/** The revision's courses (each code once, in revision order), the groups, every profile and the career skills without one. */
+export async function loadSkillSource(client: Db, revisionId: string): Promise<SkillAiSource> {
+  const shared = await loadSharedSource(client, revisionId);
+  const existing = await client.query<{ name: string; groupId: string }>(
+    `SELECT s.name,cs.group_id AS "groupId" FROM ad_comp_skills cs JOIN career_skills s ON s.id=cs.skill_id
+      WHERE cs.deleted_at IS NULL AND s.deleted_at IS NULL ORDER BY s.name,s.id`);
+  return {
+    curriculum: shared.curriculum,
+    groups: shared.groups,
+    existing: existing.rows,
+    careerSkills: shared.careerSkills,
+    courses: [...shared.courses.values()].map(({ course }) => ({
+      code: course.code,
+      name: course.name,
+      block: course.block ?? "",
+      credits: Number(course.credits) || 0,
+      description: course.description ?? ""
+    }))
+  };
+}
+
+/**
+ * Queues a "Thêm kỹ năng (AI)" proposal for a revision, or returns the one already pending
+ * (created=false). no_active_groups / revision_has_no_courses (409), ai_queue_full (429).
+ */
+export async function enqueueSkillSuggestion(client: PoolClient, input: { revisionId: string; requestedBy: string }): Promise<{ id: string; created: boolean }> {
+  await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [COURSE_SUGGESTION_QUEUE_LOCK]);
+  const pending = await client.query<{ id: string }>(
+    `SELECT id FROM ad_comp_ai_suggestions WHERE revision_id=$1 AND mode='skills' AND status IN ${PENDING}`, [input.revisionId]);
+  if (pending.rows[0]) return { id: pending.rows[0].id, created: false };
+  const source = await loadSkillSource(client, input.revisionId);
+  if (!source.groups.length) throw new CompetencyError("no_active_groups", 409);
+  if (!source.courses.length) throw new CompetencyError("revision_has_no_courses", 409);
+  if (await pendingCount(client) >= MAX_PENDING_COURSE_SUGGESTIONS) throw new CompetencyError("ai_queue_full", 429);
+  const id = await insertJob(client, { revisionId: input.revisionId, code: null, mode: "skills", requestedBy: input.requestedBy, batchId: null, input: buildSkillAiInput(source) });
+  return { id, created: true };
 }
 
 /** Claims the oldest runnable proposal (SKIP LOCKED, 15 minute lease, at most 2 attempts). */

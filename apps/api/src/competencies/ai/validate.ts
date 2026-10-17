@@ -3,17 +3,18 @@
 // key is dropped and the rest is kept, because an admin reviews or confirms every proposal before
 // anything is saved. Percentages are clamped to 0–100, rounded and scaled to a total of exactly 100
 // (the grammar cannot enforce a sum), and a weights proposal always covers every linked skill.
+// The skills mode ("Thêm kỹ năng (AI)") never repeats a skill that already has a profile.
 import { z } from "zod";
 import { sanitizeText } from "../../competency-assessment/ai/prompt.js";
 import { cleanKeyText } from "../../competency-assessment/ai/key-cleanup.js";
 import { hasForbiddenContent } from "../../competency-assessment/ai/validate.js";
 import { fold } from "../../careers/shared.js";
 import { cleanNewSkillName } from "../../careers/ai-suggestions/validate.js";
-import { COURSE_AI_LIMITS as L, COURSE_AI_MODES, type CourseAiMode, type GroupKey, type SkillKey } from "./prompt.js";
+import { COURSE_AI_LIMITS as L, COURSE_AI_MODES, SKILL_AI_LIMITS as S, type CourseAiMode, type GroupKey, type SkillKey } from "./prompt.js";
 
 /** One validated proposal row, as stored in ad_comp_ai_suggestions.result.items. */
 export type StoredCourseAiItem = {
-  /** null = a new skill that is not in the catalog (links mode only). */
+  /** null = a new skill that is not in the catalog (links and skills modes). */
   skillId: string | null;
   skillName: string;
   /** The profile's group, or for a career skill / new skill the group the model chose. */
@@ -24,6 +25,9 @@ export type StoredCourseAiItem = {
   /** weights and full: whole percent, all items together exactly 100. null in links. */
   percent: number | null;
   reason: string;
+  /** skills mode: the proposed "phạm vi đánh giá"; for a new skill also its catalog description. */
+  scope?: string;
+  description?: string;
 };
 export type StoredCourseAiResult = {
   mode: CourseAiMode;
@@ -34,7 +38,14 @@ export type StoredCourseAiResult = {
   /** weights and full: the model's own total before scaling to 100 (null in links). */
   modelTotal: number | null;
 };
-export type CourseAiContext = { mode: CourseAiMode; skills: SkillKey[]; groups: GroupKey[]; linked: { id: string; name: string }[] };
+export type CourseAiContext = {
+  mode: CourseAiMode;
+  skills: SkillKey[];
+  groups: GroupKey[];
+  linked: { id: string; name: string }[];
+  /** skills mode: names already in the competency catalog. */
+  existing: string[];
+};
 export type CourseAiValidation =
   | { ok: true; result: StoredCourseAiResult }
   | { ok: false; reason: "schema" | "no_valid_items"; path: string };
@@ -48,6 +59,10 @@ const linksOutput = z.object({
 }).strict();
 const weightsOutput = z.object({ weights: z.array(z.object({ skillKey: key, percent, reason: raw }).strict()).max(300) }).strict();
 const fullOutput = z.object({ links: z.array(z.object({ skillKey: key, groupKey: key, percent, reason: raw }).strict()).max(L.links) }).strict();
+const skillsOutput = z.object({
+  links: z.array(z.object({ skillKey: key, groupKey: key, scope: raw, reason: raw }).strict()).max(S.fromCareer),
+  newSkills: z.array(z.object({ name: raw, groupKey: key, description: raw, scope: raw, reason: raw }).strict()).max(S.newSkills)
+}).strict();
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -72,7 +87,9 @@ export function courseAiContextFromInput(input: unknown): CourseAiContext | null
     if (!isRecord(entry) || typeof entry.id !== "string" || typeof entry.name !== "string") return null;
     linked.push({ id: entry.id, name: entry.name });
   }
-  return { mode: input.mode as CourseAiMode, skills, groups, linked };
+  const existing = input.existing === undefined ? [] : input.existing;
+  if (!Array.isArray(existing) || !existing.every((name) => typeof name === "string")) return null;
+  return { mode: input.mode as CourseAiMode, skills, groups, linked, existing: existing as string[] };
 }
 
 /**
@@ -109,10 +126,11 @@ export function validateCourseAiOutput(output: unknown, context: CourseAiContext
   ]);
   // Keys written into prose become names; then control tokens are stripped and lengths capped. A
   // reason with a link or HTML is blanked, never a reason to drop the row.
-  const reasonOf = (value: string) => {
-    const reason = sanitizeText(cleanKeyText(value, names), L.reason);
-    return hasForbiddenContent(reason) ? "" : reason;
+  const textOf = (value: string, max: number) => {
+    const text = sanitizeText(cleanKeyText(value, names), max);
+    return hasForbiddenContent(text) ? "" : text;
   };
+  const reasonOf = (value: string) => textOf(value, L.reason);
   const groupOf = (entry: SkillKey, groupKey: string) => entry.groupId ?? groupIds.get(groupKey) ?? fallbackGroup;
   const fail = (issue: z.ZodError): CourseAiValidation => ({ ok: false, reason: "schema", path: issue.issues[0]?.path.join(".") ?? "" });
 
@@ -139,6 +157,42 @@ export function validateCourseAiOutput(output: unknown, context: CourseAiContext
 
   const items: StoredCourseAiItem[] = [];
   const used = new Set<string>();
+  const folded = (name: string) => fold(name.replace(/\s+/g, " ").trim());
+  const byName = new Map(context.skills.map((entry) => [folded(entry.name), entry]));
+
+  if (context.mode === "skills") {
+    const parsed = skillsOutput.safeParse(output);
+    if (!parsed.success) return fail(parsed.error);
+    const taken = new Set(context.existing.map(folded));
+    const groupOfKey = (groupKey: string) => groupIds.get(groupKey) ?? fallbackGroup;
+    const career = (entry: SkillKey, item: { groupKey: string; scope: string; reason: string }) => {
+      used.add(entry.id);
+      items.push({ skillId: entry.id, skillName: entry.name, groupId: groupOfKey(item.groupKey), hasProfile: false, isNewSkill: false,
+        percent: null, reason: reasonOf(item.reason), scope: textOf(item.scope, S.scope) });
+    };
+    for (const item of parsed.data.links) {
+      const entry = byKey.get(item.skillKey);
+      if (entry && !used.has(entry.id)) career(entry, item);
+    }
+    for (const item of parsed.data.newSkills) {
+      const name = cleanNewSkillName(sanitizeText(cleanKeyText(item.name, names), L.skillName));
+      const key = folded(name);
+      if (!name || hasForbiddenContent(name) || taken.has(key)) continue;
+      // A "new" name that is one of the career skills becomes that skill.
+      const entry = byName.get(key);
+      if (entry) {
+        if (!used.has(entry.id)) career(entry, item);
+        continue;
+      }
+      taken.add(key);
+      items.push({ skillId: null, skillName: name, groupId: groupOfKey(item.groupKey), hasProfile: false, isNewSkill: true, percent: null,
+        reason: reasonOf(item.reason), scope: textOf(item.scope, S.scope), description: textOf(item.description, S.description) });
+    }
+    const returned = parsed.data.links.length + parsed.data.newSkills.length;
+    if (returned > 0 && !items.length) return { ok: false, reason: "no_valid_items", path: "" };
+    return { ok: true, result: { mode: "skills", items, returned, dropped: returned - items.length, modelTotal: null } };
+  }
+
   if (context.mode === "full") {
     const parsed = fullOutput.safeParse(output);
     if (!parsed.success) return fail(parsed.error);
@@ -162,8 +216,7 @@ export function validateCourseAiOutput(output: unknown, context: CourseAiContext
 
   const parsed = linksOutput.safeParse(output);
   if (!parsed.success) return fail(parsed.error);
-  const byName = new Map(context.skills.map((entry) => [fold(entry.name.replace(/\s+/g, " ").trim()), entry]));
-  const linkedNames = new Set(context.linked.map((skill) => fold(skill.name.replace(/\s+/g, " ").trim())));
+  const linkedNames = new Set(context.linked.map((skill) => folded(skill.name)));
   const newNames = new Set<string>();
   for (const item of parsed.data.links) {
     const entry = byKey.get(item.skillKey);
@@ -174,17 +227,17 @@ export function validateCourseAiOutput(output: unknown, context: CourseAiContext
   }
   for (const item of parsed.data.newSkills) {
     const name = cleanNewSkillName(sanitizeText(cleanKeyText(item.name, names), L.skillName));
-    const folded = fold(name);
-    if (!name || hasForbiddenContent(name) || linkedNames.has(folded)) continue;
+    const key = folded(name);
+    if (!name || hasForbiddenContent(name) || linkedNames.has(key)) continue;
     // A "new" name that is already a candidate becomes that skill.
-    const existing = byName.get(folded);
-    if (existing ? used.has(existing.id) || linkedIds.has(existing.id) : newNames.has(folded)) continue;
+    const existing = byName.get(key);
+    if (existing ? used.has(existing.id) || linkedIds.has(existing.id) : newNames.has(key)) continue;
     if (existing) {
       used.add(existing.id);
       items.push({ skillId: existing.id, skillName: existing.name, groupId: groupOf(existing, item.groupKey), hasProfile: existing.groupId !== null,
         isNewSkill: false, percent: null, reason: reasonOf(item.reason) });
     } else {
-      newNames.add(folded);
+      newNames.add(key);
       items.push({ skillId: null, skillName: name, groupId: groupIds.get(item.groupKey) ?? fallbackGroup, hasProfile: false,
         isNewSkill: true, percent: null, reason: reasonOf(item.reason) });
     }

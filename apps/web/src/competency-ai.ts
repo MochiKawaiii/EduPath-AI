@@ -1,7 +1,7 @@
-// Types and pure helpers for the AI proposals of the Năng lực courses ("Tạo liên kết kỹ năng (AI)",
-// "Thêm trọng số (AI)" and the whole-program run). The local AI proposes, the admin reviews; only the
-// reviewed rows are saved. No DOM here — unit tested.
-import { COMPETENCY_API, readCompetencyResponse, WEIGHT_TOLERANCE } from "./competency-types";
+// Types and pure helpers for the AI proposals of Năng lực ("Tạo liên kết kỹ năng (AI)", "Thêm trọng
+// số (AI)", the whole-program run and "Thêm kỹ năng (AI)" of Danh mục kỹ năng). The local AI proposes,
+// the admin reviews; only the reviewed rows are saved. No DOM here — unit tested.
+import { COMPETENCY_API, readCompetencyResponse, WEIGHT_TOLERANCE, type CurriculumRevision } from "./competency-types";
 
 /** A failed request with the API error code kept (the message is the competency page's own). */
 export class CompetencyAiError extends Error {
@@ -25,6 +25,8 @@ export const POLL_SUGGESTION_MS = 3_000;
 export const POLL_BATCH_MS = 5_000;
 export const POLL_STATUS_MS = 15_000;
 export const SKILL_NAME_MAX = 100;
+export const SKILL_SCOPE_MAX = 4000;
+export const SKILL_DESCRIPTION_MAX = 2000;
 
 export type CourseAiMode = "links" | "weights";
 export type CourseAiStatusCode = "queued" | "processing" | "completed" | "failed" | "cancelled";
@@ -43,12 +45,16 @@ export type CourseAiItem = {
   /** weights: whole percent (the items add up to 100); null in links. */
   percent: number | null;
   reason: string;
+  /** "Thêm kỹ năng (AI)": the proposed scope, and a new skill's description. */
+  scope?: string;
+  description?: string;
 };
 export type CourseAiSuggestion = {
   id: string;
   revisionId: string;
-  courseCode: string;
-  mode: CourseAiMode | "full";
+  /** null for "Thêm kỹ năng (AI)", which reads a whole revision. */
+  courseCode: string | null;
+  mode: CourseAiMode | "full" | "skills";
   batchId: string | null;
   status: CourseAiStatusCode;
   errorCode: string | null;
@@ -190,6 +196,78 @@ export function assessWeightRows(rows: WeightRow[]) {
   });
   const valid = rows.length > 0 && !Object.keys(errors).length;
   return { weights, total, errors, valid, canActivate: valid && Math.abs(total / 100 - 1) <= WEIGHT_TOLERANCE, edited: rows.filter((row) => Number(row.percent) !== row.proposed).length };
+}
+
+/* ------------------------------------------------------ "Thêm kỹ năng (AI)" */
+
+/** The revision offered first: the newest current one that has courses, else the first with courses. */
+export function defaultSkillRevision(items: CurriculumRevision[]): CurriculumRevision | null {
+  const withCourses = items.filter((item) => item.courseCount > 0);
+  const newest = (list: CurriculumRevision[]) => [...list].sort((a, b) =>
+    b.cohortCode.localeCompare(a.cohortCode, "vi", { numeric: true }) || b.version - a.version)[0] ?? null;
+  return newest(withCourses.filter((item) => item.isCurrent && item.isActive)) ?? newest(withCourses.filter((item) => item.isCurrent)) ?? newest(withCourses);
+}
+
+export type SkillRow = {
+  key: string;
+  index: number;
+  checked: boolean;
+  skillId: string | null;
+  skillName: string;
+  groupId: string;
+  isNewSkill: boolean;
+  /** Got a profile since the proposal was made: shown, never saved. */
+  inCatalog: boolean;
+  scope: string;
+  description: string;
+  reason: string;
+};
+/** Career skills start ticked, new skills unticked (the admin opts in), skills already in the catalog never. */
+export function skillRows(items: CourseAiItem[]): SkillRow[] {
+  return items.map((item) => ({
+    key: `row-${item.index}`,
+    index: item.index,
+    checked: !item.alreadyLinked && !item.isNewSkill,
+    skillId: item.skillId,
+    skillName: item.skillName,
+    groupId: item.groupId ?? "",
+    isNewSkill: item.isNewSkill,
+    inCatalog: item.alreadyLinked,
+    scope: item.scope ?? "",
+    description: item.description ?? "",
+    reason: item.reason,
+  }));
+}
+/** Per-row messages and whether the selection can be saved (mirrors the server checks). */
+export function validateSkillRows(rows: SkillRow[]): { valid: boolean; selected: number; errors: Record<string, string[]> } {
+  const errors: Record<string, string[]> = {};
+  const seen = new Set<string>();
+  let selected = 0;
+  for (const row of rows) {
+    if (!row.checked || row.inCatalog) continue;
+    selected += 1;
+    const messages: string[] = [];
+    const name = row.skillName.replace(/\s+/g, " ").trim();
+    if (row.isNewSkill && !name) messages.push("Nhập tên kỹ năng mới.");
+    if (row.isNewSkill && name.length > SKILL_NAME_MAX) messages.push(`Tên kỹ năng tối đa ${SKILL_NAME_MAX} ký tự.`);
+    if (!row.groupId) messages.push("Chọn nhóm kỹ năng.");
+    if (row.scope.trim().length > SKILL_SCOPE_MAX) messages.push(`Phạm vi đánh giá tối đa ${SKILL_SCOPE_MAX} ký tự.`);
+    if (row.isNewSkill && row.description.trim().length > SKILL_DESCRIPTION_MAX) messages.push(`Mô tả tối đa ${SKILL_DESCRIPTION_MAX} ký tự.`);
+    const key = row.skillId ?? `new:${foldName(name)}`;
+    if (name && seen.has(key)) messages.push("Kỹ năng này đã có ở dòng khác.");
+    seen.add(key);
+    if (messages.length) errors[row.key] = messages;
+  }
+  return { valid: selected > 0 && !Object.keys(errors).length, selected, errors };
+}
+export function applySkillItems(rows: SkillRow[]) {
+  return rows.filter((row) => row.checked && !row.inCatalog).map((row) => ({
+    skillId: row.skillId,
+    skillName: row.skillId ? "" : row.skillName.replace(/\s+/g, " ").trim(),
+    groupId: row.groupId,
+    scope: row.scope.trim(),
+    description: row.skillId ? "" : row.description.trim(),
+  }));
 }
 
 /* ------------------------------------------------------------- whole run */

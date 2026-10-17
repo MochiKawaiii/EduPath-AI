@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildCourseAiInput, COURSE_AI_PROMPT_VERSIONS } from "./prompt.js";
-import { courseSource, GROUP_CORE, GROUP_SOFT, SKILL_DB, SKILL_DOCKER, SKILL_TEAM, SKILL_WEB } from "./test-fixture.js";
+import { buildCourseAiInput, buildSkillAiInput, COURSE_AI_PROMPT_VERSIONS, SKILL_AI_LIMITS } from "./prompt.js";
+import { courseSource, GROUP_CORE, GROUP_SOFT, SKILL_DB, SKILL_DOCKER, SKILL_GIT, SKILL_TEAM, SKILL_WEB, skillSource } from "./test-fixture.js";
 
 type Schema = { properties: Record<string, { maxItems?: number; items: { properties: Record<string, { enum?: string[]; type?: string }> } }> };
 
@@ -50,5 +50,40 @@ describe("course AI prompt", () => {
     expect(schema.properties.links!.items.properties.percent!.type).toBe("integer");
     expect(input.user).not.toMatch(/MSSV|họ tên|email/i);
     expect(input.user).toContain("=== KẾT THÚC DỮ LIỆU ===");
+  });
+
+  it("skills: offers the career skills without a profile, lists the catalog and every course", () => {
+    const input = buildSkillAiInput(skillSource());
+    expect(input.mode).toBe("skills");
+    expect(input.promptVersion).toBe(COURSE_AI_PROMPT_VERSIONS.skills);
+    expect(input.options.num_predict).toBe(3072);
+    expect(input.options.num_ctx).toBe(16384);
+    expect(input.skills).toEqual([
+      { key: "S001", id: SKILL_DOCKER, name: "Docker", groupId: null },
+      { key: "S002", id: SKILL_GIT, name: "Git", groupId: null }
+    ]);
+    expect(input.existing).toEqual(["Lập trình web", "Làm việc nhóm"]);
+    expect(input.user).toContain("Chuyên môn: Lập trình web");
+    expect(input.user).toContain("Kỹ năng mềm: Làm việc nhóm");
+    expect(input.user).toContain("S002 | Git | Quản lý phiên bản mã nguồn");
+    expect(input.user).toContain("- Lập trình web nâng cao | Kiến thức chuyên ngành | 3 | Xây dựng ứng dụng web nhiều tầng.");
+    expect(input.user).toContain("- Phát triển phần mềm DevOps | Kiến thức chuyên ngành | 3");
+    expect(input.user).not.toMatch(/MSSV|họ tên|email/i);
+    const schema = input.schema as Schema;
+    expect(schema.properties.links!.items.properties.skillKey!.enum).toEqual(["S001", "S002"]);
+    expect(Object.keys(schema.properties.links!.items.properties)).toEqual(["skillKey", "groupKey", "scope", "reason"]);
+    expect(Object.keys(schema.properties.newSkills!.items.properties)).toEqual(["name", "groupKey", "description", "scope", "reason"]);
+    expect(schema.properties.links!.maxItems).toBe(2);
+    expect(schema.properties.newSkills!.maxItems).toBe(SKILL_AI_LIMITS.newSkills);
+  });
+
+  it("skills: with no career skill left, links can hold nothing and the enum is never empty", () => {
+    const input = buildSkillAiInput(skillSource({ careerSkills: [], existing: [] }));
+    const schema = input.schema as Schema;
+    expect(schema.properties.links!.maxItems).toBe(0);
+    expect(schema.properties.links!.items.properties.skillKey!.enum).toBeUndefined();
+    expect(schema.properties.links!.items.properties.skillKey!.type).toBe("string");
+    expect(input.user).toContain("[3. KỸ NĂNG ĐÃ CÓ TRONG DANH MỤC] (không đề xuất lại)\nChưa có.");
+    expect(input.user).toContain("[4. KỸ NĂNG NGHỀ NGHIỆP CHƯA ĐƯỢC ĐÁNH GIÁ] (khóa | tên | mô tả)\nKhông có.");
   });
 });

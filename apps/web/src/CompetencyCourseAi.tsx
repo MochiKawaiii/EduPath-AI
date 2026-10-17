@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Modal, Status } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
-import { formatDateTime, formatElapsed, workerLine } from "./career-ai-suggestions";
 import { COMPETENCY_API, percentage, useCompetencyData, type CompetencyCourse, type CurriculumRevision, type Group } from "./competency-types";
 import {
-  COMPETENCY_AI_API, CompetencyAiError, POLL_STATUS_MS, POLL_SUGGESTION_MS, SKILL_NAME_MAX,
-  aiRequest, applyLinkItems, assessWeightRows, failureMessage, isPending, jsonPost, linkRows, validateLinkRows, weightRows,
-  type CourseAiMode, type CourseAiStatus, type CourseAiSuggestion, type LinkRow, type WeightRow,
+  COMPETENCY_AI_API, SKILL_NAME_MAX,
+  aiRequest, applyLinkItems, assessWeightRows, failureMessage, jsonPost, linkRows, validateLinkRows, weightRows,
+  type CourseAiMode, type CourseAiSuggestion, type LinkRow, type WeightRow,
 } from "./competency-ai";
+import { Elapsed, ReviewHead, WorkerLine } from "./CompetencyAiParts";
+import { useCompetencySuggestion, type SuggestionBusy as Busy } from "./use-competency-suggestion";
 import "./careers.css";
 
-type Busy = "create" | "cancel" | "apply" | null;
 type Props = { curriculum: CurriculumRevision; course: CompetencyCourse; mode: CourseAiMode; close: () => void; saved: () => void };
 
 /**
@@ -19,78 +19,14 @@ type Props = { curriculum: CurriculumRevision; course: CompetencyCourse; mode: C
  */
 export default function CompetencyCourseAi({ curriculum, course, mode, close, saved }: Props) {
   const query = new URLSearchParams({ revisionId: curriculum.revisionId, code: course.code, mode });
-  const liveStatus = useCompetencyData<CourseAiStatus>(`${COMPETENCY_AI_API}/status`);
-  const latest = useCompetencyData<{ suggestion: CourseAiSuggestion | null }>(`${COMPETENCY_AI_API}/latest?${query}`);
-  const [polledStatus, setPolledStatus] = useState<CourseAiStatus | null>(null);
-  const [current, setCurrent] = useState<CourseAiSuggestion | null | undefined>(undefined);
-  const [busy, setBusy] = useState<Busy>(null);
-  const [error, setError] = useState("");
-  const status = polledStatus ?? liveStatus.data;
-  const suggestion = current !== undefined ? current : latest.data?.suggestion ?? null;
-  const pending = isPending(suggestion?.status);
-  const suggestionId = suggestion?.id ?? null;
-  const suggestionStatus = suggestion?.status ?? null;
-  const view = latest.loading && current === undefined ? "loading"
-    : !suggestion || suggestion.status === "cancelled" ? "intro"
-      : pending ? "waiting" : suggestion.status === "failed" ? "failed" : "completed";
+  const { latest, latestFailed, statusLoading, worker, suggestion, view, busy, setBusy, error, create, cancel } =
+    useCompetencySuggestion(`${COMPETENCY_AI_API}/latest?${query}`, COMPETENCY_AI_API, { revisionId: curriculum.revisionId, code: course.code, mode });
 
-  useEffect(() => {
-    if (!suggestionId || !isPending(suggestionStatus)) return;
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      try {
-        const next = await aiRequest<{ suggestion: CourseAiSuggestion }>(`${COMPETENCY_AI_API}/${encodeURIComponent(suggestionId)}`, { signal: controller.signal });
-        if (controller.signal.aborted) return;
-        if (next.suggestion.status !== suggestionStatus) { setCurrent(next.suggestion); return; }
-      } catch (failure) {
-        if (!controller.signal.aborted && failure instanceof CompetencyAiError && failure.code === "suggestion_not_found") { setCurrent(null); return; }
-      }
-      if (!controller.signal.aborted) timer = setTimeout(() => void poll(), POLL_SUGGESTION_MS);
-    };
-    timer = setTimeout(() => void poll(), POLL_SUGGESTION_MS);
-    return () => { controller.abort(); clearTimeout(timer); };
-  }, [suggestionId, suggestionStatus]);
-
-  useEffect(() => {
-    if (view === "completed") return;
-    const controller = new AbortController();
-    const timer = setInterval(() => {
-      aiRequest<CourseAiStatus>(`${COMPETENCY_AI_API}/status`, { signal: controller.signal })
-        .then((next) => { if (!controller.signal.aborted) setPolledStatus(next); })
-        .catch(() => { /* keep the last known worker state */ });
-    }, POLL_STATUS_MS);
-    return () => { controller.abort(); clearInterval(timer); };
-  }, [view]);
-
-  const create = async () => {
-    setBusy("create"); setError("");
-    try {
-      const response = await aiRequest<{ suggestion: CourseAiSuggestion }>(COMPETENCY_AI_API, jsonPost({ revisionId: curriculum.revisionId, code: course.code, mode }));
-      setCurrent(response.suggestion);
-    } catch (failure) { setError((failure as Error).message); }
-    finally { setBusy(null); }
-  };
-  const cancel = async () => {
-    if (!suggestion) return;
-    setBusy("cancel"); setError("");
-    try {
-      const response = await aiRequest<{ suggestion: CourseAiSuggestion }>(`${COMPETENCY_AI_API}/${encodeURIComponent(suggestion.id)}/cancel`, jsonPost({}));
-      setCurrent(response.suggestion);
-    } catch (failure) {
-      setError((failure as Error).message);
-      if (failure instanceof CompetencyAiError && failure.code === "suggestion_not_active") {
-        aiRequest<{ suggestion: CourseAiSuggestion }>(`${COMPETENCY_AI_API}/${encodeURIComponent(suggestion.id)}`).then((next) => setCurrent(next.suggestion)).catch(() => {});
-      }
-    } finally { setBusy(null); }
-  };
-
-  const worker = workerLine(status);
   const title = mode === "links" ? "Tạo liên kết kỹ năng (AI)" : "Thêm trọng số (AI)";
   return <Modal title={`${title} · ${course.code}`} onClose={close} busy={busy !== null}>
     <div className="cm-dialog-body cm-form cai-body">
       {view === "loading" && <Status {...latest} />}
-      {latest.error && current === undefined && <Status {...latest} />}
+      {latestFailed && <Status {...latest} />}
       {view === "intro" && !latest.error && <>
         <div className="cai-intro">
           <span className="cai-intro-icon" aria-hidden="true"><Icon name="spark" /></span>
@@ -102,7 +38,7 @@ export default function CompetencyCourseAi({ curriculum, course, mode, close, sa
             <p className="cai-muted">AI chỉ nhận dữ liệu chương trình đào tạo, không nhận dữ liệu sinh viên. Kết quả chỉ là gợi ý: bạn chọn, sửa rồi mới lưu.</p>
           </div>
         </div>
-        <WorkerLine line={worker} loading={liveStatus.loading && !status} />
+        <WorkerLine line={worker} loading={statusLoading} />
         {error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}
         <div className="cm-actions cm-dialog-actions">
           <button type="button" className="am-outline" disabled={busy !== null} onClick={close}><Icon name="close" /> Hủy</button>
@@ -141,28 +77,10 @@ export default function CompetencyCourseAi({ curriculum, course, mode, close, sa
   </Modal>;
 }
 
-function WorkerLine({ line, loading }: { line: ReturnType<typeof workerLine>; loading: boolean }) {
-  return <p className={`cai-worker cai-worker-${line.tone}`}><span aria-hidden="true" />{loading ? "Đang kiểm tra máy AI…" : line.text}</p>;
-}
-
-function Elapsed({ since }: { since: string }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
-  return <span className="cai-elapsed" aria-label={`Đã chạy ${formatElapsed(since, now)}`}>{formatElapsed(since, now)}</span>;
-}
-
 type ReviewProps = {
   suggestion: CourseAiSuggestion; course: CompetencyCourse; busy: Busy; setBusy: (busy: Busy) => void;
   createError: string; canCreate: boolean; regenerate: () => void; close: () => void; saved: () => void;
 };
-
-function ReviewHead({ suggestion, heading, text }: { suggestion: CourseAiSuggestion; heading: string; text: string }) {
-  return <div className="cai-review-head">
-    <h3>{heading}</h3>
-    <p className="cai-muted">{text}</p>
-    <p className="cai-meta">Gợi ý bởi {suggestion.model ?? "mô hình AI"} chạy cục bộ · {formatDateTime(suggestion.completedAt)}</p>
-  </div>;
-}
 
 function LinksReview({ suggestion, course, busy, setBusy, createError, canCreate, regenerate, close, saved }: ReviewProps) {
   const groups = useCompetencyData<{ items: Group[] }>(`${COMPETENCY_API}/groups`);
