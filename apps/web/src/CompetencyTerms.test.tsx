@@ -14,10 +14,10 @@ const props = { canManage: true, revision: 0, onSaved: () => {} };
 // Terms agreed on 2026-10-17: Nhóm năng lực (the groups), Kỹ năng (one skill), Cấu hình năng lực (a skill
 // set up for assessment: group, scope, state).
 describe("competency terms", () => {
-  it("names the tabs Nhóm năng lực, Cấu hình năng lực, Trọng số học phần", () => {
+  it("names the tabs Nhóm năng lực, Cấu hình năng lực, Cấu hình học phần", () => {
     const html = renderToStaticMarkup(createElement(CompetencyManagement, { canManage: true }));
     expect([...html.matchAll(/<button aria-pressed="(?:true|false)"><svg[^>]*>.*?<\/svg>([^<]+)<\/button>/g)].map((match) => match[1]))
-      .toEqual(["Nhóm năng lực", "Cấu hình năng lực", "Trọng số học phần"]);
+      .toEqual(["Nhóm năng lực", "Cấu hình năng lực", "Cấu hình học phần"]);
   });
 
   it("uses the new names on both tabs and never the old ones", () => {

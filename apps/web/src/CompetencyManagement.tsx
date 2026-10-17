@@ -11,7 +11,7 @@ import "./competencies.css";
 const tabs = [
   { id: "groups", label: "Nhóm năng lực", icon: "book" },
   { id: "profiles", label: "Cấu hình năng lực", icon: "profile" },
-  { id: "courses", label: "Trọng số học phần", icon: "chart" },
+  { id: "courses", label: "Cấu hình học phần", icon: "chart" },
 ] as const;
 
 export default function CompetencyManagement({ canManage }: { canManage: boolean }) {
