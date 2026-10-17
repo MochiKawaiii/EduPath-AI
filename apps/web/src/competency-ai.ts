@@ -103,6 +103,8 @@ const SKIP_REASONS: Record<string, string> = {
   skill_unavailable: "kỹ năng đã ngừng sử dụng",
   group_unavailable: "nhóm đã ngừng sử dụng",
   weight_total_invalid: "tổng trọng số chưa đủ 100%",
+  course_has_no_links: "chưa có liên kết kỹ năng",
+  invalid_competency_reference: "dữ liệu vừa thay đổi",
 };
 export const skipReason = (code: string) => SKIP_REASONS[code] ?? "không lưu được";
 

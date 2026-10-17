@@ -277,6 +277,15 @@ try {
   assert.equal((await ai("POST", `/batches/${progress.id}/apply`, { body: { status: "active" } })).body.drafted, 0, "nothing is applied twice");
   checks.push(`whole program: ${total} courses queued (the configured one skipped, a second run queues nothing), ${drafts.body.drafted} saved as drafts at 100% and ${drafts.body.empty} empty answers recorded, nothing applied twice`);
 
+  // "Áp dụng bản nháp": the drafts of the run become active at once; a draft without links is skipped.
+  assert.equal((await call("POST", "/courses/activate", { body: { revisionId: empty.revisionId } })).status, 400, "the confirmation is required");
+  const activatedRun = await call("POST", "/courses/activate", { body: { revisionId: empty.revisionId, confirmed: true } });
+  assert.equal(activatedRun.status, 200, JSON.stringify(activatedRun.body));
+  assert.deepEqual(activatedRun.body, { activated: drafts.body.drafted, skipped: [] });
+  assert.equal(await count("ad_comp_course_configs WHERE revision_id=$1 AND status='draft'", [empty.revisionId]), 0);
+  assert.equal(await count("ad_comp_course_configs WHERE revision_id=$1 AND status='active'", [empty.revisionId]), drafts.body.drafted + 1);
+  checks.push(`applying the drafts activates all ${drafts.body.drafted} drafts of the run at once (confirmation required)`);
+
   // "Xóa liên kết của cả chương trình": every linked course becomes an empty draft, then a new run covers them all.
   const linkedBefore = (await call("GET", `/courses?revisionId=${empty.revisionId}`)).body.items.filter((course) => course.skillCount > 0).length;
   assert.equal((await call("POST", "/courses/clear", { body: { revisionId: empty.revisionId, confirm: "K00" } })).body.error, "confirmation_mismatch");
@@ -289,6 +298,9 @@ try {
   assert.equal(await count("ad_comp_course_configs WHERE revision_id=$1 AND status='active'", [empty.revisionId]), 0);
   const clearedHistory = (await call("GET", `/courses/${empty.revisionId}/${first.code}`)).body.history;
   assert.equal(clearedHistory[0].note, "Xóa liên kết và trọng số của cả chương trình");
+  const emptyDrafts = await call("POST", "/courses/activate", { body: { revisionId: empty.revisionId, confirmed: true } });
+  assert.equal(emptyDrafts.body.activated, 0);
+  assert(emptyDrafts.body.skipped.length === linkedBefore && emptyDrafts.body.skipped.every((item) => item.reason === "course_has_no_links"), "empty drafts are skipped");
   const rerun = await ai("POST", "/batches", { body: { revisionId: empty.revisionId } });
   assert.equal(rerun.body.queued, courses.length, "after clearing, a run covers every course again");
   await ai("POST", `/batches/${rerun.body.batchId}/cancel`, { body: {} });

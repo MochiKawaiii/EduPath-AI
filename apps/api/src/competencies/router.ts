@@ -101,6 +101,10 @@ export function createCompetenciesRouter(pool: DatabasePool | undefined, webOrig
     const data = z.object({ revisionId: uuid, confirm: z.string().max(40) }).strict().parse(req.body);
     res.json(await repository!.clearRevision(data.revisionId, data.confirm, req.session.user!));
   });
+  router.post("/courses/activate", async (req, res) => {
+    const data = z.object({ revisionId: uuid, confirmed: z.literal(true) }).strict().parse(req.body);
+    res.json(await repository!.activateDrafts(data.revisionId, req.session.user!));
+  });
   router.delete("/courses/:revisionId/:code", async (req, res) => {
     const revisionId = uuid.parse(req.params.revisionId), code = courseCode.parse(req.params.code), version = uuid.parse(req.get("x-version"));
     confirmed.parse(req.body);

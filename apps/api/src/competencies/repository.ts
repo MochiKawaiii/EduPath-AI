@@ -477,6 +477,42 @@ export class CompetencyRepository {
     });
   }
 
+  /**
+   * "Áp dụng bản nháp": every draft of the revision becomes active, one course at a time (a savepoint
+   * each). A draft that cannot be applied (no link, a total other than 100%, a skill or group no
+   * longer in use) is skipped with its reason and the others go on.
+   */
+  async activateDrafts(revisionId: string, actor: AuthenticatedUser) {
+    return this.write(actor, async client => {
+      await this.revision(client, revisionId);
+      const drafts = await client.query<{ id: string; code: string; note: string }>(`SELECT id,course_code AS code,note
+ FROM ad_comp_course_configs WHERE revision_id=$1 AND status='draft' ORDER BY course_code FOR UPDATE`, [revisionId]);
+      let activated = 0;
+      const skipped: { courseCode: string; reason: string }[] = [];
+      for (const draft of drafts.rows) {
+        await client.query("SAVEPOINT activate_draft");
+        try {
+          const links = (await client.query<{ skillId: string; weight: number }>(`SELECT skill_id AS "skillId",weight::float8 AS weight
+ FROM ad_comp_course_links WHERE config_id=$1 ORDER BY skill_id`, [draft.id])).rows;
+          if (!links.length) throw new CompetencyError("course_has_no_links", 409);
+          await this.writeCourse(client, revisionId, draft.code, draft, { status: "active", links, note: draft.note }, actor, "Áp dụng bản nháp của cả chương trình");
+          // Deferred weight checks run now, so one bad course never fails the others at commit.
+          await client.query("SET CONSTRAINTS ALL IMMEDIATE");
+          await client.query("SET CONSTRAINTS ALL DEFERRED");
+          await client.query("RELEASE SAVEPOINT activate_draft");
+          activated += 1;
+        } catch (error) {
+          await client.query("ROLLBACK TO SAVEPOINT activate_draft");
+          const database = error as { code?: string; constraint?: string };
+          skipped.push({ courseCode: draft.code, reason: error instanceof CompetencyError ? error.code
+            : database.code === "23514" ? (database.constraint === "competency_active_total" ? "weight_total_invalid" : "skill_unavailable")
+              : "invalid_competency_reference" });
+        }
+      }
+      return { activated, skipped };
+    });
+  }
+
   async archiveCourse(revisionId: string, code: string, version: string, actor: AuthenticatedUser) {
     return this.write(actor, async client => {
       const current = await client.query<{ id: string; version: string }>(`SELECT id,version FROM ad_comp_course_configs

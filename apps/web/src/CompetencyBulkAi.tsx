@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Modal, Status } from "./admin-ui";
 import { Icon, RequiredLabel } from "./admin-account-shared";
 import { formatDateTime, workerLine } from "./career-ai-suggestions";
-import { COMPETENCY_API, competencyRequest, useCompetencyData, type CompetencyCourse, type CurriculumRevision } from "./competency-types";
+import { COMPETENCY_API, WEIGHT_TOLERANCE, competencyRequest, useCompetencyData, type CompetencyCourse, type CurriculumRevision } from "./competency-types";
 import {
   COMPETENCY_AI_API, POLL_BATCH_MS, aiRequest, batchPending, batchProgress, jsonPost, skipReason,
   type BatchApplyResult, type CourseAiBatch, type CourseAiStatus,
 } from "./competency-ai";
 
-type Busy = "run" | "cancel" | "draft" | "active" | null;
+type Busy = "run" | "cancel" | "draft" | "active" | "activate" | null;
+type Activation = { activated: number; skipped: { courseCode: string; reason: string }[] };
 type Props = { curriculum: CurriculumRevision; canManage: boolean; revision: number; onSaved: () => void };
 
 /**
@@ -28,10 +29,16 @@ export function CompetencyBulkAi({ curriculum, canManage, revision, onSaved }: P
   const [result, setResult] = useState<BatchApplyResult | null>(null);
   const [error, setError] = useState("");
   const [clearing, setClearing] = useState(false);
+  const [confirmDrafts, setConfirmDrafts] = useState(false);
+  const [activation, setActivation] = useState<Activation | null>(null);
   const batch = polled !== undefined ? polled : latest.data?.batch ?? null;
   const pending = batchPending(batch);
   const unlinked = (courses.data?.items ?? []).filter((course) => course.occurrenceCount === 1 && course.skillCount === 0).length;
   const linked = (courses.data?.items ?? []).filter((course) => course.skillCount > 0).length;
+  // Drafts (saved from the AI run or by hand) that can be applied: they have links that add up to 100%.
+  const drafts = (courses.data?.items ?? []).filter((course) => course.status === "draft");
+  const readyDrafts = drafts.filter((course) => course.skillCount > 0 && Math.abs(course.totalWeight - 1) <= WEIGHT_TOLERANCE).length;
+  const showDrafts = canManage && !pending && !(batch && batch.ready > 0) && readyDrafts > 0;
   const worker = workerLine(status.data);
 
   useEffect(() => {
@@ -46,7 +53,7 @@ export function CompetencyBulkAi({ curriculum, canManage, revision, onSaved }: P
   }, [pending, batch?.id, revisionQuery]);
 
   const run = async () => {
-    setBusy("run"); setError(""); setNotice(""); setResult(null);
+    setBusy("run"); setError(""); setNotice(""); setResult(null); setActivation(null);
     try {
       const response = await aiRequest<{ queued: number; batch: CourseAiBatch | null; skipped: { linked: number; duplicate: number; pending: number } }>(
         `${COMPETENCY_AI_API}/batches`, jsonPost({ revisionId: curriculum.revisionId }));
@@ -70,6 +77,19 @@ export function CompetencyBulkAi({ curriculum, canManage, revision, onSaved }: P
     try {
       const response = await aiRequest<BatchApplyResult>(`${COMPETENCY_AI_API}/batches/${encodeURIComponent(batch.id)}/apply`, jsonPost({ status: target }));
       setResult(response); setPolled(response.batch); setConfirmActive(false);
+      onSaved();
+    } catch (failure) { setError((failure as Error).message); }
+    finally { setBusy(null); }
+  };
+
+  /** "Áp dụng bản nháp": every draft of the revision that adds up to 100% becomes active; the rest is listed. */
+  const activateDrafts = async () => {
+    setBusy("activate"); setError(""); setNotice(""); setResult(null);
+    try {
+      const response = await competencyRequest<Activation>(`${COMPETENCY_API}/courses/activate`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revisionId: curriculum.revisionId, confirmed: true }),
+      });
+      setActivation(response); setConfirmDrafts(false);
       onSaved();
     } catch (failure) { setError((failure as Error).message); }
     finally { setBusy(null); }
@@ -103,21 +123,32 @@ export function CompetencyBulkAi({ curriculum, canManage, revision, onSaved }: P
       <p>Đã lưu {result.drafted.toLocaleString("vi-VN")} bản nháp và áp dụng {result.activated.toLocaleString("vi-VN")} học phần.{result.empty ? ` ${result.empty} học phần AI không đề xuất kỹ năng nào.` : ""}</p>
       {result.skipped.length > 0 && <p>Bỏ qua {result.skipped.length} học phần: {result.skipped.slice(0, 8).map((item) => `${item.courseCode} (${skipReason(item.reason)})`).join(", ")}{result.skipped.length > 8 ? "…" : ""}</p>}
     </div>}
+    {activation && <div className="comp-ai-result" role="status">
+      <p>Đã áp dụng {activation.activated.toLocaleString("vi-VN")} học phần.</p>
+      {activation.skipped.length > 0 && <p>Chưa áp dụng {activation.skipped.length} học phần: {activation.skipped.slice(0, 8).map((item) => `${item.courseCode} (${skipReason(item.reason)})`).join(", ")}{activation.skipped.length > 8 ? "…" : ""}</p>}
+    </div>}
     {error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}
     {canManage && <>
       {batch && batch.ready > 0 && <div className="comp-ai-apply">
         <label className="cm-check"><input type="checkbox" checked={confirmActive} disabled={busy !== null} onChange={(event) => setConfirmActive(event.target.checked)} />
           <span>Tôi hiểu khi áp dụng, các học phần này được tính ngay vào đánh giá năng lực của sinh viên {curriculum.cohortCode}.</span></label>
       </div>}
+      {showDrafts && <div className="comp-ai-apply">
+        <label className="cm-check"><input type="checkbox" checked={confirmDrafts} disabled={busy !== null} onChange={(event) => setConfirmDrafts(event.target.checked)} />
+          <span>Tôi hiểu khi áp dụng, {readyDrafts.toLocaleString("vi-VN")} học phần đang ở bản nháp được tính ngay vào đánh giá năng lực của sinh viên {curriculum.cohortCode}.</span></label>
+        {drafts.length > readyDrafts && <p className="comp-hint">{(drafts.length - readyDrafts).toLocaleString("vi-VN")} bản nháp khác chưa có liên kết hoặc tổng trọng số chưa đủ 100% nên chưa áp dụng được; hãy hoàn thiện từng học phần.</p>}
+      </div>}
       <div className="cm-actions">
+        {showDrafts && <button type="button" className="am-primary" disabled={busy !== null || !confirmDrafts} onClick={() => void activateDrafts()}>
+          <Icon name="check" /> {busy === "activate" ? "Đang áp dụng…" : `Áp dụng ${readyDrafts.toLocaleString("vi-VN")} bản nháp`}</button>}
         {pending && <button type="button" className="am-outline" disabled={busy !== null} onClick={() => void cancel()}><Icon name="close" /> {busy === "cancel" ? "Đang hủy…" : "Hủy lần chạy"}</button>}
         {batch && batch.ready > 0 && <>
           <button type="button" className="am-outline" disabled={busy !== null} onClick={() => void apply("draft")}><Icon name="save" /> {busy === "draft" ? "Đang lưu…" : `Lưu ${batch.ready} đề xuất thành bản nháp`}</button>
           <button type="button" className="am-primary" disabled={busy !== null || !confirmActive} onClick={() => void apply("active")}><Icon name="save" /> {busy === "active" ? "Đang lưu…" : `Lưu và áp dụng ${batch.ready} học phần`}</button>
         </>}
-        {!pending && linked > 0 && <button type="button" className="am-outline" disabled={busy !== null} onClick={() => { setNotice(""); setResult(null); setClearing(true); }}>
+        {!pending && linked > 0 && <button type="button" className="am-outline" disabled={busy !== null} onClick={() => { setNotice(""); setResult(null); setActivation(null); setClearing(true); }}>
           <Icon name="trash" /> Xóa liên kết của {linked.toLocaleString("vi-VN")} học phần</button>}
-        {!pending && <button type="button" className={batch && batch.ready > 0 ? "am-outline" : "am-primary"} disabled={busy !== null || !worker.canCreate || !courses.data || unlinked === 0} onClick={() => void run()}>
+        {!pending && <button type="button" className={(batch && batch.ready > 0) || showDrafts ? "am-outline" : "am-primary"} disabled={busy !== null || !worker.canCreate || !courses.data || unlinked === 0} onClick={() => void run()}>
           <Icon name="spark" /> {busy === "run" ? "Đang gửi…" : unlinked ? `Chạy AI cho ${unlinked.toLocaleString("vi-VN")} học phần chưa có liên kết` : "Mọi học phần đã có liên kết"}</button>}
       </div>
     </>}

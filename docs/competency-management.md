@@ -20,6 +20,7 @@ Nhóm **Quản lý năng lực** trên thanh bên quản trị (mở/đóng như
 | AD-COMP-14 Xóa liên kết kỹ năng với học phần | **Xóa liên kết**: chọn kỹ năng cần gỡ. Học phần đang áp dụng mà tổng không còn 100% chuyển về bản nháp. |
 | Xóa trọng số năng lực | **Xóa trọng số**: mọi trọng số về 0%, học phần về bản nháp, liên kết giữ nguyên. |
 | (mở rộng) Chạy AI cho cả chương trình | Khung **Chạy AI cho cả chương trình** trên trang Cấu hình học phần (xem mục AI). |
+| (mở rộng) Áp dụng bản nháp của cả chương trình | Nút **Áp dụng N bản nháp** trong khung Chạy AI cho cả chương trình (cần tick xác nhận): mọi bản nháp có liên kết và tổng 100% thành Đang áp dụng; bản nháp chưa có liên kết, chưa đủ 100% hoặc có kỹ năng ngừng dùng được bỏ qua kèm lý do. |
 | (mở rộng) Xóa liên kết của cả chương trình | Nút **Xóa liên kết của N học phần** trong cùng khung: nhập mã khóa (ví dụ K30) để xác nhận; mọi học phần có liên kết về bản nháp trống (lịch sử giữ nguyên) để chạy AI lại cho cả chương trình. |
 
 **Thuật ngữ (17/10/2026, theo ghi chú GVHD ở AD-COMP-01/02):**
@@ -61,6 +62,7 @@ Prefix **`/api/admin/competencies`**; mọi endpoint cần quyền quản trị 
 | GET/POST `/skills`, GET/PATCH/DELETE `/skills/:id` | Cấu hình năng lực. |
 | GET `/curricula`, GET `/courses?revisionId=`, GET `/courses/:revisionId/:code`, GET `/summary?revisionId=` | Phiên bản CTĐT, học phần, chi tiết, thống kê và cảnh báo. |
 | PUT `/courses/:revisionId/:code` | Lưu toàn bộ liên kết và trọng số `{status,links:[{skillId,weight}],note}`; mọi thao tác thủ công trên giao diện (tạo liên kết, thêm/xóa trọng số, xóa liên kết) dùng endpoint này. |
+| POST `/courses/activate` | `{revisionId,confirmed:true}`: áp dụng mọi bản nháp của phiên bản, mỗi học phần một savepoint; trả `{activated,skipped:[{courseCode,reason}]}` (`course_has_no_links`, `weight_total_invalid`, `skill_unavailable`, `group_unavailable`). |
 | POST `/courses/clear` | `{revisionId,confirm}`: `confirm` là mã khóa (không phân biệt hoa thường), sai thì 400 `confirmation_mismatch`. Mọi học phần có liên kết của phiên bản thành bản nháp không liên kết, mỗi học phần một dòng lịch sử; trả `{cleared}`. |
 | DELETE `/courses/:revisionId/:code` | Lưu trữ cấu hình (giữ cho tương thích, giao diện không còn dùng). |
 | `/ai/*` | Đề xuất AI, mục dưới. |
