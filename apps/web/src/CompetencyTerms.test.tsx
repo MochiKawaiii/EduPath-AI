@@ -14,10 +14,16 @@ const props = { canManage: true, revision: 0, onSaved: () => {} };
 // Terms agreed on 2026-10-17: Nhóm năng lực (the groups), Kỹ năng (one skill), Cấu hình năng lực (a skill
 // set up for assessment: group, scope, state).
 describe("competency terms", () => {
-  it("names the tabs Nhóm năng lực, Cấu hình năng lực, Cấu hình học phần", () => {
-    const html = renderToStaticMarkup(createElement(CompetencyManagement, { canManage: true }));
-    expect([...html.matchAll(/<button aria-pressed="(?:true|false)"><svg[^>]*>.*?<\/svg>([^<]+)<\/button>/g)].map((match) => match[1]))
-      .toEqual(["Nhóm năng lực", "Cấu hình năng lực", "Cấu hình học phần"]);
+  it("shows one part per page of Quản lý năng lực, without tabs", () => {
+    const page = (section: "groups" | "profiles" | "courses") => renderToStaticMarkup(createElement(CompetencyManagement, { canManage: true, section }));
+    const [groups, profiles, courses] = [page("groups"), page("profiles"), page("courses")];
+    expect(groups).toContain("Thêm nhóm năng lực");
+    expect(groups).not.toContain("Thêm cấu hình năng lực");
+    expect(profiles).toContain("Thêm cấu hình năng lực");
+    expect(profiles).not.toContain("Thêm nhóm năng lực");
+    expect(courses).toContain("Khóa tuyển sinh");
+    expect(courses).not.toMatch(/Thêm nhóm năng lực|Thêm cấu hình năng lực/);
+    for (const html of [groups, profiles, courses]) expect(html).not.toContain("aria-pressed");
   });
 
   it("uses the new names on both tabs and never the old ones", () => {

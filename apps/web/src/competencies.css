@@ -83,8 +83,6 @@
   .comp-revision-selector, .comp-ai-batch { padding: 20px; }
   .comp-summary { padding: 0 20px 20px; }
   .comp-detail-grid { grid-template-columns: 1fr; }
-  .comp-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .comp-tabs button { font-size: 13px; }
   .comp-allocation-row { grid-template-columns: minmax(0, 1fr) auto; }
   .comp-allocation-row label:first-child { grid-column: 1 / -1; }
   .comp-allocation-row .comp-percent { max-width: 180px; }

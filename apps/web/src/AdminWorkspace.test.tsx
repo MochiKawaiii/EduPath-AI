@@ -14,10 +14,22 @@ function render(pathname: string) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("admin workspace", () => {
-  it("shows the short names in the sidebar, in order, with the career pages under Quản lý nghề nghiệp", () => {
+  it("shows the short names in the sidebar, in order, with the two groups and their pages", () => {
     const nav = render("/quantri/tai-khoan").match(/<nav id="admin-navigation".*?<\/nav>/s)?.[0] ?? "";
     expect([...nav.matchAll(/<span>([^<]*)<\/span>/g)].map(match => match[1])).toEqual(
-      ["Tài khoản", "Sinh viên", "Chương trình", "Tốt nghiệp", "Kế hoạch", "Quản lý nghề nghiệp", "Nghề nghiệp", "Lĩnh vực", "Kỹ năng", "Năng lực"]);
+      ["Tài khoản", "Sinh viên", "Chương trình", "Tốt nghiệp", "Kế hoạch", "Quản lý nghề nghiệp", "Nghề nghiệp", "Lĩnh vực", "Kỹ năng",
+        "Quản lý năng lực", "Nhóm năng lực", "Cấu hình năng lực", "Cấu hình học phần"]);
+  });
+
+  it("keeps Quản lý năng lực closed elsewhere and open on its pages", () => {
+    expect(render("/quantri/vi-tri-nghe-nghiep")).toContain('<button type="button" class="am-nav-group-toggle" aria-expanded="false" aria-controls="admin-navigation-competencies">');
+    for (const path of ["/quantri/nhom-nang-luc", "/quantri/cau-hinh-nang-luc", "/quantri/cau-hinh-hoc-phan"]) {
+      const open = render(path);
+      expect(open).toContain('<button type="button" class="am-nav-group-toggle am-nav-group-current" aria-expanded="true" aria-controls="admin-navigation-competencies">');
+      expect(open).toContain('<div id="admin-navigation-competencies" class="am-nav-sub">');
+      expect(open).toContain(`<a href="${path}" aria-current="page">`);
+      expect(open).toContain(">QUẢN LÝ NĂNG LỰC</p>");
+    }
   });
 
   it("keeps Quản lý nghề nghiệp closed elsewhere and open on its pages", () => {

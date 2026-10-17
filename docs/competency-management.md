@@ -1,17 +1,17 @@
 # AD-COMP — quản lý cấu hình năng lực từ học phần
 
-Màn hình quản trị **Năng lực** (`/quantri/danh-gia-nang-luc`) quản lý nhóm năng lực, cấu hình năng lực của từng kỹ năng và liên kết, trọng số của từng học phần theo phiên bản CTĐT. Dùng PostgreSQL, session và quyền quản trị hiện có. Từ bản chức năng `Nhom1_DanhSachChucNang_ver0.2 (7)` (16/10/2026), liên kết và trọng số có thể do AI đề xuất (Gemma chạy cục bộ trên máy AI) và phần **Nhập từ Excel đã bị xóa**: dữ liệu không còn được nhập bằng tệp trọng số thủ công.
+Nhóm **Quản lý năng lực** trên thanh bên quản trị (mở/đóng như nhóm Quản lý nghề nghiệp) có ba trang: **Nhóm năng lực** (`/quantri/nhom-nang-luc`), **Cấu hình năng lực** (`/quantri/cau-hinh-nang-luc`) và **Cấu hình học phần** (`/quantri/cau-hinh-hoc-phan`); đường cũ `/quantri/danh-gia-nang-luc` mở trang Nhóm năng lực. Các trang này quản lý nhóm năng lực, cấu hình năng lực của từng kỹ năng và liên kết, trọng số của từng học phần theo phiên bản CTĐT. Dùng PostgreSQL, session và quyền quản trị hiện có. Từ bản chức năng `Nhom1_DanhSachChucNang_ver0.2 (7)` (16/10/2026), liên kết và trọng số có thể do AI đề xuất (Gemma chạy cục bộ trên máy AI) và phần **Nhập từ Excel đã bị xóa**: dữ liệu không còn được nhập bằng tệp trọng số thủ công.
 
 ## Chức năng theo danh sách chức năng bản 7
 
 | Chức năng | Cách đáp ứng |
 | --- | --- |
-| AD-COMP-01 Xem danh mục nhóm kỹ năng đánh giá | Tab **Nhóm năng lực**: bảng, tìm, lọc trạng thái, chi tiết và lịch sử. |
+| AD-COMP-01 Xem danh mục nhóm kỹ năng đánh giá | Trang **Nhóm năng lực**: bảng, tìm, lọc trạng thái, chi tiết và lịch sử. |
 | AD-COMP-03 Thêm nhóm kỹ năng đánh giá, cập nhật nhóm | Nút **Thêm nhóm năng lực**; **Chỉnh sửa** trong menu Thao tác. |
 | Xóa nhóm kỹ năng đánh giá | **Xóa** trong menu Thao tác: chỉ nhóm không còn kỹ năng; xóa mềm (`deleted_at`, `is_active=false`), tên được dùng lại. |
-| AD-COMP-02 Xem danh sách kỹ năng đánh giá, AD-COMP-12 Tìm kiếm, AD-COMP-15 Lọc | Tab **Cấu hình năng lực**: tìm có/không dấu, lọc nhóm năng lực và trạng thái. |
+| AD-COMP-02 Xem danh sách kỹ năng đánh giá, AD-COMP-12 Tìm kiếm, AD-COMP-15 Lọc | Trang **Cấu hình năng lực**: tìm có/không dấu, lọc nhóm năng lực và trạng thái. |
 | AD-COMP-04 Thêm, AD-COMP-05 Cập nhật, Xóa kỹ năng đánh giá | Thêm (tạo kỹ năng chung mới hoặc dùng lại kỹ năng chung đã có), Chỉnh sửa, Xóa (xóa mềm, chặn khi cấu hình đang áp dụng còn dùng). |
-| AD-COMP-06 Xem trọng số năng lực | Tab **Cấu hình học phần** (trước gọi "Trọng số học phần"): tổng %, trạng thái, chi tiết và lịch sử từng học phần. |
+| AD-COMP-06 Xem trọng số năng lực | Trang **Cấu hình học phần** (trước là tab "Trọng số học phần"): tổng %, trạng thái, chi tiết và lịch sử từng học phần. |
 | AD-COMP-09 Tạo liên kết kỹ năng với học phần (Thủ công) | **Tạo liên kết kỹ năng (Thủ công)**: chọn kỹ năng; kỹ năng mới vào học phần với trọng số 0%. |
 | Tạo liên kết kỹ năng với học phần (AI) | **Tạo liên kết kỹ năng (AI)**: AI đề xuất kỹ năng, quản trị viên duyệt rồi lưu (xem mục AI). |
 | AD-COMP-07 Thêm trọng số năng lực (Thủ công) | **Thêm trọng số (Thủ công)**: nhập % cho các kỹ năng đã liên kết; áp dụng cần tổng 100%. |
@@ -19,7 +19,7 @@ Màn hình quản trị **Năng lực** (`/quantri/danh-gia-nang-luc`) quản l�
 | AD-COMP-08 Cập nhật trọng số, AD-COMP-10 Cập nhật liên kết | **Chỉnh sửa liên kết và trọng số**: trình chỉnh sửa đầy đủ (thêm, đổi, gỡ dòng và %). |
 | AD-COMP-14 Xóa liên kết kỹ năng với học phần | **Xóa liên kết**: chọn kỹ năng cần gỡ. Học phần đang áp dụng mà tổng không còn 100% chuyển về bản nháp. |
 | Xóa trọng số năng lực | **Xóa trọng số**: mọi trọng số về 0%, học phần về bản nháp, liên kết giữ nguyên. |
-| (mở rộng) Chạy AI cho cả chương trình | Khung **Chạy AI cho cả chương trình** trên tab Cấu hình học phần (xem mục AI). |
+| (mở rộng) Chạy AI cho cả chương trình | Khung **Chạy AI cho cả chương trình** trên trang Cấu hình học phần (xem mục AI). |
 | (mở rộng) Xóa liên kết của cả chương trình | Nút **Xóa liên kết của N học phần** trong cùng khung: nhập mã khóa (ví dụ K30) để xác nhận; mọi học phần có liên kết về bản nháp trống (lịch sử giữ nguyên) để chạy AI lại cho cả chương trình. |
 
 **Thuật ngữ (17/10/2026, theo ghi chú GVHD ở AD-COMP-01/02):**
@@ -34,7 +34,7 @@ Tab "Danh mục kỹ năng" đổi thành **Cấu hình năng lực**, nút "Th�
 
 ## Dữ liệu
 
-Migration **026** tạo các bảng; **034** thêm xóa mềm nhóm và bảng đề xuất AI; **035** thêm chế độ `skills` cho nút "Thêm bằng AI" của tab Cấu hình năng lực (khi đó tên "Danh mục kỹ năng") (`course_code` NULL); nút này đã được gỡ ngày 17/10/2026 theo yêu cầu, **036** hủy các đề xuất `skills` còn chờ. Giá trị `skills` trong ràng buộc chế độ và `course_code` cho phép NULL vẫn giữ vì 035 đã chạy trên production; không còn mã nào tạo dòng `skills`.
+Migration **026** tạo các bảng; **034** thêm xóa mềm nhóm và bảng đề xuất AI; **035** thêm chế độ `skills` cho nút "Thêm bằng AI" của trang Cấu hình năng lực (khi đó là tab "Danh mục kỹ năng") (`course_code` NULL); nút này đã được gỡ ngày 17/10/2026 theo yêu cầu, **036** hủy các đề xuất `skills` còn chờ. Giá trị `skills` trong ràng buộc chế độ và `course_code` cho phép NULL vẫn giữ vì 035 đã chạy trên production; không còn mã nào tạo dòng `skills`.
 
 | Bảng | Vai trò |
 | --- | --- |
@@ -97,5 +97,5 @@ Việc v2 gửi `think: true` trong job; worker trước 17/10/2026 luôn gửi 
 - 10/2026: AD-COMP ban đầu (migration 026) nhập 81 kỹ năng, 88 cấu hình và 289 liên kết K29 từ workbook `EduPath_course_K29.xlsx` vào PostgreSQL cục bộ qua phần nhập Excel. Dữ liệu đó vẫn giữ nguyên sau khi phần nhập bị xóa.
 - 16/10/2026: theo danh sách chức năng bản 7, thêm xóa nhóm, các nút Thủ công/AI cho liên kết và trọng số, chạy AI cho cả chương trình; xóa phần nhập Excel.
 - 17/10/2026: thêm nút **Thêm bằng AI** ở tab Danh mục kỹ năng (migration 035, chế độ `skills`), rồi gỡ trong cùng ngày theo yêu cầu (migration 036); thêm kỹ năng chỉ còn nút thủ công.
-- 17/10/2026 (sau): thống nhất thuật ngữ Nhóm năng lực / Kỹ năng / Cấu hình năng lực (bảng ở đầu tài liệu).
+- 17/10/2026 (sau): thống nhất thuật ngữ Nhóm năng lực / Kỹ năng / Cấu hình năng lực (bảng ở đầu tài liệu); tab "Trọng số học phần" đổi tên thành Cấu hình học phần; rồi ba tab của trang "Năng lực" được tách thành ba trang trong nhóm **Quản lý năng lực** trên thanh bên.
 - 17/10/2026 (sau): người dùng không chấp nhận liên kết, trọng số K30 do AI không suy luận tạo trên production. Bật chế độ suy luận cho mọi việc AI của mục Năng lực (prompt v2, loại việc `competency_course_suggestion_v2`), thêm nút **Xóa liên kết của cả chương trình** để chạy lại.

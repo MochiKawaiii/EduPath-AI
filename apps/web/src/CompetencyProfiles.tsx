@@ -74,7 +74,7 @@ function GroupDelete({ current, close, saved }: { current: Group; close: () => v
   return <Modal title="Xóa nhóm năng lực" onClose={close} busy={busy} size="sm">
     <div className="cm-dialog-body cm-form">
       {empty ? <p>Xóa nhóm <strong>{current.name}</strong> khỏi danh mục? Nhóm không còn kỹ năng nào. Lịch sử thay đổi của nhóm vẫn được giữ.</p>
-        : <p className="cm-warning" role="alert">Nhóm <strong>{current.name}</strong> còn {current.skillCount} kỹ năng. Hãy chuyển các kỹ năng sang nhóm khác hoặc xóa chúng ở tab Cấu hình năng lực trước khi xóa nhóm.</p>}
+        : <p className="cm-warning" role="alert">Nhóm <strong>{current.name}</strong> còn {current.skillCount} kỹ năng. Hãy chuyển các kỹ năng sang nhóm khác hoặc xóa chúng ở trang Cấu hình năng lực trước khi xóa nhóm.</p>}
       {empty && <label className="cm-check"><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} /><span>Tôi xác nhận xóa nhóm năng lực này.</span></label>}
       {error && <p className="admin-error cm-prewrap" role="alert">{error}</p>}
       <div className="cm-actions cm-dialog-actions">
@@ -292,16 +292,16 @@ function SkillDetails({ current, revision, canManage, close, edit }: { current: 
           <div><dt>Nhóm năng lực</dt><dd>{detail.groupName}{!detail.groupActive && <small className="comp-hint">Nhóm ngừng sử dụng</small>}</dd></div>
           <div><dt>Mô tả kỹ năng chung</dt><dd className="comp-description">{detail.description || "Chưa bổ sung."}</dd></div>
           <div><dt>Phạm vi đánh giá</dt><dd className="comp-description">{detail.scope || "Chưa bổ sung."}</dd></div>
-          <div><dt>Trạng thái cấu hình</dt><dd><ProfileState active={detail.isActive} /></dd></div>
+          <div><dt>Trạng thái sử dụng</dt><dd><ProfileState active={detail.isActive} /></dd></div>
           <div><dt>Liên kết nghề nghiệp</dt><dd>{detail.careerCount} nghề nghiệp</dd></div>
           {detail.legacySkillId && <div><dt>Dữ liệu đánh giá cũ</dt><dd>Giữ liên kết với dữ liệu đánh giá cũ.</dd></div>}
         </dl>
         <section className="comp-section">
           <h3>Học phần liên kết và đóng góp</h3>
-          <p className="comp-hint">Đóng góp được tính từ cấu hình đang áp dụng có trọng số lớn hơn 0. Mỗi dòng thuộc đúng khóa và phiên bản chương trình ghi trong bảng.</p>
+          <p className="comp-hint">Đóng góp được tính từ cấu hình học phần đang áp dụng có trọng số lớn hơn 0. Mỗi dòng thuộc đúng khóa và phiên bản chương trình ghi trong bảng.</p>
           {detail.contributions.length ? <>
             <div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Học phần đóng góp vào năng lực"><table className="cm-table">
-              <thead><tr><th className="cm-stt">STT</th><th>Khóa / phiên bản CTĐT</th><th>Học phần</th><th>Trọng số</th><th>Trạng thái cấu hình</th></tr></thead>
+              <thead><tr><th className="cm-stt">STT</th><th>Khóa / phiên bản CTĐT</th><th>Học phần</th><th>Trọng số</th><th>Cấu hình học phần</th></tr></thead>
               <tbody>{detail.contributions.slice((page - 1) * 10, page * 10).map((item, index) => <tr key={`${item.revisionId}:${item.courseCode}`}>
                 <td className="cm-stt">{(page - 1) * 10 + index + 1}</td>
                 <td><strong>{item.cohortCode} · Phiên bản {item.curriculumVersion}</strong><br />{item.curriculumName}{item.isCurrent && <small className="comp-hint">Phiên bản hiện hành</small>}</td>

@@ -35,7 +35,7 @@ export function CareerWeightSelector({ state }: { state: WeightState }) {
     </label></div>
     <p>Trọng số là tỷ lệ đóng góp của từng học phần vào kỹ năng, theo đúng khóa và phiên bản chương trình đã chọn.</p>
     <Status {...remote} />
-    {selected && selected.activeCount === 0 && <p role="status">{selected.cohortCode} · Phiên bản {selected.version} chưa có cấu hình đánh giá đang áp dụng.</p>}
+    {selected && selected.activeCount === 0 && <p role="status">{selected.cohortCode} · Phiên bản {selected.version} chưa có cấu hình học phần nào đang áp dụng.</p>}
   </div>;
 }
 

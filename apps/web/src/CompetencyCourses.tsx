@@ -34,14 +34,14 @@ export function CompetencyCoursesTab({ curriculum, canManage, revision, onSaved 
         <div><span>Chưa cấu hình</span><strong>{summary.data.missingCount}</strong><small>{summary.data.archivedCount} cấu hình đã lưu trữ</small></div>
         <div><span>Kỹ năng chưa đóng góp</span><strong>{summary.data.unlinkedSkillCount}</strong><small>Có cấu hình năng lực</small></div>
       </div>
-      {summary.data.activeCount === 0 && summary.data.draftCount === 0 && <p className="comp-empty-config" role="status">{curriculum.cohortCode} · phiên bản {curriculum.version} chưa có cấu hình năng lực đang sử dụng. Có thể chạy AI cho cả chương trình hoặc tạo liên kết, trọng số cho từng học phần.</p>}
+      {summary.data.activeCount === 0 && summary.data.draftCount === 0 && <p className="comp-empty-config" role="status">{curriculum.cohortCode} · phiên bản {curriculum.version} chưa có cấu hình học phần nào đang sử dụng. Có thể chạy AI cho cả chương trình hoặc tạo liên kết, trọng số cho từng học phần.</p>}
       {summary.data.warnings.length > 0 && <details className="cm-warning"><summary>{summary.data.warnings.length} cảnh báo cần rà soát</summary><ul>{summary.data.warnings.map((warning, index) => <li key={`${warning.code}-${index}`}>{warning.courseCode && <strong>{warning.courseCode}: </strong>}{warning.message}</li>)}</ul></details>}
     </>}</section>
     <CompetencyBulkAi curriculum={curriculum} canManage={canManage} revision={revision} onSaved={onSaved} />
     <section className="cm-panel">
       <div className="cm-filters"><label className="cm-search">Tìm học phần<input maxLength={200} value={draft.q} onChange={event => setDraft({ ...draft, q: event.target.value })} placeholder="Mã hoặc tên học phần…" /></label><label>Trạng thái<select value={draft.status} onChange={event => setDraft({ ...draft, status: event.target.value })}><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="am-outline" onClick={reset}><Icon name="refresh" /> Xóa bộ lọc</button></div>
       <Status {...courses} />
-      {courses.data && <><div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Bảng cấu hình năng lực theo học phần"><table className="cm-table comp-course-table"><thead><tr><th className="cm-stt">STT</th><th>Học phần</th><th>Khối kiến thức</th><th>Trạng thái</th><th>Kỹ năng / tổng trọng số</th><th>Thao tác</th></tr></thead><tbody>{courses.data.items.slice((page - 1) * 10, page * 10).map((course, index) => {
+      {courses.data && <><div className="cm-table-scroll" tabIndex={0} role="region" aria-label="Bảng cấu hình học phần"><table className="cm-table comp-course-table"><thead><tr><th className="cm-stt">STT</th><th>Học phần</th><th>Khối kiến thức</th><th>Trạng thái</th><th>Kỹ năng / tổng trọng số</th><th>Thao tác</th></tr></thead><tbody>{courses.data.items.slice((page - 1) * 10, page * 10).map((course, index) => {
         const repeated = course.occurrenceCount > 1;
         const linked = course.skillCount > 0;
         return <tr key={course.code}>
