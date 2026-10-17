@@ -124,10 +124,19 @@
   background: #8b2b41;
 }
 
+/* The chevron sits in the right padding, so a long group name ("Quản lý nghề nghiệp") keeps one line. */
+.am-sidebar .am-nav-group-toggle {
+  position: relative;
+  padding-right: 32px;
+}
+
 .am-sidebar .am-nav-chevron {
+  position: absolute;
+  top: 50%;
+  right: 10px;
   width: 16px;
   height: 16px;
-  margin-left: auto;
+  margin-top: -8px;
   transition: transform 180ms ease;
 }
 
