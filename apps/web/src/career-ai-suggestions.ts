@@ -1,4 +1,4 @@
-// Types, requests and pure helpers for "AI đề xuất kỹ năng" in career requirements:
+// Types, requests and pure helpers for "Tạo liên kết kỹ năng (AI)" in career requirements:
 // the local AI suggests skills for a career position, the admin keeps, edits or
 // drops each row, and only the kept rows are saved. No DOM here — unit tested.
 import { careerFailures, type CareerSkill } from "./career-types";

@@ -32,7 +32,7 @@ const errors: Record<string, string> = {
   duplicate_course:
     "Mã học phần bị trùng trong cùng khung. Hãy kiểm tra trước khi lưu.",
   curriculum_exists:
-    "Khung của ngành và khóa này đã tồn tại. Mở chi tiết khung rồi chọn Cập nhật từ Excel.",
+    "Khung của ngành và khóa này đã tồn tại. Mở chi tiết khung rồi chọn Cập nhật khung từ Excel.",
   curriculum_identity_mismatch:
     "Tệp thay thế phải cùng ngành và khóa với khung đang mở. Với ngành hoặc khóa khác, hãy import khung mới.",
   curriculum_changed:
@@ -282,7 +282,7 @@ export default function CurriculaManagement({
                           onClick={() => open(c.id)}
                         >
                           <Icon name="eye" />
-                          Xem chi tiết
+                          Xem chi tiết khung
                         </button>
                       </td>
                     </tr>
@@ -642,8 +642,8 @@ function CurriculumView({
             {mutable && (
               <button
                 className="am-icon-btn cm-metadata-edit"
-                title="Chỉnh sửa thông tin"
-                aria-label="Chỉnh sửa thông tin"
+                title="Chỉnh sửa thông tin khung"
+                aria-label="Chỉnh sửa thông tin khung"
                 onClick={() => setEdit("metadata")}
               >
                 <Icon name="edit" />
@@ -667,7 +667,7 @@ function CurriculumView({
                     className="am-outline"
                     onClick={() => setEdit("import")}
                   >
-                    <Icon name="upload" /> Cập nhật từ Excel
+                    <Icon name="upload" /> Cập nhật khung từ Excel
                   </button>
                   <button
                     className="am-outline"
@@ -1085,7 +1085,7 @@ function Courses({
                               className="am-outline"
                               onClick={() => open(c)}
                             >
-                              <Icon name="eye" /> Xem chi tiết
+                              <Icon name="eye" /> Xem chi tiết học phần
                             </button>
                           </td>
                         </tr>

@@ -28,7 +28,7 @@ const messages: Record<string, string> = {
   invalid_plan_input:
     "Thông tin chưa hợp lệ. Kiểm tra tín chỉ, năm, học kỳ và nhóm môn.",
   plan_exists:
-    "Kế hoạch của ngành và khóa này đã tồn tại. Hãy mở kế hoạch đó và chọn Cập nhật từ Excel.",
+    "Kế hoạch của ngành và khóa này đã tồn tại. Hãy mở kế hoạch đó và chọn Cập nhật kế hoạch từ Excel.",
   plan_changed:
     "Kế hoạch đã thay đổi. Đóng hộp thoại và tải lại trước khi sửa tiếp.",
   preview_changed:
@@ -271,7 +271,7 @@ export default function PlansManagement({ canManage }: { canManage: boolean }) {
                           onClick={() => open(p.id)}
                         >
                           <Icon name="eye" />
-                          Xem chi tiết
+                          Xem chi tiết kế hoạch
                         </button>
                       </td>
                     </tr>
@@ -381,7 +381,7 @@ function PlanView({
             </div>
             {editable && (
               <button
-                    className="am-icon-btn cm-metadata-edit" title="Chỉnh sửa thông tin" aria-label="Chỉnh sửa thông tin"
+                    className="am-icon-btn cm-metadata-edit" title="Chỉnh sửa thông tin kế hoạch" aria-label="Chỉnh sửa thông tin kế hoạch"
                     onClick={() => setModal("metadata")}
                   >
                     <Icon name="edit" />
@@ -402,7 +402,7 @@ function PlanView({
                     className="am-outline"
                     onClick={() => setModal("import")}
                   >
-                    <Icon name="upload" /> Cập nhật từ Excel
+                    <Icon name="upload" /> Cập nhật kế hoạch từ Excel
                   </button>
                   <button
                     className="am-outline"
@@ -655,7 +655,7 @@ function PlanStructure({
                               className="am-outline"
                               onClick={() => onItem(i)}
                             >
-                              <Icon name="eye" /> Xem chi tiết
+                              <Icon name="eye" /> Xem chi tiết học phần
                             </button>
                           ) : (
                             <small>Dòng {i.sourceRow}</small>
@@ -1151,7 +1151,7 @@ function ItemEditor({
               ))}
             </div>
             <p className="pm-muted">
-              Dùng Cập nhật từ Excel để thay toàn bộ cấu trúc hoặc các nhóm môn.
+              Dùng Cập nhật kế hoạch từ Excel để thay toàn bộ cấu trúc hoặc các nhóm môn.
             </p>
           </>
         ) : (

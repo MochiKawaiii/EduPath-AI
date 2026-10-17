@@ -132,7 +132,7 @@ function PlanContents({ id }: { id: string }) {
       </p>
       <div className="sc-filters">
         <label className="sc-search">
-          Tìm môn học
+          Tìm học phần
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}

@@ -10,8 +10,8 @@ Thông tin từng khối kiến thức trong bảng học phần hiển thị **
 
 - **Import:** chọn `.xlsx` không quá 5 MB, xem trước, đọc và xác nhận cảnh báo rồi lưu. Định dạng xác định bằng nội dung; tên tệp bất kỳ. Khung cùng ngành và khóa không được tạo trùng.
 - **Danh sách và tìm kiếm:** tìm theo tên, ngành/chuyên ngành hoặc khóa. Gõ tìm kiếm cập nhật sau 300 ms; chọn khóa/trạng thái lọc ngay. Danh sách phân trang 10 khung.
-- **Chi tiết:** xem các khối, học phần, nhóm tự chọn, học kỳ/năm học, tiên quyết/học trước và các điểm cần rà soát. Nút **Xem chi tiết** ở học phần có toàn bộ trường và các ô Excel gốc.
-- **Cập nhật:** dùng biểu tượng bút ở đầu khung để sửa thông tin chương trình. Các mục cha như A, B chỉ là tiêu đề chứa mục con, không có menu thao tác và không được chọn khi thêm/chuyển môn. Menu **…** cuối mỗi dòng khối con **Khối kiến thức** cho phép thêm, sửa hoặc xóa môn trong khối. Khi thêm môn, chỉ bắt buộc mã học phần, tên học phần và tín chỉ; loại môn và các thông tin còn lại được để trống để bổ sung sau. Form thêm/sửa có combobox khối kiến thức; khi thêm sẽ chọn sẵn khối vừa mở menu. Có thể chuyển môn sang khối khác, sửa mã và các trường học phần. Muốn thay toàn bộ cấu trúc khối, dùng **Cập nhật từ Excel** với tệp cùng ngành và khóa. Mỗi lần lưu tạo phiên bản mới; lịch sử và Excel nguồn được giữ lại.
+- **Chi tiết:** xem các khối, học phần, nhóm tự chọn, học kỳ/năm học, tiên quyết/học trước và các điểm cần rà soát. Nút **Xem chi tiết học phần** có toàn bộ trường và các ô Excel gốc.
+- **Chỉnh sửa thông tin khung:** dùng biểu tượng bút ở đầu khung để sửa thông tin chương trình. Các mục cha như A, B chỉ là tiêu đề chứa mục con, không có menu thao tác và không được chọn khi thêm/chuyển môn. Menu **…** cuối mỗi dòng khối con **Khối kiến thức** cho phép thêm, sửa hoặc xóa môn trong khối. Khi thêm môn, chỉ bắt buộc mã học phần, tên học phần và tín chỉ; loại môn và các thông tin còn lại được để trống để bổ sung sau. Form thêm/sửa có combobox khối kiến thức; khi thêm sẽ chọn sẵn khối vừa mở menu. Có thể chuyển môn sang khối khác, sửa mã và các trường học phần. Muốn thay toàn bộ cấu trúc khối, dùng **Cập nhật từ Excel** với tệp cùng ngành và khóa. Mỗi lần lưu tạo phiên bản mới; lịch sử và Excel nguồn được giữ lại.
 - **Mở/khóa:** khóa khung không còn áp dụng, giữ lại dữ liệu để tra cứu. Có thể mở lại; trạng thái không bị thay đổi khi chạy đồng bộ các nguồn ban đầu.
 
 Quản trị viên, Ban chủ nhiệm khoa, trưởng/phó bộ môn và giảng viên đều được thêm, sửa, xóa, import và mở/khóa dữ liệu. Mọi thao tác ghi kiểm tra lại quyền trong database và phiên bản hiện hành; nếu khung đã được người khác sửa, tải lại trước khi lưu tiếp. Chỉ Quản trị viên được phân quyền tài khoản.
@@ -57,7 +57,7 @@ Vào **Chương trình đào tạo** trong menu bên trái hoặc menu tài kho�
 - Các mã hoặc điều kiện còn chưa rõ được ghi nhận là cần xác nhận với cố vấn học tập. Chức năng này chưa kết luận sinh viên đủ điều kiện đăng ký hay tốt nghiệp.
 - Trang tự tải lại khi quay về tab để nhận phiên bản/trạng thái mới nhất; nếu tải lỗi, bấm **Thử lại**.
 
-**Mô tả môn học:** ba file Excel ban đầu không có mô tả chi tiết. Quản trị viên bổ sung qua **Xem chi tiết** ở khung → **Xem chi tiết** ở học phần → **Chỉnh sửa học phần** → **Mô tả học phần**. Nội dung lưu trong phiên bản JSON của học phần và hiển thị ở cổng sinh viên. Không suy diễn mô tả từ tên môn hoặc lấy ghi chú thay mô tả; khi chưa có dữ liệu, trang thông báo chưa được cung cấp. Không cần migration mới cho trường tùy chọn này.
+**Mô tả môn học:** ba file Excel ban đầu không có mô tả chi tiết. Quản trị viên bổ sung qua **Xem chi tiết khung** → **Xem chi tiết học phần** → **Chỉnh sửa học phần** → **Mô tả học phần**. Nội dung lưu trong phiên bản JSON của học phần và hiển thị ở cổng sinh viên. Không suy diễn mô tả từ tên môn hoặc lấy ghi chú thay mô tả; khi chưa có dữ liệu, trang thông báo chưa được cung cấp. Không cần migration mới cho trường tùy chọn này.
 
 ## Các chức năng tiếp theo
 

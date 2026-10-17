@@ -28,7 +28,7 @@ const errors: Record<string, string> = {
   import_busy: "Đang xử lý một lượt import khác. Vui lòng thử lại.",
   import_timeout: "Đọc biểu mẫu quá thời gian cho phép.",
   standard_exists:
-    "Tiêu chuẩn đã tồn tại. Mở chi tiết và dùng Cập nhật từ Excel để tạo phiên bản mới.",
+    "Tiêu chuẩn đã tồn tại. Mở chi tiết và dùng Cập nhật tiêu chuẩn từ Excel để tạo phiên bản mới.",
   duplicate_selection:
     "Các sheet được chọn trùng mã tiêu chuẩn và khối lớp. Chỉ chọn một bản cho mỗi tiêu chuẩn.",
   standard_changed:
@@ -188,7 +188,7 @@ export default function GraduationManagement({
                             onClick={() => open(item.id)}
                           >
                             <Icon name="eye" />
-                            Xem chi tiết
+                            Xem chi tiết tiêu chuẩn
                           </button>
                         </td>
                       </tr>
@@ -473,7 +473,7 @@ function Conditions({
   return (
     <>
       <label className="grad-search">
-        Tìm môn trong tiêu chuẩn
+        Tìm học phần trong tiêu chuẩn
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -504,7 +504,7 @@ function Conditions({
                   className="am-outline"
                   onClick={() => editGroup(group.id)}
                 >
-                  <Icon name="edit" /> Chỉnh sửa
+                  <Icon name="edit" /> Chỉnh sửa nhóm điều kiện
                 </button>
               )}
             </div>
@@ -536,7 +536,7 @@ function Conditions({
                             className="am-outline"
                             onClick={() => editCourse(c.id)}
                           >
-                            <Icon name="edit" /> Chỉnh sửa
+                            <Icon name="edit" /> Chỉnh sửa học phần
                           </button>
                         </td>
                       )}
@@ -599,7 +599,7 @@ function Standard({
             </div>
             {editable && (
               <button
-                    className="am-icon-btn cm-metadata-edit" title="Chỉnh sửa thông tin" aria-label="Chỉnh sửa thông tin"
+                    className="am-icon-btn cm-metadata-edit" title="Chỉnh sửa thông tin tiêu chuẩn" aria-label="Chỉnh sửa thông tin tiêu chuẩn"
                     onClick={() => {
                       setGroup(undefined);
                       setCourse(undefined);
@@ -623,7 +623,7 @@ function Standard({
                     className="am-outline"
                     onClick={() => setDialog("import")}
                   >
-                    <Icon name="upload" /> Cập nhật từ Excel
+                    <Icon name="upload" /> Cập nhật tiêu chuẩn từ Excel
                   </button>
                   <button
                     className="am-outline"

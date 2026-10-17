@@ -25,8 +25,8 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
     <div className="cm-toolbar">
       <div><h3>Yêu cầu và kỹ năng</h3><p>Các yêu cầu áp dụng cho {career.nameVi}.</p></div>
       {canManage && <div className="cm-actions">
-        <button className="am-outline" onClick={() => { setSelected(null); setMode("ai"); }}><Icon name="spark" /> AI đề xuất kỹ năng</button>
-        <button className="am-primary" onClick={() => start("skill")}><Icon name="plus" /> Thêm liên kết kỹ năng</button>
+        <button className="am-outline" onClick={() => { setSelected(null); setMode("ai"); }}><Icon name="spark" /> Tạo liên kết kỹ năng (AI)</button>
+        <button className="am-primary" onClick={() => start("skill")}><Icon name="plus" /> Tạo liên kết kỹ năng (Thủ công)</button>
       </div>}
     </div>
     <section className="cm-panel">
@@ -55,10 +55,10 @@ export default function CareerRequirementsManagement({ canManage, career, revisi
             <td><CareerWeightCell key={`${career.id}:${courseWeights.data?.revisionId ?? "loading"}:${item.skillId}`} state={courseWeights} skillId={item.skillId} skillName={item.skillName} /></td>
             <td>{item.isRequired ? "Bắt buộc" : "Ưu tiên"}</td>
             <td><ActionMenu label={`Thao tác với yêu cầu ${item.title}`} items={[
-              { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => { setSelected(item); setMode("detail"); } },
+              { key: "detail", icon: "eye", label: "Xem chi tiết yêu cầu nghề nghiệp", onSelect: () => { setSelected(item); setMode("detail"); } },
               ...(canManage ? [
-                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(item); setKind(item.skillId ? "skill" : "other"); setMode("edit"); } },
-                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(item); setMode("delete"); } },
+                { key: "edit", icon: "edit", label: item.skillId ? "Chỉnh sửa liên kết kỹ năng" : "Chỉnh sửa yêu cầu nghề nghiệp", onSelect: () => { setSelected(item); setKind(item.skillId ? "skill" : "other"); setMode("edit"); } },
+                { key: "delete", icon: "trash", label: item.skillId ? "Xóa liên kết kỹ năng" : "Xóa yêu cầu nghề nghiệp", danger: true, onSelect: () => { setSelected(item); setMode("delete"); } },
               ] : []),
             ]} /></td>
           </tr>)}</tbody>
@@ -112,7 +112,7 @@ function RequirementEditor({ current, kind, career, catalog, close, saved }: {
     title: !previous.title || previous.title === (skills.find(skill => skill.id === previous.skillId)?.name ?? previous.skillName) ? name : previous.title,
     }));
   };
-  return <Modal title={current ? (isSkill ? "Chỉnh sửa liên kết kỹ năng" : "Chỉnh sửa yêu cầu nghề nghiệp") : (isSkill ? "Liên kết kỹ năng với nghề nghiệp" : "Thêm yêu cầu nghề nghiệp")} onClose={close} busy={busy}>
+  return <Modal title={current ? (isSkill ? "Chỉnh sửa liên kết kỹ năng" : "Chỉnh sửa yêu cầu nghề nghiệp") : (isSkill ? "Tạo liên kết kỹ năng với nghề nghiệp" : "Thêm yêu cầu nghề nghiệp")} onClose={close} busy={busy}>
     <form className="cm-dialog-body cm-form" onSubmit={async event => {
       event.preventDefault();
       if (!ready) return;

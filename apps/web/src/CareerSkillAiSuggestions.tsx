@@ -12,7 +12,7 @@ import {
 const requirementsEndpoint = "/api/admin/careers/requirements";
 type Busy = "create" | "cancel" | "apply" | null;
 
-/** "AI đề xuất kỹ năng": ask the local AI for skills of one career, review them, save only what is kept. */
+/** "Tạo liên kết kỹ năng (AI)": ask the local AI for skills of one career, review them, save only what is kept. */
 export default function CareerSkillAiSuggestions({ career, catalog, close, saved }: {
   career: Career;
   catalog: ReturnType<typeof useData<{ items: CareerSkill[] }>>;
@@ -97,7 +97,7 @@ export default function CareerSkillAiSuggestions({ career, catalog, close, saved
   };
 
   const worker = workerLine(status);
-  return <Modal title="AI đề xuất kỹ năng liên kết" onClose={close} busy={busy !== null}>
+  return <Modal title="Tạo liên kết kỹ năng (AI)" onClose={close} busy={busy !== null}>
     <div className="cm-dialog-body cm-form cai-body">
       {view === "loading" && <Status {...latest} />}
       {latest.error && current === undefined && <Status {...latest} />}

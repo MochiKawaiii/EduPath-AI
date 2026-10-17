@@ -44,7 +44,7 @@ const failures: Record<string, string> = {
   canonical_skill_mismatch: "Tên và mô tả phải khớp với kỹ năng chung đã chọn. Hãy tải lại danh mục rồi chọn lại.",
   shared_skill_exists: "Tên này đã có trong danh mục kỹ năng chung. Hãy chọn kỹ năng chung để dùng lại.",
   skill_changed: "Kỹ năng đã được thay đổi. Đóng hộp thoại và tải lại trước khi lưu.",
-  skill_in_use: "Kỹ năng đang được cấu hình áp dụng sử dụng. Hãy gỡ hoặc lưu trữ các cấu hình đó trước.",
+  skill_in_use: "Kỹ năng đang được cấu hình học phần áp dụng sử dụng. Hãy xóa liên kết hoặc lưu trữ các cấu hình đó trước.",
   skill_not_found: "Kỹ năng không còn trong danh mục. Hãy tải lại và chọn lại.",
   skill_unavailable: "Kỹ năng hoặc nhóm của kỹ năng đang ngừng sử dụng.",
   configuration_changed: "Cấu hình đã được thay đổi. Đóng hộp thoại và tải lại trước khi lưu.",

@@ -8,7 +8,7 @@ Chọn `.xls`, `.xlsx` hoặc ZIP chứa các biểu mẫu; tối đa 5 MB. Bấ
 
 Nguồn `OneDrive_2026-09-22.zip` có 9 workbook, 15 sheet tiêu chuẩn K26–K29. K27/K29 có nhiều sheet chuyên ngành. Hai bản K28 không chuyên ngành và hai bản K26 có cùng mã tiêu chuẩn/khối lớp: không tự quyết định bản nào là bản chính thức. Chỉ chọn một bản của mỗi tiêu chuẩn khi import mới; muốn áp dụng bản điều chỉnh, dùng **Cập nhật từ Excel** trên bản ghi hiện có. Cả lô được lưu trong một transaction; nếu có bản trùng, không lưu dở dang một phần.
 
-Khóa nhận diện là **mã tiêu chuẩn + khối lớp** lấy từ nội dung sheet. Các chuyên ngành được giữ riêng. Cập nhật từ Excel yêu cầu cùng mã, khối lớp và khóa tuyển sinh. Tệp gốc, sheet, người thao tác và lịch sử phiên bản được giữ lại; không ghi đè lịch sử.
+Khóa nhận diện là **mã tiêu chuẩn + khối lớp** lấy từ nội dung sheet. Các chuyên ngành được giữ riêng. Cập nhật tiêu chuẩn từ Excel yêu cầu cùng mã, khối lớp và khóa tuyển sinh. Tệp gốc, sheet, người thao tác và lịch sử phiên bản được giữ lại; không ghi đè lịch sử.
 
 ## Dữ liệu được ánh xạ
 

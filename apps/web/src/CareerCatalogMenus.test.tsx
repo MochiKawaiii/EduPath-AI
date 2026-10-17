@@ -24,7 +24,9 @@ describe.each(pages)("%s page", (_name, add, Page, row) => {
 
   it("adds from the row menu, not from a button above the table", () => {
     const html = render([row]);
-    expect([...html.matchAll(/<li>([^<]*)<\/li>/g)].map(match => match[1])).toEqual(["Xem chi tiết", "Chỉnh sửa", add, "Xóa"]);
+    // Every item is a verb plus the noun (user, 2026-10-17): "Thêm lĩnh vực" → "lĩnh vực".
+    const noun = add.replace(/^Thêm /, "");
+    expect([...html.matchAll(/<li>([^<]*)<\/li>/g)].map(match => match[1])).toEqual([`Xem chi tiết ${noun}`, `Chỉnh sửa ${noun}`, add, `Xóa ${noun}`]);
     expect(html.match(/<div class="career-list-heading">.*?<\/div>/s)?.[0]).not.toContain("<button");
     expect(html).toContain('<span class="am-count">1</span>');
   });

@@ -34,8 +34,8 @@ Các cảnh báo xuất hiện trong xem trước và chi tiết. Người impor
 1. Chọn **Import kế hoạch**, tải Excel, xem trước cấu trúc và các cảnh báo.
 2. Xác nhận rà soát và lưu. Nếu đã có cùng ngành/khóa, mở kế hoạch hiện tại để thay Excel.
 3. Trong chi tiết, lọc theo kỳ, nhóm hoặc tìm mã/tên môn; mở từng dòng để xem đủ điều kiện và giờ học.
-4. **Chỉnh sửa thông tin** cập nhật tên, tổng tín chỉ và ghi chú. Bấm **Xem chi tiết** ở một học phần để xem và chỉnh sửa phân bổ, nội dung của dòng đó.
-5. **Cập nhật từ Excel** dùng khi thêm/bớt môn, thay cấu trúc nhóm hoặc cập nhật toàn bộ kế hoạch.
+4. **Chỉnh sửa thông tin kế hoạch** cập nhật tên, tổng tín chỉ và ghi chú. Bấm **Xem chi tiết học phần** ở một học phần để xem và chỉnh sửa phân bổ, nội dung của dòng đó.
+5. **Cập nhật kế hoạch từ Excel** dùng khi thêm/bớt môn, thay cấu trúc nhóm hoặc cập nhật toàn bộ kế hoạch.
 6. Mở/khóa điều khiển trạng thái áp dụng. Trang quản trị vẫn xem được kế hoạch đã khóa để quản lý và đối chiếu lịch sử.
 
 Sửa từng dòng không tự tính lại tổng tín chỉ nguồn vì nhóm lựa chọn và chuyên ngành có thể trùng nhau. Quản trị viên cập nhật tổng riêng khi đã kiểm tra quy tắc của kế hoạch.

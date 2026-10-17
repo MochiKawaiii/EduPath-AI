@@ -56,10 +56,10 @@ function ChangeAccount({ account, mode, onClose, onSaved }: { account: Account; 
 }
 type MenuAction = "detail" | "history" | "role" | "lock";
 function RowMenu({ account, self, canManage, canAssignRoles, onPick }: { account: Account; self: boolean; canManage: boolean; canAssignRoles: boolean; onPick: (mode: MenuAction) => void }) {
-  const items: MenuEntry[] = [{ key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => onPick("detail") }];
+  const items: MenuEntry[] = [{ key: "detail", icon: "eye", label: "Xem chi tiết tài khoản", onSelect: () => onPick("detail") }];
   if (canManage) items.push(
     { key: "history", icon: "clock", label: "Xem lịch sử đăng nhập", onSelect: () => onPick("history") },
-    ...(canAssignRoles ? [{ key: "role", icon: "shield", label: "Phân quyền", disabled: self, onSelect: () => onPick("role") }] : []),
+    ...(canAssignRoles ? [{ key: "role", icon: "shield", label: "Phân quyền tài khoản", disabled: self, onSelect: () => onPick("role") }] : []),
     account.isActive
       ? { key: "lock", icon: "lock", danger: true, label: "Khóa tài khoản", disabled: self, onSelect: () => onPick("lock") }
       : { key: "lock", icon: "unlock", label: "Mở khóa tài khoản", disabled: self, onSelect: () => onPick("lock") });

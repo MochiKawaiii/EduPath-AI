@@ -128,12 +128,12 @@ export default function CareersManagement({
                           <ActionMenu
                             label={`Thao tác với ${c.nameVi}`}
                             items={[
-                              { key: "detail", icon: "eye", label: "Xem chi tiết", onSelect: () => setDetailId(c.id) },
+                              { key: "detail", icon: "eye", label: "Xem chi tiết vị trí nghề nghiệp", onSelect: () => setDetailId(c.id) },
                               ...(canManage ? [
-                                { key: "edit", icon: "edit", label: "Chỉnh sửa", onSelect: () => { setSelected(c); setMode("edit"); } },
-                                { key: "links", icon: "link", label: "Liên kết kỹ năng", onSelect: () => setLinksCareerId(c.id) },
+                                { key: "edit", icon: "edit", label: "Chỉnh sửa vị trí nghề nghiệp", onSelect: () => { setSelected(c); setMode("edit"); } },
+                                { key: "links", icon: "link", label: "Tạo liên kết kỹ năng", onSelect: () => setLinksCareerId(c.id) },
                                 { key: "add", icon: "plus", label: "Thêm vị trí nghề nghiệp", onSelect: add },
-                                { key: "delete", icon: "trash", label: "Xóa", danger: true, onSelect: () => { setSelected(c); setMode("delete"); } },
+                                { key: "delete", icon: "trash", label: "Xóa vị trí nghề nghiệp", danger: true, onSelect: () => { setSelected(c); setMode("delete"); } },
                               ] : []),
                             ]}
                           />
@@ -309,7 +309,7 @@ function Editor({
               }
             />
           </label>
-          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng bằng mục Liên kết kỹ năng trong menu Thao tác của vị trí.</small></div> : <p>Sau khi lưu, chọn Liên kết kỹ năng trong menu Thao tác của vị trí để thêm yêu cầu và liên kết kỹ năng.</p>}
+          {current ? <div><strong>Kỹ năng liên kết</strong><p>{current.skills.join(" · ") || "Chưa liên kết kỹ năng."}</p><small>Quản lý yêu cầu và kỹ năng bằng mục Tạo liên kết kỹ năng trong menu Thao tác của vị trí.</small></div> : <p>Sau khi lưu, chọn Liên kết kỹ năng trong menu Thao tác của vị trí để thêm yêu cầu và liên kết kỹ năng.</p>}
         </fieldset>
         {error && (
           <p className="admin-error" role="alert">
