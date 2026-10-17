@@ -38,7 +38,7 @@ const tenantId = randomUUID();
 const actor = (name, role) => ({ userId: randomUUID(), tenantId, objectId: randomUUID(), identityKey: `comp-ai-audit:${name}`, name: `Audit ${name}`,
   email: `${name}@comp-ai-audit.example.test`, username: `${name}@comp-ai-audit.example.test`, role, signedInAt: new Date(0).toISOString() });
 const actors = { admin: actor("admin", "admin"), student: actor("student", "student") };
-const KIND = "competency_course_suggestion";
+const KIND = "competency_course_suggestion_v2";
 const checks = [];
 let schemaCreated = false;
 let server;
@@ -173,7 +173,10 @@ try {
   const linksJob = await claim();
   assert.equal(linksJob.kind, KIND);
   assert.equal(linksJob.promptVersion, COURSE_AI_PROMPT_VERSIONS.links);
-  assert.deepEqual(Object.keys(linksJob).sort(), ["id", "kind", "leaseToken", "options", "promptVersion", "schema", "system", "user"], "the claim carries no key map");
+  assert.deepEqual(Object.keys(linksJob).sort(), ["id", "kind", "leaseToken", "options", "promptVersion", "schema", "system", "think", "user"], "the claim carries no key map");
+  assert.equal(linksJob.think, true, "course proposals run with Gemma's thinking mode");
+  assert.equal(linksJob.options.num_predict, 8192);
+  assert.equal((await worker("/claim", { kinds: ["competency_course_suggestion"] })).body.job, null, "a worker released before thinking gets no course job");
   const offered = candidates(linksJob.user);
   const profiles = offered.filter((entry) => entry.group !== "kỹ năng nghề, chưa có nhóm");
   const careerOnly = offered.find((entry) => entry.group === "kỹ năng nghề, chưa có nhóm");
@@ -274,6 +277,23 @@ try {
   assert.equal((await ai("POST", `/batches/${progress.id}/apply`, { body: { status: "active" } })).body.drafted, 0, "nothing is applied twice");
   checks.push(`whole program: ${total} courses queued (the configured one skipped, a second run queues nothing), ${drafts.body.drafted} saved as drafts at 100% and ${drafts.body.empty} empty answers recorded, nothing applied twice`);
 
+  // "Xóa liên kết của cả chương trình": every linked course becomes an empty draft, then a new run covers them all.
+  const linkedBefore = (await call("GET", `/courses?revisionId=${empty.revisionId}`)).body.items.filter((course) => course.skillCount > 0).length;
+  assert.equal((await call("POST", "/courses/clear", { body: { revisionId: empty.revisionId, confirm: "K00" } })).body.error, "confirmation_mismatch");
+  assert.equal((await call("POST", "/courses/clear", { user: "student", body: { revisionId: empty.revisionId, confirm: empty.cohortCode } })).status, 403);
+  const clearedRun = await call("POST", "/courses/clear", { body: { revisionId: empty.revisionId, confirm: empty.cohortCode.toLowerCase() } });
+  assert.equal(clearedRun.status, 200, JSON.stringify(clearedRun.body));
+  assert.equal(clearedRun.body.cleared, linkedBefore);
+  const afterClear = (await call("GET", `/courses?revisionId=${empty.revisionId}`)).body.items;
+  assert(afterClear.every((course) => course.skillCount === 0), "no course keeps a link");
+  assert.equal(await count("ad_comp_course_configs WHERE revision_id=$1 AND status='active'", [empty.revisionId]), 0);
+  const clearedHistory = (await call("GET", `/courses/${empty.revisionId}/${first.code}`)).body.history;
+  assert.equal(clearedHistory[0].note, "Xóa liên kết và trọng số của cả chương trình");
+  const rerun = await ai("POST", "/batches", { body: { revisionId: empty.revisionId } });
+  assert.equal(rerun.body.queued, courses.length, "after clearing, a run covers every course again");
+  await ai("POST", `/batches/${rerun.body.batchId}/cancel`, { body: {} });
+  checks.push(`clearing the whole program needs the cohort code, empties ${linkedBefore} linked courses as drafts with a history entry, and a new run covers all ${courses.length} courses`);
+
   // "Thêm kỹ năng (AI)": one proposal per revision, career skills by key, new skills by name, saved as profiles.
   const skillsQueued = await ai("POST", "/skills", { body: { revisionId: empty.revisionId } });
   assert.equal(skillsQueued.status, 201, JSON.stringify(skillsQueued.body));
@@ -282,7 +302,8 @@ try {
   const skillsJob = await claim();
   assert.equal(skillsJob.id, skillsQueued.body.suggestion.id);
   assert.equal(skillsJob.promptVersion, COURSE_AI_PROMPT_VERSIONS.skills);
-  assert.equal(skillsJob.options.num_predict, 3072);
+  assert.equal(skillsJob.options.num_predict, 12288);
+  assert.equal(skillsJob.think, true);
   assert(skillsJob.user.includes("[5. HỌC PHẦN CỦA CHƯƠNG TRÌNH]") && skillsJob.user.includes(`- ${first.name} |`), "the courses of the revision are listed");
   assert(!/MSSV|họ tên|@/i.test(skillsJob.user), "no student data");
   const careerKeys = [...skillsJob.user.matchAll(/^(S\d{3}) \| ([^|\n]+)/gm)].map((match) => ({ key: match[1], name: match[2].trim() }));
@@ -326,7 +347,7 @@ try {
   const conflict = await ai("POST", `/${again.body.suggestion.id}/apply`, { body: { items: [toSkill(skillsProposal.items.at(-1))].map((item) => ({ ...item, skillName: newItem.skillName })) } });
   assert.deepEqual([conflict.status, conflict.body.error], [409, "skill_already_in_catalog"]);
   assert.equal((await ai("POST", `/${again.body.suggestion.id}/apply`, { body: { items: [] } })).status, 400);
-  checks.push(`skills: one pending proposal per revision listing the courses of the revision (${Math.round((skillsJob.system.length + skillsJob.user.length) / 1000)}k prompt characters, num_predict 3072), ${picked.length} career skills by key + 1 new skill (a catalog name dropped), saved as profiles with group and scope, the new skill in the shared catalog with its description; a skill already in the catalog is 409`);
+  checks.push(`skills: one pending proposal per revision listing the courses of the revision (${Math.round((skillsJob.system.length + skillsJob.user.length) / 1000)}k prompt characters, thinking on, num_predict 12288), ${picked.length} career skills by key + 1 new skill (a catalog name dropped), saved as profiles with group and scope, the new skill in the shared catalog with its description; a skill already in the catalog is 409`);
 
   // Cancel a run, expiry, and the public schema.
   const second2 = revisions.find((item) => item.revisionId !== empty.revisionId && item.configuredCount === 0 && item.courseCount >= 2);

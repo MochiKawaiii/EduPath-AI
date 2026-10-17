@@ -17,8 +17,13 @@ export type AiWorkerErrorCode = (typeof AI_WORKER_ERROR_CODES)[number];
 export const COMPETENCY_ASSESSMENT_KIND = "competency_assessment";
 export const CAREER_SKILL_SUGGESTION_KIND = "career_skill_suggestion";
 export const GRADUATION_ADVICE_KIND = "graduation_advice";
-/** AI proposals of skill links and weights for the courses of a CTĐT (admin "Năng lực"). */
-export const COMPETENCY_COURSE_SUGGESTION_KIND = "competency_course_suggestion";
+/**
+ * AI proposals for the admin "Năng lực" pages: skill links and weights of the courses of a CTĐT and
+ * skills for the catalog. v2 (2026-10-17): these jobs ask for Gemma's thinking mode (`think: true`
+ * on the claimed job). Workers released before that always sent think:false and advertise the old
+ * "competency_course_suggestion", so they never receive these jobs until they are restarted.
+ */
+export const COMPETENCY_COURSE_SUGGESTION_KIND = "competency_course_suggestion_v2";
 export const AI_JOB_KINDS = [COMPETENCY_ASSESSMENT_KIND, CAREER_SKILL_SUGGESTION_KIND, GRADUATION_ADVICE_KIND, COMPETENCY_COURSE_SUGGESTION_KIND] as const;
 export type AiJobKind = (typeof AI_JOB_KINDS)[number];
 

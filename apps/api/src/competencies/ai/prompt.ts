@@ -8,6 +8,9 @@
 // Candidates are the skill profiles in use plus the catalog skills that careers require but that no
 // course measures yet ("kỹ năng nghề chưa đo"), so career skills can become measurable.
 // Only curriculum and catalog data is sent: no student or personal data.
+// Since v2 (2026-10-17) every job runs with Gemma's thinking mode: without it gemma4:e4b linked
+// "Nhập môn Công nghệ thông tin" to law and politics. The course type is written out ("BB" was
+// read as general education) and the knowledge block decides which kind of skill may be picked.
 import { sanitizeText } from "../../competency-assessment/ai/prompt.js";
 import type { JsonSchema } from "../../competency-assessment/ai/schema.js";
 
@@ -16,16 +19,24 @@ export type CourseAiMode = (typeof COURSE_AI_MODES)[number];
 /** The modes that belong to one course; "skills" belongs to a whole revision. */
 export type CourseOnlyMode = Exclude<CourseAiMode, "skills">;
 export const COURSE_AI_PROMPT_VERSIONS: Record<CourseAiMode, string> = {
-  links: "comp-link-v1",
-  weights: "comp-weight-v1",
-  full: "comp-course-v1",
-  skills: "comp-skill-v1"
+  links: "comp-link-v2",
+  weights: "comp-weight-v2",
+  full: "comp-course-v2",
+  skills: "comp-skill-v2"
 };
 
-/** Ollama options of every job; num_ctx stays 16384 like the other kinds so the model is not reloaded. */
-export const COURSE_AI_OPTIONS = { num_ctx: 16384, num_predict: 1536, temperature: 0.2, top_p: 0.95, top_k: 64 } as const;
-/** "Thêm kỹ năng (AI)" may answer 20 skills with a scope each, so it may write more. */
-export const SKILL_AI_OPTIONS = { ...COURSE_AI_OPTIONS, num_predict: 3072 } as const;
+/**
+ * Every job asks the worker for Gemma's thinking mode: the model reasons before it answers. On the
+ * laptop that takes about 2–3 minutes per course instead of 30 seconds, but it follows the rules.
+ */
+export const COURSE_AI_THINK = true;
+/**
+ * Ollama options; num_predict covers the thinking and the answer. num_ctx stays 16384 like the other
+ * kinds so the model is not reloaded: a course prompt is about 5.3K tokens, so 8K of output fits.
+ */
+export const COURSE_AI_OPTIONS = { num_ctx: 16384, num_predict: 8192, temperature: 0.2, top_p: 0.95, top_k: 64 } as const;
+/** "Thêm kỹ năng (AI)" answers up to 20 skills with a scope each; its prompt is about 3.3K tokens. */
+export const SKILL_AI_OPTIONS = { ...COURSE_AI_OPTIONS, num_predict: 12288 } as const;
 export type AiOptions = { num_ctx: number; num_predict: number; temperature: number; top_p: number; top_k: number };
 
 /**
@@ -80,6 +91,8 @@ export type CourseAiInput = {
   user: string;
   schema: JsonSchema;
   options: AiOptions;
+  /** Sent to the worker: run with Gemma's thinking mode. */
+  think: boolean;
   promptVersion: string;
   /** Key maps: kept server-side only, never sent to the worker. */
   skills: SkillKey[];
@@ -94,12 +107,16 @@ const L = COURSE_AI_LIMITS;
 
 const INTRO = "Bạn là chuyên gia xây dựng chương trình đào tạo ngành Công nghệ Thông tin, hỗ trợ Khoa Công nghệ Thông tin, Trường Đại học Văn Lang gắn các học phần với kỹ năng để đánh giá năng lực sinh viên.";
 
+/** Shared by the links and full modes: what may be picked, by knowledge block (rule 4). */
 const PICK_RULES = `1. Chỉ chọn kỹ năng trong mục [3] bằng khóa của nó (S001, S002…).
-2. Chọn từ 2 đến 6 kỹ năng, tối đa ${L.links}, sát nhất với tên, mô tả, khối kiến thức và số giờ của học phần. Nếu danh mục không đủ kỹ năng phù hợp, chọn ít hơn; không chọn cho đủ số.
-3. Ưu tiên kỹ năng chuyên môn mà học phần dạy trực tiếp. Kỹ năng mềm (làm việc nhóm, thuyết trình, giao tiếp…) chỉ chọn khi học phần có đồ án, thực hành nhóm hoặc thuyết trình rõ ràng.
-4. Học phần giáo dục đại cương (thể chất, quốc phòng - an ninh, chính trị, pháp luật…) chỉ chọn kỹ năng thật sự liên quan; có thể không chọn kỹ năng nào.
-5. Khi nhiều kỹ năng trong danh mục gần giống nhau, chỉ chọn một kỹ năng sát nhất.
-6. groupKey là khóa nhóm (G1, G2…) ở mục [2]. Kỹ năng đã có nhóm thì ghi đúng nhóm của nó; kỹ năng ghi "kỹ năng nghề, chưa có nhóm" thì ghi nhóm phù hợp nhất.`;
+2. Chỉ chọn kỹ năng mà học phần trực tiếp dạy hoặc rèn luyện, căn cứ vào tên, mô tả, khối kiến thức và số giờ của học phần. Học phần chưa có mô tả thì chỉ dựa vào tên và khối kiến thức; không suy đoán nội dung mà tên học phần không thể hiện.
+3. Thường chọn 2 đến 5 kỹ năng, tối đa ${L.links}. Nếu danh mục không đủ kỹ năng phù hợp, chọn ít hơn; không chọn cho đủ số.
+4. Khối kiến thức cho biết loại học phần:
+- Khối "Lý luận chính trị", "Giáo dục thể chất và giáo dục quốc phòng", "Ngoại ngữ" và "Đại cương": chỉ chọn kỹ năng đúng với chính môn học đó (ví dụ Triết học → kiến thức chính trị và xã hội; Pháp luật đại cương → pháp luật; Giáo dục quốc phòng → quốc phòng và an ninh; Bóng chuyền → thể chất; Tiếng Anh → tiếng Anh; Toán cao cấp → toán học). Có thể không chọn kỹ năng nào.
+- Các khối kiến thức cơ sở, cơ sở ngành, chuyên ngành, liên ngành, thực tập, đồ án và khóa luận là học phần chuyên môn Công nghệ Thông tin: không chọn kỹ năng về chính trị và xã hội, pháp luật, quốc phòng và an ninh, thể chất, thể thao, môi trường hay tiếng Anh, trừ khi tên học phần nói rõ nội dung đó.
+5. Ưu tiên kỹ năng chuyên môn mà học phần dạy trực tiếp. Kỹ năng mềm (làm việc nhóm, thuyết trình, giao tiếp…) chỉ chọn khi học phần có đồ án, thực tập, thực hành nhóm hoặc thuyết trình rõ ràng.
+6. Khi nhiều kỹ năng trong danh mục gần giống nhau, chỉ chọn một kỹ năng sát nhất.
+7. groupKey là khóa nhóm (G1, G2…) ở mục [2]. Kỹ năng đã có nhóm thì ghi đúng nhóm của nó; kỹ năng ghi "kỹ năng nghề, chưa có nhóm" thì ghi nhóm phù hợp nhất.`;
 
 const TEXT_RULES = (first: number) => `${first}. reason: một câu ngắn, tối đa ${L.promptReason} ký tự, nói học phần rèn hoặc dùng kỹ năng đó như thế nào. Gọi kỹ năng bằng tên; không viết khóa S…, G… hay mã học phần.
 ${first + 1}. Viết tiếng Việt có dấu đầy đủ, tự nhiên; chỉ viết văn bản thuần, không dùng markdown hay emoji.`;
@@ -110,8 +127,8 @@ Việc của bạn: đọc thông tin học phần ở mục [4] và chọn tron
 
 Quy tắc:
 ${PICK_RULES}
-7. newSkills: chỉ dùng khi học phần rèn một kỹ năng chuyên môn quan trọng mà danh mục rõ ràng chưa có, tối đa ${L.newSkills} mục. Tên là cụm danh từ tiếng Việt ngắn, không mở đầu bằng "Kỹ năng", không trùng hay gần nghĩa với kỹ năng ở mục [3] hoặc [5]. Thường để trống.
-${TEXT_RULES(8)}
+8. newSkills: chỉ dùng khi học phần rèn một kỹ năng chuyên môn quan trọng mà danh mục rõ ràng chưa có, tối đa ${L.newSkills} mục. Tên là cụm danh từ tiếng Việt ngắn, không mở đầu bằng "Kỹ năng", không trùng hay gần nghĩa với kỹ năng ở mục [3] hoặc [5]. Thường để trống.
+${TEXT_RULES(9)}
 
 Chỉ trả về một đối tượng JSON gồm "links" (tối đa ${L.links} mục { skillKey, groupKey, reason }) và "newSkills" (tối đa ${L.newSkills} mục { name, groupKey, reason }), không thêm bất kỳ văn bản nào bên ngoài JSON.`,
 
@@ -132,8 +149,8 @@ Việc của bạn: đọc thông tin học phần ở mục [4], chọn trong d
 
 Quy tắc:
 ${PICK_RULES}
-7. percent là số nguyên từ 0 đến 100; tổng percent của các kỹ năng đã chọn bằng đúng 100. Kỹ năng trọng tâm của học phần nhận phần trăm cao nhất.
-${TEXT_RULES(8)}
+8. percent là số nguyên từ 0 đến 100; tổng percent của các kỹ năng đã chọn bằng đúng 100. Kỹ năng trọng tâm của học phần nhận phần trăm cao nhất.
+${TEXT_RULES(9)}
 
 Chỉ trả về một đối tượng JSON gồm "links" (tối đa ${L.links} mục { skillKey, groupKey, percent, reason }), không thêm bất kỳ văn bản nào bên ngoài JSON.`
 };
@@ -204,13 +221,22 @@ export function buildCourseAiSchema(mode: CourseOnlyMode, skills: readonly strin
 
 const number = (value: number | null) => (value === null || !Number.isFinite(value) ? null : String(Number(value.toFixed(2))));
 
+/** "BB" written out: the model read the bare code as general education. "TC102 (2TC)" is an elective group. */
+export function courseTypeLabel(value: string): string {
+  const type = sanitizeText(value, 40);
+  if (!type) return "chưa ghi";
+  if (/^BB$/i.test(type)) return "Bắt buộc";
+  if (/^TC/i.test(type)) return `Tự chọn (nhóm ${type})`;
+  return type;
+}
+
 /** The course lines of the data block. */
 function courseLines(source: CourseAiSource): string[] {
   const c = source.course;
   const englishName = sanitizeText(c.englishName, 200);
   const facts = [
     `Tín chỉ: ${number(c.credits) ?? "chưa ghi"}`,
-    `Loại: ${sanitizeText(c.type, 40) || "chưa ghi"}`,
+    `Loại: ${courseTypeLabel(c.type)}`,
     `Khối kiến thức: ${sanitizeText(c.block, 200) || "chưa ghi"}`,
     ...(sanitizeText(c.specialty, 200) ? [`Chuyên ngành: ${sanitizeText(c.specialty, 200)}`] : [])
   ];
@@ -286,6 +312,7 @@ export function buildCourseAiInput(source: CourseAiSource, mode: CourseOnlyMode)
     user: renderCourseDataBlock(source, mode, skills, groups),
     schema: buildCourseAiSchema(mode, skills.map((entry) => entry.key), groups.map((entry) => entry.key)),
     options: { ...COURSE_AI_OPTIONS },
+    think: COURSE_AI_THINK,
     promptVersion: COURSE_AI_PROMPT_VERSIONS[mode],
     skills,
     groups,
@@ -330,8 +357,8 @@ export const SKILL_AI_SYSTEM_PROMPT = `${INTRO}
 Việc của bạn: đọc các học phần của chương trình đào tạo ở mục [5] và bổ sung danh mục kỹ năng dùng để đánh giá năng lực. Mục [3] là kỹ năng đã có trong danh mục: không đề xuất lại, cũng không đề xuất kỹ năng gần nghĩa với chúng.
 
 Quy tắc:
-1. links: chọn trong mục [4] (kỹ năng nghề nghiệp đang được yêu cầu nhưng chưa được đánh giá) những kỹ năng mà ít nhất một học phần ở mục [5] thực sự dạy hoặc rèn luyện, bằng khóa của nó (S001, S002…), tối đa ${S.fromCareer}. Không chọn kỹ năng mà chương trình không dạy.
-2. newSkills: kỹ năng chuyên môn hoặc kỹ năng mềm mà các học phần ở mục [5] rèn luyện rõ ràng nhưng chưa có ở mục [3] và [4], tối đa ${S.newSkills}. Tên là cụm danh từ tiếng Việt ngắn, không mở đầu bằng "Kỹ năng"; được giữ tên công nghệ (ví dụ SQL, Git). Không dùng tên học phần làm tên kỹ năng.
+1. links: chọn trong mục [4] (kỹ năng nghề nghiệp đang được yêu cầu nhưng chưa được đánh giá) những kỹ năng mà ít nhất một học phần ở mục [5] thực sự dạy hoặc rèn luyện, bằng khóa của nó (S001, S002…), tối đa ${S.fromCareer}. Các học phần chưa có mô tả: chỉ dựa vào tên và khối kiến thức, không suy đoán nội dung mà tên học phần không thể hiện. Không chọn kỹ năng mà chương trình không dạy.
+2. newSkills: kỹ năng chuyên môn hoặc kỹ năng mềm mà các học phần ở mục [5] rèn luyện rõ ràng nhưng chưa có ở mục [3] và [4], tối đa ${S.newSkills}. Không đề xuất kỹ năng trùng hay gần nghĩa với kỹ năng ở mục [3] hoặc [4] (ví dụ đã có "Tối ưu hiệu năng" thì không đề xuất "Tối ưu hiệu năng hệ thống"). Tên là cụm danh từ tiếng Việt ngắn, không mở đầu bằng "Kỹ năng"; được giữ tên công nghệ (ví dụ SQL, Git). Không dùng tên học phần làm tên kỹ năng.
 3. Khi nhiều kỹ năng gần giống nhau, chỉ đề xuất một kỹ năng sát nhất. Nếu không có gì phù hợp, để mảng trống; không đề xuất cho đủ số.
 4. groupKey là khóa nhóm (G1, G2…) phù hợp nhất ở mục [2].
 5. scope (phạm vi đánh giá): 1–2 câu, tối đa ${S.promptScope} ký tự, nói kỹ năng được đánh giá qua những nội dung nào của chương trình.
@@ -411,6 +438,7 @@ export function buildSkillAiInput(source: SkillAiSource): CourseAiInput {
     user: renderSkillDataBlock(source, skills, groups),
     schema: buildSkillAiSchema(skills.map((entry) => entry.key), groups.map((entry) => entry.key)),
     options: { ...SKILL_AI_OPTIONS },
+    think: COURSE_AI_THINK,
     promptVersion: COURSE_AI_PROMPT_VERSIONS.skills,
     skills,
     groups,

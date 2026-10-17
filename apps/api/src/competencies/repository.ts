@@ -457,6 +457,26 @@ export class CompetencyRepository {
     return { id, name: clean, created: true };
   }
 
+  /**
+   * "Xóa liên kết của cả chương trình": every course of the revision that has links loses its links
+   * and weights and becomes an empty draft, so the whole-program AI run can propose them again. The
+   * admin repeats the cohort code (confirmation_mismatch otherwise). Each course keeps its history.
+   */
+  async clearRevision(revisionId: string, cohortCode: string, actor: AuthenticatedUser) {
+    return this.write(actor, async client => {
+      const revision = await this.revision(client, revisionId);
+      if (fold(cohortCode.trim()) !== fold(revision.cohortCode)) throw new CompetencyError("confirmation_mismatch", 400);
+      const configs = await client.query<{ id: string; code: string; note: string }>(`SELECT c.id,c.course_code AS code,c.note
+ FROM ad_comp_course_configs c WHERE c.revision_id=$1 AND EXISTS(SELECT 1 FROM ad_comp_course_links l WHERE l.config_id=c.id)
+ ORDER BY c.course_code FOR UPDATE`, [revisionId]);
+      for (const config of configs.rows) {
+        await this.writeCourse(client, revisionId, config.code, config, { status: "draft", links: [], note: config.note }, actor,
+          "Xóa liên kết và trọng số của cả chương trình");
+      }
+      return { cleared: configs.rows.length };
+    });
+  }
+
   async archiveCourse(revisionId: string, code: string, version: string, actor: AuthenticatedUser) {
     return this.write(actor, async client => {
       const current = await client.query<{ id: string; version: string }>(`SELECT id,version FROM ad_comp_course_configs

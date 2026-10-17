@@ -50,7 +50,7 @@ export default function CompetencyCourseAi({ curriculum, course, mode, close, sa
           <span className="cai-spinner" aria-hidden="true" />
           <div>
             <p className="cai-state" role="status" aria-live="polite">{suggestion.status === "queued" ? "Đang chờ máy AI nhận việc…" : mode === "links" ? "AI đang chọn kỹ năng cho học phần…" : "AI đang chia trọng số…"}</p>
-            {suggestion.status === "processing" && <p className="cai-muted"><Elapsed since={suggestion.updatedAt} /> · Thường mất khoảng 30–60 giây.</p>}
+            {suggestion.status === "processing" && <p className="cai-muted"><Elapsed since={suggestion.updatedAt} /> · AI suy luận trước khi trả lời nên thường mất 30 giây đến 2 phút.</p>}
             <p className="cai-muted">{course.code} · {course.name}</p>
           </div>
         </div>

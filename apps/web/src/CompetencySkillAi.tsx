@@ -71,7 +71,7 @@ function SkillAiFlow({ curriculum, setLocked, close, saved }: { curriculum: Curr
         <span className="cai-spinner" aria-hidden="true" />
         <div>
           <p className="cai-state" role="status" aria-live="polite">{suggestion.status === "queued" ? "Đang chờ máy AI nhận việc…" : "AI đang đọc chương trình và đề xuất kỹ năng…"}</p>
-          {suggestion.status === "processing" && <p className="cai-muted"><Elapsed since={suggestion.updatedAt} /> · Thường mất khoảng 1–3 phút.</p>}
+          {suggestion.status === "processing" && <p className="cai-muted"><Elapsed since={suggestion.updatedAt} /> · AI suy luận trước khi trả lời nên thường mất 2–4 phút.</p>}
           <p className="cai-muted">{curriculum.cohortCode} · {curriculum.name}</p>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCourseAiInput, buildSkillAiInput, COURSE_AI_PROMPT_VERSIONS, SKILL_AI_LIMITS } from "./prompt.js";
+import { buildCourseAiInput, buildSkillAiInput, COURSE_AI_PROMPT_VERSIONS, courseTypeLabel, SKILL_AI_LIMITS } from "./prompt.js";
 import { courseSource, GROUP_CORE, GROUP_SOFT, SKILL_DB, SKILL_DOCKER, SKILL_GIT, SKILL_TEAM, SKILL_WEB, skillSource } from "./test-fixture.js";
 
 type Schema = { properties: Record<string, { maxItems?: number; items: { properties: Record<string, { enum?: string[]; type?: string }> } }> };
@@ -18,6 +18,11 @@ describe("course AI prompt", () => {
     expect(input.user).toContain("S003 | Docker | kỹ năng nghề, chưa có nhóm");
     expect(input.user).toContain("S001 | Lập trình web | Chuyên môn | Xây dựng giao diện và máy chủ web");
     expect(input.user).toContain("Mã: 71ITSE40103");
+    // "BB" is written out: the model read the bare code as general education.
+    expect(input.user).toContain("Loại: Bắt buộc · Khối kiến thức: Kiến thức chuyên ngành");
+    expect(input.think).toBe(true);
+    expect(input.options).toMatchObject({ num_ctx: 16384, num_predict: 8192 });
+    expect(input.system).toContain("không chọn kỹ năng về chính trị và xã hội, pháp luật, quốc phòng và an ninh");
     expect(input.user).toContain("Số giờ: lý thuyết 30, thực hành 30");
     expect(input.user).toContain("- Thiết kế cơ sở dữ liệu");
     // The shared part comes before the course, so a whole-program run reuses one prompt prefix.
@@ -27,6 +32,13 @@ describe("course AI prompt", () => {
     expect(schema.properties.links!.items.properties.groupKey!.enum).toEqual(["G1", "G2"]);
     expect(schema.properties.links!.maxItems).toBe(3);
     expect(schema.properties.newSkills!.maxItems).toBe(2);
+  });
+
+  it("writes the course type out in words", () => {
+    expect(courseTypeLabel("BB")).toBe("Bắt buộc");
+    expect(courseTypeLabel("TC102 (2TC)")).toBe("Tự chọn (nhóm TC102 (2TC))");
+    expect(courseTypeLabel("")).toBe("chưa ghi");
+    expect(courseTypeLabel("Khác")).toBe("Khác");
   });
 
   it("asks only for the linked skills in weights mode, with integer percents", () => {
@@ -56,8 +68,9 @@ describe("course AI prompt", () => {
     const input = buildSkillAiInput(skillSource());
     expect(input.mode).toBe("skills");
     expect(input.promptVersion).toBe(COURSE_AI_PROMPT_VERSIONS.skills);
-    expect(input.options.num_predict).toBe(3072);
+    expect(input.options.num_predict).toBe(12288);
     expect(input.options.num_ctx).toBe(16384);
+    expect(input.think).toBe(true);
     expect(input.skills).toEqual([
       { key: "S001", id: SKILL_DOCKER, name: "Docker", groupId: null },
       { key: "S002", id: SKILL_GIT, name: "Git", groupId: null }

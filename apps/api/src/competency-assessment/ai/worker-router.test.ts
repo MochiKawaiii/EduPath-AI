@@ -514,7 +514,7 @@ describe("graduation advice jobs", () => {
 });
 
 describe("competency course suggestion jobs", () => {
-  const ALL = ["competency_assessment", "career_skill_suggestion", "graduation_advice", "competency_course_suggestion"];
+  const ALL = ["competency_assessment", "career_skill_suggestion", "graduation_advice", "competency_course_suggestion_v2"];
   const courseInput = buildCourseAiInput(courseSource(), "links");
   const courseClaim = (s: string) => s.includes("UPDATE ad_comp_ai_suggestions j SET status='processing'");
   const competencyClaim = (s: string) => s.includes("UPDATE stu_comp_ai_jobs j SET status='processing'");
@@ -531,7 +531,8 @@ describe("competency course suggestion jobs", () => {
   const courseUpdate = (run: ReturnType<typeof setup>["run"]) => run.mock.calls.find(([s]) => s.startsWith("UPDATE ad_comp_ai_suggestions SET status=$2"));
 
   it("never gives a course job to a worker that does not advertise the kind", async () => {
-    for (const body of [undefined, {}, { kinds: ALL.slice(0, 3) }]) {
+    // A worker released before v2 still advertises "competency_course_suggestion" and always sends think:false.
+    for (const body of [undefined, {}, { kinds: ALL.slice(0, 3) }, { kinds: [...ALL.slice(0, 3), "competency_course_suggestion"] }]) {
       const { app, sql } = setup(queued({ course: true }));
       expect((await claim(app, body)).body).toEqual({ job: null });
       expect(sql().some(courseClaim)).toBe(false);
@@ -545,15 +546,15 @@ describe("competency course suggestion jobs", () => {
 
     const course = setup(queued({ course: true }));
     const res = await claim(course.app, { kinds: ALL });
-    expect(res.body.job).toEqual({ kind: "competency_course_suggestion", id: JOB, leaseToken: LEASE, promptVersion: COURSE_AI_PROMPT_VERSIONS.links,
-      system: courseInput.system, user: courseInput.user, schema: courseInput.schema, options: courseInput.options });
+    expect(res.body.job).toEqual({ kind: "competency_course_suggestion_v2", id: JOB, leaseToken: LEASE, promptVersion: COURSE_AI_PROMPT_VERSIONS.links,
+      system: courseInput.system, user: courseInput.user, schema: courseInput.schema, options: courseInput.options, think: true });
     expect(JSON.stringify(res.body)).not.toMatch(/"skills"|"groups"|"linked"/);
     const claimCall = course.run.mock.calls.find(([s]) => courseClaim(s))!;
     expect(claimCall[0]).toContain("FOR UPDATE SKIP LOCKED LIMIT 1");
     expect((claimCall[1] as unknown[]).slice(1)).toEqual([2, 15]);
     // A worker that only runs course proposals never touches the student queue.
     const courseOnly = setup(queued({ course: true, competency: true }));
-    expect((await claim(courseOnly.app, { kinds: ["competency_course_suggestion"] })).body.job.kind).toBe("competency_course_suggestion");
+    expect((await claim(courseOnly.app, { kinds: ["competency_course_suggestion_v2"] })).body.job.kind).toBe("competency_course_suggestion_v2");
     expect(courseOnly.sql().some(competencyClaim)).toBe(false);
   });
 

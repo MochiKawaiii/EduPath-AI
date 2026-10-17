@@ -5,7 +5,7 @@
 // workers that advertise the "career_skill_suggestion" kind and graduation advice
 // (graduation/advice/jobs.ts) to workers that advertise "graduation_advice", and AI proposals for
 // the courses of a CTĐT (competencies/ai/jobs.ts) to workers that advertise
-// "competency_course_suggestion"; extend/complete find the id in any of the job tables.
+// "competency_course_suggestion_v2"; extend/complete find the id in any of the job tables.
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import express, { Router, type ErrorRequestHandler, type RequestHandler } from "express";
 import { z } from "zod";
@@ -146,7 +146,10 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
     res.json({ ok: true });
   });
 
-  /** Only what the worker needs: key maps (career catalog/linked, graduation keys) stay on the server. */
+  /**
+   * Only what the worker needs: key maps (career catalog/linked, graduation keys) stay on the server.
+   * `think` is sent only when the job asks for Gemma's thinking mode (course proposals).
+   */
   const workerJob = (kind: AiJobKind, claimed: { id: string; leaseToken: string; aiInput: Record<string, unknown> }) => ({
     kind,
     id: claimed.id,
@@ -155,7 +158,8 @@ export function createCompetencyWorkerRouter(pool: DatabasePool | undefined, aiW
     system: claimed.aiInput.system,
     user: claimed.aiInput.user,
     schema: claimed.aiInput.schema,
-    options: claimed.aiInput.options
+    options: claimed.aiInput.options,
+    ...(claimed.aiInput.think === true ? { think: true } : {})
   });
 
   router.post("/claim", async (req, res) => {

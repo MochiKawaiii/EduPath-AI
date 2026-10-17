@@ -37,6 +37,11 @@ export interface OllamaJob {
   user: string;
   schema: unknown;
   options: Record<string, unknown>;
+  /**
+   * Gemma's thinking mode, sent to Ollama as a boolean: true only when the job asks for it, false
+   * otherwise (if omitted Ollama turns thinking on). The thinking text is never kept.
+   */
+  think?: boolean | undefined;
 }
 
 export const METRIC_KEYS = ["prompt_eval_count", "eval_count", "eval_duration", "total_duration", "load_duration"] as const;
@@ -82,7 +87,7 @@ export function buildChatBody(runtime: OllamaRuntime, job: OllamaJob): Record<st
       { role: "user", content: job.user }
     ],
     format: job.schema,
-    think: false,
+    think: job.think === true,
     stream: true,
     truncate: false,
     keep_alive: OLLAMA_KEEP_ALIVE,

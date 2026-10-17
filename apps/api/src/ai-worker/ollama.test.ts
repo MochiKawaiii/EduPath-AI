@@ -87,6 +87,12 @@ describe("buildChatBody", () => {
     ]);
   });
 
+  it("turns Gemma's thinking on only when the job asks for it", () => {
+    expect(buildChatBody(runtime, { ...job, think: true }).think).toBe(true);
+    expect(buildChatBody(runtime, { ...job, think: false }).think).toBe(false);
+    expect(buildChatBody(runtime, { ...job, think: "yes" as unknown as boolean }).think).toBe(false);
+  });
+
   it("adds num_gpu when configured and falls back to the configured context", () => {
     const body = buildChatBody({ ...runtime, numGpu: 34 }, { ...job, options: {} });
     expect(body.options).toEqual({ num_ctx: 16384, num_gpu: 34 });
@@ -316,7 +322,7 @@ describe("parseCourseSuggestionOutput", () => {
     const weights = { weights: [{ skillKey: "S001", percent: 100, reason: "x" }] };
     for (const output of [links, full, weights]) {
       expect(parseCourseSuggestionOutput(JSON.stringify(output))).toEqual(output);
-      expect(parseJobOutput("competency_course_suggestion", JSON.stringify(output))).toEqual(output);
+      expect(parseJobOutput("competency_course_suggestion_v2", JSON.stringify(output))).toEqual(output);
     }
   });
 

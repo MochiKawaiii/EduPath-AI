@@ -34,6 +34,14 @@ describe("createWorkerClient", () => {
     expect((calls[0]?.init?.headers as Record<string, string>).authorization).toBe(`Bearer ${key}`);
   });
 
+  it("keeps the thinking flag of a course proposal", async () => {
+    const course = { ...claimed, kind: "competency_course_suggestion_v2", think: true };
+    const client = createWorkerClient({ apiUrl: "http://localhost:4000", workerKey: key, fetch: recorder(() => Response.json({ job: course })).fetch });
+    expect(await client.claim()).toEqual(course);
+    const bad = createWorkerClient({ apiUrl: "http://localhost:4000", workerKey: key, fetch: recorder(() => Response.json({ job: { ...course, think: "yes" } })).fetch });
+    await expect(bad.claim()).rejects.toMatchObject({ code: "invalid_claim_response" });
+  });
+
   it("returns null when no job is queued and sends complete/extend to the job path", async () => {
     const { calls, fetch } = recorder(() => Response.json({ job: null, leaseUntil: "2026-10-11T10:00:00Z", ok: true }));
     const client = createWorkerClient({ apiUrl: "http://localhost:4000", workerKey: key, fetch });
@@ -67,7 +75,7 @@ describe("job kinds", () => {
     const client = createWorkerClient({ apiUrl: "http://localhost:4000", workerKey: key, fetch });
     await client.heartbeat();
     expect((await client.claim())?.kind).toBe("career_skill_suggestion");
-    for (const call of calls) expect(JSON.parse(String(call.init?.body))).toEqual({ kinds: ["competency_assessment", "career_skill_suggestion", "graduation_advice", "competency_course_suggestion"] });
+    for (const call of calls) expect(JSON.parse(String(call.init?.body))).toEqual({ kinds: ["competency_assessment", "career_skill_suggestion", "graduation_advice", "competency_course_suggestion_v2"] });
   });
 
   it("reads a graduation advice job", async () => {

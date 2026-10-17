@@ -27,7 +27,9 @@ const claimedJobSchema = z.object({
   system: z.string().min(1),
   user: z.string().min(1),
   schema: z.record(z.string(), z.unknown()),
-  options: z.record(z.string(), z.unknown())
+  options: z.record(z.string(), z.unknown()),
+  /** Gemma's thinking mode; only course proposals ask for it. Absent means off. */
+  think: z.boolean().optional()
 });
 const claimResponseSchema = z.object({ job: claimedJobSchema.nullable() });
 const extendResponseSchema = z.object({ leaseUntil: z.string().min(1) });
