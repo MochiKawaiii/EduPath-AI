@@ -84,6 +84,73 @@
   outline-offset: 1px;
 }
 
+/* A sidebar group ("Quản lý nghề nghiệp"): the entry opens and closes its pages, listed below it. */
+.am-nav-group {
+  display: grid;
+  gap: 6px;
+}
+
+.am-sidebar .am-nav-group-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 14px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #f9eaf0;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+  transition: background 180ms ease;
+}
+
+.am-sidebar .am-nav-group-toggle:hover {
+  background: #8b2b41;
+}
+
+.am-sidebar .am-nav-group-toggle:focus-visible {
+  outline: 3px solid #f2cc9f;
+  outline-offset: 1px;
+}
+
+/* One of the group's pages is shown: the entry stays marked, also while it is closed. */
+.am-sidebar .am-nav-group-current {
+  font-weight: 750;
+}
+
+.am-sidebar .am-nav-group-current[aria-expanded="false"] {
+  background: #8b2b41;
+}
+
+.am-sidebar .am-nav-chevron {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  transition: transform 180ms ease;
+}
+
+.am-nav-group-toggle[aria-expanded="true"] .am-nav-chevron {
+  transform: rotate(180deg);
+}
+
+.am-nav-sub {
+  display: grid;
+  gap: 6px;
+  margin-left: 23px;
+  padding-left: 10px;
+  border-left: 1px solid #f9eaf04d;
+}
+
+.am-nav-sub[hidden] {
+  display: none;
+}
+
+.am-sidebar .am-nav-sub a {
+  padding: 11px 12px;
+}
+
 .am-sidebar-footer {
   margin-top: auto;
   padding: 80px 24px 28px;
@@ -717,7 +784,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .am-sidebar nav a {
+  .am-sidebar nav a,
+  .am-sidebar .am-nav-group-toggle,
+  .am-sidebar .am-nav-chevron {
     transition: none;
   }
 }

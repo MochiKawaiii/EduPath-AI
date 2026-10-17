@@ -14,9 +14,22 @@ function render(pathname: string) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("admin workspace", () => {
-  it("shows the short names in the sidebar, in order", () => {
+  it("shows the short names in the sidebar, in order, with the career pages under Quản lý nghề nghiệp", () => {
     const nav = render("/quantri/tai-khoan").match(/<nav id="admin-navigation".*?<\/nav>/s)?.[0] ?? "";
-    expect([...nav.matchAll(/<span>([^<]*)<\/span>/g)].map(match => match[1])).toEqual(adminNavigation.map(item => item.label));
+    expect([...nav.matchAll(/<span>([^<]*)<\/span>/g)].map(match => match[1])).toEqual(
+      ["Tài khoản", "Sinh viên", "Chương trình", "Tốt nghiệp", "Kế hoạch", "Quản lý nghề nghiệp", "Nghề nghiệp", "Lĩnh vực", "Kỹ năng", "Năng lực"]);
+  });
+
+  it("keeps Quản lý nghề nghiệp closed elsewhere and open on its pages", () => {
+    const closed = render("/quantri/tai-khoan");
+    expect(closed).toContain('<button type="button" class="am-nav-group-toggle" aria-expanded="false" aria-controls="admin-navigation-careers">');
+    expect(closed).toContain('<div id="admin-navigation-careers" class="am-nav-sub" hidden="">');
+    for (const path of ["/quantri/vi-tri-nghe-nghiep", "/quantri/linh-vuc-nghe-nghiep", "/quantri/ky-nang"]) {
+      const open = render(path);
+      expect(open).toContain('<button type="button" class="am-nav-group-toggle am-nav-group-current" aria-expanded="true" aria-controls="admin-navigation-careers">');
+      expect(open).toContain('<div id="admin-navigation-careers" class="am-nav-sub">');
+      expect(open).toContain(`<a href="${path}" aria-current="page">`);
+    }
   });
 
   it.each(adminNavigation.map(item => [item.label, item.path] as const))("uses %s as the page title and the breadcrumb", (label, path) => {

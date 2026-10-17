@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { adminNavigation, resolveAdminPage } from "./admin-navigation";
+import { adminNavigation, adminSidebar, resolveAdminPage } from "./admin-navigation";
 describe("admin section navigation", () => {
   it("has account, student-profile, curriculum, graduation, training-plan, career, career-field, skill and competency sections", () => {
     expect(adminNavigation.map(item => item.path)).toEqual(["/quantri/tai-khoan", "/quantri/sinh-vien", "/quantri/chuong-trinh", "/quantri/tieu-chuan-tot-nghiep", "/quantri/ke-hoach", "/quantri/vi-tri-nghe-nghiep", "/quantri/linh-vuc-nghe-nghiep", "/quantri/ky-nang", "/quantri/danh-gia-nang-luc"]);
   });
   it("uses short sidebar names, which are also the page title and breadcrumb", () => {
     expect(adminNavigation.map(item => item.label)).toEqual(["Tài khoản", "Sinh viên", "Chương trình", "Tốt nghiệp", "Kế hoạch", "Nghề nghiệp", "Lĩnh vực", "Kỹ năng", "Năng lực"]);
+  });
+  it("groups Nghề nghiệp, Lĩnh vực and Kỹ năng under Quản lý nghề nghiệp, where Nghề nghiệp was", () => {
+    expect(adminSidebar.map(entry => entry.kind === "page" ? entry.page.label : `${entry.label}: ${entry.pages.map(page => page.label).join(", ")}`))
+      .toEqual(["Tài khoản", "Sinh viên", "Chương trình", "Tốt nghiệp", "Kế hoạch", "Quản lý nghề nghiệp: Nghề nghiệp, Lĩnh vực, Kỹ năng", "Năng lực"]);
   });
   it.each(["/quantri/sinh-vien", "/quantri/sinh-vien/"])("resolves direct student link %s", path => {
     expect(resolveAdminPage(path).label).toBe("Sinh viên");
