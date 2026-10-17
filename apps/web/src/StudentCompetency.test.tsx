@@ -85,7 +85,7 @@ describe("StudentCompetency — Đánh giá năng lực", () => {
     expect(html).toContain("Nhận xét AI chưa được bật");
     expect(html).not.toContain("Tạo lại nhận xét");
     expect(html).toContain("Khá phù hợp");
-    expect(html).toContain("Bảng phân tích mức độ thành thạo theo nhóm kỹ năng");
+    expect(html).toContain("Bảng phân tích mức độ thành thạo theo nhóm năng lực");
   });
   it("explains the proficiency table and counts skills per level and group", () => {
     const html = withAi("completed");

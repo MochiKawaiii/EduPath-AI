@@ -23,8 +23,9 @@ import { AI_OUTPUT_LIMITS as L, buildOutputSchema, type JsonSchema, type OutputS
  * terms in words ("học kỳ 3 năm học 2025–2026"), priority meanings, keys cleaned before storing.
  * comp-v4: improvements pick courses of the skill plan or career gap, course lines in plain words, no graduation section.
  * comp-v5: with a career, improvements are only its skills (below its threshold, or met to deepen) and other skills are context.
+ * comp-v6: the skill groups are called "nhóm năng lực", like the pages (terminology of 2026-10-17).
  */
-export const PROMPT_VERSION = "comp-v5";
+export const PROMPT_VERSION = "comp-v6";
 
 /** Ollama options sent with every job (worker adds think/stream/truncate/keep_alive/model). */
 export const AI_OPTIONS = { num_ctx: 16384, num_predict: 4096, temperature: 0.4, top_p: 0.95, top_k: 64 } as const;
@@ -113,7 +114,7 @@ Hệ thống đã tính sẵn mọi con số từ bảng điểm, trọng số h
 
 Nguyên tắc dữ liệu (bắt buộc):
 1. Không tự tính, ước lượng hay làm tròn lại bất kỳ con số nào. Nếu nhắc đến số liệu, chép đúng từng chữ số như trong dữ liệu, không thêm chữ số thập phân (dữ liệu ghi "điểm 83" thì viết 83, không viết 83,5 hay 83,92).
-2. Chỉ nói về kỹ năng, nhóm kỹ năng, học phần, nghề nghiệp có trong dữ liệu. Khóa kỹ năng (S01…), khóa nhóm (G1…) và mã học phần chỉ dùng trong các trường skillKey, groupKey, courseCode; trong văn bản luôn gọi bằng tên. Chỉ chọn học phần trong danh sách gợi ý của đúng kỹ năng đó. Không bịa tên khóa học, chứng chỉ, đường link hay giảng viên.
+2. Chỉ nói về kỹ năng, nhóm năng lực, học phần, nghề nghiệp có trong dữ liệu. Khóa kỹ năng (S01…), khóa nhóm (G1…) và mã học phần chỉ dùng trong các trường skillKey, groupKey, courseCode; trong văn bản luôn gọi bằng tên. Chỉ chọn học phần trong danh sách gợi ý của đúng kỹ năng đó. Không bịa tên khóa học, chứng chỉ, đường link hay giảng viên.
 3. Kỹ năng "Chưa đủ dữ liệu" nghĩa là chương trình đào tạo chưa có học phần đo kỹ năng này. Không kết luận sinh viên yếu; hãy gợi ý cách tự học và tự kiểm chứng bằng sản phẩm cụ thể.
 4. "Chưa có minh chứng" nghĩa là sinh viên chưa học học phần liên quan; "Sắp học" nghĩa là học phần nằm ở học kỳ sau theo kế hoạch. Cả hai đều không phải học kém.
 5. Mỗi kỹ năng có "phạm vi" mô tả những gì học phần thực sự dạy. Không khẳng định sinh viên thành thạo công cụ mà phạm vi ghi là chưa xác nhận.
@@ -141,7 +142,7 @@ Chỉ trả về một đối tượng JSON đúng cấu trúc được mô tả
 
 const OUTPUT_DESCRIPTION = `Cấu trúc JSON (giới hạn tính theo số ký tự):
 - summary: 2–3 câu tổng quan, tối đa ${L.summary} ký tự; nếu đã chọn nghề, nêu tình trạng so với nghề mục tiêu; không lặp chi tiết sẽ nói ở careerFit, gaps hay nextSteps.
-- groupInsights: tối đa ${L.groupInsights} mục { groupKey: khóa nhóm G…, comment: tối đa ${L.groupComment} ký tự } cho các nhóm kỹ năng đáng chú ý; nhóm dưới mức Khá thì nêu tên kỹ năng ở dòng "kỹ năng thấp nhất của nhóm" (mục [2]); kỹ năng thuộc nghề mục tiêu (hoặc khi chưa chọn nghề) thì nêu học phần nên làm, kỹ năng ngoài nghề mục tiêu thì chỉ nói là ngoài yêu cầu của nghề.
+- groupInsights: tối đa ${L.groupInsights} mục { groupKey: khóa nhóm G…, comment: tối đa ${L.groupComment} ký tự } cho các nhóm năng lực đáng chú ý; nhóm dưới mức Khá thì nêu tên kỹ năng ở dòng "kỹ năng thấp nhất của nhóm" (mục [2]); kỹ năng thuộc nghề mục tiêu (hoặc khi chưa chọn nghề) thì nêu học phần nên làm, kỹ năng ngoài nghề mục tiêu thì chỉ nói là ngoài yêu cầu của nghề.
 - strengths: tối đa ${L.strengths} mục { skillKey: khóa kỹ năng S…, comment: tối đa ${L.skillComment} ký tự } về điểm mạnh, ưu tiên kỹ năng của nghề mục tiêu; chỉ chọn kỹ năng ở dòng "Có thể nêu là điểm mạnh" của mục [3]; minh chứng chỉ là học phần đã học, không lấy học phần đang học hay sắp học.
 - improvements: tối đa ${L.improvements} mục { skillKey, priority: "high" (cần làm sớm) | "medium" (nên làm) | "low" (có thể để sau), courses: tối đa ${L.improvementCourses} mục { courseCode: mã trong danh sách của đúng kỹ năng đó ở mục [6], reason: tối đa ${L.courseReason} ký tự, chỉ dựa trên dòng của học phần đó (học mới, học lại hay học cải thiện, điều kiện, học kỳ) }, comment: tối đa ${L.skillComment} ký tự, nói rõ bạn nên làm gì với học phần đã chọn } về kỹ năng nên cải thiện hoặc nâng lên; chỉ chọn kỹ năng ở dòng "Có thể nêu là cần cải thiện" của mục [3] (khi đã chọn nghề, đó chỉ là kỹ năng của nghề: dưới ngưỡng, hoặc đã đạt ngưỡng nhưng chưa Thành thạo); kỹ năng không có học phần thì để courses rỗng và gợi ý tự học hoặc một sản phẩm, dự án cụ thể để kiểm chứng.
 - careerFit: { comment: tối đa ${L.careerFit} ký tự } về mức phù hợp với nghề mục tiêu; chép đúng tính chất Bắt buộc hay Ưu tiên của từng kỹ năng như mục [4]; chỉ nêu mức phù hợp bằng chữ, không đưa ra chỉ số hay phần trăm phù hợp; nếu chưa chọn nghề, nói ngắn gọn và gợi ý chọn nghề.
@@ -467,7 +468,7 @@ export function renderDataBlock(result: AssessmentResult, context: PromptContext
     `${t.gradedUnknown ? `; chưa rõ kết quả ${t.gradedUnknown}` : ""}${t.inferredCount ? `; suy ra từ điểm chữ ${t.inferredCount}` : ""}`);
   push(`Học kỳ gần nhất có điểm: ${termText(t.latestTerm)}`);
 
-  push("", "[2. ĐIỂM TỔNG VÀ NHÓM KỸ NĂNG] (thang 100)");
+  push("", "[2. ĐIỂM TỔNG VÀ NHÓM NĂNG LỰC] (thang 100)");
   const o = result.overall;
   push(`Điểm tổng: ${o.score !== null ? formatScore(o.score) : "chưa có"} | ${o.levelLabel}${o.confidenceLabel ? ` | tin cậy ${o.confidenceLabel}` : ""}` +
     ` | dựa trên ${o.basis.skillsWithEvidence}/${o.basis.applicableSkills} kỹ năng có minh chứng từ ${o.basis.evidenceCourses} học phần`);

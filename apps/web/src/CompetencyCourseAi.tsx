@@ -33,7 +33,7 @@ export default function CompetencyCourseAi({ curriculum, course, mode, close, sa
           <div>
             <h3>{course.code} · {course.name}</h3>
             <p>{mode === "links"
-              ? "AI đọc tên, mô tả, khối kiến thức và số giờ của học phần cùng danh mục kỹ năng (gồm cả kỹ năng nghề nghiệp chưa có học phần đo) để đề xuất những kỹ năng học phần rèn luyện. Kỹ năng được lưu với trọng số 0%; bạn chia trọng số sau."
+              ? "AI đọc tên, mô tả, khối kiến thức và số giờ của học phần cùng các kỹ năng đã có cấu hình năng lực (gồm cả kỹ năng nghề nghiệp chưa có học phần đo) để đề xuất những kỹ năng học phần rèn luyện. Kỹ năng được lưu với trọng số 0%; bạn chia trọng số sau."
               : `AI chia 100% trọng số của học phần cho ${course.skillCount} kỹ năng đã liên kết. Bạn xem, sửa phần trăm rồi lưu bản nháp hoặc áp dụng.`}</p>
             <p className="cai-muted">AI chỉ nhận dữ liệu chương trình đào tạo, không nhận dữ liệu sinh viên. Kết quả chỉ là gợi ý: bạn chọn, sửa rồi mới lưu.</p>
           </div>
@@ -99,7 +99,7 @@ function LinksReview({ suggestion, course, busy, setBusy, createError, canCreate
   };
   return <>
     <ReviewHead suggestion={suggestion} heading={suggestion.items.length ? `AI đề xuất ${suggestion.items.length.toLocaleString("vi-VN")} kỹ năng cho ${course.code}` : `AI chưa đề xuất kỹ năng nào cho ${course.code}`}
-      text={suggestion.items.length ? "Bỏ chọn kỹ năng không phù hợp, chọn nhóm cho kỹ năng chưa có trong danh mục rồi lưu. Kỹ năng được thêm với trọng số 0%." : "AI không tìm thấy kỹ năng phù hợp trong danh mục. Bạn có thể tạo lại đề xuất hoặc tạo liên kết thủ công."} />
+      text={suggestion.items.length ? "Bỏ chọn kỹ năng không phù hợp, chọn nhóm năng lực cho kỹ năng chưa có cấu hình năng lực rồi lưu. Kỹ năng được thêm với trọng số 0%." : "AI không tìm thấy kỹ năng phù hợp trong cấu hình năng lực. Bạn có thể tạo lại đề xuất hoặc tạo liên kết thủ công."} />
     <Status {...groups} />
     {rows.length > 0 && <ul className="cai-rows">{rows.map((row) => {
       const id = `ca-${suggestion.id}-${row.key}`;
@@ -115,11 +115,11 @@ function LinksReview({ suggestion, course, busy, setBusy, createError, canCreate
         {(row.isNewSkill || !row.hasProfile) && !row.alreadyLinked && <fieldset className="cai-row-fields" disabled={busy !== null}>
           <legend className="sr-only">Thông tin kỹ năng {row.skillName}</legend>
           {row.isNewSkill && <label htmlFor={`${id}-name`}><RequiredLabel>Tên kỹ năng mới</RequiredLabel><input id={`${id}-name`} maxLength={SKILL_NAME_MAX} value={row.skillName} onChange={(event) => update(row.key, { skillName: event.target.value })} /></label>}
-          <label htmlFor={`${id}-group`}><RequiredLabel>Nhóm kỹ năng</RequiredLabel><select id={`${id}-group`} value={row.groupId} disabled={!groups.data} onChange={(event) => update(row.key, { groupId: event.target.value })}>
+          <label htmlFor={`${id}-group`}><RequiredLabel>Nhóm năng lực</RequiredLabel><select id={`${id}-group`} value={row.groupId} disabled={!groups.data} onChange={(event) => update(row.key, { groupId: event.target.value })}>
             <option value="">Chọn nhóm</option>{options.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
           </select></label>
         </fieldset>}
-        {!row.hasProfile && !row.alreadyLinked && <p className="cai-similar">{row.isNewSkill ? "Khi lưu, kỹ năng mới được thêm vào mục Kỹ năng của Nghề nghiệp và vào danh mục đánh giá năng lực." : "Kỹ năng này đang được nghề nghiệp yêu cầu nhưng chưa có học phần đo. Khi lưu, kỹ năng được thêm vào danh mục đánh giá năng lực."}</p>}
+        {!row.hasProfile && !row.alreadyLinked && <p className="cai-similar">{row.isNewSkill ? "Khi lưu, kỹ năng mới được thêm vào mục Kỹ năng của Nghề nghiệp và được tạo cấu hình năng lực." : "Kỹ năng này đang được nghề nghiệp yêu cầu nhưng chưa có học phần đo. Khi lưu, kỹ năng được tạo cấu hình năng lực."}</p>}
         {row.reason && <p className="cai-reason">Lý do AI đề xuất: {row.reason}</p>}
         {rowErrors.length > 0 && <ul className="cai-row-errors" role="alert">{rowErrors.map((message) => <li key={message}>{message}</li>)}</ul>}
       </li>;

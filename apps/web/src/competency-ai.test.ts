@@ -25,7 +25,7 @@ describe("link review", () => {
     const check = validateLinkRows(rows);
     expect(check.valid).toBe(false);
     expect(check.selected).toBe(2);
-    expect(check.errors["row-2"]).toEqual(["Chọn nhóm kỹ năng."]);
+    expect(check.errors["row-2"]).toEqual(["Chọn nhóm năng lực."]);
     const fixed = rows.map((row) => row.key === "row-2" ? { ...row, groupId: "g-core" } : row.key === "row-3" ? { ...row, checked: true, skillName: "  " } : row);
     expect(validateLinkRows(fixed).errors["row-3"]).toEqual(["Nhập tên kỹ năng mới."]);
     const ready = fixed.map((row) => row.key === "row-3" ? { ...row, skillName: "Kiểm thử  API" } : row);

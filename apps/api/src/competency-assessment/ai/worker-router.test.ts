@@ -90,7 +90,7 @@ describe("heartbeat and claim", () => {
   it("claims the oldest job with SKIP LOCKED, a 15 minute lease and returns the stored input", async () => {
     const { app, run, sql } = setup((s) => (s.includes("FOR UPDATE SKIP LOCKED") ? { rows: [{ id: JOB, leaseToken: LEASE, aiInput }] } : undefined));
     const res = await request(app).post("/w/claim").set("Authorization", AUTH).expect(200);
-    expect(res.body.job).toEqual({ kind: "competency_assessment", id: JOB, leaseToken: LEASE, promptVersion: "comp-v5", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
+    expect(res.body.job).toEqual({ kind: "competency_assessment", id: JOB, leaseToken: LEASE, promptVersion: "comp-v6", system: aiInput.system, user: aiInput.user, schema: aiInput.schema, options: aiInput.options });
     const claim = run.mock.calls.find(([s]) => s.includes("SKIP LOCKED"))!;
     expect(claim[0]).toContain("ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1");
     expect(claim[0]).toContain("status='processing' AND lease_until<now() AND attempts<$2");
@@ -173,7 +173,7 @@ describe("complete", () => {
     await request(app).post(`/w/${JOB}/complete`).set("Authorization", AUTH).send(success()).expect(200, { ok: true });
     const calls = run.mock.calls.map(([s, p]) => [s, p] as const);
     const assessment = calls.find(([s]) => s.includes("SET ai_status='completed'"))!;
-    expect(assessment[1]).toEqual([ASSESSMENT, USER, JSON.stringify(validOutput()), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "comp-v5"]);
+    expect(assessment[1]).toEqual([ASSESSMENT, USER, JSON.stringify(validOutput()), "gemma4:e4b", "dc35e8d9c606", "0.40.2", "comp-v6"]);
     const job = calls.find(([s]) => s.startsWith("UPDATE stu_comp_ai_jobs SET status=$2"))!;
     expect(job[0]).toContain("ai_input=NULL");
     expect(job[1]).toEqual([JOB, "completed", null, JSON.stringify({ eval_count: 900, total_ms: 120000 })]);

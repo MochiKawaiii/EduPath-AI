@@ -149,7 +149,7 @@ export function validateLinkRows(rows: LinkRow[]): { valid: boolean; selected: n
     const name = row.skillName.replace(/\s+/g, " ").trim();
     if (row.isNewSkill && !name) messages.push("Nhập tên kỹ năng mới.");
     if (row.isNewSkill && name.length > SKILL_NAME_MAX) messages.push(`Tên kỹ năng tối đa ${SKILL_NAME_MAX} ký tự.`);
-    if (!row.hasProfile && !row.groupId) messages.push("Chọn nhóm kỹ năng.");
+    if (!row.hasProfile && !row.groupId) messages.push("Chọn nhóm năng lực.");
     const key = row.skillId ?? `new:${foldName(name)}`;
     if (name && seen.has(key)) messages.push("Kỹ năng này đã có ở dòng khác.");
     seen.add(key);

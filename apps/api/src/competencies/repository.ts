@@ -123,7 +123,7 @@ export class CompetencyRepository {
   }
 
   /**
-   * "Xóa nhóm kỹ năng": soft delete once no live skill profile uses the group (soft-deleted profiles
+   * "Xóa nhóm năng lực": soft delete once no live skill profile uses the group (soft-deleted profiles
    * keep pointing to it). The group also becomes inactive, so scoring and the career pages, which
    * read is_active, never see it again.
    */
@@ -139,7 +139,7 @@ export class CompetencyRepository {
       const nextVersion = randomUUID();
       const removed = await client.query<{ deletedAt: string }>(`UPDATE ad_comp_groups SET deleted_at=now(),is_active=false,version=$2,updated_at=now()
  WHERE id=$1 RETURNING deleted_at AS "deletedAt"`, [id, nextVersion]);
-      await this.event(client, "group", id, actor, { ...previous, isActive: false, version: nextVersion, deletedAt: removed.rows[0]!.deletedAt }, "Xóa nhóm kỹ năng");
+      await this.event(client, "group", id, actor, { ...previous, isActive: false, version: nextVersion, deletedAt: removed.rows[0]!.deletedAt }, "Xóa nhóm năng lực");
       return { deleted: true };
     });
   }
@@ -225,7 +225,7 @@ export class CompetencyRepository {
           [id, data.groupId, data.scope, data.isActive]);
       }
       const snapshot = await this.skillSnapshot(client, id);
-      await this.event(client, "skill", id, actor, snapshot, restored ? "Khôi phục năng lực" : "Thêm năng lực");
+      await this.event(client, "skill", id, actor, snapshot, restored ? "Khôi phục cấu hình năng lực" : "Thêm cấu hình năng lực");
       return snapshot;
     });
   }
@@ -255,7 +255,7 @@ export class CompetencyRepository {
       await client.query(`UPDATE ad_comp_skills SET group_id=$2,scope=$3,is_active=$4,version=$5,updated_at=now()
  WHERE skill_id=$1`, [id, data.groupId, data.scope, data.isActive, randomUUID()]);
       const snapshot = await this.skillSnapshot(client, id);
-      await this.event(client, "skill", id, actor, snapshot, "Cập nhật năng lực");
+      await this.event(client, "skill", id, actor, snapshot, "Cập nhật cấu hình năng lực");
       return snapshot;
     });
   }
@@ -271,7 +271,7 @@ export class CompetencyRepository {
       const removed = await client.query<{ deletedAt: string }>(`UPDATE ad_comp_skills SET deleted_at=now(),is_active=false,
  version=$2,updated_at=now() WHERE skill_id=$1 RETURNING deleted_at AS "deletedAt"`, [id, nextVersion]);
       await this.event(client, "skill", id, actor,
-        { ...previous, isActive: false, version: nextVersion, deletedAt: removed.rows[0]!.deletedAt }, "Xóa năng lực khỏi danh mục đánh giá");
+        { ...previous, isActive: false, version: nextVersion, deletedAt: removed.rows[0]!.deletedAt }, "Xóa cấu hình năng lực");
       return { deleted: true };
     });
   }

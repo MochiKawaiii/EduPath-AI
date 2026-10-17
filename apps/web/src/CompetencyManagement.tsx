@@ -9,8 +9,8 @@ import "./competencies.css";
 
 // The order follows the dependency: groups, then skills, then the courses that measure them.
 const tabs = [
-  { id: "groups", label: "Nhóm kỹ năng", icon: "book" },
-  { id: "profiles", label: "Danh mục kỹ năng", icon: "profile" },
+  { id: "groups", label: "Nhóm năng lực", icon: "book" },
+  { id: "profiles", label: "Cấu hình năng lực", icon: "profile" },
   { id: "courses", label: "Trọng số học phần", icon: "chart" },
 ] as const;
 
@@ -26,7 +26,7 @@ export default function CompetencyManagement({ canManage }: { canManage: boolean
   const saved = () => setRevision(value => value + 1);
 
   return <section className="cm-workspace comp-workspace">
-    <div className="cm-toolbar"><div><h2>Danh mục và cấu hình năng lực</h2><p>Quản lý nhóm kỹ năng, kỹ năng dùng chung và liên kết, trọng số của từng học phần; AI có thể đề xuất liên kết và trọng số.</p></div></div>
+    <div className="cm-toolbar"><div><h2>Nhóm, cấu hình và trọng số năng lực</h2><p>Quản lý nhóm năng lực, cấu hình năng lực của từng kỹ năng và liên kết, trọng số của từng học phần; AI có thể đề xuất liên kết và trọng số.</p></div></div>
     <div className="cm-panel">
       <div className="cm-tabs comp-tabs" aria-label="Các chức năng đánh giá năng lực">
         {tabs.map(item => <button key={item.id} aria-pressed={tab === item.id} onClick={() => setTab(item.id)}><Icon name={item.icon} />{item.label}</button>)}

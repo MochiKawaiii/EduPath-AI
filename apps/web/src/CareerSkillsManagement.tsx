@@ -102,7 +102,7 @@ function SkillDelete({ current, close, saved }: { current: ManagedCareerSkill; c
     <div className="cm-dialog-body cm-form">
       <strong>{current.name}</strong>
       {current.careerCount > 0 && <p>Kỹ năng đang liên kết với {current.careerCount} vị trí nghề nghiệp. Vào mục Nghề nghiệp, mở menu Thao tác của từng vị trí → Liên kết kỹ năng và gỡ liên kết trước khi xóa.</p>}
-      {assessmentInUse && <p>Kỹ năng đang được dùng trong mục Năng lực. Hãy lưu trữ các cấu hình học phần đang áp dụng và xóa hồ sơ khỏi danh mục đánh giá trước khi xóa kỹ năng dùng chung. Lịch sử vẫn được giữ nguyên.</p>}
+      {assessmentInUse && <p>Kỹ năng đang được dùng trong mục Năng lực. Hãy lưu trữ các cấu hình học phần đang áp dụng và xóa cấu hình năng lực của kỹ năng trước khi xóa kỹ năng dùng chung. Lịch sử vẫn được giữ nguyên.</p>}
       {!inUse && <p>Kỹ năng sẽ được xóa khỏi danh sách lựa chọn.</p>}
       {error && <p className="admin-error" role="alert">{error}</p>}
       <div className="cm-actions cm-dialog-actions">

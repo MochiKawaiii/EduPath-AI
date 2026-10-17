@@ -336,7 +336,7 @@ async function applyLinks(client: PoolClient, repository: CompetencyRepository, 
     const hasProfile = await client.query("SELECT 1 FROM ad_comp_skills WHERE skill_id=$1 AND deleted_at IS NULL", [skillId]);
     if (!hasProfile.rowCount) {
       if (!item.groupId) throw new CompetencyError("group_required", 400, [name]);
-      if (await repository.ensureProfile(client, skillId, item.groupId, actor, "Thêm vào danh mục đánh giá năng lực từ đề xuất AI")) profiles += 1;
+      if (await repository.ensureProfile(client, skillId, item.groupId, actor, "Tạo cấu hình năng lực từ đề xuất AI")) profiles += 1;
     }
     added.push(skillId);
   }
@@ -388,7 +388,7 @@ async function applyFull(client: PoolClient, repository: CompetencyRepository, r
       if (!item.groupId) continue;
       const group = await client.query("SELECT 1 FROM ad_comp_groups WHERE id=$1 AND deleted_at IS NULL AND is_active", [item.groupId]);
       if (!group.rowCount) continue;
-      if (await repository.ensureProfile(client, item.skillId, item.groupId, actor, "Thêm vào danh mục đánh giá năng lực từ đề xuất AI cho cả chương trình")) profiles += 1;
+      if (await repository.ensureProfile(client, item.skillId, item.groupId, actor, "Tạo cấu hình năng lực từ đề xuất AI cho cả chương trình")) profiles += 1;
     }
     kept.push({ skillId: item.skillId, percent: item.percent ?? 0 });
   }

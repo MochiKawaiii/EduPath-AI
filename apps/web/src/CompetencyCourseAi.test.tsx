@@ -54,7 +54,7 @@ describe("CompetencyCourseAi", () => {
     expect(html).toContain("Kỹ năng nghề chưa đo");
     expect(html).toContain("Kỹ năng mới");
     expect(html).toContain("Đã liên kết");
-    expect(html).toContain("Chọn nhóm kỹ năng.");
+    expect(html).toContain("Chọn nhóm năng lực.");
     expect(html).toContain("Lưu 2 liên kết");
   });
 

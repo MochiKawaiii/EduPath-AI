@@ -147,7 +147,7 @@ function Overview({ result }: { result: AssessmentResult }) {
         <p className="scomp-meta">Dựa trên {overall.basis.skillsWithEvidence.toLocaleString("vi-VN")}/{overall.basis.applicableSkills.toLocaleString("vi-VN")} kỹ năng có minh chứng từ {overall.basis.evidenceCourses.toLocaleString("vi-VN")} học phần. Điểm tổng là trung bình của {overall.groupsWithScore.toLocaleString("vi-VN")} nhóm có dữ liệu.</p>
       </div>
       <div className="scomp-groups">
-        <h3>Theo nhóm kỹ năng</h3>
+        <h3>Theo nhóm năng lực</h3>
         <ul>{result.groups.map((group) => { const counts = groupEvidenceCounts(result.skills, group.key); return <li key={group.key}>
           <div className="scomp-group-label"><strong>{group.name}</strong><span>{counts.withEvidence.toLocaleString("vi-VN")}/{counts.total.toLocaleString("vi-VN")} kỹ năng có minh chứng</span></div>
           <ScoreBar score={group.score} level={group.level} ticks={[50, 70, 85]} />
@@ -191,7 +191,7 @@ function HistorySection({ result }: { result: AssessmentResult }) {
         {sentence && <p className="scomp-prose">{sentence}</p>}
         <div className="scomp-table-scroll" tabIndex={0} role="region" aria-labelledby="scomp-history-caption">
           <table className="scomp-table scomp-history-table">
-            <caption id="scomp-history-caption">Điểm năng lực tổng và điểm từng nhóm kỹ năng ở cuối mỗi học kỳ (thang 100)</caption>
+            <caption id="scomp-history-caption">Điểm năng lực tổng và điểm từng nhóm năng lực ở cuối mỗi học kỳ (thang 100)</caption>
             <thead><tr>
               <th scope="col">Học kỳ</th>
               <th scope="col" className="scomp-num">Học phần có kết quả</th>
@@ -244,7 +244,7 @@ function SkillsSection({ result }: { result: AssessmentResult }) {
     setExpanded((current) => ({ ...current, [level === "no_evidence" ? "no-evidence" : group]: true }));
     scrollToSection("scomp-skill-list");
   };
-  return <Section id="scomp-skills" title="Bảng phân tích mức độ thành thạo theo nhóm kỹ năng" description={`${result.skills.length.toLocaleString("vi-VN")} kỹ năng, chia theo nhóm. Mỗi kỹ năng được chấm theo thang 0–100 từ điểm các học phần minh chứng, theo trọng số học phần do Khoa cấu hình, rồi xếp vào một mức thành thạo.`}>
+  return <Section id="scomp-skills" title="Bảng phân tích mức độ thành thạo theo nhóm năng lực" description={`${result.skills.length.toLocaleString("vi-VN")} kỹ năng, chia theo nhóm. Mỗi kỹ năng được chấm theo thang 0–100 từ điểm các học phần minh chứng, theo trọng số học phần do Khoa cấu hình, rồi xếp vào một mức thành thạo.`}>
     <div className="scomp-value">
       <h3>Kết quả này cho biết gì?</h3>
       <ul>
@@ -257,7 +257,7 @@ function SkillsSection({ result }: { result: AssessmentResult }) {
     <div className="scomp-table-scroll" tabIndex={0} role="region" aria-labelledby="scomp-level-caption">
       <table className="scomp-table scomp-level-table">
         <caption id="scomp-level-caption">Số kỹ năng ở từng mức thành thạo trong mỗi nhóm. Chọn một số để xem đúng các kỹ năng đó.</caption>
-        <thead><tr><th scope="col">Nhóm kỹ năng</th><th scope="col" className="scomp-num">Điểm nhóm</th><th scope="col">Mức của nhóm</th>{LEVEL_COLUMNS.map((level) => <th key={level} scope="col" className="scomp-num">{LEVEL_COLUMN_LABELS[level]}</th>)}</tr></thead>
+        <thead><tr><th scope="col">Nhóm năng lực</th><th scope="col" className="scomp-num">Điểm nhóm</th><th scope="col">Mức của nhóm</th>{LEVEL_COLUMNS.map((level) => <th key={level} scope="col" className="scomp-num">{LEVEL_COLUMN_LABELS[level]}</th>)}</tr></thead>
         <tbody>{summary.map((row) => <tr key={row.key}>
           <th scope="row">{row.name}<small>{row.total.toLocaleString("vi-VN")} kỹ năng</small></th>
           <td className="scomp-num"><strong>{formatScore(row.score)}</strong></td>
@@ -623,7 +623,7 @@ function AiPanel({ assessment, aiEnabled, workerOnline, busy, onRegenerate, onCa
 function AiContent({ output }: { output: MappedAiOutput }) {
   return <div className="scomp-ai-body">
     {output.summary && <p className="scomp-prose scomp-ai-summary">{output.summary}</p>}
-    {output.groupInsights.length > 0 && <div className="scomp-ai-block"><h3>Theo nhóm kỹ năng</h3><ul>{output.groupInsights.map((item) => <li key={item.key}><strong>{item.name}.</strong> {item.comment}</li>)}</ul></div>}
+    {output.groupInsights.length > 0 && <div className="scomp-ai-block"><h3>Theo nhóm năng lực</h3><ul>{output.groupInsights.map((item) => <li key={item.key}><strong>{item.name}.</strong> {item.comment}</li>)}</ul></div>}
     <div className="scomp-ai-columns">
       {output.strengths.length > 0 && <div className="scomp-ai-block"><h3>Điểm mạnh</h3><ul>{output.strengths.map((item) => <li key={item.key}><strong>{item.name}.</strong> {item.comment}</li>)}</ul></div>}
       {output.improvements.length > 0 && <div className="scomp-ai-block"><h3>Nên cải thiện</h3><ul>{output.improvements.map((item) => <li key={item.key}>
@@ -678,9 +678,9 @@ function Checklist({ hasTranscript, transcriptFailed, profile, suggestion }: { h
 const HEADER_COPY: Record<CompetencyView, { title: string; resultTitle: string; lead: string; introTitle: string; intro: string }> = {
   competency: {
     title: "Đánh giá năng lực của bạn", resultTitle: "Kết quả đánh giá năng lực",
-    lead: "Hệ thống tính điểm từng kỹ năng từ bảng điểm và trọng số học phần do Khoa cấu hình, xếp mức thành thạo theo nhóm kỹ năng và đối chiếu tiến độ học tập.",
+    lead: "Hệ thống tính điểm từng kỹ năng từ bảng điểm và trọng số học phần do Khoa cấu hình, xếp mức thành thạo theo nhóm năng lực và đối chiếu tiến độ học tập.",
     introTitle: "Chưa có kết quả đánh giá",
-    intro: "Bấm “Đánh giá năng lực” để xem điểm theo từng nhóm kỹ năng, mức thành thạo của từng kỹ năng, tiến độ so với kế hoạch đào tạo và điều kiện xét tốt nghiệp. Kết quả chỉ mang tính tham khảo.",
+    intro: "Bấm “Đánh giá năng lực” để xem điểm theo từng nhóm năng lực, mức thành thạo của từng kỹ năng, tiến độ so với kế hoạch đào tạo và điều kiện xét tốt nghiệp. Kết quả chỉ mang tính tham khảo.",
   },
   gap: {
     title: "Phân tích khoảng trống kỹ năng", resultTitle: "Kết quả phân tích khoảng trống kỹ năng",

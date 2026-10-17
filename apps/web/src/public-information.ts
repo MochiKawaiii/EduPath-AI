@@ -35,7 +35,7 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
     answer: [
       "Bạn có thể xem và cập nhật hồ sơ, tải bảng điểm PDF, tra cứu chương trình đào tạo, xem kế hoạch đào tạo theo năm học và học kỳ, đối chiếu những nhóm môn cần hoàn thành để xét tốt nghiệp, đồng thời đánh giá năng lực của mình so với nghề mục tiêu.",
       "Sau khi có bảng điểm, cột Kết quả trong chương trình và kế hoạch đào tạo giúp bạn nhận ra môn đã đạt hoặc chưa đạt. Trong phần điều kiện xét tốt nghiệp, bạn có thể xem tiến độ của từng nhóm và số tín chỉ đã đạt. Với nghề nghiệp, bạn có thể xem lĩnh vực, vị trí, yêu cầu kỹ năng và chọn mục tiêu trong Thông tin cá nhân.",
-      "Trong Đánh giá năng lực, bạn xem được điểm từng kỹ năng và nhóm kỹ năng, mức phù hợp với nghề mục tiêu, những kỹ năng còn thiếu và học phần nên ưu tiên, kèm nhận xét do AI viết để tham khảo."
+      "Trong Đánh giá năng lực, bạn xem được điểm từng kỹ năng và nhóm năng lực, mức phù hợp với nghề mục tiêu, những kỹ năng còn thiếu và học phần nên ưu tiên, kèm nhận xét do AI viết để tham khảo."
     ],
     note: "Bạn nên bắt đầu ở Hồ sơ và bảng điểm, sau đó lần lượt xem Chương trình đào tạo, Kế hoạch đào tạo và Điều kiện xét tốt nghiệp. Những mục đang được phát triển sẽ có thông báo ngay trên màn hình."
   },
@@ -117,7 +117,7 @@ export const frequentlyAskedQuestions: FrequentlyAskedQuestion[] = [
     question: "Điểm năng lực được tính như thế nào?",
     answer: [
       "Mỗi học phần rèn luyện một số kỹ năng ở những mức độ khác nhau, và Khoa cấu hình mức độ đó thành trọng số cho từng cặp học phần và kỹ năng. Điểm một kỹ năng là trung bình có trọng số của điểm các học phần liên quan mà bạn đã học, quy về thang 100: học phần càng nhiều tín chỉ và càng rèn luyện kỹ năng đó nhiều thì càng ảnh hưởng lớn đến điểm. Nếu một môn học nhiều lần, hệ thống dùng lần đạt có điểm cao nhất; môn có điểm MT được tính là đã học nhưng không đưa vào điểm trung bình.",
-      "Từ điểm kỹ năng, hệ thống xếp mức: từ 85 trở lên là Thành thạo, từ 70 đến dưới 85 là Khá, từ 50 đến dưới 70 là Cơ bản và dưới 50 là Cần củng cố. Điểm nhóm kỹ năng được tính theo cùng cách, còn điểm tổng là trung bình của các nhóm có dữ liệu; Giáo dục thể chất và Giáo dục quốc phòng không tính vào hai điểm này. Với nghề mục tiêu, mỗi kỹ năng yêu cầu được so với ngưỡng 70 nếu là kỹ năng Ưu tiên và 85 nếu là kỹ năng Bắt buộc."
+      "Từ điểm kỹ năng, hệ thống xếp mức: từ 85 trở lên là Thành thạo, từ 70 đến dưới 85 là Khá, từ 50 đến dưới 70 là Cơ bản và dưới 50 là Cần củng cố. Điểm nhóm năng lực được tính theo cùng cách, còn điểm tổng là trung bình của các nhóm có dữ liệu; Giáo dục thể chất và Giáo dục quốc phòng không tính vào hai điểm này. Với nghề mục tiêu, mỗi kỹ năng yêu cầu được so với ngưỡng 70 nếu là kỹ năng Ưu tiên và 85 nếu là kỹ năng Bắt buộc."
     ],
     note: "Kỹ năng mà bạn chưa học học phần liên quan nào được ghi là Chưa có minh chứng, còn kỹ năng nghề mà chương trình đào tạo chưa có học phần đo được ghi là Chưa đủ dữ liệu. Cả hai trường hợp đều không có nghĩa là bạn yếu kỹ năng đó."
   },
