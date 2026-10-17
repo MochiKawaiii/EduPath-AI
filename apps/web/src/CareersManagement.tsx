@@ -51,8 +51,11 @@ export default function CareersManagement({
       {linksCareerId !== null ? <CareerLinksManagement key={linksCareerId} initialCareerId={linksCareerId} canManage={canManage} revision={revision} saved={() => setRevision(current => current + 1)} close={() => setLinksCareerId(null)} /> : detailId ? <Detail key={detailId} id={detailId} fields={fields.data?.items ?? []} revision={revision} close={() => setDetailId(null)} /> : <>
       <section className="cm-panel">
         <div className="career-list-heading">
-          <h2>Vị trí nghề nghiệp{list.data && <span className="am-count">{list.data.items.length}</span>}</h2>
-          <p>Danh mục nghề nghiệp song ngữ để sinh viên lựa chọn định hướng.</p>
+          <div>
+            <h2>Vị trí nghề nghiệp{list.data && <span className="am-count">{list.data.items.length}</span>}</h2>
+            <p>Danh mục nghề nghiệp song ngữ để sinh viên lựa chọn định hướng.</p>
+          </div>
+          {canManage && <button className="am-primary" onClick={add}><Icon name="plus" /> Thêm vị trí nghề nghiệp</button>}
         </div>
         <div className="cm-filters">
           <label className="cm-search">
@@ -132,7 +135,6 @@ export default function CareersManagement({
                               ...(canManage ? [
                                 { key: "edit", icon: "edit", label: "Chỉnh sửa vị trí nghề nghiệp", onSelect: () => { setSelected(c); setMode("edit"); } },
                                 { key: "links", icon: "link", label: "Tạo liên kết kỹ năng", onSelect: () => setLinksCareerId(c.id) },
-                                { key: "add", icon: "plus", label: "Thêm vị trí nghề nghiệp", onSelect: add },
                                 { key: "delete", icon: "trash", label: "Xóa vị trí nghề nghiệp", danger: true, onSelect: () => { setSelected(c); setMode("delete"); } },
                               ] : []),
                             ]}
@@ -143,13 +145,7 @@ export default function CareersManagement({
                 </tbody>
               </table>
             </div>
-            {!list.data.items.length && (
-              <div className="am-empty">
-                <p>Không có vị trí phù hợp với bộ lọc.</p>
-                {/* Adding lives in each row's menu; with no rows, offer it here. */}
-                {canManage && <button className="am-primary" onClick={add}><Icon name="plus" /> Thêm vị trí nghề nghiệp</button>}
-              </div>
-            )}
+            {!list.data.items.length && <p className="am-empty">Không có vị trí phù hợp với bộ lọc.</p>}
             <Pagination
               total={list.data.items.length}
               page={page}

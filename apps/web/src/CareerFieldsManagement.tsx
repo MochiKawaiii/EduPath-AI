@@ -22,8 +22,11 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
   return <section className="cm-workspace career-workspace">
     <section className="cm-panel">
       <div className="career-list-heading">
-        <h2>Lĩnh vực nghề nghiệp{remote.data && <span className="am-count">{items.length}</span>}</h2>
-        <p>Quản lý lĩnh vực để phân nhóm các vị trí nghề nghiệp.</p>
+        <div>
+          <h2>Lĩnh vực nghề nghiệp{remote.data && <span className="am-count">{items.length}</span>}</h2>
+          <p>Quản lý lĩnh vực để phân nhóm các vị trí nghề nghiệp.</p>
+        </div>
+        {canManage && <button className="am-primary" onClick={add}><Icon name="plus" /> Thêm lĩnh vực</button>}
       </div>
       <div className="cm-filters career-catalog-filters">
         <label className="cm-search">Tìm lĩnh vực<input type="search" value={query} maxLength={200} placeholder="Số thứ tự hoặc tên lĩnh vực…" onChange={event => { setQuery(event.target.value); setPage(1); }} /></label>
@@ -39,17 +42,12 @@ export default function CareerFieldsManagement({ canManage }: { canManage: boole
               { key: "detail", icon: "eye", label: "Xem chi tiết lĩnh vực", onSelect: () => { setSelected(field); setMode("detail"); } },
               ...(canManage ? [
                 { key: "edit", icon: "edit", label: "Chỉnh sửa lĩnh vực", onSelect: () => { setSelected(field); setMode("edit"); } },
-                { key: "add", icon: "plus", label: "Thêm lĩnh vực", onSelect: add },
                 { key: "delete", icon: "trash", label: "Xóa lĩnh vực", danger: true, onSelect: () => { setSelected(field); setMode("delete"); } },
               ] : []),
             ]} /></td>
           </tr>)}</tbody>
         </table></div>
-        {!items.length && <div className="am-empty">
-          <p>Không có lĩnh vực phù hợp.</p>
-          {/* Adding lives in each row's menu; with no rows, offer it here. */}
-          {canManage && <button className="am-primary" onClick={add}><Icon name="plus" /> Thêm lĩnh vực</button>}
-        </div>}
+        {!items.length && <p className="am-empty">Không có lĩnh vực phù hợp.</p>}
         <Pagination total={items.length} page={page} setPage={setPage} />
       </>}
     </section>

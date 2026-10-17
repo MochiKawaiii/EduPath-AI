@@ -32,8 +32,10 @@
   margin: 6px 0 0;
   font-weight: 600;
 }
-/* Catalog pages (Nghề nghiệp, Lĩnh vực, Kỹ năng): the card opens with a heading, then a compact filter row, then the table. */
-.career-workspace .career-list-heading { padding: 24px 24px 0; }
+/* Catalog pages (Nghề nghiệp, Lĩnh vực, Kỹ năng): the card opens with a heading and the red add button on the right
+   (like Tài khoản), then a compact filter row, then the table. */
+.career-workspace .career-list-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px 20px; flex-wrap: wrap; padding: 24px 24px 0; }
+.career-workspace .career-list-heading > div { min-width: 0; }
 .career-workspace .career-list-heading h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; font-size: 18px; letter-spacing: -0.3px; }
 .career-workspace .career-list-heading .am-count { margin: 0; }
 .career-workspace .career-list-heading p { margin: 0; color: var(--cm-muted); font-size: 13px; line-height: 1.6; }

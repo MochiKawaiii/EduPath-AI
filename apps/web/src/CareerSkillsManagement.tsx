@@ -20,8 +20,11 @@ export default function CareerSkillsManagement({ canManage }: { canManage: boole
   return <section className="cm-workspace career-workspace">
     <section className="cm-panel">
       <div className="career-list-heading">
-        <h2>Kỹ năng dùng chung{remote.data && <span className="am-count">{remote.data.items.length}</span>}</h2>
-        <p>Quản lý kỹ năng dùng chung với các vị trí nghề nghiệp và mục Quản lý năng lực.</p>
+        <div>
+          <h2>Kỹ năng dùng chung{remote.data && <span className="am-count">{remote.data.items.length}</span>}</h2>
+          <p>Quản lý kỹ năng dùng chung với các vị trí nghề nghiệp và mục Quản lý năng lực.</p>
+        </div>
+        {canManage && <button className="am-primary" onClick={add}><Icon name="plus" /> Thêm kỹ năng</button>}
       </div>
       <div className="cm-filters career-catalog-filters">
         <label className="cm-search">Tìm kỹ năng<input type="search" value={draft.q} maxLength={200} placeholder="Tên hoặc mô tả kỹ năng…" onChange={event => setDraft({ q: event.target.value })} /></label>
@@ -38,17 +41,12 @@ export default function CareerSkillsManagement({ canManage }: { canManage: boole
               { key: "detail", icon: "eye", label: "Xem chi tiết kỹ năng", onSelect: () => { setSelected(skill); setMode("detail"); } },
               ...(canManage ? [
                 { key: "edit", icon: "edit", label: "Chỉnh sửa kỹ năng", onSelect: () => { setSelected(skill); setMode("edit"); } },
-                { key: "add", icon: "plus", label: "Thêm kỹ năng", onSelect: add },
                 { key: "delete", icon: "trash", label: "Xóa kỹ năng", danger: true, onSelect: () => { setSelected(skill); setMode("delete"); } },
               ] : []),
             ]} /></td>
           </tr>)}</tbody>
         </table></div>
-        {!remote.data.items.length && <div className="am-empty">
-          <p>Không có kỹ năng phù hợp.</p>
-          {/* Adding lives in each row's menu; with no rows, offer it here. */}
-          {canManage && <button className="am-primary" onClick={add}><Icon name="plus" /> Thêm kỹ năng</button>}
-        </div>}
+        {!remote.data.items.length && <p className="am-empty">Không có kỹ năng phù hợp.</p>}
         <Pagination total={remote.data.items.length} page={page} setPage={setPage} />
       </>}
     </section>
