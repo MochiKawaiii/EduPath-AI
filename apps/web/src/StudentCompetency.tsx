@@ -379,28 +379,20 @@ function GraduationSection() {
   </Section>;
 }
 
-function WarningsSection({ result, view }: { result: AssessmentResult; view: CompetencyView }) {
-  const outside = result.transcript.notInCurriculum;
-  return <Section id="scomp-warnings" title={view === "gap" ? "Cảnh báo dữ liệu và cách tính mức phù hợp" : "Cảnh báo dữ liệu và cách tính"}>
+/** Data warnings and how the fit is computed. Only on #skill-gap: #competency dropped it (user, 2026-10-17). */
+function WarningsSection({ result }: { result: AssessmentResult }) {
+  return <Section id="scomp-warnings" title="Cảnh báo dữ liệu và cách tính mức phù hợp">
     {result.warnings.length ? <ul className="scomp-warnings">{result.warnings.map((warning, index) => <li key={`${warning.code}-${index}`}>
       <strong>{warning.message}</strong><p>{warning.consequence}</p>{warning.details.length > 0 && <ul>{warning.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}
     </li>)}</ul> : <p className="scomp-meta">Không có cảnh báo dữ liệu cho lần đánh giá này.</p>}
-    {view === "competency" && outside.length > 0 && <details className="scomp-legend"><summary>Học phần ngoài chương trình đào tạo ({outside.length.toLocaleString("vi-VN")})</summary><p className="scomp-meta">Chỉ để thông tin; các học phần này không ảnh hưởng tới điểm năng lực.</p><ul>{outside.map((course) => <li key={course.code}><strong>{course.code}</strong>{course.name && ` · ${course.name}`} · {formatNumber(course.credits)} TC{course.letter && ` · ${course.letter}`}</li>)}</ul></details>}
-    {view === "competency" ? <details className="scomp-legend scomp-method"><summary>Cách tính điểm năng lực</summary>
-      <div className="scomp-prose">
-        <p>Mỗi học phần được Khoa gắn với các kỹ năng kèm trọng số. Điểm một kỹ năng (thang 0–100) là trung bình điểm hệ 10 của các học phần liên quan, nhân 10, có trọng số theo tín chỉ × trọng số kỹ năng. Lần học có điểm F vẫn được tính; học phần miễn/công nhận (MT) được tính là đã học nhưng không có điểm để lấy trung bình.</p>
-        <p>Mức: từ 85 là Thành thạo, 70 đến dưới 85 là Khá, 50 đến dưới 70 là Cơ bản, dưới 50 là Cần củng cố. Điểm nhóm tính cùng cách; điểm tổng là trung bình các nhóm có dữ liệu. Môn điều kiện (Giáo dục thể chất, Giáo dục quốc phòng) không tính vào điểm nhóm và điểm tổng.</p>
-        <p>Độ phủ là phần học phần liên quan bạn đã học so với các học phần áp dụng cho bạn (học phần chung, học phần chuyên ngành của bạn và học phần bạn đã học; nhóm tự chọn tính theo số tín chỉ cần chọn). Độ tin cậy lấy mức thấp hơn giữa độ phủ (dưới 30% thấp, từ 70% cao) và lượng minh chứng (tổng tín chỉ × trọng số dưới 1,0 thấp, từ 2,5 cao).</p>
-        <p>Phiên bản cách tính: {result.meta.calcVersion}.</p>
-      </div>
-    </details> : <details className="scomp-legend scomp-method"><summary>Cách tính mức phù hợp và khoảng trống</summary>
+    <details className="scomp-legend scomp-method"><summary>Cách tính mức phù hợp và khoảng trống</summary>
       <div className="scomp-prose">
         <p>Điểm từng kỹ năng lấy từ trang Đánh giá năng lực. Với nghề mục tiêu, kỹ năng Ưu tiên cần từ 70 (mức Khá) và kỹ năng Bắt buộc cần từ 85 (mức Thành thạo). Mức thiếu hụt là số điểm còn thiếu so với ngưỡng: đến 5 điểm là Gần ngưỡng, đến 15 điểm là Thiếu vừa, nhiều hơn là Thiếu nhiều.</p>
         <p>Mức phù hợp tính theo hệ số 2 cho Bắt buộc và 1 cho Ưu tiên: đạt ngưỡng được trọn điểm, dưới ngưỡng được tối đa một nửa, chưa học được 0; kỹ năng sắp học hoặc chưa đủ dữ liệu không tính. Từ 0,80 là Phù hợp, 0,50 đến dưới 0,80 là Khá phù hợp; nếu dưới một nửa hệ số có dữ liệu thì ghi Chưa đủ dữ liệu.</p>
         <p>Học phần gợi ý là học phần trong chương trình của bạn có đo kỹ năng còn thiếu, xếp theo mức đóng góp (tín chỉ × trọng số). Điều kiện đăng ký được kiểm tra theo học phần tiên quyết và học trước trong chương trình đào tạo.</p>
         <p>Phiên bản cách tính: {result.meta.calcVersion}.</p>
       </div>
-    </details>}
+    </details>
   </Section>;
 }
 
@@ -771,7 +763,7 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
       </div>
       <Checklist hasTranscript={hasTranscript} transcriptFailed={!transcript.loading && Boolean(transcript.error)} profile={profile} suggestion={result?.specialtySuggestion?.text ?? null} />
       {profileChanged && <p className="scomp-meta">Hồ sơ đã thay đổi sau lần đánh giá này. Bấm “Đánh giá lại” để cập nhật kết quả.</p>}
-      {assessment && <p className="scomp-data-line">{dataUsedLine(assessment)}{warningCount > 0 && <> · <button type="button" className="scomp-link-button" onClick={() => scrollToSection("scomp-warnings")}>{warningCount.toLocaleString("vi-VN")} cảnh báo dữ liệu →</button></>}</p>}
+      {assessment && <p className="scomp-data-line">{dataUsedLine(assessment)}{view === "gap" && warningCount > 0 && <> · <button type="button" className="scomp-link-button" onClick={() => scrollToSection("scomp-warnings")}>{warningCount.toLocaleString("vi-VN")} cảnh báo dữ liệu →</button></>}</p>}
       <p className="scomp-live" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
       {error && <div className="sr-error" role="alert">{error}</div>}
       {live.error && !data && <div className="sr-error" role="alert">{live.error}<button type="button" onClick={() => setRevision((n) => n + 1)}>Thử lại</button></div>}
@@ -788,7 +780,7 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
       {aiPanel}
       <GapTable result={result} />
       <CoursesSection result={result} ai={mapped} />
-      <WarningsSection result={result} view={view} />
+      <WarningsSection result={result} />
     </> : <>
       <Overview result={result} />
       {aiPanel}
@@ -796,7 +788,6 @@ export default function StudentCompetency({ profile, view = "competency" }: { pr
       <SkillsSection key={assessment.id} result={result} />
       <ProgressSection result={result} />
       <GraduationSection />
-      <WarningsSection result={result} view={view} />
     </>)}
     {consentOpen && <ConsentDialog busy={busy === "run"} onClose={() => setConsentOpen(false)} onConfirm={confirmConsent} />}
     {deleteOpen && <DeleteDialog busy={busy === "delete"} error={deleteError} onClose={() => setDeleteOpen(false)} onConfirm={() => void remove()} />}

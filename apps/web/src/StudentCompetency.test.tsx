@@ -55,9 +55,12 @@ const sectionOrder = (html: string, ids: string[]) => ids.map((id) => html.index
 describe("StudentCompetency — Đánh giá năng lực", () => {
   it("renders the competency sections in order with the AI comment right after the overview", () => {
     const html = withAi("completed");
-    const order = sectionOrder(html, ["scomp-overview", "scomp-ai", "scomp-history", "scomp-skills", "scomp-progress", "scomp-graduation", "scomp-warnings"]);
+    const order = sectionOrder(html, ["scomp-overview", "scomp-ai", "scomp-history", "scomp-skills", "scomp-progress", "scomp-graduation"]);
     expect(order.every((index) => index > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
+    // "Cảnh báo dữ liệu và cách tính" was removed from this page (user, 2026-10-17).
+    expect(html).not.toContain('id="scomp-warnings"');
+    expect(html).not.toContain("Cách tính điểm năng lực");
     // The gap analysis lives on its own page now.
     expect(html).not.toContain('id="scomp-career"');
     expect(html).not.toContain('id="scomp-courses"');
@@ -160,7 +163,7 @@ describe("StudentCompetency — Đánh giá năng lực", () => {
   });
   it("shows only the graduation page's verdict and the detail link", () => {
     const html = withAi("completed");
-    const section = html.slice(html.indexOf('id="scomp-graduation"'), html.indexOf('id="scomp-warnings"'));
+    const section = html.slice(html.indexOf('id="scomp-graduation"'));
     expect(section).toContain("Hiện tại bạn chưa đủ điều kiện xét tốt nghiệp vì còn thiếu 6 tín chỉ thuộc nhóm tự chọn TC306 (CTĐT: TC406). Tổng số tín chỉ tích lũy (120/126) cũng sẽ đủ khi bạn hoàn thành nhóm tự chọn TC306 (CTĐT: TC406).");
     expect(section).toMatch(/scomp-grad-verdict scomp-grad-fail">.*<a class="sw-outline scomp-grad-detail" href="#graduation">Xem chi tiết/);
     // The standard name, "Nên làm" and the criteria table live on the graduation page only (user, 2026-10-17).
@@ -212,6 +215,15 @@ describe("StudentCompetency — Khoảng trống kỹ năng", () => {
     expect(html).not.toContain("Xóa kết quả đánh giá");
     expect(html).toContain("Đánh giá lại");
     expect(html).toContain("Cách tính mức phù hợp và khoảng trống");
+  });
+  it("links the data warnings from the header only where the warnings section is", () => {
+    const assessment = fixtureAssessment("completed");
+    const warned = { ...assessment, result: { ...fixtureResult, warnings: [{ code: "results_inferred" as const, message: "Một số kết quả được suy ra", consequence: "Điểm có thể lệch", details: [] }] } };
+    const state = { assessment: warned, aiEnabled: true, workerOnline: true };
+    expect(render(state, { view: "gap" })).toContain("1 cảnh báo dữ liệu →");
+    const competency = render(state);
+    expect(competency).not.toContain("cảnh báo dữ liệu →");
+    expect(competency).not.toContain("Một số kết quả được suy ra");
   });
   it("lists the missing skills with their shortfall", () => {
     const html = withAi("completed", "gap");
