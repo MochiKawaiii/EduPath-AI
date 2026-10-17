@@ -291,7 +291,7 @@ function ResultSection({ data, advice }: { data: StudentGraduationResponse; advi
 
 /* --------------------------------------------------------------- standard */
 
-/** Khóa, chuyên ngành and phiên bản as tags under the title. */
+/** Khóa and chuyên ngành as tags under the title. */
 function MetaTags({ parts }: { parts: MetaPart[] }) {
   return <ul className="sg-meta-tags">{parts.map((part, index) => <li key={index}>{part.label && <><span>{part.label}</span> </>}<strong>{part.value}</strong></li>)}</ul>;
 }

@@ -168,12 +168,12 @@ export function standardThresholds(standard: StudentGraduationStandard): Thresho
   ];
 }
 
-/** "Khóa K29 · Chuyên ngành Công nghệ phần mềm · Phiên bản 3". */
+/** "Khóa K29 · Chuyên ngành Công nghệ phần mềm". */
 /** One tag under the standard's title: a muted label and the value in bold ("Khóa" + "K29"). */
 export type MetaPart = { label: string | null; value: string };
 const metaText = (parts: MetaPart[]) => parts.map((part) => (part.label ? `${part.label} ${part.value}` : part.value)).join(" · ");
 
-/** Khóa K29 · Chuyên ngành Công nghệ phần mềm · Phiên bản 3, as tags. */
+/** Khóa K29 · Chuyên ngành Công nghệ phần mềm, as tags. The standard's version is not shown to students. */
 export function standardMetaParts(data: Pick<StudentGraduationResponse, "profile" | "resolution" | "standard">): MetaPart[] {
   const standard = data.standard;
   if (!standard) return [];
@@ -182,7 +182,6 @@ export function standardMetaParts(data: Pick<StudentGraduationResponse, "profile
     data.resolution === "general" || !data.profile.specialty
       ? { label: null, value: "Tiêu chuẩn chung của khóa" }
       : { label: "Chuyên ngành", value: specialtyLabel(data.profile.specialty) },
-    { label: "Phiên bản", value: String(standard.version) },
   ];
 }
 export function standardMeta(data: Pick<StudentGraduationResponse, "profile" | "resolution" | "standard">): string {
@@ -424,14 +423,14 @@ export function criteriaRows(evaluation: Pick<GraduationEvaluation, "groups" | "
 
 /**
  * The graduation standard written out in full, as the document the student is checked against:
- * "Tiêu chuẩn xét tốt nghiệp <tên> — khóa K29, ngành Công nghệ thông tin, chuyên ngành …, phiên bản 1".
+ * "Tiêu chuẩn xét tốt nghiệp <tên> — khóa K29, ngành Công nghệ thông tin, chuyên ngành …". The version is
+ * not shown to students.
  */
-export function standardDocumentName(standard: Pick<StudentGraduationStandard, "name" | "cohortCode" | "major" | "specialty" | "version">): string {
+export function standardDocumentName(standard: Pick<StudentGraduationStandard, "name" | "cohortCode" | "major" | "specialty">): string {
   const facts = [
     `khóa ${standard.cohortCode}`,
     standard.major.trim() ? `ngành ${standard.major.trim()}` : null,
     standard.specialty.trim() ? `chuyên ngành ${standard.specialty.trim()}` : null,
-    `phiên bản ${standard.version}`,
   ].filter(Boolean);
   const name = standard.name.trim();
   return `${/^tieu chuan xet tot nghiep\b/.test(foldName(name)) ? name : `Tiêu chuẩn xét tốt nghiệp ${name}`} — ${facts.join(", ")}`;

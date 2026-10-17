@@ -175,7 +175,7 @@ describe("StudentCompetency — Đánh giá năng lực", () => {
     const titles = [...section.matchAll(/<th scope="row">([^<]+)/g)].map((match) => match[1]);
     expect(titles).toEqual(["Nhóm bắt buộc", "Nhóm tự chọn TC306 (CTĐT: TC406)", "Điểm trung bình tích lũy (hệ 4)", "Tổng số tín chỉ tích lũy"]);
     expect(section).not.toContain("Kết quả chính thức do nhà trường xác nhận");
-    expect(section).toContain("Căn cứ: <a class=\"scomp-doc-link\" href=\"#graduation\">Tiêu chuẩn xét tốt nghiệp 71K29CNTT_7480201-03_TN04 - K29CNTT_Công nghệ thông tin (Công nghệ phần mềm) — khóa K29, ngành Công nghệ thông tin, chuyên ngành Công nghệ phần mềm (7480201-03), phiên bản 1</a>");
+    expect(section).toContain("Căn cứ: <a class=\"scomp-doc-link\" href=\"#graduation\">Tiêu chuẩn xét tốt nghiệp 71K29CNTT_7480201-03_TN04 - K29CNTT_Công nghệ thông tin (Công nghệ phần mềm) — khóa K29, ngành Công nghệ thông tin, chuyên ngành Công nghệ phần mềm (7480201-03)</a>");
     // Never the copy stored with the assessment (its standard name and numbers differ).
     expect(section).not.toContain("Tiêu chuẩn tốt nghiệp K29 – CNPM");
   });

@@ -145,7 +145,8 @@ describe("StudentGraduation standard", () => {
     const html = render(ready(graduation()));
     expect(html).toContain("Tiêu chuẩn xét tốt nghiệp của bạn");
     expect(html).toContain("<h2 id=\"sg-standard-title\" class=\"sg-title\">Tiêu chuẩn xét tốt nghiệp K29 – Công nghệ phần mềm</h2>");
-    expect(html).toContain('<ul class="sg-meta-tags"><li><span>Khóa</span> <strong>K29</strong></li><li><span>Chuyên ngành</span> <strong>Công nghệ phần mềm</strong></li><li><span>Phiên bản</span> <strong>3</strong></li></ul>');
+    expect(html).toContain('<ul class="sg-meta-tags"><li><span>Khóa</span> <strong>K29</strong></li><li><span>Chuyên ngành</span> <strong>Công nghệ phần mềm</strong></li></ul>');
+    expect(html).not.toContain("Phiên bản");
     for (const label of ["Tín chỉ tích lũy tối thiểu", "Tín chỉ bắt buộc", "Tín chỉ nhóm tự chọn", "Tín chỉ tự chọn tự do", "Điểm TB tích lũy tối thiểu"]) expect(html).toContain(label);
     expect(html).toContain("2,00 / 4");
     expect(html).toContain("Sinh viên cần hoàn thành chứng chỉ ngoại ngữ theo quy định.");

@@ -169,8 +169,8 @@ describe("standard", () => {
       "Điểm TB tích lũy tối thiểu: 2,00 / 4",
     ]);
     expect(items[3]!.known).toBe(false);
-    expect(standardMeta(response())).toBe("Khóa K29 · Chuyên ngành Công nghệ phần mềm · Phiên bản 3");
-    expect(standardMeta(response({ resolution: "general", profile: { cohortCode: "K27", specialty: null } }))).toBe("Khóa K27 · Tiêu chuẩn chung của khóa · Phiên bản 3");
+    expect(standardMeta(response())).toBe("Khóa K29 · Chuyên ngành Công nghệ phần mềm");
+    expect(standardMeta(response({ resolution: "general", profile: { cohortCode: "K27", specialty: null } }))).toBe("Khóa K27 · Tiêu chuẩn chung của khóa");
     expect(profileLine({ cohortCode: null, specialty: null })).toBe("Khóa trong tài khoản: chưa có · Chuyên ngành trong hồ sơ: Chưa xác định");
   });
   it("explains every unresolved standard without naming another cohort", () => {
@@ -346,8 +346,8 @@ describe("competency page summary", () => {
   });
   it("writes the graduation standard out in full", () => {
     // A name that already says what it is is not prefixed twice.
-    expect(standardDocumentName(standard())).toBe("Tiêu chuẩn xét tốt nghiệp K29 CNPM — khóa K29, ngành Công nghệ thông tin, chuyên ngành 7480201-03, phiên bản 3");
-    expect(standardDocumentName(standard({ name: "71K29CNTT_TN04 - K29CNTT", specialty: " ", major: "" }))).toBe("Tiêu chuẩn xét tốt nghiệp 71K29CNTT_TN04 - K29CNTT — khóa K29, phiên bản 3");
+    expect(standardDocumentName(standard())).toBe("Tiêu chuẩn xét tốt nghiệp K29 CNPM — khóa K29, ngành Công nghệ thông tin, chuyên ngành 7480201-03");
+    expect(standardDocumentName(standard({ name: "71K29CNTT_TN04 - K29CNTT", specialty: " ", major: "" }))).toBe("Tiêu chuẩn xét tốt nghiệp 71K29CNTT_TN04 - K29CNTT — khóa K29");
   });
 });
 
