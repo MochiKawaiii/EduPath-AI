@@ -87,10 +87,7 @@ const failures: Record<string, string> = {
   links_changed: "Liên kết kỹ năng của học phần vừa thay đổi. Hãy tạo lại đề xuất trọng số.",
   skill_already_linked: "Có kỹ năng đã được liên kết với học phần. Hãy kiểm tra lại danh sách.",
   group_required: "Hãy chọn nhóm cho kỹ năng chưa có trong danh mục đánh giá năng lực.",
-  revision_has_no_courses: "Phiên bản chương trình đào tạo này chưa có học phần nào.",
   confirmation_mismatch: "Mã khóa nhập để xác nhận chưa đúng.",
-  skill_already_in_catalog: "Có kỹ năng vừa được thêm vào danh mục kỹ năng. Hãy bỏ chọn các kỹ năng sau rồi lưu lại:",
-  duplicate_proposed_skill: "Một kỹ năng đang được chọn ở nhiều dòng. Hãy bỏ bớt dòng trùng:",
 };
 
 export async function readCompetencyResponse<T>(response: Response): Promise<T> {

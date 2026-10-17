@@ -4,7 +4,6 @@
 //   POST /                       one course: links ("Tạo liên kết kỹ năng (AI)") or weights ("Thêm trọng số (AI)")
 //   POST /batches                whole program: one "full" proposal per course that has no link yet
 //   POST /batches/:id/apply      saves every finished proposal of a run as drafts, or applies them
-//   POST /skills                 "Thêm kỹ năng (AI)": skills for the competency catalog from a revision's courses
 import { Router } from "express";
 import { z } from "zod";
 import type { PoolClient } from "pg";
@@ -15,7 +14,7 @@ import { COMPETENCY_COURSE_SUGGESTION_KIND } from "../../competency-assessment/a
 import { courseCode } from "../../curricula/course-codes.js";
 import { CompetencyError } from "../model.js";
 import type { CompetencyRepository } from "../repository.js";
-import { createCourseSuggestionExpiry, enqueueCourseBatch, enqueueCourseSuggestion, enqueueSkillSuggestion } from "./jobs.js";
+import { createCourseSuggestionExpiry, enqueueCourseBatch, enqueueCourseSuggestion } from "./jobs.js";
 import { normalizePercents, type StoredCourseAiItem, type StoredCourseAiResult } from "./validate.js";
 import type { CourseAiMode } from "./prompt.js";
 
@@ -26,7 +25,7 @@ type Db = DatabasePool | PoolClient;
 type SuggestionRow = {
   id: string;
   revisionId: string;
-  /** null only in the skills mode. */
+  /** NULL only on proposals of the removed "Thêm kỹ năng (AI)" (mode 'skills', migrations 035/036). */
   courseCode: string | null;
   mode: CourseAiMode;
   batchId: string | null;
@@ -59,15 +58,6 @@ const weightsBody = z.object({
   status: z.enum(["draft", "active"])
 }).strict();
 const statusBody = z.object({ status: z.enum(["draft", "active"]) }).strict();
-const skillsBody = z.object({
-  items: z.array(z.object({
-    skillId: uuid.nullable(),
-    skillName: z.string().transform(collapse).pipe(z.string().max(100)),
-    groupId: uuid,
-    scope: z.string().trim().max(4000),
-    description: z.string().trim().max(2000)
-  }).strict().refine((item) => item.skillId !== null || item.skillName.length > 0)).min(1).max(30)
-}).strict();
 
 /** Current links of a course, by skill id. */
 async function linkedSkillIds(db: Db, revisionId: string, code: string) {
@@ -78,8 +68,7 @@ async function linkedSkillIds(db: Db, revisionId: string, code: string) {
 
 /**
  * API shape: items carry current names and groups, whether the skill has a profile and is linked by
- * now (in the skills mode: already in the competency catalog by now); a weights proposal is "stale"
- * when the course's links changed since it was made.
+ * now; a weights proposal is "stale" when the course's links changed since it was made.
  */
 async function present(db: Db, row: SuggestionRow) {
   const { result, ...rest } = row;
@@ -107,11 +96,9 @@ async function present(db: Db, row: SuggestionRow) {
       groupName: groupId ? groupNames.get(groupId) ?? null : null,
       hasProfile: Boolean(skill?.profileGroupId),
       isNewSkill: item.isNewSkill,
-      alreadyLinked: row.mode === "skills" ? Boolean(skill?.profileGroupId) : item.skillId ? linked.has(item.skillId) : false,
+      alreadyLinked: item.skillId ? linked.has(item.skillId) : false,
       percent: item.percent,
-      reason: item.reason,
-      scope: item.scope ?? "",
-      description: item.description ?? ""
+      reason: item.reason
     }];
   });
   const stale = row.mode === "weights" && (items.length !== linked.size || items.some((item) => !item.skillId || !linked.has(item.skillId)));
@@ -270,29 +257,6 @@ export function createCompetencyAiRouter(pool: DatabasePool, repository: Compete
     res.json(outcome);
   });
 
-  /* --------------------------------------------- "Thêm kỹ năng (AI)" */
-
-  router.get("/skills/latest", async (req, res) => {
-    const query = z.object({ revisionId: uuid }).strict().parse(req.query);
-    await expireQuietly();
-    const found = await pool.query<SuggestionRow>(`SELECT ${columns} FROM ad_comp_ai_suggestions
-      WHERE revision_id=$1 AND mode='skills' AND created_at>now()-make_interval(days => $2) AND status<>'cancelled' AND applied_at IS NULL
-      ORDER BY created_at DESC,id DESC LIMIT 1`, [query.revisionId, RECENT_SUGGESTION_DAYS]);
-    const row = found.rows[0];
-    res.json({ suggestion: row ? await present(pool, row) : null });
-  });
-
-  router.post("/skills", async (req, res) => {
-    const data = z.object({ revisionId: uuid }).strict().parse(req.body);
-    if (!enabled) throw new CompetencyError("ai_disabled", 503);
-    const { queued, suggestion } = await repository.transaction(actorOf(req.session.user), async (client) => {
-      await expire(client);
-      const queued = await enqueueSkillSuggestion(client, { revisionId: data.revisionId, requestedBy: req.session.user!.userId });
-      return { queued, suggestion: await readSuggestion(client, queued.id) };
-    });
-    res.status(queued.created ? 201 : 200).json({ suggestion });
-  });
-
   /* --------------------------------------------------------- one proposal */
 
   router.get("/:id", async (req, res) => {
@@ -325,10 +289,6 @@ export function createCompetencyAiRouter(pool: DatabasePool, repository: Compete
       if (!row) throw new CompetencyError("suggestion_not_found", 404);
       if (row.appliedAt) throw new CompetencyError("suggestion_already_applied", 409);
       if (row.status !== "completed") throw new CompetencyError("suggestion_not_completed", 409);
-      if (row.mode === "skills") {
-        const saved = await applySkills(client, repository, row, skillsBody.parse(req.body), actor);
-        return { saved, suggestion: await readSuggestion(client, id) };
-      }
       const course = row.mode === "links" ? await applyLinks(client, repository, row, linksBody.parse(req.body), actor)
         : row.mode === "weights" ? await applyWeights(client, repository, row, weightsBody.parse(req.body), actor)
           : (() => { throw new CompetencyError("suggestion_mode_mismatch", 409); })();
@@ -351,36 +311,6 @@ function courseOf(row: SuggestionRow): string {
 async function markApplied(client: PoolClient, id: string, actor: AuthenticatedUser, summary: Record<string, unknown>) {
   await client.query("UPDATE ad_comp_ai_suggestions SET applied_at=now(),applied_by=$2,applied_summary=$3::jsonb,updated_at=now() WHERE id=$1",
     [id, actor.userId, JSON.stringify(summary)]);
-}
-
-/**
- * "Thêm kỹ năng (AI)": every reviewed item becomes a profile in its group with its scope; a new name
- * joins the shared catalog first (so Nghề nghiệp can use it). A skill that got a profile meanwhile
- * fails the whole save with its name, so the admin sees the current catalog before saving again.
- */
-async function applySkills(client: PoolClient, repository: CompetencyRepository, row: SuggestionRow, body: z.infer<typeof skillsBody>, actor: AuthenticatedUser) {
-  const ids: string[] = [];
-  const conflicts: string[] = [];
-  let newSkills = 0;
-  for (const item of body.items) {
-    let skillId = item.skillId;
-    let name = item.skillName;
-    if (!skillId) {
-      const skill = await repository.catalogSkillByName(client, item.skillName, item.description);
-      skillId = skill.id; name = skill.name;
-      if (skill.created) newSkills += 1;
-    } else {
-      const skill = await client.query<{ name: string }>("SELECT name FROM career_skills WHERE id=$1 AND deleted_at IS NULL", [skillId]);
-      if (!skill.rows[0]) throw new CompetencyError("skill_not_found", 404);
-      name = skill.rows[0].name;
-    }
-    if (ids.includes(skillId)) throw new CompetencyError("duplicate_proposed_skill", 409, [name]);
-    ids.push(skillId);
-    if (!await repository.ensureProfile(client, skillId, item.groupId, actor, "Thêm vào danh mục đánh giá năng lực từ đề xuất AI", item.scope)) conflicts.push(name);
-  }
-  if (conflicts.length) throw new CompetencyError("skill_already_in_catalog", 409, conflicts);
-  await markApplied(client, row.id, actor, { suggested: row.result?.items.length ?? 0, saved: ids.length, newSkills });
-  return { saved: ids.length, newSkills };
 }
 
 /** "Tạo liên kết kỹ năng (AI)": the kept skills join the course at 0%; an applied course stays applied. */

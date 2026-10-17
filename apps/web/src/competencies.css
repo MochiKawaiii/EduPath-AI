@@ -53,9 +53,6 @@
 .comp-pick-list small { color: var(--cm-muted); }
 
 /* AI weights review: name and percent on one line */
-.comp-toolbar-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.comp-skill-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-@media (max-width: 600px) { .comp-skill-fields { grid-template-columns: 1fr; } }
 .comp-ai-weight-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .comp-ai-weight-row .comp-percent { width: 132px; }
 

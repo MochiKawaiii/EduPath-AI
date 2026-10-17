@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  applyLinkItems, applySkillItems, assessWeightRows, batchProgress, batchPending, defaultSkillRevision, failureMessage, linkRows, skillRows, skipReason,
-  validateLinkRows, validateSkillRows, weightRows, type CourseAiBatch, type CourseAiItem,
-} from "./competency-ai";
-import type { CurriculumRevision } from "./competency-types";
+import { applyLinkItems, assessWeightRows, batchProgress, batchPending, failureMessage, linkRows, skipReason, validateLinkRows, weightRows, type CourseAiBatch, type CourseAiItem } from "./competency-ai";
 
 const item = (patch: Partial<CourseAiItem>): CourseAiItem => ({
   index: 0, skillId: "s-web", skillName: "Lập trình web", groupId: "g-core", groupName: "Chuyên môn", hasProfile: true,
@@ -78,46 +74,5 @@ describe("whole-program run", () => {
     expect(failureMessage("other")).toBe("Chưa tạo được đề xuất.");
     expect(skipReason("course_already_linked")).toBe("đã có liên kết kỹ năng");
     expect(skipReason("x")).toBe("không lưu được");
-  });
-});
-
-describe("skill review (Thêm kỹ năng bằng AI)", () => {
-  const items = [
-    item({ skillId: "s-git", skillName: "Git", hasProfile: false, scope: "  Đồ án nhóm. " }),
-    item({ index: 1, skillId: null, skillName: "Kiểm thử phần mềm", hasProfile: false, isNewSkill: true, groupId: null, groupName: null, description: "Viết ca kiểm thử.", scope: "" }),
-    item({ index: 2, skillId: "s-web", skillName: "Lập trình web", alreadyLinked: true }),
-  ];
-
-  it("ticks career skills, leaves new skills to the admin and never offers a skill already in the catalog", () => {
-    expect(skillRows(items).map((row) => [row.skillName, row.checked, row.inCatalog])).toEqual([
-      ["Git", true, false], ["Kiểm thử phần mềm", false, false], ["Lập trình web", false, true],
-    ]);
-  });
-
-  it("needs a group and a name, and sends scope and description", () => {
-    const rows = skillRows(items).map((row) => row.key === "row-1" ? { ...row, checked: true } : row);
-    expect(validateSkillRows(rows).errors["row-1"]).toEqual(["Chọn nhóm kỹ năng."]);
-    const fixed = rows.map((row) => row.key === "row-1" ? { ...row, groupId: "g-core", skillName: "  Kiểm thử   phần mềm " } : row);
-    const check = validateSkillRows(fixed);
-    expect(check).toMatchObject({ valid: true, selected: 2 });
-    expect(applySkillItems(fixed)).toEqual([
-      { skillId: "s-git", skillName: "", groupId: "g-core", scope: "Đồ án nhóm.", description: "" },
-      { skillId: null, skillName: "Kiểm thử phần mềm", groupId: "g-core", scope: "", description: "Viết ca kiểm thử." },
-    ]);
-    const twice = [...fixed, { ...fixed[1]!, key: "row-9", skillName: "kiểm thử phần mềm" }];
-    expect(validateSkillRows(twice).errors["row-9"]).toEqual(["Kỹ năng này đã có ở dòng khác."]);
-  });
-
-  it("starts on the newest current revision that has courses", () => {
-    const revision = (patch: Partial<CurriculumRevision>): CurriculumRevision => ({ curriculumId: "c", revisionId: "r", cohortCode: "K29", name: "", version: 1,
-      isCurrent: true, isActive: true, courseCount: 80, configuredCount: 0, activeCount: 0, draftCount: 0, ...patch });
-    expect(defaultSkillRevision([
-      revision({ revisionId: "k29" }),
-      revision({ revisionId: "k31", cohortCode: "K31" }),
-      revision({ revisionId: "k32-old", cohortCode: "K32", isCurrent: false }),
-      revision({ revisionId: "k33", cohortCode: "K33", courseCount: 0 }),
-    ])?.revisionId).toBe("k31");
-    expect(defaultSkillRevision([revision({ revisionId: "old", isCurrent: false })])?.revisionId).toBe("old");
-    expect(defaultSkillRevision([])).toBeNull();
   });
 });

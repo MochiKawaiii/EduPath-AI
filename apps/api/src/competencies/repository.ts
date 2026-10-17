@@ -425,7 +425,7 @@ export class CompetencyRepository {
    * is kept as it is, a soft-deleted one is restored into the group, otherwise one is created there
    * (empty scope, active). The group must be live and active. True when a profile was added.
    */
-  async ensureProfile(client: PoolClient, skillId: string, groupId: string, actor: AuthenticatedUser, note: string, scope = ""): Promise<boolean> {
+  async ensureProfile(client: PoolClient, skillId: string, groupId: string, actor: AuthenticatedUser, note: string): Promise<boolean> {
     const skill = await client.query("SELECT 1 FROM career_skills WHERE id=$1 AND deleted_at IS NULL FOR SHARE", [skillId]);
     if (!skill.rowCount) throw new CompetencyError("skill_not_found", 404);
     const profile = await client.query<{ deleted_at: string | null }>("SELECT deleted_at FROM ad_comp_skills WHERE skill_id=$1 FOR UPDATE", [skillId]);
@@ -434,10 +434,10 @@ export class CompetencyRepository {
     const group = await this.groupFor(client, groupId);
     if (!group.is_active) throw new CompetencyError("group_unavailable", 409);
     if (row) {
-      await client.query(`UPDATE ad_comp_skills SET group_id=$2,is_active=true,deleted_at=NULL,version=$3,
- scope=CASE WHEN $4='' THEN scope ELSE $4 END,updated_at=now() WHERE skill_id=$1`, [skillId, groupId, randomUUID(), scope]);
+      await client.query(`UPDATE ad_comp_skills SET group_id=$2,is_active=true,deleted_at=NULL,version=$3,updated_at=now()
+ WHERE skill_id=$1`, [skillId, groupId, randomUUID()]);
     } else {
-      await client.query("INSERT INTO ad_comp_skills(skill_id,group_id,scope,is_active) VALUES($1,$2,$3,true)", [skillId, groupId, scope]);
+      await client.query("INSERT INTO ad_comp_skills(skill_id,group_id,scope,is_active) VALUES($1,$2,'',true)", [skillId, groupId]);
     }
     await this.event(client, "skill", skillId, actor, await this.skillSnapshot(client, skillId), note);
     return true;
@@ -447,13 +447,13 @@ export class CompetencyRepository {
    * The live catalog skill whose name matches (whitespace, case and accents ignored), or a new one.
    * New skills land in the shared catalog, so the Nghề nghiệp pages can use them at once.
    */
-  async catalogSkillByName(client: PoolClient, name: string, description = ""): Promise<{ id: string; name: string; created: boolean }> {
+  async catalogSkillByName(client: PoolClient, name: string): Promise<{ id: string; name: string; created: boolean }> {
     const clean = name.replace(/\s+/g, " ").trim();
     const catalog = await client.query<{ id: string; name: string }>("SELECT id,name FROM career_skills WHERE deleted_at IS NULL ORDER BY id");
     const match = catalog.rows.find(row => fold(row.name.replace(/\s+/g, " ").trim()) === fold(clean));
     if (match) return { ...match, created: false };
     const id = randomUUID();
-    await client.query("INSERT INTO career_skills(id,name,description) VALUES($1,$2,$3)", [id, clean, description]);
+    await client.query("INSERT INTO career_skills(id,name,description) VALUES($1,$2,'')", [id, clean]);
     return { id, name: clean, created: true };
   }
 

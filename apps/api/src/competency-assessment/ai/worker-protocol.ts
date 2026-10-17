@@ -18,8 +18,8 @@ export const COMPETENCY_ASSESSMENT_KIND = "competency_assessment";
 export const CAREER_SKILL_SUGGESTION_KIND = "career_skill_suggestion";
 export const GRADUATION_ADVICE_KIND = "graduation_advice";
 /**
- * AI proposals for the admin "Năng lực" pages: skill links and weights of the courses of a CTĐT and
- * skills for the catalog. v2 (2026-10-17): these jobs ask for Gemma's thinking mode (`think: true`
+ * AI proposals for the admin "Năng lực" pages: skill links and weights of the courses of a CTĐT.
+ * v2 (2026-10-17): these jobs ask for Gemma's thinking mode (`think: true`
  * on the claimed job). Workers released before that always sent think:false and advertise the old
  * "competency_course_suggestion", so they never receive these jobs until they are restarted.
  */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildCourseAiInput, buildSkillAiInput } from "./prompt.js";
+import { buildCourseAiInput } from "./prompt.js";
 import { courseAiContextFromInput, normalizePercents, validateCourseAiOutput } from "./validate.js";
-import { courseSource, GROUP_CORE, GROUP_SOFT, SKILL_DB, SKILL_DOCKER, SKILL_GIT, SKILL_TEAM, SKILL_WEB, skillSource } from "./test-fixture.js";
+import { courseSource, GROUP_CORE, GROUP_SOFT, SKILL_DB, SKILL_DOCKER, SKILL_TEAM, SKILL_WEB } from "./test-fixture.js";
 
 const contextFor = (mode: "links" | "weights" | "full", source = courseSource()) => {
   const context = courseAiContextFromInput(JSON.parse(JSON.stringify(buildCourseAiInput(source, mode))));
@@ -99,45 +99,11 @@ describe("validateCourseAiOutput", () => {
       .toMatchObject({ ok: false, reason: "schema" });
   });
 
-  it("skills: keeps career skills by key, maps a new name onto a career skill and never repeats the catalog", () => {
-    const context = courseAiContextFromInput(JSON.parse(JSON.stringify(buildSkillAiInput(skillSource()))));
-    if (!context) throw new Error("no context");
-    expect(context.existing).toEqual(["Lập trình web", "Làm việc nhóm"]);
-    const checked = validateCourseAiOutput({
-      links: [
-        { skillKey: "S002", groupKey: "G1", scope: "Đánh giá qua đồ án nhóm có dùng S002.", reason: "Học phần DevOps dùng Git." },
-        { skillKey: "S002", groupKey: "G2", scope: "Lặp lại", reason: "Lặp lại" },
-        { skillKey: "S099", groupKey: "G1", scope: "Không có", reason: "Không có" }
-      ],
-      newSkills: [
-        { name: "Kỹ năng Docker", groupKey: "G1", description: "Container", scope: "Triển khai ứng dụng.", reason: "Học phần DevOps." },
-        { name: "lập trình  WEB", groupKey: "G1", description: "Trùng", scope: "Trùng", reason: "Trùng" },
-        { name: "Kiểm thử phần mềm", groupKey: "G9", description: "Viết ca kiểm thử.", scope: "Đánh giá qua bài kiểm thử.", reason: "Học phần web nâng cao." },
-        { name: "Kiểm thử  phần mềm", groupKey: "G1", description: "Lặp lại", scope: "Lặp lại", reason: "Lặp lại" }
-      ]
-    }, context);
-    expect(checked.ok).toBe(true);
-    if (!checked.ok) return;
-    expect(checked.result).toMatchObject({ mode: "skills", returned: 7, dropped: 4, modelTotal: null });
-    expect(checked.result.items).toEqual([
-      { skillId: SKILL_GIT, skillName: "Git", groupId: GROUP_CORE, hasProfile: false, isNewSkill: false, percent: null,
-        reason: "Học phần DevOps dùng Git.", scope: "Đánh giá qua đồ án nhóm có dùng Git." },
-      { skillId: SKILL_DOCKER, skillName: "Docker", groupId: GROUP_CORE, hasProfile: false, isNewSkill: false, percent: null,
-        reason: "Học phần DevOps.", scope: "Triển khai ứng dụng." },
-      // An unknown group falls back to the first group.
-      { skillId: null, skillName: "Kiểm thử phần mềm", groupId: GROUP_CORE, hasProfile: false, isNewSkill: true, percent: null,
-        reason: "Học phần web nâng cao.", scope: "Đánh giá qua bài kiểm thử.", description: "Viết ca kiểm thử." }
-    ]);
-    expect(validateCourseAiOutput({ links: [], newSkills: [] }, context)).toMatchObject({ ok: true, result: { mode: "skills", items: [] } });
-    expect(validateCourseAiOutput({ links: [{ skillKey: "S001", groupKey: "G1", reason: "x" }], newSkills: [] }, context)).toMatchObject({ ok: false, reason: "schema" });
-    expect(validateCourseAiOutput({ links: [], newSkills: [{ name: "Làm việc nhóm", groupKey: "G2", description: "", scope: "", reason: "" }] }, context))
-      .toEqual({ ok: false, reason: "no_valid_items", path: "" });
-  });
-
   it("rejects a malformed stored input", () => {
     expect(courseAiContextFromInput(null)).toBeNull();
     expect(courseAiContextFromInput({ mode: "links", skills: [{ key: "S001" }], groups: [], linked: [] })).toBeNull();
     expect(courseAiContextFromInput({ mode: "other", skills: [], groups: [], linked: [] })).toBeNull();
-    expect(courseAiContextFromInput({ mode: "skills", skills: [], groups: [], linked: [], existing: [1] })).toBeNull();
+    // "skills" proposals (the removed "Thêm kỹ năng (AI)") are no longer a mode this server runs.
+    expect(courseAiContextFromInput({ mode: "skills", skills: [], groups: [], linked: [] })).toBeNull();
   });
 });

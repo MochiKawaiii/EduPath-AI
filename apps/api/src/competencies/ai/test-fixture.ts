@@ -1,5 +1,5 @@
 // Synthetic course, groups and catalog for the course AI tests (no real curriculum or student data).
-import type { CourseAiSource, SkillAiSource } from "./prompt.js";
+import type { CourseAiSource } from "./prompt.js";
 
 export const fixtureId = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
@@ -34,25 +34,6 @@ export function courseSource(overrides: Partial<CourseAiSource> = {}): CourseAiS
     ],
     careerSkills: [{ id: SKILL_DOCKER, name: "Docker", description: "Đóng gói ứng dụng bằng container" }],
     links: [],
-    ...overrides
-  };
-}
-
-/** A small revision for "Thêm kỹ năng (AI)": one profile per group, two career skills without one. */
-export const SKILL_GIT = fixtureId(15);
-export function skillSource(overrides: Partial<SkillAiSource> = {}): SkillAiSource {
-  return {
-    curriculum: { cohortCode: "K99", name: "CTĐT Công nghệ thông tin K99", version: 2 },
-    groups: [{ id: GROUP_SOFT, name: "Kỹ năng mềm" }, { id: GROUP_CORE, name: "Chuyên môn" }],
-    existing: [{ name: "Lập trình web", groupId: GROUP_CORE }, { name: "Làm việc nhóm", groupId: GROUP_SOFT }],
-    careerSkills: [
-      { id: SKILL_GIT, name: "Git", description: "Quản lý phiên bản mã nguồn" },
-      { id: SKILL_DOCKER, name: "Docker", description: "Đóng gói ứng dụng bằng container" }
-    ],
-    courses: [
-      { code: "71ITSE40103", name: "Lập trình web nâng cao", block: "Kiến thức chuyên ngành", credits: 3, description: "Xây dựng ứng dụng web nhiều tầng." },
-      { code: "71ITSE40203", name: "Phát triển phần mềm DevOps", block: "Kiến thức chuyên ngành", credits: 3, description: "" }
-    ],
     ...overrides
   };
 }

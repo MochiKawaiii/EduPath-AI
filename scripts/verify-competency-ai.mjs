@@ -1,6 +1,6 @@
 // Real-router PostgreSQL checks for the Năng lực (AD-COMP) changes of function list ver0.2 (7):
 // "Xóa nhóm kỹ năng", AI links ("Tạo liên kết kỹ năng với học phần (AI)"), AI weights ("Thêm trọng số
-// năng lực (AI)"), the whole-program run and "Thêm kỹ năng (AI)" of Danh mục kỹ năng
+// năng lực (AI)"), the whole-program run and clearing a whole program
 // (docs/competency-management.md).
 // Every write stays in a disposable LOCAL schema that is dropped at the end. The schema is seeded by
 // copying curricula, the skill catalog, careers and the competency configuration from the local public
@@ -28,7 +28,7 @@ const migrations = ["007_student_transcripts.sql", "010_transcript_jobs.sql", "0
   "019_career_skill_management.sql", "020_career_field_numbers.sql", "021_career_position_codes.sql", "018_data_consents.sql",
   "026_competency_management.sql", "028_student_specialty.sql", "029_student_competency_assessments.sql", "030_competency_consent.sql",
   "031_career_ai_suggestions.sql", "032_graduation_ai_advice.sql", "033_competency_cloud_ai.sql", "034_competency_ai_suggestions.sql",
-  "035_competency_ai_skills.sql"];
+  "035_competency_ai_skills.sql", "036_cancel_competency_ai_skills.sql"];
 const adminPool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 1 });
 // search_path is the audit schema ONLY, so a missing table can never fall through to public.
 const pool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 8, options: `-c search_path=${schema}` });
@@ -112,7 +112,7 @@ function candidates(user) {
 try {
   const publicBefore = await publicCounts();
   await setupSchema();
-  checks.push(`migrations 007-035 apply in a throwaway schema; copied ${await count("ad_comp_skills WHERE deleted_at IS NULL")} profiles, ${await count("ad_comp_course_configs")} configurations and ${await count("career_requirements WHERE deleted_at IS NULL")} career links read-only from public`);
+  checks.push(`migrations 007-036 apply in a throwaway schema; copied ${await count("ad_comp_skills WHERE deleted_at IS NULL")} profiles, ${await count("ad_comp_course_configs")} configurations and ${await count("career_requirements WHERE deleted_at IS NULL")} career links read-only from public`);
 
   const app = express();
   app.use("/api/worker/competency-assessments", createCompetencyWorkerRouter(pool, workerKey));
@@ -294,60 +294,14 @@ try {
   await ai("POST", `/batches/${rerun.body.batchId}/cancel`, { body: {} });
   checks.push(`clearing the whole program needs the cohort code, empties ${linkedBefore} linked courses as drafts with a history entry, and a new run covers all ${courses.length} courses`);
 
-  // "Thêm kỹ năng (AI)": one proposal per revision, career skills by key, new skills by name, saved as profiles.
-  const skillsQueued = await ai("POST", "/skills", { body: { revisionId: empty.revisionId } });
-  assert.equal(skillsQueued.status, 201, JSON.stringify(skillsQueued.body));
-  assert.deepEqual([skillsQueued.body.suggestion.mode, skillsQueued.body.suggestion.courseCode], ["skills", null]);
-  assert.equal((await ai("POST", "/skills", { body: { revisionId: empty.revisionId } })).body.suggestion.id, skillsQueued.body.suggestion.id, "one pending proposal per revision");
-  const skillsJob = await claim();
-  assert.equal(skillsJob.id, skillsQueued.body.suggestion.id);
-  assert.equal(skillsJob.promptVersion, COURSE_AI_PROMPT_VERSIONS.skills);
-  assert.equal(skillsJob.options.num_predict, 12288);
-  assert.equal(skillsJob.think, true);
-  assert(skillsJob.user.includes("[5. HỌC PHẦN CỦA CHƯƠNG TRÌNH]") && skillsJob.user.includes(`- ${first.name} |`), "the courses of the revision are listed");
-  assert(!/MSSV|họ tên|@/i.test(skillsJob.user), "no student data");
-  const careerKeys = [...skillsJob.user.matchAll(/^(S\d{3}) \| ([^|\n]+)/gm)].map((match) => ({ key: match[1], name: match[2].trim() }));
-  const inCatalog = (await call("GET", "/skills")).body.items;
-  assert(!careerKeys.some((entry) => inCatalog.some((skill) => skill.name === entry.name)), "skills already in the catalog are not offered by key");
-  const picked = careerKeys.slice(0, 2);
-  const skillsOutput = {
-    links: picked.map((entry) => ({ skillKey: entry.key, groupKey: "G1", scope: `Đánh giá qua đồ án có dùng ${entry.key}.`, reason: "Học phần chuyên ngành rèn kỹ năng này." })),
-    newSkills: [
-      { name: "Kỹ năng thiết kế kiểm thử giả lập", groupKey: "G1", description: "Thiết kế ca kiểm thử.", scope: "Đánh giá qua bài kiểm thử.", reason: "Học phần có phần kiểm thử." },
-      { name: inCatalog[0].name.toUpperCase(), groupKey: "G1", description: "", scope: "", reason: "Trùng danh mục." }
-    ]
-  };
-  assert.deepEqual((await complete(skillsJob, skillsOutput)).body, { ok: true });
-  const skillsProposal = (await ai("GET", `/${skillsJob.id}`)).body.suggestion;
-  assert.equal(skillsProposal.status, "completed");
-  assert.equal(skillsProposal.items.length, picked.length + 1, "a name already in the catalog is dropped");
-  if (picked.length) assert.equal(skillsProposal.items[0].scope, `Đánh giá qua đồ án có dùng ${picked[0].name}.`, "keys in the scope become names");
-  const newItem = skillsProposal.items.at(-1);
-  assert.deepEqual([newItem.skillName, newItem.isNewSkill, newItem.description], ["Thiết kế kiểm thử giả lập", true, "Thiết kế ca kiểm thử."]);
-  assert.equal((await ai("GET", `/skills/latest?revisionId=${empty.revisionId}`)).body.suggestion.id, skillsJob.id);
-  const toSkill = (item) => ({ skillId: item.skillId, skillName: item.skillId ? "" : item.skillName, groupId: item.groupId, scope: item.scope, description: item.description });
-  const catalogBefore = await count("career_skills WHERE deleted_at IS NULL");
-  const profilesBefore2 = await count("ad_comp_skills WHERE deleted_at IS NULL");
-  const savedSkills = await ai("POST", `/${skillsJob.id}/apply`, { body: { items: skillsProposal.items.map(toSkill) } });
-  assert.equal(savedSkills.status, 201, JSON.stringify(savedSkills.body));
-  assert.deepEqual(savedSkills.body.saved, { saved: picked.length + 1, newSkills: 1 });
-  assert.equal(await count("career_skills WHERE deleted_at IS NULL"), catalogBefore + 1, "the new skill joins the shared catalog");
-  assert.equal(await count("ad_comp_skills WHERE deleted_at IS NULL"), profilesBefore2 + picked.length + 1, "one profile per saved skill");
-  const stored = (await pool.query(`SELECT s.name,s.description,cs.scope,cs.group_id AS "groupId" FROM ad_comp_skills cs JOIN career_skills s ON s.id=cs.skill_id
-    WHERE s.name=$1`, [newItem.skillName])).rows[0];
-  assert.deepEqual(stored, { name: newItem.skillName, description: "Thiết kế ca kiểm thử.", scope: "Đánh giá qua bài kiểm thử.", groupId: newItem.groupId });
-  assert((await ai("GET", `/${skillsJob.id}`)).body.suggestion.items.filter((item) => item.skillId).every((item) => item.alreadyLinked), "saved career skills now show as in the catalog");
-  assert.equal((await ai("POST", `/${skillsJob.id}/apply`, { body: { items: skillsProposal.items.map(toSkill) } })).body.error, "suggestion_already_applied");
-  const again = await ai("POST", "/skills", { body: { revisionId: empty.revisionId } });
-  const againJob = await claim();
-  assert(!picked.some((entry) => againJob.user.includes(`| ${entry.name}`) && !againJob.user.includes(`: ${entry.name}`)), "saved career skills are no longer offered by key");
-  await complete(againJob, { links: [], newSkills: [] });
-  const emptyProposal = (await ai("GET", `/${again.body.suggestion.id}`)).body.suggestion;
-  assert.deepEqual([emptyProposal.status, emptyProposal.items.length], ["completed", 0], "an empty answer is a valid empty proposal");
-  const conflict = await ai("POST", `/${again.body.suggestion.id}/apply`, { body: { items: [toSkill(skillsProposal.items.at(-1))].map((item) => ({ ...item, skillName: newItem.skillName })) } });
-  assert.deepEqual([conflict.status, conflict.body.error], [409, "skill_already_in_catalog"]);
-  assert.equal((await ai("POST", `/${again.body.suggestion.id}/apply`, { body: { items: [] } })).status, 400);
-  checks.push(`skills: one pending proposal per revision listing the courses of the revision (${Math.round((skillsJob.system.length + skillsJob.user.length) / 1000)}k prompt characters, thinking on, num_predict 12288), ${picked.length} career skills by key + 1 new skill (a catalog name dropped), saved as profiles with group and scope, the new skill in the shared catalog with its description; a skill already in the catalog is 409`);
+  // "Thêm kỹ năng (AI)" was removed: its API is gone and migration 036 cancels its pending proposals.
+  assert.equal((await ai("POST", "/skills", { body: { revisionId: empty.revisionId } })).status, 404);
+  const leftover = randomUUID();
+  await pool.query(`INSERT INTO ad_comp_ai_suggestions(id,revision_id,course_code,mode,status,ai_input,prompt_version)
+    VALUES($1,$2,NULL,'skills','queued','{}','comp-skill-v2')`, [leftover, empty.revisionId]);
+  await pool.query(inSchema(await readFile("apps/api/migrations/036_cancel_competency_ai_skills.sql", "utf8")));
+  assert.deepEqual((await pool.query("SELECT status,ai_input FROM ad_comp_ai_suggestions WHERE id=$1", [leftover])).rows[0], { status: "cancelled", ai_input: null });
+  checks.push("the removed \"Thêm kỹ năng (AI)\" answers 404 and migration 036 cancels a pending proposal of it");
 
   // Cancel a run, expiry, and the public schema.
   const second2 = revisions.find((item) => item.revisionId !== empty.revisionId && item.configuredCount === 0 && item.courseCount >= 2);

@@ -7,7 +7,6 @@ import {
   COMPETENCY_API, competencyDate, competencyRequest, percentage, statusLabels,
   useCompetencyData, type CatalogSkill, type EventEntry, type Group, type Skill, type SkillDetail,
 } from "./competency-types";
-import CompetencySkillAi from "./CompetencySkillAi";
 
 type TabProps = { canManage: boolean; revision: number; onSaved: () => void };
 type EditorProps<T> = { current: T | null; close: () => void; saved: () => void };
@@ -165,17 +164,14 @@ export function CompetencySkillsTab({ canManage, revision, onSaved }: TabProps) 
   const remote = useCompetencyData<{ items: Skill[] }>(`${COMPETENCY_API}/skills?${new URLSearchParams(filters)}`, revision);
   const groups = useCompetencyData<{ items: Group[] }>(`${COMPETENCY_API}/groups`, revision);
   const [selected, setSelected] = useState<Skill | null>(null);
-  const [mode, setMode] = useState<"detail" | "edit" | "delete" | "ai" | null>(null);
+  const [mode, setMode] = useState<"detail" | "edit" | "delete" | null>(null);
   const close = () => { setMode(null); setSelected(null); };
   const saved = () => { close(); onSaved(); };
 
   return <section className="cm-workspace comp-workspace">
     <div className="cm-toolbar">
       <p>Quản lý nhóm, phạm vi và trạng thái của từng kỹ năng đánh giá năng lực.</p>
-      {canManage && <div className="comp-toolbar-actions">
-        <button className="am-outline" onClick={() => { setSelected(null); setMode("ai"); }}><Icon name="spark" /> Thêm bằng AI</button>
-        <button className="am-primary" onClick={() => { setSelected(null); setMode("edit"); }}><Icon name="plus" /> Thêm hồ sơ năng lực</button>
-      </div>}
+      {canManage && <button className="am-primary" onClick={() => { setSelected(null); setMode("edit"); }}><Icon name="plus" /> Thêm hồ sơ năng lực</button>}
     </div>
     <section className="cm-panel">
       <div className="cm-filters">
@@ -214,7 +210,6 @@ export function CompetencySkillsTab({ canManage, revision, onSaved }: TabProps) 
     {mode === "detail" && selected && <SkillDetails current={selected} revision={revision} canManage={canManage} close={close} edit={skill => { setSelected(skill); setMode("edit"); }} />}
     {canManage && mode === "edit" && <SkillEditor current={selected} revision={revision} groups={groups.data?.items ?? []} close={close} saved={saved} />}
     {canManage && mode === "delete" && selected && <SkillDelete current={selected} close={close} saved={saved} />}
-    {canManage && mode === "ai" && <CompetencySkillAi close={close} saved={saved} />}
   </section>;
 }
 
