@@ -77,6 +77,12 @@
 /* Paragraph margins are already reset by .sw-shell p; the classes below set their own. */
 .sg-page .sg-meta { margin-top: 4px; color: var(--sw-muted); font-size: 13px; line-height: 1.6; }
 .sg-page .sg-heading .sg-meta { margin-top: 0; }
+/* Khóa · Chuyên ngành · Phiên bản under the standard's title: tags one step below the 20px title
+   (they were 13px muted text, too small next to it), the value in bold. */
+.sg-page .sg-meta-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 0; padding: 0; list-style: none; }
+.sg-page .sg-meta-tags li { display: inline-flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; padding: 4px 12px; border: 1px solid #ead0d9; border-radius: 999px; background: #fdf6f8; font-size: 15px; line-height: 1.5; }
+.sg-page .sg-meta-tags span { color: var(--sw-muted); font-size: 14px; }
+.sg-page .sg-meta-tags strong { color: var(--sw-ink); font-weight: 700; }
 .sg-page .sg-lead { margin-top: 4px; color: var(--sw-muted); font-size: 14px; line-height: 1.6; }
 .sg-page .sg-muted { color: var(--sw-muted); font-size: 13px; line-height: 1.6; }
 .sg-page small { display: block; margin-top: 3px; font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--sw-muted); }

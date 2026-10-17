@@ -169,19 +169,35 @@ export function standardThresholds(standard: StudentGraduationStandard): Thresho
 }
 
 /** "Khóa K29 · Chuyên ngành Công nghệ phần mềm · Phiên bản 3". */
-export function standardMeta(data: Pick<StudentGraduationResponse, "profile" | "resolution" | "standard">): string {
+/** One tag under the standard's title: a muted label and the value in bold ("Khóa" + "K29"). */
+export type MetaPart = { label: string | null; value: string };
+const metaText = (parts: MetaPart[]) => parts.map((part) => (part.label ? `${part.label} ${part.value}` : part.value)).join(" · ");
+
+/** Khóa K29 · Chuyên ngành Công nghệ phần mềm · Phiên bản 3, as tags. */
+export function standardMetaParts(data: Pick<StudentGraduationResponse, "profile" | "resolution" | "standard">): MetaPart[] {
   const standard = data.standard;
-  if (!standard) return "";
+  if (!standard) return [];
   return [
-    `Khóa ${data.profile.cohortCode ?? standard.cohortCode}`,
-    data.resolution === "general" || !data.profile.specialty ? "Tiêu chuẩn chung của khóa" : `Chuyên ngành ${specialtyLabel(data.profile.specialty)}`,
-    `Phiên bản ${standard.version}`,
-  ].join(" · ");
+    { label: "Khóa", value: data.profile.cohortCode ?? standard.cohortCode },
+    data.resolution === "general" || !data.profile.specialty
+      ? { label: null, value: "Tiêu chuẩn chung của khóa" }
+      : { label: "Chuyên ngành", value: specialtyLabel(data.profile.specialty) },
+    { label: "Phiên bản", value: String(standard.version) },
+  ];
+}
+export function standardMeta(data: Pick<StudentGraduationResponse, "profile" | "resolution" | "standard">): string {
+  return metaText(standardMetaParts(data));
 }
 
 /** The student's own identity used to pick the standard: "Khóa trong tài khoản: K29 · Chuyên ngành trong hồ sơ: Chưa xác định". */
+export function profileLineParts(profile: StudentGraduationResponse["profile"]): MetaPart[] {
+  return [
+    { label: "Khóa trong tài khoản:", value: profile.cohortCode ?? "chưa có" },
+    { label: "Chuyên ngành trong hồ sơ:", value: specialtyLabel(profile.specialty) },
+  ];
+}
 export function profileLine(profile: StudentGraduationResponse["profile"]): string {
-  return `Khóa trong tài khoản: ${profile.cohortCode ?? "chưa có"} · Chuyên ngành trong hồ sơ: ${specialtyLabel(profile.specialty)}`;
+  return metaText(profileLineParts(profile));
 }
 
 export type UnresolvedCopy = { title: string; text: string; suggestion: string | null; action: { label: string; href: string } | null };

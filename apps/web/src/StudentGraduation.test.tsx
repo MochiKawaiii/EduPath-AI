@@ -145,7 +145,7 @@ describe("StudentGraduation standard", () => {
     const html = render(ready(graduation()));
     expect(html).toContain("Tiêu chuẩn xét tốt nghiệp của bạn");
     expect(html).toContain("<h2 id=\"sg-standard-title\" class=\"sg-title\">Tiêu chuẩn xét tốt nghiệp K29 – Công nghệ phần mềm</h2>");
-    expect(html).toContain("Khóa K29 · Chuyên ngành Công nghệ phần mềm · Phiên bản 3");
+    expect(html).toContain('<ul class="sg-meta-tags"><li><span>Khóa</span> <strong>K29</strong></li><li><span>Chuyên ngành</span> <strong>Công nghệ phần mềm</strong></li><li><span>Phiên bản</span> <strong>3</strong></li></ul>');
     for (const label of ["Tín chỉ tích lũy tối thiểu", "Tín chỉ bắt buộc", "Tín chỉ nhóm tự chọn", "Tín chỉ tự chọn tự do", "Điểm TB tích lũy tối thiểu"]) expect(html).toContain(label);
     expect(html).toContain("2,00 / 4");
     expect(html).toContain("Sinh viên cần hoàn thành chứng chỉ ngoại ngữ theo quy định.");
@@ -159,7 +159,7 @@ describe("StudentGraduation standard", () => {
       render(ready(graduation({ standard: null, evaluation: null, ...overrides })), ready(adviceResponse({ fingerprint: null })));
     const noCohort = unresolved({ resolution: "cohort_unknown", profile: { cohortCode: null, specialty: null } });
     expect(noCohort).toContain("Hồ sơ chưa có khóa học");
-    expect(noCohort).toContain("Khóa trong tài khoản: chưa có · Chuyên ngành trong hồ sơ: Chưa xác định");
+    expect(noCohort).toContain("<li><span>Khóa trong tài khoản:</span> <strong>chưa có</strong></li><li><span>Chuyên ngành trong hồ sơ:</span> <strong>Chưa xác định</strong></li>");
     expect(noCohort).toContain('href="#profile"');
     const unset = unresolved({ resolution: "specialty_unset", profile: { cohortCode: "K29", specialty: null }, specialtySuggestion: { code: "CNPM", label: "Công nghệ phần mềm", count: 4 } });
     expect(unset).toContain("Hãy chọn chuyên ngành trong hồ sơ");

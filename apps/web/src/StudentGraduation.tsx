@@ -7,9 +7,9 @@ import {
   ADVICE_API, ADVICE_POLL_MS, COURSE_FILTERS, COURSE_STATES, GRADUATION_API, INLINE_COURSES, STATUS_DISPLAY,
   adviceAnnouncement, adviceFocusLabel, adviceStateCopy, adviceView, asOfLine, conditionItems, courseStateText, filterCourses,
   formatDateTime, formatElapsed, formatNumber, groupFacts, groupShortfall, groupViews, methodNotes, modelLabel,
-  normalizeAdviceResponse, normalizeAdviceStatus, normalizeAdviceWrite, profileLine, requestErrorMessage, scoreParts,
-  shouldPollAdvice, standardMeta, standardThresholds, suggestionItems, toneClass, unresolvedCopy, verdictHeadline, warningNotes,
-  type AdviceKind, type AdviceView, type ConditionItem, type CourseFilter, type CourseView, type EnsureState, type GroupView,
+  normalizeAdviceResponse, normalizeAdviceStatus, normalizeAdviceWrite, profileLineParts, requestErrorMessage, scoreParts,
+  shouldPollAdvice, standardMetaParts, standardThresholds, suggestionItems, toneClass, unresolvedCopy, verdictHeadline, warningNotes,
+  type AdviceKind, type AdviceView, type ConditionItem, type CourseFilter, type CourseView, type EnsureState, type GroupView, type MetaPart,
   type SuggestionCourse, type SuggestionItem, type Tone,
 } from "./student-graduation-data";
 import type {
@@ -291,6 +291,11 @@ function ResultSection({ data, advice }: { data: StudentGraduationResponse; advi
 
 /* --------------------------------------------------------------- standard */
 
+/** Khóa, chuyên ngành and phiên bản as tags under the title. */
+function MetaTags({ parts }: { parts: MetaPart[] }) {
+  return <ul className="sg-meta-tags">{parts.map((part, index) => <li key={index}>{part.label && <><span>{part.label}</span> </>}<strong>{part.value}</strong></li>)}</ul>;
+}
+
 function StandardSection({ data }: { data: StudentGraduationResponse }) {
   const standard = data.standard;
   if (!standard) {
@@ -299,7 +304,7 @@ function StandardSection({ data }: { data: StudentGraduationResponse }) {
       <div className="sg-heading">
         <p className="sc-eyebrow">Tiêu chuẩn xét tốt nghiệp của bạn</p>
         <h2 id="sg-standard-title" className="sg-title">{copy.title}</h2>
-        <p className="sg-meta">{profileLine(data.profile)}</p>
+        <MetaTags parts={profileLineParts(data.profile)} />
       </div>
       <div className="sg-unresolved">
         <p>{copy.text}</p>
@@ -313,7 +318,7 @@ function StandardSection({ data }: { data: StudentGraduationResponse }) {
     <div className="sg-heading">
       <p className="sc-eyebrow">Tiêu chuẩn xét tốt nghiệp của bạn</p>
       <h2 id="sg-standard-title" className="sg-title">{standard.name}</h2>
-      <p className="sg-meta">{standardMeta(data)}</p>
+      <MetaTags parts={standardMetaParts(data)} />
     </div>
     <dl className="sg-stats">{standardThresholds(standard).map((item) => <div key={item.key}>
       <dt>{item.label}</dt>
