@@ -29,6 +29,8 @@ describe("admin workspace", () => {
       expect(open).toContain('<button type="button" class="am-nav-group-toggle am-nav-group-current" aria-expanded="true" aria-controls="admin-navigation-careers">');
       expect(open).toContain('<div id="admin-navigation-careers" class="am-nav-sub">');
       expect(open).toContain(`<a href="${path}" aria-current="page">`);
+      // The "Gợi ý quản lý nghề nghiệp" box was removed at the user's request (2026-10-17).
+      expect(open).not.toContain("Gợi ý quản lý nghề nghiệp");
     }
   });
 
