@@ -11,10 +11,7 @@ import {
   plansFor, scoreDifference, shouldPoll, skillName, sortRequirements, type MappedAiOutput, type PreconditionError, type SkillFilters, type StatusTone,
 } from "./student-competency-data";
 import { readGraduation } from "./student-graduation-api";
-import {
-  GRADUATION_API, asOfLine, criteriaRows, standardDocumentName, suggestionItems, unresolvedCopy, verdictHeadline,
-  type SuggestionCourse, type SuggestionItem,
-} from "./student-graduation-data";
+import { GRADUATION_API, unresolvedCopy, verdictHeadline } from "./student-graduation-data";
 import type { GraduationEvaluation } from "./student-graduation-types";
 import "./student-curriculum.css";
 import "./student-graduation.css";
@@ -354,51 +351,13 @@ function ProgressSection({ result }: { result: AssessmentResult }) {
   </Section>;
 }
 
-const TRI_GLYPH = { pass: "✓", fail: "✗", unknown: "?" } as const;
-const TRI_TEXT = { pass: "Đạt", fail: "Chưa đạt", unknown: "Chưa xác định" } as const;
-const INLINE_NAMES = 6;
-/** "A (CODE1), B (CODE2) và 3 học phần khác." */
-function courseNames(courses: readonly SuggestionCourse[]): string {
-  const names = courses.slice(0, INLINE_NAMES).map((course) => `${course.name} (${course.code})`);
-  const rest = courses.length - names.length;
-  return `${names.join(", ")}${rest > 0 ? ` và ${rest.toLocaleString("vi-VN")} học phần khác` : ""}.`;
-}
-/** One line of "Nên làm": the graduation page's suggestion, with its courses written inline. */
-function TodoLine({ item }: { item: SuggestionItem }) {
-  const listed = item.courses.length > 0 && (item.text.endsWith(":") || item.coursesLabel);
-  return <li>
-    <span>{item.text}{listed && <> {item.coursesLabel && !item.text.endsWith(":") ? `${item.coursesLabel} ` : ""}{courseNames(item.courses)}</>}</span>
-    {item.note && <small>{item.note}</small>}
-    {item.alternative && <small>{item.alternative.label}: {courseNames(item.alternative.courses)}</small>}
-  </li>;
-}
-
+/** Only the verdict and the way to the graduation page; the criteria and what to do live there (user, 2026-10-17). */
 function GraduationVerdict({ evaluation }: { evaluation: GraduationEvaluation }) {
   const verdict = verdictHeadline(evaluation);
-  const todo = suggestionItems(evaluation).filter((item) => item.key !== "official" && item.key !== "check");
-  return <>
-    <div className={`scomp-grad-verdict scomp-grad-${verdict.tone}`}>
-      <p><span className="scomp-grad-glyph" aria-hidden="true">{verdict.glyph}</span><span>{verdict.text}</span></p>
-      <a className="sw-outline scomp-grad-detail" href="#graduation">Xem chi tiết <Icon name="arrow" /></a>
-    </div>
-    {todo.length > 0 && <div className="scomp-grad-todo">
-      <h3>Nên làm</h3>
-      <ol>{todo.map((item) => <TodoLine key={item.key} item={item} />)}</ol>
-    </div>}
-    <div className="scomp-table-scroll" tabIndex={0} role="region" aria-labelledby="scomp-graduation-caption">
-      <table className="scomp-table">
-        <caption id="scomp-graduation-caption">Các tiêu chí xét tốt nghiệp</caption>
-        <thead><tr><th scope="col">Tiêu chí</th><th scope="col" className="scomp-num">Hiện có</th><th scope="col" className="scomp-num">Yêu cầu</th><th scope="col">Kết quả</th></tr></thead>
-        <tbody>{criteriaRows(evaluation).map((row) => <tr key={row.key}>
-          <th scope="row">{row.title}{row.note && <small>{row.note}</small>}</th>
-          <td className="scomp-num">{row.actual}</td>
-          <td className="scomp-num">{row.required}</td>
-          <td><StatusText tone={row.status} glyph={TRI_GLYPH[row.status]} text={TRI_TEXT[row.status]} /></td>
-        </tr>)}</tbody>
-      </table>
-    </div>
-    <p className="scomp-meta">{asOfLine(evaluation)}. Cùng dữ liệu và cách tính với trang Điều kiện xét tốt nghiệp.</p>
-  </>;
+  return <div className={`scomp-grad-verdict scomp-grad-${verdict.tone}`}>
+    <p><span className="scomp-grad-glyph" aria-hidden="true">{verdict.glyph}</span><span>{verdict.text}</span></p>
+    <a className="sw-outline scomp-grad-detail" href="#graduation">Xem chi tiết <Icon name="arrow" /></a>
+  </div>;
 }
 
 /**
@@ -410,13 +369,8 @@ function GraduationSection() {
   const [revision, setRevision] = useState(0);
   const live = useLiveData(GRADUATION_API, revision, readGraduation);
   const data = live.data;
-  const standard = data?.standard ?? null;
-  const unresolved = data && !standard ? unresolvedCopy(data) : null;
-  // The document the verdict rests on, written out in full and linked to its own page, opens the section.
-  const basis = standard
-    ? <>Căn cứ: <a className="scomp-doc-link" href="#graduation">{standardDocumentName(standard)}</a></>
-    : "Đối chiếu bảng điểm hiện tại của bạn với tiêu chuẩn xét tốt nghiệp của khóa và chuyên ngành.";
-  return <Section id="scomp-graduation" title="Xét tốt nghiệp (tham khảo)" description={basis}>
+  const unresolved = data && !data.standard ? unresolvedCopy(data) : null;
+  return <Section id="scomp-graduation" title="Xét tốt nghiệp (tham khảo)">
     {!data ? live.loading ? <p className="scomp-meta">Đang tải kết quả xét tốt nghiệp…</p>
       : <div className="sr-error" role="alert">{live.error ?? "Chưa tải được kết quả xét tốt nghiệp."}<button type="button" onClick={() => setRevision((value) => value + 1)}>Thử lại</button></div>
       : unresolved ? <div className="scomp-grad-unresolved"><strong>{unresolved.title}</strong><p className="scomp-meta">{unresolved.text}</p>{unresolved.action && <a className="sw-outline" href={unresolved.action.href}>{unresolved.action.label}</a>}</div>

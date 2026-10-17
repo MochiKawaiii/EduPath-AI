@@ -240,12 +240,7 @@
 .scomp-page .scomp-grad-fail { color: #c62828; background: #fdf2f2; border-color: #f0c5c5; }
 .scomp-page .scomp-grad-unknown { color: #805900; background: #fff8e8; border-color: #e9d39b; }
 .scomp-page .scomp-grad-detail { flex: none; background: #fff; }
-.scomp-page .scomp-grad-todo { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid #cfdaeb; border-radius: 8px; background: #f2f6fc; }
-.scomp-page .scomp-grad-todo h3 { color: #1c4182; }
-.scomp-page .scomp-grad-todo ol { display: grid; gap: 8px; margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6; }
-.scomp-page .scomp-grad-todo small { color: #3d4757; font-size: 13px; }
 .scomp-page .scomp-grad-unresolved { display: grid; gap: 8px; justify-items: start; }
-.scomp-page .scomp-doc-link { color: var(--ep-action, #a7123b); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
 /* Competency per term (STU-COMP-07) */
 .scomp-page .scomp-history-table { min-width: 860px; }

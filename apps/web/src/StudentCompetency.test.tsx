@@ -158,24 +158,13 @@ describe("StudentCompetency — Đánh giá năng lực", () => {
     expect(html).toMatch(/scomp-plan-status scomp-plan-ok"><span aria-hidden="true">✓<\/span><span>Đúng kế hoạch/);
     expect(html).toContain("sg-status-pass\">Bạn đang theo đúng kế hoạch đào tạo.");
   });
-  it("shows the graduation page's verdict with the reason, what to do and the detail link first", () => {
+  it("shows only the graduation page's verdict and the detail link", () => {
     const html = withAi("completed");
     const section = html.slice(html.indexOf('id="scomp-graduation"'), html.indexOf('id="scomp-warnings"'));
     expect(section).toContain("Hiện tại bạn chưa đủ điều kiện xét tốt nghiệp vì còn thiếu 6 tín chỉ thuộc nhóm tự chọn TC306 (CTĐT: TC406). Tổng số tín chỉ tích lũy (120/126) cũng sẽ đủ khi bạn hoàn thành nhóm tự chọn TC306 (CTĐT: TC406).");
-    // The full standard name opens the section; the detail button sits with the verdict, before "Nên làm" and the table.
-    expect(section.indexOf("Căn cứ:")).toBeLessThan(section.indexOf("scomp-grad-verdict"));
     expect(section).toMatch(/scomp-grad-verdict scomp-grad-fail">.*<a class="sw-outline scomp-grad-detail" href="#graduation">Xem chi tiết/);
-    expect(section.indexOf("scomp-grad-detail")).toBeLessThan(section.indexOf("Nên làm"));
-    expect(section.indexOf("Nên làm")).toBeLessThan(section.indexOf("<table"));
-    // The thesis is the main path; the replacement courses are a fallback with a reason.
-    expect(section).toContain("Đăng ký Đồ án Tốt nghiệp (6 TC) để hoàn thành nhóm tự chọn TC306 (CTĐT: TC406). Đây là phương án chính");
-    expect(section).toContain("Chỉ chọn học phần thay thế khi bạn không làm đồ án tốt nghiệp theo quy định của Khoa");
-    expect(section).toContain("Phương án thay thế: chọn đủ 6 tín chỉ trong các học phần sau: Chuyên đề Tốt nghiệp 1 (TST301), Chuyên đề Tốt nghiệp 2 (TST302).");
-    // Same order as the graduation page: groups, GPA, total credits last.
-    const titles = [...section.matchAll(/<th scope="row">([^<]+)/g)].map((match) => match[1]);
-    expect(titles).toEqual(["Nhóm bắt buộc", "Nhóm tự chọn TC306 (CTĐT: TC406)", "Điểm trung bình tích lũy (hệ 4)", "Tổng số tín chỉ tích lũy"]);
-    expect(section).not.toContain("Kết quả chính thức do nhà trường xác nhận");
-    expect(section).toContain("Căn cứ: <a class=\"scomp-doc-link\" href=\"#graduation\">Tiêu chuẩn xét tốt nghiệp 71K29CNTT_7480201-03_TN04 - K29CNTT_Công nghệ thông tin (Công nghệ phần mềm) — khóa K29, ngành Công nghệ thông tin, chuyên ngành Công nghệ phần mềm (7480201-03)</a>");
+    // The standard name, "Nên làm" and the criteria table live on the graduation page only (user, 2026-10-17).
+    for (const gone of ["Căn cứ:", "Nên làm", "<table", "Đồ án Tốt nghiệp", "Bảng điểm cập nhật"]) expect(section).not.toContain(gone);
     // Never the copy stored with the assessment (its standard name and numbers differ).
     expect(section).not.toContain("Tiêu chuẩn tốt nghiệp K29 – CNPM");
   });
